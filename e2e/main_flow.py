@@ -67,6 +67,7 @@ from screening.tests.helpers import (
     id_token,
     line_on,
     register,
+    submission_with_answers,
 )
 
 # Playwright runs an event loop in this thread, which makes Django refuse database calls.
@@ -1390,7 +1391,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
             self.step3_retest()
             self.assert_fits_a_phone_at_double_text_size("result")
             self.page.goto(self.live_server_url)
-            expect(self.main().locator(".journey-tiles")).to_contain_text("還有")
+            expect(self.main().locator(".journey-tiles")).to_contain_text("離下次篩檢")
             self.assert_fits_a_phone_at_double_text_size("home, next date")
 
     def test_screening_tab_shows_the_catalogue_with_last_dates(self):
@@ -10239,6 +10240,210 @@ class FooterPinButtonRowsT359Test(SavesFailureArtifacts, LayoutOnAPhone, StaticL
             audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
             self.open(f"/audiograms/{audiogram.pk}/delete", self.PHONE)
             self.assert_words_wide((("button", "確定刪除"), ("link", "取消")))
+
+
+class FooterOneRowTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Readability batch 1 (docs/planning/redesign/mockup-readability-batch1.html, the owner's A):
+    on a phone the footer's links share one row, each icon over its words; a computer keeps the
+    icon beside the words. The links stay at least 44px tall to tap."""
+
+    LINKS = ("家人專區", "隱私權說明", "帳號設定")
+    # The box of a link's words alone, without its icon.
+    WORDS = """el => {
+        const words = [...el.childNodes].find((n) => n.nodeType === 3 && n.data.trim());
+        const range = document.createRange();
+        range.selectNodeContents(words);
+        const box = range.getBoundingClientRect();
+        return { x: box.left, y: box.top, width: box.width, height: box.height };
+    }"""
+
+    def setUp(self):
+        self.sign_in(consented_user(username="footer_row_e2e", password="Fake-pass-2468"))
+
+    def boxes(self):
+        """Each link's box, its icon's box and its words' box, in LINKS order."""
+        footer = self.page.locator(".site-footer")
+        boxes = []
+        for name in self.LINKS:
+            link = footer.get_by_role("link", name=name, exact=True)
+            boxes.append(
+                (
+                    link.bounding_box(),
+                    link.locator("svg").bounding_box(),
+                    link.evaluate(self.WORDS),
+                )
+            )
+        return boxes
+
+    def test_a_phone_puts_the_links_in_one_row_icons_over_words(self):
+        with self.saving_artifacts():
+            for width in (320, 390):
+                with self.subTest(width=width):
+                    self.open("/privacy", (width, 844))
+                    boxes = self.boxes()
+                    tops = {round(link["y"]) for link, _, _ in boxes}
+                    self.assertEqual(len(tops), 1, tops)
+                    for (link, icon, words), name in zip(boxes, self.LINKS, strict=True):
+                        self.assertGreaterEqual(link["height"], 44, name)
+                        self.assertLessEqual(icon["y"] + icon["height"], words["y"] + 1, name)
+                        # One line of words, the name not broken.
+                        self.assertLess(words["height"], self.rem() * 2, name)
+
+    def test_a_visitor_has_two_links_in_one_row(self):
+        with self.saving_artifacts():
+            self.open("/privacy", (320, 844), signed_in=False)
+            footer = self.page.locator(".site-footer")
+            expect(footer.get_by_role("link", name="帳號設定")).to_have_count(0)
+            boxes = [
+                footer.get_by_role("link", name=name, exact=True).bounding_box()
+                for name in self.LINKS[:2]
+            ]
+            self.assertEqual(len({round(box["y"]) for box in boxes}), 1)
+            for box in boxes:
+                self.assertGreaterEqual(box["height"], 44)
+
+    def test_a_computer_keeps_the_icon_beside_the_words(self):
+        with self.saving_artifacts():
+            self.open("/privacy", self.DESKTOP)
+            for (_, icon, words), name in zip(self.boxes(), self.LINKS, strict=True):
+                with self.subTest(link=name):
+                    self.assertLessEqual(icon["x"] + icon["width"], words["x"] + 1)
+
+    def test_double_text_size_on_a_small_phone_spills_nothing(self):
+        with self.saving_artifacts():
+            self.open("/privacy", (320, 640))
+            self.assert_fits_a_phone_at_double_text_size("/privacy footer")
+            for (link, _, _), name in zip(self.boxes(), self.LINKS, strict=True):
+                with self.subTest(link=name):
+                    self.assertGreaterEqual(link["height"], 44)
+                    self.assertLessEqual(link["x"] + link["width"], 320)
+
+
+class AnswerHeadFirstScreenTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Readability batch 1 (docs/planning/redesign/mockup-readability-batch1.html, the owner's A):
+    the answer page's title, count and guest line above the first screen only; after it each
+    question has just the progress above it. The title stays for screen readers."""
+
+    fixtures = ("questions_fixture.json",)
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+
+    def head(self):
+        main = self.main()
+        return (
+            main.get_by_role("heading", level=1, name="聽力對生活的影響"),
+            main.locator(".answer-meta"),
+            main.locator(".answer-guest-line"),
+        )
+
+    def assert_head_shown(self):
+        title, meta, guest = self.head()
+        for part in (title, meta, guest):
+            expect(part).to_be_visible()
+            self.assertGreater(part.bounding_box()["height"], 10)
+
+    def assert_head_folded(self):
+        title, meta, guest = self.head()
+        # Still there for screen readers, one pixel on screen.
+        expect(title).to_have_count(1)
+        for part in (title, meta):
+            self.assertLessEqual(part.bounding_box()["height"], 1)
+        expect(guest).to_be_hidden()
+
+    def legend_top(self):
+        return self.main().locator(".answer-app legend").bounding_box()["y"]
+
+    def test_a_guest_sees_the_head_on_the_first_screen_only(self):
+        with self.saving_artifacts():
+            self.open("/questionnaire_list", signed_in=False)
+            self.main().get_by_label("65 歲以上", exact=True).check()
+            self.main().get_by_role("button", name="下一步").click()
+            expect(self.main().get_by_role("group")).to_contain_text("有沒有戴助聽器")
+            self.assert_head_shown()
+            first_top = self.legend_top()
+            self.answer("沒戴")
+            self.next()
+            expect(self.main().get_by_role("group")).to_contain_text("第 1 題／共 10 題")
+            self.assert_head_folded()
+            # The question moves up by what the head took.
+            self.assertLess(self.legend_top(), first_top - 80)
+            self.answer("常常", number=1)
+            self.next()
+            self.assert_head_folded()
+            # Back on the first screen, the head is back.
+            self.main().get_by_role("button", name="上一題").click()
+            self.main().get_by_role("button", name="上一題").click()
+            expect(self.main().get_by_role("group")).to_contain_text("有沒有戴助聽器")
+            self.assert_head_shown()
+
+    def test_every_questionnaire_folds_its_head_after_the_first_screen(self):
+        # Six answer pages share screening.html; SADL and IOI-HA start on question 1.
+        self.sign_in(consented_user(username="answer_head_all", birth_year=1950))
+        with self.saving_artifacts():
+            for code in ("hhie-s", "hhia-s", "ssq12-tw", "ioi-ha", "sadl", "thi"):
+                with self.subTest(code=code):
+                    questionnaire = Questionnaire.objects.get(code=code)
+                    self.open(f"/questionnaire/{questionnaire.pk}")
+                    expect(self.page.locator("html.answer-loading")).to_have_count(0)
+                    title = self.main().get_by_role("heading", level=1)
+                    expect(title).to_be_visible()
+                    self.assertGreater(title.bounding_box()["height"], 10)
+                    self.main().locator(".answer-app").get_by_role("radio").first.check()
+                    self.next()
+                    expect(title).to_have_class(re.compile(r"\bvisually-hidden\b"))
+                    self.assertLessEqual(title.bounding_box()["height"], 1)
+
+    def test_without_javascript_the_form_keeps_its_head(self):
+        self.sign_in(consented_user(username="answer_head_nojs", birth_year=1950))
+        with self.saving_artifacts():
+            questionnaire = Questionnaire.objects.get(code="hhie-s")
+            self.open(f"/questionnaire/{questionnaire.pk}", java_script_enabled=False)
+            title = self.main().get_by_role("heading", level=1, name="聽力對生活的影響")
+            expect(title).to_be_visible()
+            self.assertGreater(title.bounding_box()["height"], 10)
+
+
+class NextScreeningTileTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Readability batch 1 (docs/planning/redesign/mockup-readability-batch1.html, the owner's B):
+    the home page's 離下次篩檢 tile, the days left big on one line, the day small under them."""
+
+    fixtures = ("questions_fixture.json",)
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+        self.sign_in(consented_user(username="next_tile_e2e", birth_year=1950))
+        record = submission_with_answers(
+            self.user, "hhie-s", [0] * QUESTION_COUNT, wearing_hearing_aid=False
+        )
+        Submission.objects.filter(pk=record.pk).update(
+            created_at=timezone.now() - timedelta(days=10)
+        )
+
+    def tile(self):
+        return self.main().locator(".journey-tile-info")
+
+    def assert_one_line(self, locator):
+        # By height: 天 is smaller than the number and sits lower, which a line count by each
+        # character's top would take for a second line.
+        self.assertLess(locator.bounding_box()["height"], self.font_size(locator) * 1.6)
+
+    def test_the_days_left_stay_on_one_line_on_small_phones(self):
+        with self.saving_artifacts():
+            for width in (320, 390):
+                with self.subTest(width=width):
+                    self.open("/", (width, 844))
+                    expect(self.tile()).to_contain_text("離下次篩檢")
+                    days = self.tile().locator(".journey-tile-score")
+                    self.assert_one_line(days)
+                    self.assertRegex(days.inner_text(), r"^\d+ 天$")
+                    self.assert_one_line(self.tile().locator(".journey-tile-small"))
+
+    def test_double_text_size_spills_nothing(self):
+        with self.saving_artifacts():
+            self.open("/", (320, 640))
+            self.assert_fits_a_phone_at_double_text_size("/ 離下次篩檢")
+            self.assert_one_line(self.tile().locator(".journey-tile-score"))
 
 
 class TypeSizesT357Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):

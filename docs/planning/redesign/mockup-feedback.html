@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>回饋感設計圖</title>
+<style>
+  :root { --primary:#1f4e8c; --heading:#212529; --body:#343a40; --muted:#4a5460; --border:#ced4da; --subtle:#dee2e6; --surface:#f4f6f8; --soft:#eef3fa; --selected:#e8eef7; --mark:#f2a33a;
+          --normal:#14573c; --normal-bg:#e3f4ec; --mild:#704800; --mild-bg:#fff4d6; --severe:#8f2a12; --severe-bg:#feece7; }
+  * { box-sizing:border-box; }
+  html { font-size:18px; }
+  body { margin:0; padding:16px; font-family:"Noto Sans TC",-apple-system,"PingFang TC",sans-serif; line-height:1.5; color:var(--body); background:#e8ebf0; }
+  h1 { font-size:1.5rem; margin:0 0 .25rem; color:var(--heading); }
+  .intro, .topic { max-width:1240px; margin:0 auto 16px; }
+  .intro ul { margin:.25rem 0; padding-left:1.2rem; }
+  .intro a { color:var(--primary); font-weight:700; }
+  .topic { background:#fff; border-radius:12px; padding:16px; margin-top:28px; }
+  .topic > h2 { font-size:1.35rem; margin:0 0 .25rem; color:var(--heading); border-left:6px solid var(--primary); padding-left:.6rem; }
+  .topic > p { margin:.25rem 0 .75rem; }
+  .row { display:flex; flex-wrap:wrap; gap:24px; justify-content:center; align-items:flex-start; }
+  .col { width:377px; }
+  .col h3 { font-size:1.15rem; margin:0 0 .25rem; color:var(--heading); }
+  .col .why { margin:0 0 .5rem; min-height:7.5em; }
+  .col .why.short { min-height:4.6em; }
+  .pick { display:inline-block; background:var(--primary); color:#fff; border-radius:6px; padding:0 .5rem; font-weight:700; margin-right:.35rem; }
+  .now { background:#5f6b7a; }
+  .note { background:var(--surface); border-radius:10px; padding:.6rem .9rem; margin:.75rem 0 0; }
+  .note ul { margin:.25rem 0 0; padding-left:1.2rem; }
+  .new { outline:3px solid var(--mark); outline-offset:2px; border-radius:.75rem; margin-bottom:1rem; }
+  .new > :last-child { margin-bottom:0 !important; }
+  .cap { margin:.9rem 0 .25rem; font-weight:700; color:var(--heading); }
+
+  .phone { width:377px; border:1px solid #8a96a8; background:#fff; position:relative; overflow:hidden; }
+  .pg { padding:1.1rem 16px 1.25rem; }
+  .pg h4 { font-size:1.45rem; margin:0 0 .5rem; color:var(--heading); line-height:1.3; }
+  .pg h5 { font-size:1.2rem; margin:.5rem 0 .25rem; color:var(--heading); }
+  .pg p { margin:0 0 .75rem; }
+  .pg .meta { color:var(--muted); }
+  .hd { display:flex; align-items:center; gap:.5rem; height:73px; padding:0 16px; border-bottom:1px solid var(--subtle); color:var(--primary); font-size:1.8rem; font-weight:900; }
+  .hd i { width:40px; height:40px; border-radius:50%; background:var(--primary); display:inline-block; }
+  .btn { min-height:3.1rem; border-radius:.78rem; display:grid; place-items:center; font-weight:700; font-size:1.11rem; background:var(--primary); color:#fff; margin-bottom:.5rem; }
+  .cutnote { text-align:center; color:#6b7684; padding:.5rem; background:repeating-linear-gradient(135deg,#fff 0 8px,#f1f3f6 8px 16px); border-top:1px dashed #8a96a8; margin:0 -16px -1.25rem !important; }
+
+  /* 訊息 */
+  .plain { font-size:1.11rem; font-weight:700; color:var(--body); }
+  .msg { display:flex; gap:.6rem; align-items:flex-start; font-weight:700; margin:0 0 1rem !important; }
+  .mk { flex:none; width:1.5rem; height:1.5rem; border-radius:50%; display:grid; place-items:center; color:#fff; font-weight:900; font-size:1rem; line-height:1; margin-top:.1rem; }
+  .msg.ok .mk { background:var(--normal); } .msg.err .mk, .ferr .mk { background:var(--severe); } .msg.info .mk { background:var(--primary); font-style:italic; font-family:Georgia,serif; }
+  .msg.fill { padding:.875rem 1rem; border-radius:.75rem; }
+  .msg.fill.ok { background:var(--normal-bg); color:var(--normal); }
+  .msg.fill.err { background:var(--severe-bg); color:var(--severe); }
+  .msg.fill.info { background:var(--soft); color:var(--heading); }
+  .msg.edge { padding:.5rem 0 .5rem .9rem; border-left:6px solid; color:var(--heading); }
+  .msg.edge.ok { border-color:var(--normal); } .msg.edge.err { border-color:var(--severe); } .msg.edge.info { border-color:var(--primary); }
+
+  .rowline { display:flex; justify-content:space-between; padding:.7rem 0; border-bottom:1px solid var(--subtle); }
+  .rowline b { color:var(--heading); }
+  .banner { padding:.9rem 1.1rem; border-radius:.75rem; background:var(--mild-bg); color:var(--heading); }
+  .banner b { color:var(--mild); font-size:1.2rem; }
+  .seg { display:grid; grid-template-columns:1fr 1fr; background:var(--surface); border-radius:99px; padding:4px; margin-bottom:1rem; text-align:center; }
+  .seg b { background:var(--selected); border:2px solid var(--primary); border-radius:99px; color:var(--primary); padding:.4rem; } .seg span { padding:.4rem; }
+  .card { display:flex; align-items:center; gap:.75rem; padding:.8rem .25rem; border-bottom:1px solid var(--subtle); border-top:1px solid var(--subtle); margin-top:-1px; }
+  .thumb { width:3.2rem; height:3.2rem; border:1px solid var(--border); background:linear-gradient(#e3f4ec 0 30%,#fff 30%); flex:none; }
+  .ic { flex:none; width:2.75rem; height:2.75rem; border-radius:50%; background:var(--soft); display:grid; place-items:center; }
+  .ic svg { width:1.5rem; height:1.5rem; fill:none; stroke:var(--primary); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .cb { flex:1; min-width:0; display:flex; flex-direction:column; } .cb b { color:var(--heading); }
+  .card .ar { color:var(--primary); font-size:1.6rem; font-weight:700; }
+  .card.done .ic { background:var(--normal); } .card.done .ic svg { stroke:#fff; stroke-width:3; }
+  .card.done .nt { color:var(--normal); font-weight:700; }
+
+  /* 註冊 */
+  .step { margin:0 0 .3rem !important; color:var(--heading); }
+  .bar { display:flex; gap:.25rem; margin-bottom:.9rem; } .bar span { flex:1; height:.5rem; border-radius:99px; background:var(--border); } .bar .on { background:var(--primary); }
+  .lab { margin:0 0 .25rem !important; color:var(--heading); }
+  .inp { display:flex; align-items:center; gap:.3rem; min-height:3.2rem; border:2px solid #6b7684; border-radius:.75rem; padding:0 .9rem; margin:0 0 .35rem !important; }
+  .inp i { width:2px; height:1.3rem; background:var(--heading); }
+  .inp.bad { border-color:var(--severe); border-width:3px; }
+  .help { color:var(--muted); margin:0 0 .9rem !important; }
+  .ferr { display:flex; gap:.4rem; color:var(--severe); font-weight:700; margin:0 0 .5rem !important; }
+  .msg u { text-underline-offset:.2em; }
+  .ref { background:var(--soft); border-radius:10px; padding:.6rem .9rem; margin:0 0 .9rem; }
+  .ref b { color:var(--heading); }
+  .ref ul { margin:.25rem 0 0; padding-left:1.2rem; }
+  .ref a, .src a { color:var(--primary); }
+  table.cmp { border-collapse:collapse; width:100%; margin:.5rem 0; }
+  table.cmp th, table.cmp td { border:1px solid var(--border); padding:.4rem .6rem; text-align:left; vertical-align:top; }
+  table.cmp th { background:var(--surface); color:var(--heading); }
+  .no { color:var(--severe); font-weight:700; } .yes { color:var(--normal); font-weight:700; }
+  .toast { position:absolute; left:12px; right:12px; bottom:14px; background:#2b3138; color:#fff; border-radius:.6rem; padding:.8rem 1rem; font-weight:700; box-shadow:0 4px 14px rgba(0,0,0,.3); }
+  .tall { min-height:21rem; }
+  .sum { padding:.875rem 1rem; border-radius:.75rem; background:var(--severe-bg); color:var(--severe); margin:0 0 1rem; }
+  .sum b { display:flex; gap:.5rem; align-items:center; font-size:1.11rem; }
+  .sum ul { margin:.4rem 0 0; padding-left:2.4rem; } .sum li { text-decoration:underline; text-underline-offset:.2em; font-weight:700; padding:.2rem 0; }
+  .panel { background:var(--normal); color:#fff; border-radius:.75rem; padding:1.2rem 1rem; text-align:center; margin:0 0 1rem; }
+  .panel b { display:block; font-size:1.45rem; } .panel span { display:block; margin-top:.25rem; }
+  .btn.o { background:#fff; color:var(--primary); border:2px solid var(--primary); }
+  .frames { display:flex; gap:10px; flex-wrap:wrap; margin:.25rem 0 .75rem; }
+  .frame { width:118px; text-align:center; } .frame small { display:block; font-size:1rem; color:var(--muted); }
+  .frame .box { height:64px; border-radius:.75rem; background:var(--normal-bg); display:grid; place-items:center; }
+  .frame svg { width:40px; height:40px; } .frame circle { fill:var(--normal); } .frame path { fill:none; stroke:#fff; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:22; }
+  @keyframes draw { from { stroke-dashoffset:22; } to { stroke-dashoffset:0; } }
+  @keyframes pop { from { opacity:0; } to { opacity:1; } }
+  .live svg { width:1.5rem; height:1.5rem; flex:none; margin-top:.1rem; } .live circle { fill:var(--normal); }
+  .live path { fill:none; stroke:#fff; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:22; animation:draw .4s .15s cubic-bezier(0,0,.38,.9) both; }
+  .live { animation:pop .24s cubic-bezier(0,0,.38,.9) both; }
+  @media (prefers-reduced-motion: reduce) { .live, .live path { animation:none; } }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1>回饋感設計圖：做完之後告訴使用者</h1>
+  <p>五件事各自選：<a href="#message">一、系統訊息的樣子</a>　<a href="#landing">二、補上四句「做完了」</a>　<a href="#download">三、下載我的資料</a>　<a href="#register">四、註冊失敗之後</a>　<a href="#motion">五、要不要動</a></p>
+  <ul>
+    <li>每個手機框寬 375px，字級、顏色照現在的網站。灰底標籤「現在」是目前的樣子，藍底英文字母是可以選的做法；橘框是新增的地方。</li>
+    <li>顏色只用現有的：成功綠是「✓ 已複製」那個綠，失敗紅是填錯欄位那個紅。</li>
+    <li>新的句子都是草稿。</li>
+  </ul>
+  <div class="ref" style="margin-top:.75rem">
+    <b>第 2 版（2026-11-16）：對照了五家公開的設計規範再改。</b> 每一段最上面的藍框寫「他們怎麼做」，下面的做法標出跟誰一致。
+    <table class="cmp">
+      <tr><th>誰</th><th>跟這次有關的規定</th><th>聽伴</th></tr>
+      <tr><td>英國政府 GOV.UK<br>（服務全民，含長者）</td><td>成功訊息放在標題正上方、綠色、換頁就拿掉、一頁最多一則；填錯時最上面放「錯誤摘要」，每一條連到欄位</td><td class="yes">採用</td></tr>
+      <tr><td>英國 NHS<br>（醫療，最接近我們）</td><td>錯誤摘要跟 GOV.UK 同一套；註明研究結果：使用者看得懂哪裡錯、知道怎麼改</td><td class="yes">採用</td></tr>
+      <tr><td>IBM Carbon</td><td>頁面內的通知不會自己消失；每種狀態配一個圖示；一般介面動畫 0.07–0.24 秒，重要通知 0.4 秒</td><td class="yes">採用</td></tr>
+      <tr><td>Apple</td><td>動畫要有目的、要短；不能只靠動畫傳達重要資訊；常用的操作不要加動畫</td><td class="yes">採用</td></tr>
+      <tr><td>Google Material、IBM Carbon 的浮動提示</td><td>畫面底部或角落跳出一小塊；Material 的 4 到 10 秒後自己消失，Carbon 的可以設成 5 秒</td><td class="no">不採用</td></tr>
+    </table>
+    不採用浮動提示的原因：Atlassian 的規範寫明重要訊息不要自動消失，因為有些人需要更多時間閱讀；我們的使用者多半 65 歲以上。
+    <p class="src" style="margin:.4rem 0 0">出處：<a href="https://design-system.service.gov.uk/components/notification-banner/">GOV.UK 通知橫幅</a>、<a href="https://design-system.service.gov.uk/components/error-summary/">GOV.UK 錯誤摘要</a>、<a href="https://service-manual.nhs.uk/design-system/components/error-summary">NHS 錯誤摘要</a>、<a href="https://carbondesignsystem.com/components/notification/usage/">Carbon 通知</a>、<a href="https://carbondesignsystem.com/elements/motion/overview/">Carbon 動畫</a>、<a href="https://developer.apple.com/design/human-interface-guidelines/motion">Apple 動畫</a>、<a href="https://atlassian.design/components/flag/usage">Atlassian 旗標</a>、<a href="https://github.com/material-components/material-components-web/blob/master/packages/mdc-snackbar/README.md">Material snackbar</a>。Material 的動畫秒數我沒能從官方頁面讀到，所以沒有引用。</p>
+  </div>
+</div>
+
+<section class="topic" id="message">
+  <h2>一、系統訊息的樣子</h2>
+  <p>做完一件事、換頁後出現在頁首下面的那一句。全站 12 處，有成功、失敗、說明三種，現在長得一樣。</p>
+  <div class="ref"><b>他們怎麼做</b>
+    <ul>
+      <li>GOV.UK：成功用綠色橫幅，放在標題正上方，使用者換到下一頁就拿掉；一頁最多一則；不跟錯誤摘要同時出現。也提醒「橫幅容易被漏看，要省著用」。</li>
+      <li>Carbon：頁面內的通知不會自己消失，成功、失敗、說明各有固定圖示，文字不超過兩行。</li>
+      <li>浮動提示：Material 的 4 到 10 秒後自己消失（預設 5 秒）；Carbon 的預設不消失，可以設成 5 秒。</li>
+    </ul>
+  </div>
+  <div class="row">
+    <div class="col">
+      <h3><span class="pick now">現在</span>一行粗體字</h3>
+      <p class="why">三種訊息都是同一種粗體字，夾在頁首和標題之間，容易當成頁面本來的字。失敗也沒有紅色。</p>
+      <p class="cap">成功</p><div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg"><p class="plain">已新增 LINE 登入。下次可以直接用 LINE 登入。</p><h4>帳號設定</h4><h5>登入方式</h5><div class="rowline"><b>密碼</b><span>已設定</span></div><div class="rowline"><b>LINE</b><span>已連結</span></div></div></div><p class="cap">失敗</p><div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg"><p class="plain">這個 LINE 帳號已經用在另一個帳號。</p><h4>帳號設定</h4><h5>登入方式</h5><div class="rowline"><b>密碼</b><span>已設定</span></div><div class="rowline"><b>LINE</b><span>還沒連結</span></div></div></div><p class="cap">說明</p><div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg"><p class="plain">這份作答剛才已經送出，以下是那次的結果；要重新作答，請從「開始篩檢」進入。</p><h4>聽力對生活的影響</h4><p class="meta">HHIE-S・2026/09/11 作答</p><div class="banner">總分 12 分（滿分 40）<br><b>輕度到中度影響</b></div></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">A</span>整條有底色（GOV.UK、Carbon 的做法）</h3>
+      <p class="why">成功淺綠底＋綠勾，失敗淺紅底＋驚嘆號（跟現在表單的錯誤框同一款），說明淺藍底＋ⓘ。最醒目。</p>
+      <p class="cap">成功</p><div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg"><p class="msg fill ok"><span class="mk">✓</span><span>已新增 LINE 登入。下次可以直接用 LINE 登入。</span></p><h4>帳號設定</h4><h5>登入方式</h5><div class="rowline"><b>密碼</b><span>已設定</span></div><div class="rowline"><b>LINE</b><span>已連結</span></div></div></div><p class="cap">失敗</p><div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg"><p class="msg fill err"><span class="mk">!</span><span>這個 LINE 帳號已經用在另一個帳號。</span></p><h4>帳號設定</h4><h5>登入方式</h5><div class="rowline"><b>密碼</b><span>已設定</span></div><div class="rowline"><b>LINE</b><span>還沒連結</span></div></div></div><p class="cap">說明</p><div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg"><p class="msg fill info"><span class="mk">i</span><span>這份作答剛才已經送出，以下是那次的結果；要重新作答，請從「開始篩檢」進入。</span></p><h4>聽力對生活的影響</h4><p class="meta">HHIE-S・2026/09/11 作答</p><div class="banner">總分 12 分（滿分 40）<br><b>輕度到中度影響</b></div></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">B</span>左邊一條色邊</h3>
+      <p class="why">不鋪底色，只有左邊一條色邊加圖示。比較安靜，跟頁面其他段落的樣子接近；代價是沒那麼醒目。</p>
+      <p class="cap">成功</p><div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg"><p class="msg edge ok"><span class="mk">✓</span><span>已新增 LINE 登入。下次可以直接用 LINE 登入。</span></p><h4>帳號設定</h4><h5>登入方式</h5><div class="rowline"><b>密碼</b><span>已設定</span></div><div class="rowline"><b>LINE</b><span>已連結</span></div></div></div><p class="cap">失敗</p><div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg"><p class="msg edge err"><span class="mk">!</span><span>這個 LINE 帳號已經用在另一個帳號。</span></p><h4>帳號設定</h4><h5>登入方式</h5><div class="rowline"><b>密碼</b><span>已設定</span></div><div class="rowline"><b>LINE</b><span>還沒連結</span></div></div></div><p class="cap">說明</p><div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg"><p class="msg edge info"><span class="mk">i</span><span>這份作答剛才已經送出，以下是那次的結果；要重新作答，請從「開始篩檢」進入。</span></p><h4>聽力對生活的影響</h4><p class="meta">HHIE-S・2026/09/11 作答</p><div class="banner">總分 12 分（滿分 40）<br><b>輕度到中度影響</b></div></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick now">不建議</span>浮動提示，5 秒後消失（Material snackbar）</h3>
+      <p class="why">很多 App 和網站用的那種：畫面下方跳出深色一塊，幾秒後自己不見。畫出來給你對照。讀得慢或剛好沒看螢幕的人會漏掉，漏掉就找不回來。</p>
+      <p class="cap">成功</p><div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg tall"><h4>帳號設定</h4><h5>登入方式</h5><div class="rowline"><b>密碼</b><span>已設定</span></div><div class="rowline"><b>LINE</b><span>已連結</span></div><p class="toast">✓ 已新增 LINE 登入。</p></div></div>
+    </div>
+  </div>
+  <div class="note">
+    <strong>A、B 都一樣的：</strong>
+    <ul>
+      <li>不會自己消失，換到下一頁才不見（GOV.UK、Carbon 都這樣）。</li>
+      <li>一頁最多一則；有表單錯誤時不顯示（GOV.UK 的規定，兩個框疊在一起會搶注意力）。</li>
+      <li>不滑進來、不位移（ADR 0006）。要不要淡入、勾勾要不要畫一次，在第五段選。</li>
+      <li>成功和說明用 <code>role="status"</code>、失敗用 <code>role="alert"</code>，螢幕閱讀器會唸出來（現在不會特別唸）。</li>
+      <li>圖示加文字，不只靠顏色分辨。</li>
+      <li>綠色用在「剛完成的那一刻」，ADR 0028 已經允許；這裡多了一種用法（換頁後的一條），要在 ADR 0028 補一句。</li>
+    </ul>
+    <strong>我的建議：A。</strong>跟 GOV.UK、Carbon 一致；失敗那一款本來就是 A 的樣子（表單錯誤框）。GOV.UK 自己也說橫幅容易漏看，所以選醒目的那一種。
+  </div>
+</section>
+
+<section class="topic" id="landing">
+  <h2>二、補上四句「做完了」</h2>
+  <p>這四個動作現在做完，落地頁一句話都沒有。用第一段選定的樣子補一句（這裡先用 A 畫）。每一句可以分開決定要不要。</p>
+  <div class="row">
+    <div class="col"><h3>① 刪除聽力圖之後</h3><p class="why short">現在：回到清單，少了一張，沒說刪了哪一張。</p><div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg"><div class="new"><p class="msg fill ok"><span class="mk">✓</span><span>已刪除 2026/09/01 的聽力圖。</span></p></div><h4>我的紀錄</h4><div class="seg"><span>問卷</span><b>聽力圖</b></div><div class="card"><span class="thumb"></span><span class="cb"><b>2026/10/20</b><span>右耳 中度・左耳 中度</span></span><span class="ar">›</span></div></div></div></div>
+    <div class="col"><h3>② 取消分享之後</h3><p class="why short">現在：回到分享頁，變回還沒分享的樣子。</p><div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg"><div class="new"><p class="msg fill ok"><span class="mk">✓</span><span>已取消分享，原本的連結不能再打開。</span></p></div><h4>分享報告給家人</h4><p>產生一個連結傳給家人，家人不用登入就能看您的聽力報告。</p><div class="btn">產生分享連結</div></div></div></div>
+    <div class="col"><h3>③ 登出之後</h3><p class="why short">現在：回到首頁，沒說已登出。共用手機的人會想確認。</p><div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg"><div class="new"><p class="msg fill ok"><span class="mk">✓</span><span>已登出。</span></p></div><h4>從一份問卷開始</h4><p>聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。</p><div class="btn">開始篩檢</div></div></div></div>
+    <div class="col"><h3>④ 訪客註冊後保存結果</h3><p class="why short">現在：「已保存」一閃就跳到我的紀錄，落地後沒有提示。</p><div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg"><div class="new"><p class="msg fill ok"><span class="mk">✓</span><span>這次結果已經存進您的紀錄。</span></p></div><h4>我的紀錄</h4><div class="seg"><b>問卷</b><span>聽力圖</span></div><div class="banner">最近一次（2026/11/16，沒戴助聽器）<br><b>28 分　顯著影響</b></div></div></div></div>
+    <div class="col"><h3>④ 的另一種：大的確認框＋下一步</h3><p class="why short">GOV.UK 規定：註冊這種一步接一步的流程，結尾用確認畫面，不用橫幅。</p>
+      <div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg"><div class="new"><div class="panel"><b>✓ 結果已經保存</b><span>帳號也建好了</span></div></div><p><b>接下來</b>　首頁會告訴您現在該做哪一步。</p><div class="btn">看我的下一步</div><div class="btn o">看這次的紀錄</div></div></div></div>
+  </div>
+  <div class="note">
+    <strong>說明：</strong>
+    <ul>
+      <li>④ 有兩種：一句橫幅（落在我的紀錄，改動小），或大的確認框加「接下來」（GOV.UK 對註冊流程的做法，順便解掉動線走查第 6 點「剛註冊的人找不到下一步」）。</li>
+      <li>①②③ 是「不值得另開一頁的確認」，GOV.UK 就是用橫幅。</li>
+      <li>①「刪除」寫出日期，是為了讓人確認刪的是對的那一張。</li>
+      <li>四句都是草稿，請改成你習慣的說法。</li>
+    </ul>
+    <strong>我的建議：四句都加，④ 用大的確認框。</strong>剛註冊完是整個流程最需要「接下來做什麼」的時候。
+  </div>
+</section>
+
+<section class="topic" id="download">
+  <h2>三、帳號設定「下載我的資料」</h2>
+  <p>按下去是直接下載，手機上檔案進了「下載項目」，頁面完全不動，容易以為沒按到又按一次。網頁只知道「按了」，不知道有沒有存成功，所以寫「已開始下載」。</p>
+  <div class="row">
+    <div class="col">
+      <h3><span class="pick now">現在</span>按了沒變化</h3>
+      <p class="why short">按之前、按之後長得一樣。</p>
+      <div class="phone"><div class="pg"><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M12 9v6M9 12h6"/></svg></span><span class="cb"><b>加到手機主畫面</b></span><span class="ar">›</span></div><div class="card "><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 20h14"/></svg></span><span class="cb"><b>下載我的資料</b><span class="nt">把您在聽伴的所有資料下載成一個檔案保存。</span></span></div></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">A</span>說明換成「✓ 已開始下載」</h3>
+      <p class="why short">按下後圖示變綠勾、說明換成綠字，停約 4 秒再變回來。</p>
+      <div class="phone"><div class="pg"><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M12 9v6M9 12h6"/></svg></span><span class="cb"><b>加到手機主畫面</b></span><span class="ar">›</span></div><div class="new" style="border-radius:0"><div class="card done"><span class="ic"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span><span class="cb"><b>下載我的資料</b><span class="nt">✓ 已開始下載</span></span></div></div></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">B</span>A ＋告訴他檔案在哪</h3>
+      <p class="why short">多半句「請到手機的『下載項目』找」。多一行，但回答了下一個問題。</p>
+      <div class="phone"><div class="pg"><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M12 9v6M9 12h6"/></svg></span><span class="cb"><b>加到手機主畫面</b></span><span class="ar">›</span></div><div class="new" style="border-radius:0"><div class="card done"><span class="ic"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span><span class="cb"><b>下載我的資料</b><span class="nt">✓ 已開始下載，請到手機的「下載項目」找。</span></span></div></div></div></div>
+    </div>
+  </div>
+  <div class="note">
+    <strong>A、B 都一樣的：</strong> 螢幕閱讀器會唸「已開始下載」；減少動態效果時照常（只是換字換色，沒有位移）；沒有 JavaScript 時就是現在的樣子。<br>
+    <strong>參考：</strong>這一項我沒找到大廠的專門規定，所以沿用我們自己「✓ 已複製」的款式，Carbon 的原則是「狀態顯示在相關的東西旁邊」。<br>
+    <strong>我的建議：B。</strong>「下載項目」在 iPhone 和 Android 上的名字不完全一樣（iPhone 在「檔案」App 的「下載項目」，Android 多半叫「下載」或「Downloads」），句子要寫得兩邊都通，這句請你看。
+  </div>
+</section>
+
+<section class="topic" id="register">
+  <h2>四、註冊送出失敗之後</h2>
+  <p>例子：密碼只打了 5 個字就按「註冊」。頁面重新載入後停在最上面，游標一律回到第一欄「使用者名稱」，不管錯的是哪一欄；紅框和錯誤字在下面的密碼欄。註冊頁有兩個多螢幕高。</p>
+  <div class="ref"><b>他們怎麼做</b>
+    <ul>
+      <li>GOV.UK 和 NHS 完全一樣：只要有錯（一個也算），頁面最上面、標題之上放「錯誤摘要」，標題固定寫 There is a problem；每一條連到那一欄；游標自動移到摘要；欄位旁邊的紅字照樣留著，兩邊字句相同；分頁標題最前面加「Error:」。</li>
+      <li>NHS 引用 GOV.UK 的研究：使用者看得懂哪裡錯、知道怎麼改、改得回來。</li>
+    </ul>
+  </div>
+  <div class="row">
+    <div class="col">
+      <h3><span class="pick now">現在</span>停在最上面，錯誤在下面</h3>
+      <p class="why">第一個畫面看不出哪裡錯，看起來像「按了註冊沒反應」。要自己往下滑才看到紅框。</p>
+      <div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg"><h4>註冊</h4><p>建立帳號，篩檢結果會幫您存起來。</p><p class="step"><b>第 1 步／共 2 步：建立帳號</b></p><div class="bar"><span class="on"></span><span></span></div><p class="lab"><b>使用者名稱</b></p><p class="inp"><span>wang1950</span><i></i></p><p class="help">登入時要輸入的名字，可以用中文、英文或數字，不要有空格。</p><p class="lab"><b>電子郵件</b></p><p class="inp"><span>wang@example.com</span></p><p class="help">忘記密碼時，用這個信箱確認是您本人。</p><p class="cutnote">↓ 紅框和錯誤字在下面，這個畫面看不到</p></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">A</span>最上面放錯誤摘要（GOV.UK、NHS 的做法）</h3>
+      <p class="why">標題上面一個錯誤框，固定寫「有地方要修改」，下面列出每一條，字句跟欄位旁的紅字一樣，點了跳到那一欄。游標自動到這一框。</p>
+      <div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg"><div class="new"><div class="sum"><b><span class="mk" style="background:var(--severe)">!</span>有地方要修改</b><ul><li>這個密碼太短了，至少要 8 個字。</li></ul></div></div><h4>註冊</h4><p>建立帳號，篩檢結果會幫您存起來。</p><p class="step"><b>第 1 步／共 2 步：建立帳號</b></p><div class="bar"><span class="on"></span><span></span></div><p class="lab"><b>使用者名稱</b></p><p class="inp"><span>wang1950</span></p><p class="help">登入時要輸入的名字，可以用中文、英文或數字，不要有空格。</p><p class="lab"><b>電子郵件</b></p><p class="inp"><span>wang@example.com</span></p><p class="help">忘記密碼時，用這個信箱確認是您本人。</p><p class="cutnote">↓ 點那一句跳到下面的密碼欄</p></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">B</span>直接帶到第一個紅框</h3>
+      <p class="why">不加東西，重新載入後畫面直接捲到第一個填錯的欄位，游標放在裡面。少一步；代價是一進來就不在頁面頂端，有兩處錯時只看到第一處。</p>
+      <div class="phone"><div class="pg"><p class="cutnote" style="margin:-1.1rem -16px .9rem !important;border-top:0;border-bottom:1px dashed #8a96a8">↑ 上面是使用者名稱、電子郵件</p><div class="new"><p class="lab"><b>密碼</b></p><p class="inp bad"><span></span><i></i></p><p class="ferr"><span class="mk">!</span>這個密碼太短了，至少要 8 個字。</p></div><p class="help">設定密碼時，請您注意：至少 8 個字……</p></div></div>
+    </div>
+  </div>
+  <div class="note">
+    <strong>要先知道的：</strong>
+    <ul>
+      <li>密碼和密碼確認兩欄在失敗後本來就會被清空（安全考量），不管哪種做法都要重打。</li>
+      <li>這一項我是讀程式確認的（失敗後游標固定回到使用者名稱），沒有在手機上實際送一次。B 在 iPhone 上會不會真的捲過去，要實機試。</li>
+      <li>同樣的問題在「用 LINE／Google 註冊取名稱」和「重設密碼」頁比較輕微，因為那幾頁短；選定後會一起套用。</li>
+    </ul>
+    <strong>我的建議：A。</strong>GOV.UK 和 NHS 都這樣做，而且有研究支持；兩處以上也不會漏。分頁標題也會照他們加上「錯誤：」，螢幕閱讀器一開頁就唸到。第 3 批選的「打密碼時數字數」會讓這種失敗變少，但不會消失（例如使用者名稱已經有人用）。
+  </div>
+</section>
+
+<section class="topic" id="motion">
+  <h2>五、這幾樣東西要不要動</h2>
+  <p>前面四段的東西，預設都是「直接出現、不動」。這一段問要不要加一點點動作。</p>
+  <div class="ref"><b>他們怎麼做</b>
+    <ul>
+      <li>Apple：動畫要有目的，不為了動而動；回饋動畫要短、要準；不能只靠動畫傳達重要資訊；常用的操作不要加動畫。</li>
+      <li>Carbon：做事情時的動畫要不起眼，0.07 到 0.24 秒；只有少數重要時刻（系統通知等）才用明顯一點的，0.4 秒。「如果一般使用者常常注意到動畫，就該拿掉或減少。」</li>
+      <li>GOV.UK：橫幅和錯誤摘要的說明裡，我沒有讀到任何動畫。</li>
+    </ul>
+  </div>
+  <div class="row">
+    <div class="col">
+      <h3><span class="pick">A</span>都不動（像 GOV.UK）</h3>
+      <p class="why">訊息條、確認框、錯誤摘要都是頁面載入時直接在那裡。最單純，也最不會讓人頭暈。</p>
+      <div class="phone"><div class="pg"><p class="msg fill ok"><span class="mk">✓</span><span>已刪除 2026/09/01 的聽力圖。</span></p></div></div>
+    </div>
+    <div class="col" style="width:520px">
+      <h3><span class="pick">B</span>只有「成功」動一次：淡入＋勾勾畫出來</h3>
+      <p class="why">成功那一條 0.24 秒淡入（只改透明度、不位移），接著勾勾用 0.4 秒畫出來，總共約半秒，播一次就停。跟選配路線「完成一站打勾」是同一個動作。失敗和說明不動。</p>
+      <div class="frames"><div class="frame"><div class="box" style="opacity:0.15"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12"/><path d="M6.500 12.500l4 4 7-8" style="stroke-dashoffset:22"/></svg></div><small>0 秒</small></div><div class="frame"><div class="box" style="opacity:1"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12"/><path d="M6.500 12.500l4 4 7-8" style="stroke-dashoffset:22"/></svg></div><small>0.24 秒：框出現</small></div><div class="frame"><div class="box" style="opacity:1"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12"/><path d="M6.500 12.500l4 4 7-8" style="stroke-dashoffset:11"/></svg></div><small>0.35 秒：勾畫一半</small></div><div class="frame"><div class="box" style="opacity:1"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12"/><path d="M6.500 12.500l4 4 7-8" style="stroke-dashoffset:0"/></svg></div><small>0.55 秒：停住</small></div></div>
+      <p class="cap">會動的示範（重新整理這一頁再看一次；看不到動也沒關係，以上面四格為準）</p>
+      <div class="phone"><div class="pg"><p class="msg fill ok live"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12"/><path d="M6.500 12.500l4 4 7-8"/></svg><span>已刪除 2026/09/01 的聽力圖。</span></p></div></div>
+    </div>
+  </div>
+  <table class="cmp">
+    <tr><th>東西</th><th>B 的動作</th><th>秒數的依據</th></tr>
+    <tr><td>成功訊息條、④ 的確認框</td><td>淡入 0.24 秒 → 勾勾畫 0.4 秒，一次</td><td>Carbon：系統訊息 0.24 秒、重要通知 0.4 秒</td></tr>
+    <tr><td>失敗訊息、錯誤摘要、說明</td><td>不動</td><td>GOV.UK 的說明沒有動畫；出錯時不該再讓畫面晃</td></tr>
+    <tr><td>下載我的資料那一列</td><td>圖示和字直接換色，0.11 秒</td><td>Carbon：淡入淡出 0.11 秒；跟「✓ 已複製」一樣</td></tr>
+  </table>
+  <div class="note">
+    <strong>A、B 都一樣的：</strong>
+    <ul>
+      <li>手機開了「減少動態效果」時完全不動，直接是最後的樣子。</li>
+      <li>不靠動畫傳達意思：不動的時候，綠底、勾、文字都還在（Apple 的規定）。</li>
+      <li>不位移、不循環、不超過 4 秒，符合 ADR 0006；「只改透明度」和「勾勾畫一次」ADR 0028 都已經有先例。</li>
+      <li>現有的動畫我對過秒數：換題淡入 0.35 秒，落在 Carbon 的 0.24 到 0.4 秒之間，不用改。</li>
+    </ul>
+    <strong>我的建議：B。</strong>GOV.UK 自己承認橫幅容易被漏看；半秒的動作剛好把眼睛帶過去，而且只有成功才動、一次就停。如果你覺得首頁已經有夠多會動的東西，選 A 也完全站得住。
+  </div>
+</section>
+
+</body>
+</html>

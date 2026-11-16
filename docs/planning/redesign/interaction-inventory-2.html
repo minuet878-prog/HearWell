@@ -1,0 +1,749 @@
+<title>聽伴互動盤點 2</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap">
+<style>
+/* Layout: a working catalogue, same shape as the first inventory. Page chrome follows the viewer's
+   theme; each demo stage is a slice of the real site and keeps the site's light colours. */
+:root {
+  --bg: #f4f6f8; --panel: #ffffff; --ink: #1d2430; --muted: #55606e; --line: #d9dee5; --accent: #1f4e8c;
+  --t-ok: #14573c; --t-ok-bg: #e3f4ec; --t-new: #1f4e8c; --t-new-bg: #e8eef7; --t-pick: #4a4136; --t-pick-bg: #ece6da; --t-no: #8f2a12; --t-no-bg: #feece7;
+  /* The site's own tokens (frontend/src/site.css); the same in dark mode on purpose. */
+  --s-page: #ffffff; --s-primary: #1f4e8c; --s-heading: #212529; --s-body: #343a40; --s-muted: #4a5460;
+  --s-border: #ced4da; --s-subtle: #dee2e6; --s-surface: #f4f6f8; --s-soft: #eef3fa; --s-selected: #e8eef7; --s-field: #6b7684;
+  --s-normal: #14573c; --s-normal-bg: #e3f4ec; --s-mild: #704800; --s-mild-bg: #fff4d6; --s-severe: #8f2a12; --s-severe-bg: #feece7;
+  --s-white: #ffffff; --s-wait: #c9d1dc; --s-glow: rgba(31, 78, 140, 0.35);
+  --font: "Noto Sans TC", -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #14181f; --panel: #1c222b; --ink: #e9edf3; --muted: #a3adbb; --line: #2e3643; --accent: #8db4ec;
+    --t-ok: #9be0bd; --t-ok-bg: #173a2b; --t-new: #b7cff2; --t-new-bg: #1f3150; --t-pick: #d9cfbd; --t-pick-bg: #3a342a; --t-no: #f4ab95; --t-no-bg: #42211a; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #14181f; --panel: #1c222b; --ink: #e9edf3; --muted: #a3adbb; --line: #2e3643; --accent: #8db4ec;
+  --t-ok: #9be0bd; --t-ok-bg: #173a2b; --t-new: #b7cff2; --t-new-bg: #1f3150; --t-pick: #d9cfbd; --t-pick-bg: #3a342a; --t-no: #f4ab95; --t-no-bg: #42211a; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.65; }
+.wrap { max-width: 68rem; margin: 0 auto; padding-block: 2rem 4rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { text-wrap: balance; line-height: 1.3; margin: 0; }
+h1 { font-size: clamp(1.7rem, 4vw, 2.3rem); font-weight: 900; }
+h2 { font-size: 1.4rem; font-weight: 900; }
+h3 { font-size: 1.08rem; font-weight: 700; }
+p { margin: 0; }
+a { color: var(--accent); }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.eyebrow { font-size: 0.8rem; letter-spacing: 0.12em; color: var(--accent); font-weight: 700; }
+.lede { color: var(--muted); max-width: 46rem; margin-top: 0.5rem; }
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; margin: 1.5rem 0 1rem; }
+.finding { background: var(--panel); border: 1px solid var(--line); border-radius: 0.75rem; padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
+.finding span { color: var(--muted); font-size: 0.92rem; }
+.legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: center; color: var(--muted); font-size: 0.9rem; }
+.rule-note { margin-top: 1rem; padding: 0.9rem 1.1rem; border: 1px solid var(--line); background: var(--panel); border-radius: 0.5rem; font-size: 0.93rem; }
+.tag { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.1rem 0.6rem; border-radius: 999px; font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
+.tag::before { content: ""; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: currentColor; }
+.t-ok { color: var(--t-ok); background: var(--t-ok-bg); } .t-new { color: var(--t-new); background: var(--t-new-bg); }
+.t-pick { color: var(--t-pick); background: var(--t-pick-bg); } .t-no { color: var(--t-no); background: var(--t-no-bg); }
+.group-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.25rem 0.75rem; margin: 2.5rem 0 0.9rem; padding-bottom: 0.4rem; border-bottom: 2px solid var(--line); }
+.group-title span { color: var(--muted); font-size: 0.9rem; }
+.ideas { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 30rem), 1fr)); gap: 1rem; }
+.idea { background: var(--panel); border: 1px solid var(--line); border-radius: 0.75rem; padding: 1rem 1.1rem 1.1rem; display: flex; flex-direction: column; gap: 0.7rem; min-width: 0; }
+.idea:has([data-want]:checked) { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.idea-head { display: flex; gap: 0.6rem; align-items: flex-start; justify-content: space-between; }
+.idea-head h3 { min-width: 0; }
+.idea-id { color: var(--muted); font-weight: 700; margin-right: 0.4rem; font-variant-numeric: tabular-nums; }
+.idea-where { font-size: 0.85rem; color: var(--muted); }
+.picked-note { color: var(--t-pick); font-weight: 700; margin-left: 0.4rem; }
+.ba { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+@media (max-width: 34rem) { .ba { grid-template-columns: 1fr; } }
+.ba > div { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
+.ba-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; color: var(--muted); }
+.ba-label.after { color: var(--accent); }
+.spec { display: grid; grid-template-columns: auto 1fr; gap: 0.2rem 0.7rem; margin: 0; font-size: 0.9rem; }
+.spec dt { color: var(--muted); white-space: nowrap; font-weight: 700; } .spec dd { margin: 0; min-width: 0; }
+.want { display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 700; min-height: 2.75rem; cursor: pointer; align-self: flex-start; }
+.want input { width: 1.4rem; height: 1.4rem; accent-color: var(--accent); margin: 0; }
+table.list { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); border-radius: 0.75rem; overflow: hidden; }
+table.list td { padding: 0.55rem 0.8rem; border-top: 1px solid var(--line); vertical-align: top; }
+table.list tr:first-child td { border-top: 0; }
+.scroll-x { overflow-x: auto; }
+.chosen { position: sticky; bottom: env(safe-area-inset-bottom, 0px); margin-top: 2.5rem; background: var(--panel); border: 2px solid var(--accent); border-radius: 0.75rem; padding: 0.9rem 1.1rem; display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: center; }
+.chosen output { flex: 1 1 14rem; min-width: 0; font-weight: 700; user-select: all; overflow-wrap: anywhere; }
+.chosen button { min-height: 2.75rem; padding: 0 1.1rem; border-radius: 0.6rem; border: 0; background: var(--accent); color: var(--bg); font: inherit; font-weight: 700; cursor: pointer; }
+.src { font-size: 0.9rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* ---------- The stage: replicas of the site ---------- */
+.stage { background: var(--s-page); color: var(--s-body); border: 1px dashed var(--s-border); border-radius: 0.6rem; padding: 0.8rem; font-size: 16px; line-height: 1.5; display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; min-height: 5rem; overflow: hidden; }
+.stage p { margin: 0; }
+.replay { align-self: flex-start; min-height: 2.5rem; padding: 0 0.8rem; border: 2px solid var(--s-primary); border-radius: 0.6rem; background: var(--s-white); color: var(--s-primary); font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; }
+.s-h { font-size: 1.15rem; font-weight: 700; color: var(--s-heading); }
+.s-plain { font-weight: 700; color: var(--s-body); }
+.s-mut { color: var(--s-muted); font-size: 0.92rem; }
+.s-msg { display: flex; gap: 0.5rem; align-items: flex-start; font-weight: 700; padding: 0.7rem 0.8rem; border-radius: 0.75rem; }
+.s-msg.ok { background: var(--s-normal-bg); color: var(--s-normal); }
+.s-msg.info { background: var(--s-soft); color: var(--s-heading); }
+.tk { width: 1.4rem; height: 1.4rem; flex: none; margin-top: 0.1rem; }
+.tk circle { fill: var(--s-normal); } .tk path { fill: none; stroke: var(--s-white); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 22; }
+.s-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.55rem 0.3rem; border-top: 1px solid var(--s-subtle); border-bottom: 1px solid var(--s-subtle); margin-top: -1px; border-radius: 0.3rem; }
+.s-ic { flex: none; width: 2.2rem; height: 2.2rem; border-radius: 50%; background: var(--s-soft); }
+.s-ic.big { width: 3.4rem; height: 3.4rem; }
+.s-rb { flex: 1; min-width: 0; display: flex; flex-direction: column; } .s-rb b { color: var(--s-heading); } .s-rb span { font-size: 0.92rem; }
+.s-ar { color: var(--s-primary); font-size: 1.4rem; font-weight: 700; }
+.s-row.done .s-ic { background: var(--s-normal); } .s-row.done .s-rb span { color: var(--s-normal); font-weight: 700; }
+.s-banner { padding: 0.75rem 0.9rem; border-radius: 0.75rem; background: var(--s-mild-bg); color: var(--s-heading); }
+.s-banner .num { font-size: 2rem; font-weight: 900; color: var(--s-mild); line-height: 1; } .s-banner .lvl { font-weight: 700; color: var(--s-mild); font-size: 1.1rem; }
+.s-banner .prev { border-top: 1px solid var(--s-mild); margin-top: 0.5rem; padding-top: 0.5rem; font-size: 0.92rem; }
+.s-white { background: var(--s-white); border-radius: 0.5rem; padding: 0.6rem 0.6rem 0.2rem; margin-top: 0.5rem; }
+.s-bar { position: relative; display: flex; height: 0.7rem; }
+.s-bar i { display: block; } .s-bar .n { width: 20%; background: var(--s-normal-bg); box-shadow: inset 0 -0.22rem 0 var(--s-normal); border-radius: 0.25rem 0 0 0.25rem; }
+.s-bar .m { width: 40%; background: var(--s-mild-bg); box-shadow: inset 0 -0.22rem 0 var(--s-mild); } .s-bar .s { width: 40%; background: var(--s-severe-bg); box-shadow: inset 0 -0.22rem 0 var(--s-severe); border-radius: 0 0.25rem 0.25rem 0; }
+.s-bar b { position: absolute; top: -0.25rem; left: 30%; width: 0.25rem; height: 1.2rem; background: var(--s-heading); border-radius: 0.2rem; }
+.s-ends { display: flex; justify-content: space-between; font-size: 0.85rem; }
+.s-chip { display: inline-block; padding: 0.1rem 0.6rem; border-radius: 999px; background: var(--s-white); border: 2px solid var(--s-heading); color: var(--s-heading); font-weight: 700; margin-bottom: 0.3rem; }
+.s-new { background: var(--s-surface); border-radius: 0.5rem; padding: 0.5rem 0.7rem; }
+.s-panel { background: var(--s-normal); color: var(--s-white); border-radius: 0.75rem; padding: 0.9rem; text-align: center; }
+.s-panel b { display: block; font-size: 1.2rem; } .s-panel span { font-size: 0.92rem; }
+.s-btn { min-height: 2.75rem; border-radius: 0.7rem; display: grid; place-items: center; font: inherit; font-weight: 700; background: var(--s-primary); color: var(--s-white); border: 2px solid var(--s-primary); padding: 0 0.9rem; cursor: pointer; }
+.s-btn.o { background: var(--s-white); color: var(--s-primary); } .s-btn.sm { align-self: flex-start; }
+.s-sum { background: var(--s-severe-bg); color: var(--s-severe); border-radius: 0.75rem; padding: 0.7rem 0.8rem; display: flex; flex-direction: column; gap: 0.3rem; font-weight: 700; }
+.s-sum b { display: flex; gap: 0.5rem; align-items: center; } .mk { width: 1.4rem; height: 1.4rem; border-radius: 50%; background: var(--s-severe); color: var(--s-white); display: grid; place-items: center; font-size: 0.9rem; flex: none; }
+.s-lab { font-weight: 700; color: var(--s-heading); }
+.s-inp { display: block; width: 100%; min-height: 2.75rem; border: 2px solid var(--s-field); border-radius: 0.7rem; padding: 0.5rem 0.8rem; font: inherit; color: var(--s-heading); background: var(--s-white); }
+p.s-inp { display: flex; align-items: center; }
+.s-cut { text-align: center; color: var(--s-muted); font-size: 0.85rem; border-top: 1px dashed var(--s-border); padding-top: 0.3rem; }
+.s-tip { background: var(--s-surface); border-radius: 0.6rem; padding: 0.5rem 0.7rem; font-size: 0.92rem; }
+.s-count { font-weight: 700; color: var(--s-heading); min-height: 1.5em; } .s-count.good { color: var(--s-normal); } .s-count.bad { color: var(--s-severe); }
+.s-hint { min-height: 2.75rem; } .s-hint button { min-height: 2.75rem; border: 0; background: var(--s-soft); color: var(--s-primary); font: inherit; font-weight: 700; border-radius: 0.6rem; padding: 0 0.8rem; cursor: pointer; text-align: left; }
+.s-segs { display: flex; gap: 0.2rem; } .s-segs i { flex: 1; height: 0.45rem; border-radius: 99px; background: var(--s-border); } .s-segs i.d { background: var(--s-primary); }
+.s-enc { color: var(--s-primary); }
+.s-q { font-weight: 700; color: var(--s-heading); }
+.s-opt { border: 2px solid var(--s-field); border-radius: 0.7rem; padding: 0.45rem 0.8rem; } .s-opt.on { background: var(--s-primary); border-color: var(--s-primary); color: var(--s-white); font-weight: 700; }
+.s-chk { display: grid; grid-template-columns: 1fr auto auto; gap: 0.6rem; align-items: baseline; padding: 0.4rem 0; border-bottom: 1px solid var(--s-subtle); font-size: 0.92rem; }
+.s-chk b { color: var(--s-heading); } .s-chk u, .s-tile u, .s-mail u { color: var(--s-primary); font-weight: 700; text-underline-offset: 0.2em; }
+.s-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.4rem; padding: 0.5rem 0; } .s-empty b { color: var(--s-heading); font-size: 1.1rem; }
+.s-tile { background: var(--s-surface); border-radius: 0.75rem; padding: 0.6rem 0.8rem; display: flex; flex-direction: column; max-width: 11rem; } .s-tile .big { font-size: 1.7rem; color: var(--s-heading); line-height: 1.2; }
+.s-mail { border: 1px solid var(--s-border); border-radius: 0.5rem; padding: 0.6rem 0.8rem; display: flex; flex-direction: column; gap: 0.2rem; } .s-mail b { color: var(--s-heading); }
+.s-fold { border: 2px solid var(--s-field); border-radius: 0.7rem; padding: 0.45rem 0.8rem; font-weight: 700; color: var(--s-primary); }
+.s-chart { position: relative; height: 8rem; border: 1px solid var(--s-heading); background-color: var(--s-white);
+  background-image: linear-gradient(var(--s-normal-bg), var(--s-normal-bg)), repeating-linear-gradient(90deg, transparent 0 calc(20% - 1px), var(--s-subtle) calc(20% - 1px) 20%), repeating-linear-gradient(0deg, transparent 0 calc(12.5% - 1px), var(--s-subtle) calc(12.5% - 1px) 12.5%);
+  background-size: 100% 25%, 100% 100%, 100% 100%; background-repeat: no-repeat; }
+.s-chart.tap { cursor: crosshair; touch-action: manipulation; }
+.s-chart i { position: absolute; transform: translate(-50%, -50%); font-style: normal; font-weight: 900; font-size: 1.3rem; color: var(--s-severe); pointer-events: none; }
+.s-read { font-size: 1.15rem; font-weight: 700; color: var(--s-heading); background: var(--s-surface); border-radius: 0.5rem; padding: 0.3rem 0.6rem; }
+.s-vote { display: flex; flex-direction: column; gap: 0.5rem; } .s-vote > div { display: flex; gap: 0.5rem; } .s-vote b { color: var(--s-heading); }
+.s-time { display: flex; font-size: 0.8rem; font-weight: 700; } .s-time i { font-style: normal; text-align: center; padding: 0.3rem 0; background: var(--s-selected); color: var(--s-heading); }
+.s-time .w { background: var(--s-wait); } .s-time .g { background: var(--s-normal-bg); color: var(--s-normal); }
+[data-qa-out] { display: flex; flex-direction: column; }
+[data-cl], [data-calc], [data-ack] { display: flex; flex-direction: column; gap: 0.5rem; }
+label.s-opt { display: flex; align-items: center; gap: 0.6rem; cursor: pointer; } label.s-opt input { width: 1.3rem; height: 1.3rem; accent-color: var(--s-primary); margin: 0; }
+select.s-inp { appearance: auto; }
+.s-keys { display: flex; gap: 0.3rem; background: var(--s-wait); border-radius: 0.5rem; padding: 0.4rem; } .s-keys i { font-style: normal; flex: 1; text-align: center; background: var(--s-white); border-radius: 0.4rem; padding: 0.5rem 0; color: var(--s-heading); }
+.s-keys .k { flex: 0 0 6rem; background: var(--s-border); } .s-keys .k.on { background: var(--s-primary); color: var(--s-white); font-weight: 700; }
+.s-call { flex: none; min-height: 2.75rem; display: grid; place-items: center; padding: 0 0.9rem; border-radius: 0.7rem; background: var(--s-primary); color: var(--s-white); font-weight: 700; }
+.s-link { color: var(--s-primary); font-weight: 700; text-underline-offset: 0.2em; }
+.s-svg { width: 100%; height: auto; display: block; border: 1px solid var(--s-subtle); background: linear-gradient(var(--s-severe-bg) 0 35%, var(--s-mild-bg) 35% 70%, var(--s-normal-bg) 70%); }
+.s-svg path { fill: none; stroke: var(--s-primary); stroke-width: 2; } .s-svg circle { fill: var(--s-primary); } .s-svg .ev { stroke: var(--s-heading); stroke-width: 1.5; stroke-dasharray: 4 3; } .s-svg text { fill: var(--s-heading); font-size: 9px; font-weight: 700; }
+.s-chart.photo { background-image: repeating-linear-gradient(8deg, transparent 0 9px, var(--s-wait) 9px 10px), linear-gradient(var(--s-normal-bg), var(--s-normal-bg)), repeating-linear-gradient(90deg, transparent 0 calc(20% - 1px), var(--s-subtle) calc(20% - 1px) 20%), repeating-linear-gradient(0deg, transparent 0 calc(12.5% - 1px), var(--s-subtle) calc(12.5% - 1px) 12.5%); background-size: 100% 100%, 100% 25%, 100% 100%, 100% 100%; }
+.skip-note { color: var(--muted); margin-left: 0.4rem; }
+
+/* ---------- Motion: each plays once; "再播一次" restarts it ---------- */
+@keyframes fade { from { opacity: 0; } }
+@keyframes draw { from { stroke-dashoffset: 22; } to { stroke-dashoffset: 0; } }
+@keyframes needle { from { left: 0; } }
+@keyframes glow { 0%, 50% { box-shadow: 0 0 0 3px var(--s-primary), 0 0 0.6rem 0.2rem var(--s-glow); } to { box-shadow: 0 0 0 3px transparent, 0 0 0 0 transparent; } }
+@keyframes finger { 0% { left: 90%; top: 95%; opacity: 0; } 20% { opacity: 1; } 70%, 85% { left: 40%; top: 37.5%; opacity: 1; } to { left: 40%; top: 37.5%; opacity: 0; } }
+@keyframes appear { 0%, 69% { opacity: 0; } 70%, to { opacity: 1; } }
+.play-tick { animation: fade 0.24s cubic-bezier(0, 0, 0.38, 0.9) both; }
+.play-tick .tk path { animation: draw 0.4s 0.2s cubic-bezier(0, 0, 0.38, 0.9) both; }
+.play-needle .s-bar b { animation: needle 0.6s 0.2s cubic-bezier(0.2, 0, 0.38, 0.9) both; }
+.play-glow { animation: glow 3s ease-out both; }
+.play-demo .ghost { font-size: 1.6rem; color: var(--s-heading); animation: finger 2s ease-in-out both; left: 40%; top: 37.5%; opacity: 0; }
+.play-demo .pt { left: 40%; top: 37.5%; animation: appear 2s linear both; }
+@media (prefers-reduced-motion: reduce) { .play-tick, .play-tick .tk path, .play-needle .s-bar b, .play-glow, .play-demo .ghost, .play-demo .pt { animation: none; } .play-demo .ghost { opacity: 0; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">聽伴 · 互動盤點與提案 2</p>
+    <h1>按下去之後，網站有沒有回話</h1>
+    <p class="lede">上一份盤點（35 項，你挑了 21 項）處理的是「按下去那一刻」：變色、打勾、已送出。這一份看的是那一刻之後：做完了有沒有說、填的時候有沒有提示、回來時記不記得你做到哪。共 45 項，每一張卡左邊是現在、右邊是加了之後，有輸入框和按鈕的都可以實際操作。</p>
+    <p class="lede"><b>第 2 版：</b>你兩輪選的 29 項都標成「已選」了。沒勾的 11 項還在，想改主意可以再勾。</p>
+  </header>
+
+  <div class="summary">
+    <div class="finding"><b>已選 34 項</b><span>前幾份設計圖選定的 5 項，加上你兩輪在這裡選的 29 項，不用再勾。</span></div>
+    <div class="finding"><b>還沒選：可直接做 9 項</b><span>不用新的資料、不改規則，多半只動畫面。</span></div>
+    <div class="finding"><b>還沒選：新功能 2 項</b><span>要多存資料、開新網址，或要動隱私權說明，得另外寫規格。</span></div>
+  </div>
+  <div class="legend">
+    <span class="tag t-pick">已選</span><span class="tag t-ok">可直接做</span><span class="tag t-new">新功能</span>
+    勾「我要這個」，最下面會列出你選的編號，可以直接複製貼給我。
+  </div>
+  <p class="rule-note"><b>每一項都守的規則：</b>會動的只播一次、不循環、不位移整個區塊；手機開了「減少動態效果」就完全不動；顏色和圖示之外一定有文字；會變的訊息都唸給螢幕閱讀器聽。「參考」那一欄只寫我實際讀過原文的出處，沒讀到的就寫「是我的建議」。</p>
+
+  <div class="group-title"><h2>F. 做完之後的那一刻</h2><span>前一份設計圖（mockup-feedback）已經畫過，這裡列出來方便一起看。</span></div><div class="ideas"><article class="idea" id="F1">
+  <div class="idea-head"><h3><span class="idea-id">F1</span>系統訊息：成功、失敗、說明各有樣子</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">全站 12 處換頁後的那一句 <span class="picked-note">已選 A</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-plain">已新增 LINE 登入。下次可以直接用 LINE 登入。</p><p class="s-h">帳號設定</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><p class="s-msg ok "><svg class="tk" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12"/><path d="M6.5 12.5l4 4 7-8"/></svg><span>已新增 LINE 登入。下次可以直接用 LINE 登入。</span></p><p class="s-h">帳號設定</p></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>成功淺綠底＋綠勾、失敗淺紅底＋驚嘆號、說明淺藍底＋ⓘ。不會自己消失，換頁才不見；一頁最多一則。</dd><dt>參考</dt><dd>GOV.UK 通知橫幅、IBM Carbon 頁面內通知</dd><dt>代價</dt><dd>ADR 0028 要補一句綠色的新用法。</dd></dl>
+  
+</article><article class="idea" id="F2">
+  <div class="idea-head"><h3><span class="idea-id">F2</span>刪除聽力圖、取消分享、登出：補一句</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">三個落地頁 <span class="picked-note">三句都選了</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-h">我的紀錄</p><div class="s-row "><span class="s-ic"></span><span class="s-rb"><b>2026/10/20</b><span>右耳 中度・左耳 中度</span></span><span class="s-ar">›</span></div></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><p class="s-msg ok "><svg class="tk" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12"/><path d="M6.5 12.5l4 4 7-8"/></svg><span>已刪除 2026/09/01 的聽力圖。</span></p><p class="s-h">我的紀錄</p><div class="s-row "><span class="s-ic"></span><span class="s-rb"><b>2026/10/20</b><span>右耳 中度・左耳 中度</span></span><span class="s-ar">›</span></div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>用 F1 的那一條。刪除寫出日期，讓人確認刪對了。另外兩句：「已取消分享，原本的連結不能再打開。」「已登出。」</dd><dt>參考</dt><dd>GOV.UK：不值得另開一頁的確認，用橫幅</dd><dt>代價</dt><dd>三句字要你定稿。</dd></dl>
+  
+</article><article class="idea" id="F3">
+  <div class="idea-head"><h3><span class="idea-id">F3</span>訪客保存後：大確認框＋下一步</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">註冊並保存結果之後 <span class="picked-note">已選</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-h">我的紀錄</p><div class="s-banner"><div>最近一次</div><div class="lvl">28 分　顯著影響</div></div></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><div class="s-panel"><b>✓ 結果已經保存</b><span>帳號也建好了</span></div><p><b>接下來</b>　首頁會告訴您現在該做哪一步。</p><div class="s-btn">看我的下一步</div><div class="s-btn o">看這次的紀錄</div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>深綠大框說完成了，下面寫接下來做什麼，兩顆按鈕。</dd><dt>參考</dt><dd>GOV.UK 確認頁：要有「接下來會發生什麼」和下一步的連結；框裡不放按鈕</dd><dt>代價</dt><dd>多一個畫面、多按一下。</dd></dl>
+  
+</article><article class="idea" id="F4">
+  <div class="idea-head"><h3><span class="idea-id">F4</span>下載我的資料：「已開始下載」</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">帳號設定 <span class="picked-note">已選 B</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><div class="s-row "><span class="s-ic"></span><span class="s-rb"><b>下載我的資料</b><span>把您在聽伴的所有資料下載成一個檔案保存。</span></span><span class="s-ar"></span></div></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><div class="s-row done"><span class="s-ic"></span><span class="s-rb"><b>下載我的資料</b><span>✓ 已開始下載，請到手機的「下載項目」找。</span></span><span class="s-ar"></span></div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>按下後圖示變綠勾、說明換成綠字，約 4 秒後變回來。</dd><dt>參考</dt><dd>Apple：狀態顯示在它描述的東西旁邊；IBM Carbon 同</dd><dt>代價</dt><dd>iPhone 和 Android 的名稱不完全一樣，句子要你定稿。</dd></dl>
+  
+</article><article class="idea" id="F5">
+  <div class="idea-head"><h3><span class="idea-id">F5</span>註冊失敗：最上面先列出哪裡要改</h3><span class="tag t-ok">可直接做</span></div>
+  <p class="idea-where">註冊、用 LINE／Google 取名稱、重設密碼 <span class="skip-note">上一輪沒勾</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-h">註冊</p><p class="s-lab">使用者名稱</p><p class="s-inp">wang1950</p><p class="s-cut">↓ 紅框在下面，這個畫面看不到</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><div class="s-sum"><b><span class="mk">!</span>有地方要修改</b><u>這個密碼太短了，至少要 8 個字。</u></div><p class="s-h">註冊</p><p class="s-lab">使用者名稱</p><p class="s-inp">wang1950</p></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>標題上面一個錯誤框，固定寫「有地方要修改」，每一條跟欄位旁的紅字同一句，點了跳到那一欄。游標自動到這一框，分頁標題前面加「錯誤：」。</dd><dt>參考</dt><dd>GOV.UK、NHS 錯誤摘要（有研究：使用者看得懂哪裡錯、知道怎麼改）</dd><dt>代價</dt><dd>多一個框。另一種做法是直接捲到紅框，但兩處錯時只看到第一處。</dd></dl>
+  <label class="want"><input type="checkbox" id="want-F5" value="F5" data-want> 我要這個</label>
+</article><article class="idea" id="F6">
+  <div class="idea-head"><h3><span class="idea-id">F6</span>成功時勾勾畫一次</h3><span class="tag t-ok">可直接做</span></div>
+  <p class="idea-where">F1 的成功訊息、F3 的確認框 <span class="skip-note">上一輪沒勾</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-msg ok "><svg class="tk" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12"/><path d="M6.5 12.5l4 4 7-8"/></svg><span>已刪除 2026/09/01 的聽力圖。</span></p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><p class="s-msg ok play-tick"><svg class="tk" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12"/><path d="M6.5 12.5l4 4 7-8"/></svg><span>已刪除 2026/09/01 的聽力圖。</span></p><button class="replay" type="button" data-replay>再播一次</button></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>成功那一條 0.24 秒淡入（只改透明度），接著勾勾用 0.4 秒畫出來，一次就停。失敗和說明不動。減少動態效果時直接是最後的樣子。</dd><dt>參考</dt><dd>IBM Carbon：系統訊息 0.24 秒、重要通知 0.4 秒；Apple：回饋動畫要短、要準</dd><dt>代價</dt><dd>多一個會動的東西。跟選配路線「完成一站打勾」是同一個動作。</dd></dl>
+  <label class="want"><input type="checkbox" id="want-F6" value="F6" data-want> 我要這個</label>
+</article></div><div class="group-title"><h2>G. 作答的時候</h2><span>3 個</span></div><div class="ideas"><article class="idea" id="G1">
+  <div class="idea-head"><h3><span class="idea-id">G1</span>進度說一句話：「已經一半了」「最後一題」</h3><span class="tag t-ok">可直接做</span></div>
+  <p class="idea-where">六份問卷的作答頁 <span class="skip-note">上一輪沒勾</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><div class="s-segs"><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i></i><i></i><i></i><i></i><i></i></div><p class="s-mut">第 6 題／共 10 題・還剩大約 2 分鐘</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><div data-enc><div class="s-segs"><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i></i><i></i><i></i><i></i><i></i></div><p class="s-mut"><span data-enc-n>第 6 題／共 10 題</span>・<b class="s-enc" data-enc-t>已經一半了</b></p><button class="s-btn sm" type="button" data-enc-next>下一題 →</button></div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>進度那一行在三個時間點換一句：過一半「已經一半了」、倒數第二題「剩 2 題」、最後一題「最後一題」。其他題照舊顯示還剩幾分鐘。</dd><dt>參考</dt><dd>沒有查到大廠的明文規定，是我的建議</dd><dt>代價</dt><dd>題數少的問卷（IOI-HA 7 題）只有兩句會出現。字要你定稿。</dd></dl>
+  <label class="want"><input type="checkbox" id="want-G1" value="G1" data-want> 我要這個</label>
+</article><article class="idea" id="G2">
+  <div class="idea-head"><h3><span class="idea-id">G2</span>送出前「檢查答案」一頁</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">六份問卷，最後一題之後 <span class="picked-note">11/16 已選（新功能，要寫規格）</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-q">和親友在餐館吃飯時，聽力問題會讓你感到困難嗎？</p><p class="s-opt on">有時</p><div class="s-btn">✓ 送出</div></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><p class="s-h">送出前看一下</p><div class="s-chk"><span>1　和別人見面時覺得尷尬</span><b>有時</b><u>修改</u></div><div class="s-chk"><span>2　和家人相處時覺得挫折</span><b>從未</b><u>修改</u></div><div class="s-chk"><span>3　有人小聲說話時聽不清楚</span><b>常常</b><u>修改</u></div><p class="s-cut">…共 10 題…</p><div class="s-btn">✓ 送出</div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>最後一題按「下一步」先到這一頁：十題各一列，寫題目的短說法和選的答案，旁邊「修改」跳回那一題，改完直接回到這一頁。</dd><dt>參考</dt><dd>GOV.UK 檢查答案頁：使用者更有信心、錯誤率可能下降</dd><dt>代價</dt><dd>多一個畫面。題目要另外寫十個短說法，要你審。THI 25 題會很長。</dd></dl>
+  
+</article><article class="idea" id="G3">
+  <div class="idea-head"><h3><span class="idea-id">G3</span>沒有網路時先講</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">作答頁、描聽力圖 <span class="picked-note">11/16 已選（新功能，要寫規格）</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-q">聽力問題會讓你和家人起爭執嗎？</p><p class="s-opt">常常</p><p class="s-opt on">有時</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><div data-tg><p class="s-msg info" data-tg-show>ⓘ<span>現在沒有網路。答案先留在這支手機，連上後再按送出。</span></p><p class="s-q">聽力問題會讓你和家人起爭執嗎？</p><p class="s-opt on">有時</p><button class="replay" type="button" data-tg-btn>切換：有網路／沒網路</button></div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>手機斷線時，頁面上方出現一條說明；連回來就消失。現在是按送出失敗後才知道。</dd><dt>參考</dt><dd>Apple：做不到的時候要讓人知道，並說明為什麼</dd><dt>代價</dt><dd>瀏覽器回報的「有沒有網路」不一定準（連著 Wi-Fi 但沒有網際網路時會誤判），所以送出失敗的訊息還是要留。</dd></dl>
+  
+</article></div><div class="group-title"><h2>H. 結果與紀錄</h2><span>5 個</span></div><div class="ideas"><article class="idea" id="H1">
+  <div class="idea-head"><h3><span class="idea-id">H1</span>結果揭曉：指針滑到這次的分數</h3><span class="tag t-ok">可直接做</span></div>
+  <p class="idea-where">有分級的結果頁（HHIE-S、HHIA-S、THI） <span class="skip-note">上一輪沒勾</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><div class="s-banner"><div>總分 <span class="num">12</span> 分（滿分 40）</div><div class="lvl">輕度到中度影響</div><div class="s-white"><div class="s-bar"><i class="n"></i><i class="m"></i><i class="s"></i><b></b></div><div class="s-ends"><span>0</span><span>40</span></div></div></div></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><div class="s-banner"><div>總分 <span class="num">12</span> 分（滿分 40）</div><div class="lvl">輕度到中度影響</div><div class="s-white play-needle"><div class="s-bar"><i class="n"></i><i class="m"></i><i class="s"></i><b></b></div><div class="s-ends"><span>0</span><span>40</span></div></div></div><button class="replay" type="button" data-replay>再播一次</button></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>搬進結果框的色帶（第 3 批已選），進來時指針從 0 滑到這次的分數，0.6 秒，一次就停。數字本身不跑。</dd><dt>參考</dt><dd>首頁的半圓儀表已經這樣做（ADR 0026）；Apple：動畫要緊扣剛完成的動作</dd><dt>代價</dt><dd>多一個會動的東西。ADR 0006 寫「不做數字往上跑」，這裡動的是指針不是數字，但你可能覺得是同一類。</dd></dl>
+  <label class="want"><input type="checkbox" id="want-H1" value="H1" data-want> 我要這個</label>
+</article><article class="idea" id="H2">
+  <div class="idea-head"><h3><span class="idea-id">H2</span>跟上次比：一個箭頭標籤</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">結果框、我的紀錄每一筆 <span class="picked-note">11/16 已選</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><div class="s-banner"><div>總分 <span class="num">12</span> 分（滿分 40）</div><div class="lvl">輕度到中度影響</div><div class="prev">上次 2026/09/01 是 0 分，這次多 12 分</div></div></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><div class="s-banner"><div>總分 <span class="num">12</span> 分（滿分 40）</div><div class="lvl">輕度到中度影響</div><div class="prev"><span class="s-chip">▲ 比上次多 12 分</span><br>上次 2026/09/01 是 0 分</div></div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>「多 12 分／少 34 分／一樣」做成一個小標籤，前面加箭頭，眼睛先看到它。箭頭和標籤用中性的深色，不用紅綠（分數變多不一定是壞事，配戴前後比較時也不同）。</dd><dt>參考</dt><dd>Apple：狀態放在它描述的東西旁邊</dd><dt>代價</dt><dd>箭頭往上會不會被當成「變好」？HHIE-S 分數高是影響大。要你判斷要不要箭頭，或只留文字。</dd></dl>
+  
+</article><article class="idea" id="H3">
+  <div class="idea-head"><h3><span class="idea-id">H3</span>「這是您的第 3 次紀錄」</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">結果頁標題下面 <span class="picked-note">11/16 已選</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-h">聽力對生活的影響</p><p class="s-mut">HHIE-S・2026/09/11 作答・沒戴助聽器</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><p class="s-h">聽力對生活的影響</p><p class="s-mut">HHIE-S・2026/09/11 作答・沒戴助聽器</p><p class="s-new"><b>這是您的第 3 次紀錄</b>，上一次是 10 天前。</p></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>結果頁多一行：第幾次、離上次多久。第一次寫「這是您的第 1 次紀錄，半年後再做一次就能比較」。</dd><dt>參考</dt><dd>沒有查到大廠的明文規定，是我的建議</dd><dt>代價</dt><dd>多一行字。次數是照同一份問卷算，還是全部問卷一起算，要你決定。</dd></dl>
+  
+</article><article class="idea" id="H4">
+  <div class="idea-head"><h3><span class="idea-id">H4</span>還沒有紀錄時：一句話＋一顆按鈕</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">我的紀錄（問卷、聽力圖） <span class="picked-note">11/16 已選</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-h">我的紀錄</p><p>您還沒有做過篩檢紀錄</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><p class="s-h">我的紀錄</p><div class="s-empty"><span class="s-ic big"></span><b>還沒有紀錄</b><span>做完第一份問卷，分數和變化會出現在這裡。</span><div class="s-btn">做第一份問卷</div></div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>現在只有一行字。改成：圖示、標題、一句「做了之後這裡會有什麼」、一顆去做的按鈕。聽力圖那一頁現在已經有一句說明，補上圖示和按鈕。</dd><dt>參考</dt><dd>Atlassian 空狀態：標題必要，說明寫為什麼空、下一步是什麼，只放一顆主要按鈕</dd><dt>代價</dt><dd>小。按鈕是實心藍，那一頁原本的主按鈕要確認不衝突。</dd></dl>
+  
+</article><article class="idea" id="H5">
+  <div class="idea-head"><h3><span class="idea-id">H5</span>剛新增的那一筆亮一下</h3><span class="tag t-ok">可直接做</span></div>
+  <p class="idea-where">我的紀錄、聽力圖清單 <span class="skip-note">上一輪沒勾</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><div class="s-row "><span class="s-ic"></span><span class="s-rb"><b>2026/11/16</b><span>總分 28　沒戴</span></span><span class="s-ar">›</span></div><div class="s-row "><span class="s-ic"></span><span class="s-rb"><b>2026/09/26</b><span>總分 6　有戴</span></span><span class="s-ar">›</span></div></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><div class="s-row play-glow"><span class="s-ic"></span><span class="s-rb"><b>2026/11/16</b><span>總分 28　沒戴 · 剛剛新增</span></span><span class="s-ar">›</span></div><div class="s-row "><span class="s-ic"></span><span class="s-rb"><b>2026/09/26</b><span>總分 6　有戴</span></span><span class="s-ar">›</span></div><button class="replay" type="button" data-replay>再播一次</button></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>做完問卷或存完聽力圖後到清單，最新那一筆的外框亮 3 秒再淡掉，旁邊寫「剛剛新增」。</dd><dt>參考</dt><dd>網站已有同樣的效果：跳到段落時那一框亮 3 秒（ADR 0029）</dd><dt>代價</dt><dd>小。重新整理後不再亮。</dd></dl>
+  <label class="want"><input type="checkbox" id="want-H5" value="H5" data-want> 我要這個</label>
+</article></div><div class="group-title"><h2>I. 首頁與提醒</h2><span>4 個</span></div><div class="ideas"><article class="idea" id="I1">
+  <div class="idea-head"><h3><span class="idea-id">I1</span>回到首頁時，說剛完成了哪一步</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">登入後的首頁 <span class="picked-note">11/16 已選</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-h">早安，今天只要做一件事</p><p class="s-mut">照顧旅程　2 / 5</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><p class="s-msg ok "><svg class="tk" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12"/><path d="M6.5 12.5l4 4 7-8"/></svg><span>第 1 步完成了：填生活影響問卷。</span></p><p class="s-h">早安，今天只要做一件事</p><p class="s-mut">照顧旅程　2 / 5</p></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>做完某一步後第一次回首頁，最上面一條說完成了哪一步，下面的旅程照舊從上一步畫到這一步。只出現那一次。</dd><dt>參考</dt><dd>GOV.UK 通知橫幅：告訴使用者先前動作的結果</dd><dt>代價</dt><dd>要記住「上次看首頁時在第幾步」，多存一個數字。</dd></dl>
+  
+</article><article class="idea" id="I2">
+  <div class="idea-head"><h3><span class="idea-id">I2</span>下次篩檢「加到行事曆」</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">首頁「下次篩檢」那一格、結果頁 <span class="picked-note">11/16 已選（新功能，要寫規格）</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><div class="s-tile"><span class="s-mut">離下次篩檢</span><b class="big">176 天</b><span class="s-mut">2027/03/26</span></div></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><div class="s-tile"><span class="s-mut">離下次篩檢</span><b class="big">176 天</b><span class="s-mut">2027/03/26</span><u>加到手機行事曆</u></div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>按了下載一個行事曆檔，手機會問要不要加入「2027/03/26 聽伴：再做一次聽力問卷」。之後由手機自己提醒，網站不用寄信。</dd><dt>參考</dt><dd>沒有查到大廠的明文規定，是我的建議</dd><dt>代價</dt><dd>iPhone 和 Android 加入的畫面不一樣，要兩邊實機試。那一格現在不能點，多了一個連結。</dd></dl>
+  
+</article><article class="idea" id="I3">
+  <div class="idea-head"><h3><span class="idea-id">I3</span>家人看過報告，首頁告訴您</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">登入後的首頁 <span class="picked-note">11/16 已選</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-h">早安，今天只要做一件事</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><p class="s-msg info">ⓘ<span>家人在 11/15 打開過您的聽力報告。</span></p><p class="s-h">早安，今天只要做一件事</p></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>分享連結被打開後，下次回首頁時說一聲。資料本來就有（分享頁已經寫「家人打開過 2 次」），只是要自己去分享頁才看得到。</dd><dt>參考</dt><dd>Apple：狀態放在看得到的地方，不用特地去找</dd><dt>代價</dt><dd>「打開過」可能是自己點的，也可能是通訊軟體的預覽，不一定是家人真的看了；句子要寫保守一點。</dd></dl>
+  
+</article><article class="idea" id="I4">
+  <div class="idea-head"><h3><span class="idea-id">I4</span>快到期時寄信提醒</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">下次篩檢前一週 <span class="picked-note">11/16 已選（新功能，要寫規格）</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-mut">現在：要自己記得回來。</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><div class="s-mail"><b>聽伴：該再做一次聽力問卷了</b><span>離上次已經半年。花 3 分鐘，看看有沒有變化。</span><u>開始作答</u></div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>到期前一週寄一封信，信裡一個連結。帳號設定可以關掉。</dd><dt>參考</dt><dd>沒有查到大廠的明文規定，是我的建議</dd><dt>代價</dt><dd>大：要排程、寄信額度、退訂機制；隱私權說明和同意書要升版；沒填信箱的人收不到。建議先做 I2。</dd></dl>
+  
+</article></div><div class="group-title"><h2>J. 填表單的時候</h2><span>4 個</span></div><div class="ideas"><article class="idea" id="J1">
+  <div class="idea-head"><h3><span class="idea-id">J1</span>打密碼時數字數</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">註冊、重設密碼 <span class="picked-note">已選 B</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-lab">密碼</p><p class="s-inp">●●●●●</p><p class="s-tip">至少 8 個字・不要全部是數字…</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><label class="s-lab" for="d-pw">密碼（可以打打看）</label><input class="s-inp" id="d-pw" type="text" autocomplete="off" data-pw><p class="s-count" data-pw-out>還沒輸入</p></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>規則照舊，上面多一行「已經輸入 5 個字，還差 3 個」，滿 8 個變綠勾。</dd><dt>參考</dt><dd>第 3 批設計圖</dd><dt>代價</dt><dd>只幫到字數這一條。</dd></dl>
+  
+</article><article class="idea" id="J2">
+  <div class="idea-head"><h3><span class="idea-id">J2</span>Email 打錯時問一聲</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">註冊、用 LINE 註冊的選填信箱 <span class="picked-note">11/16 已選</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-lab">電子郵件</p><p class="s-inp">wang@gmial.com</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><label class="s-lab" for="d-mail">電子郵件（可以改改看）</label><input class="s-inp" id="d-mail" type="text" value="wang@gmial.com" autocomplete="off" data-mail><p class="s-hint" data-mail-out></p></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>離開欄位時，如果 @ 後面很像常見信箱但差一兩個字（gmial、yaho、hotmial），下面問「您是不是要打 gmail.com？」，按一下就改好。不擋送出。</dd><dt>參考</dt><dd>沒有查到大廠的明文規定，是我的建議</dd><dt>代價</dt><dd>小，只在瀏覽器比對。忘記密碼要靠這個信箱，打錯就收不到信，所以值得。</dd></dl>
+  
+</article><article class="idea" id="J3">
+  <div class="idea-head"><h3><span class="idea-id">J3</span>使用者名稱：打完就知道能不能用</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">註冊 <span class="picked-note">11/16 已選（新功能，要寫規格）</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-lab">使用者名稱</p><p class="s-inp">wang</p><p class="s-mut">送出後才知道有沒有人用過。</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><label class="s-lab" for="d-user">使用者名稱（打 wang 試試）</label><input class="s-inp" id="d-user" type="text" value="wang1950" autocomplete="off" data-user><p class="s-count" data-user-out></p></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>離開欄位時問伺服器一次：可以用就綠勾「這個名稱可以用」，有人用了就說「已經有人用了，換一個試試」。</dd><dt>參考</dt><dd>沒有查到大廠的明文規定，是我的建議</dd><dt>代價</dt><dd>要新增一個查詢用的網址，並限制次數，免得被人拿來一個一個試有哪些帳號（註冊表單送出時本來也查得到，但這樣更方便試）。</dd></dl>
+  
+</article><article class="idea" id="J4">
+  <div class="idea-head"><h3><span class="idea-id">J4</span>出生年打完，顯示幾歲</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">註冊、用 LINE／Google 取名稱 <span class="picked-note">11/16 已選</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-lab">出生年（選填）</p><p class="s-inp">民國　39　年　✓</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><label class="s-lab" for="d-year">出生年：民國（可以改改看）</label><input class="s-inp" id="d-year" type="text" inputmode="numeric" value="39" autocomplete="off" data-year><p class="s-count" data-year-out></p></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>現在填對了只有一個綠勾。旁邊多寫「今年 76 歲」，把西元年打成民國年（例如打 1950）或少打一位時，自己看得出來不對。</dd><dt>參考</dt><dd>沒有查到大廠的明文規定，是我的建議</dd><dt>代價</dt><dd>小。</dd></dl>
+  
+</article></div><div class="group-title"><h2>K. 描聽力圖的時候</h2><span>2 個</span></div><div class="ideas"><article class="idea" id="K1">
+  <div class="idea-head"><h3><span class="idea-id">K1</span>標點的時候，大字顯示標在哪</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">新增／修改聽力圖 <span class="picked-note">11/16 已選</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><div class="s-chart"><i style="left:55%;top:45%">○</i></div><p class="s-mut">現在：只有圖上的小符號，要對格線才知道是幾分貝。</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><p class="s-read" data-read>點一下圖</p><div class="s-chart tap" data-chart><i data-pt style="left:55%;top:45%">○</i></div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>每標一點，圖的上方用大字寫「右耳氣導　1000 Hz　45 dB」，標錯馬上看得出來。螢幕閱讀器也唸這一句。</dd><dt>參考</dt><dd>Apple：狀態放在它描述的東西旁邊</dd><dt>代價</dt><dd>圖上方多佔一行。現在「清除剛標的點」按鈕上有寫，但字小、位置遠。</dd></dl>
+  
+</article><article class="idea" id="K2">
+  <div class="idea-head"><h3><span class="idea-id">K2</span>「看示範」：按了才播的標記示範</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">新增聽力圖的「怎麼標記」 <span class="picked-note">11/16 已選</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-fold">ⓘ 怎麼標記　⌄</p><p class="s-mut">現在：文字說明。</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><div class="s-chart play-demo"><i class="ghost">☝</i><i class="pt">○</i></div><button class="replay" type="button" data-replay>再播一次</button></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>「怎麼標記」裡多一顆「看示範」，按了播 2 秒：一根手指點到 1000 Hz、45 dB 的位置，符號出現。播一次就停，可以再看一次。</dd><dt>參考</dt><dd>網站已有同樣的做法：助聽器「怎麼戴上」的「看動作」（ADR 0060）</dd><dt>代價</dt><dd>要畫一段示範動畫。</dd></dl>
+  
+</article></div><div class="group-title"><h2>L. 讀內容、問問題的時候</h2><span>3 個</span></div><div class="ideas"><article class="idea" id="L1">
+  <div class="idea-head"><h3><span class="idea-id">L1</span>「這一頁有幫到您嗎？」</h3><span class="tag t-new">新功能</span></div>
+  <p class="idea-where">選配指引各章、問答小助手的答案、家人專區子頁 <span class="skip-note">上一輪沒勾</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-mut">現在：頁尾只有「回到我的選配指引」。</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><div class="s-vote" data-vote><b>這一頁有幫到您嗎？</b><div><button type="button" class="s-btn o sm" data-vote-b>有</button><button type="button" class="s-btn o sm" data-vote-b>沒有</button></div></div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>每頁最下面兩顆按鈕。按了變成「✓ 謝謝，我們收到了」。只記這一頁「有／沒有」各幾次，不記是誰。</dd><dt>參考</dt><dd>沒有查到大廠的明文規定，是我的建議（英國政府網站每頁底部有類似的問句）</dd><dt>代價</dt><dd>要多一張計數的資料表；隱私權說明要補一句。你會多一份「哪一頁該改」的依據。</dd></dl>
+  <label class="want"><input type="checkbox" id="want-L1" value="L1" data-want> 我要這個</label>
+</article><article class="idea" id="L2">
+  <div class="idea-head"><h3><span class="idea-id">L2</span>問答小助手：邊打邊列出題目</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">問答小助手的「打字問」 <span class="picked-note">11/16 已選（新功能，要寫規格）</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-inp">助聽器 補助</p><div class="s-btn sm">查詢</div><p class="s-mut">現在：按查詢才換頁看結果。</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><label class="s-lab" for="d-qa">想問什麼？（打「補助」「電池」「耳鳴」試試）</label><input class="s-inp" id="d-qa" type="text" autocomplete="off" data-qa><div data-qa-out></div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>打字時下面直接列出最像的三題，點了就看答案。按查詢還是可以。</dd><dt>參考</dt><dd>沒有查到大廠的明文規定，是我的建議</dd><dt>代價</dt><dd>題目清單要送到瀏覽器（都是公開內容）。注音輸入法選字中不能觸發，要處理。打的字只有按查詢才記錄，跟現在一樣。</dd></dl>
+  
+</article><article class="idea" id="L3">
+  <div class="idea-head"><h3><span class="idea-id">L3</span>章節標「約 2 分鐘」</h3><span class="tag t-ok">可直接做</span></div>
+  <p class="idea-where">我的選配指引、家人專區的選單 <span class="skip-note">上一輪沒勾</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><div class="s-row "><span class="s-ic"></span><span class="s-rb"><b>九號表：申請助聽器補助</b></span><span class="s-ar">›</span></div></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><div class="s-row "><span class="s-ic"></span><span class="s-rb"><b>九號表：申請助聽器補助</b><span>約 3 分鐘</span></span><span class="s-ar">›</span></div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>每一列下面寫大約幾分鐘讀完，跟問卷卡的「10 題・約 3 分鐘」同一種寫法。</dd><dt>參考</dt><dd>沒有查到大廠的明文規定，是我的建議</dd><dt>代價</dt><dd>小。分鐘數照字數估，長輩讀得慢，寧可估多一點。</dd></dl>
+  <label class="want"><input type="checkbox" id="want-L3" value="L3" data-want> 我要這個</label>
+</article></div><div class="group-title"><h2>M. 速度</h2><span>1 個</span></div><div class="ideas"><article class="idea" id="M1">
+  <div class="idea-head"><h3><span class="idea-id">M1</span>手指一碰到，就先載入下一頁</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">不含個人資料的頁面（了解、選配指引、家人專區） <span class="picked-note">11/16 已選</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-mut">現在：手指放開 → 才開始載入 → 等 → 出現。</p><div class="s-time"><i style="width:15%">按</i><i class="w" style="width:60%">等</i><i class="g" style="width:25%">出現</i></div></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><p class="s-mut">之後：手指一碰到就偷跑載入 → 放開時已經好了一半。</p><div class="s-time"><i style="width:15%">按</i><i class="w" style="width:25%">等</i><i class="g" style="width:25%">出現</i></div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>畫面完全不變，只是按下去比較快到。瀏覽器在你快要點某個連結時，先把那一頁抓回來。</dd><dt>參考</dt><dd>Google Chrome 的 Speculation Rules：預先抓取風險較低；會改變狀態的網址（例如登出）要排除</dd><dt>代價</dt><dd>只有 Chrome 系的瀏覽器有效，iPhone 的 Safari 沒有，所以 iPhone 使用者感覺不到。會多用一點流量。健康資料頁不做。</dd></dl>
+  
+</article></div><div class="group-title"><h2>N. 做到一半、離開再回來</h2><span>第 2 版新增</span></div><div class="ideas"><article class="idea" id="N1">
+  <div class="idea-head"><h3><span class="idea-id">N1</span>聽力圖描到一半離開，回來還在</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">新增／修改聽力圖 <span class="picked-note">11/16 已選</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-h">新增聽力圖</p><p class="s-mut">現在：描到一半按到返回或關掉，回來要從頭描。問卷有「接著答」，聽力圖沒有。</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><p class="s-h">新增聽力圖</p><div class="s-new"><b>您上次描到右耳 4 個點，要接著描嗎？</b></div><div class="s-btn">接著描</div><div class="s-btn o">重新開始</div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>每標一點就把目前的進度存在這支手機的瀏覽器；回到新增聽力圖時問要不要接著描。存檔成功後清掉。</dd><dt>參考</dt><dd>網站已有同樣的做法：問卷的「接著答」（#326）。Apple：會意外失去資料時要讓人有機會避免</dd><dt>代價</dt><dd>草稿是健康資料，留在手機上幾天、怎麼清，要跟問卷草稿同一套規則，隱私權說明要確認有涵蓋。</dd></dl>
+  
+</article><article class="idea" id="N2">
+  <div class="idea-head"><h3><span class="idea-id">N2</span>勾選清單：顯示勾了幾項</h3><span class="tag t-ok">可直接做</span></div>
+  <p class="idea-where">家人專區的補助檢核、陪診要帶什麼、助聽器佩戴與保養步驟 </p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-opt">☐ 身心障礙證明</p><p class="s-opt">☐ 九號表</p><p class="s-opt">☐ 身分證正本</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><div data-cl><p class="s-count" data-cl-out>3 項勾了 0 項</p><label class="s-opt"><input type="checkbox" id="cl-1"> 身心障礙證明</label><label class="s-opt"><input type="checkbox" id="cl-2"> 九號表</label><label class="s-opt"><input type="checkbox" id="cl-3"> 身分證正本</label></div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>清單上面一行「5 項勾了 2 項」，全部勾完變成綠勾「都準備好了」。</dd><dt>參考</dt><dd>沒有查到大廠的明文規定，是我的建議</dd><dt>代價</dt><dd>小。這些清單現在寫明「勾選不會留下」，這一項不改這個規則。</dd></dl>
+  <label class="want"><input type="checkbox" id="want-N2" value="N2" data-want> 我要這個</label>
+</article><article class="idea" id="N3">
+  <div class="idea-head"><h3><span class="idea-id">N3</span>手機鍵盤右下角寫「下一個」「完成」</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">註冊、登入、聽力圖日期等所有表單 <span class="picked-note">11/16 已選</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-mut">現在：鍵盤右下角一律是「換行」或「前往」。</p><div class="s-keys"><i>空白鍵</i><i class="k">換行</i></div></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><p class="s-mut">之後：還有下一欄時寫「下一個」，最後一欄寫「完成」。</p><div class="s-keys"><i>空白鍵</i><i class="k on">下一個</i></div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>每個輸入框告訴手機「這一欄後面還有沒有」，鍵盤那顆鍵的字就會跟著變。</dd><dt>參考</dt><dd>沒有查到大廠的明文規定，是我的建議</dd><dt>代價</dt><dd>幾乎沒有。網頁畫面不變，只有打字時鍵盤上那顆鍵不同；各家手機顯示的字不完全一樣。</dd></dl>
+  
+</article></div><div class="group-title"><h2>O. 分享與家人</h2><span>第 2 版新增</span></div><div class="ideas"><article class="idea" id="O1">
+  <div class="idea-head"><h3><span class="idea-id">O1</span>家人可以按「我看過了」</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">家人打開的分享報告 <span class="picked-note">11/16 已選（新功能，要寫規格）</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-h">王先生的聽力報告</p><p class="s-mut">現在：家人看完就關掉，本人只看得到「打開過 2 次」。</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><p class="s-h">王先生的聽力報告</p><div data-ack><button type="button" class="s-btn" data-ack-b>我看過了，告訴他</button></div><p class="s-mut">本人那邊會看到：家人 11/15 看過了。</p></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>分享報告最下面一顆按鈕。按了，本人的分享頁和首頁（I3）寫「家人 11/15 看過了」，比「打開過」確定。</dd><dt>參考</dt><dd>沒有查到大廠的明文規定，是我的建議</dd><dt>代價</dt><dd>多存一個時間；不知道是哪一位家人按的（連結沒有綁人）。隱私權說明要補一句。</dd></dl>
+  
+</article><article class="idea" id="O2">
+  <div class="idea-head"><h3><span class="idea-id">O2</span>分享連結快到期：提醒並可以延長</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">分享頁、首頁 <span class="picked-note">11/16 已選（新功能，要寫規格）</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-mut">有效到 2026/11/19 10:00</p><p class="s-mut">現在：到期後連結失效，要重新產生、再傳一次給家人。</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><p class="s-msg info">ⓘ<span>分享連結 3 天後到期。</span></p><div class="s-btn">再延長 7 天</div><p class="s-mut">家人手上的連結不用換。</p></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>到期前 3 天，分享頁和首頁提醒一次；按一下延長，網址不變。</dd><dt>參考</dt><dd>沒有查到大廠的明文規定，是我的建議</dd><dt>代價</dt><dd>現在刻意讓連結短期有效，延長等於放寬這個保護；可以延幾次、最長多久要你定，可能要寫 ADR。</dd></dl>
+  
+</article></div><div class="group-title"><h2>P. 選配指引</h2><span>第 2 版新增</span></div><div class="ideas"><article class="idea" id="P1">
+  <div class="idea-head"><h3><span class="idea-id">P1</span>補助金額試算</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">九號表「可以補助多少錢？」 <span class="picked-note">11/16 已選</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-mut">現在：四個等級的金額一張表、三種比例一張表，要自己乘。</p><p class="s-tip">10,000 元　中階型，每只最多<br>75%　中低收入戶</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><div data-calc><label class="s-lab" for="calc-level">助聽器等級</label><select class="s-inp" id="calc-level" data-calc-level><option value="2000">簡易型</option><option value="10000" selected>中階型</option><option value="20000">進階型</option></select><label class="s-lab" for="calc-who">身分</label><select class="s-inp" id="calc-who" data-calc-who><option value="1">低收入戶</option><option value="0.75" selected>中低收入戶</option><option value="0.5">一般戶</option></select><p class="s-read" data-calc-out></p></div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>選等級和身分，下面直接寫「每只最多補助 7,500 元」。原本兩張表留在下面。數字用章節裡已經有的那一組。</dd><dt>參考</dt><dd>沒有查到大廠的明文規定，是我的建議</dd><dt>代價</dt><dd>規定有例外（滿 65 歲才第一次鑑定為輕度的人，進階型另有總額上限；雙對側傳聲型是每組算），試算要嘛把例外做進去，要嘛清楚寫「只是上限，以核定為準」。算法要你審。</dd></dl>
+  
+</article><article class="idea" id="P2">
+  <div class="idea-head"><h3><span class="idea-id">P2</span>電話可以直接撥</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">九號表的 47 個輔具中心、鑑定醫院名單 <span class="picked-note">11/16 已選</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p>基隆市輔具資源中心：(02)2469-6966#211</p><p class="s-mut">現在：純文字，要自己記下來再撥。</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><div class="s-row"><span class="s-rb"><b>基隆市輔具資源中心</b><span>(02)2469-6966 轉 211</span></span><span class="s-call">撥打</span></div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>每個電話變成可以按的連結，手機上按了跳出撥號。分機另外寫「轉 211」。</dd><dt>參考</dt><dd>沒有查到大廠的明文規定，是我的建議</dd><dt>代價</dt><dd>分機號碼手機不一定帶得進去，所以要另外寫出來。47 筆電話格式不一致，要逐筆整理。電腦上按了沒有作用。</dd></dl>
+  
+</article><article class="idea" id="P3">
+  <div class="idea-head"><h3><span class="idea-id">P3</span>章節最後：下一章是什麼</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">選配指引六章 <span class="picked-note">11/16 已選</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><div class="s-btn o">回到我的選配指引</div></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><div class="s-row"><span class="s-rb"><span>下一章</span><b>九號表：申請助聽器補助</b></span><span class="s-ar">›</span></div><div class="s-btn o">回到我的選配指引</div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>每章最下面多一列「下一章：⋯」，照選配路線的順序。最後一章不顯示。</dd><dt>參考</dt><dd>沒有查到大廠的明文規定，是我的建議</dd><dt>代價</dt><dd>小。路線上有些站不是章節（等核定公文），下一章要照章節順序還是照路線順序，要你定。</dd></dl>
+  
+</article><article class="idea" id="P4">
+  <div class="idea-head"><h3><span class="idea-id">P4</span>路線上寫出我自己的期限</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">我的選配指引的選配路線 <span class="picked-note">11/16 已選</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><div class="s-row"><span class="s-rb"><b>7　配戴助聽器之後</b><span>至少 1 個月</span></span></div></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><div class="s-row"><span class="s-rb"><b>7　配戴助聽器之後</b><span>您 11/20 開始戴</span><span class="s-enc"><b>12/20 起可以做效益驗證，最晚 2027/02/20</b></span></span></div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>已經記了配戴日的人，那一站直接寫出兩個日期和還剩幾天，不用自己算「滿 1 個月到 3 個月內」。</dd><dt>參考</dt><dd>沒有查到大廠的明文規定，是我的建議</dd><dt>代價</dt><dd>家人專區已經有「期限到哪天」，兩邊算法要用同一支程式。日期怎麼算（滿 1 個月是哪一天）要你審。</dd></dl>
+  
+</article></div><div class="group-title"><h2>Q. 選問卷、開始作答之前</h2><span>第 2 版新增</span></div><div class="ideas"><article class="idea" id="Q1">
+  <div class="idea-head"><h3><span class="idea-id">Q1</span>問卷卡寫上次的結果</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">篩檢分頁的問卷目錄 <span class="picked-note">11/16 已選</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><div class="s-row "><span class="s-ic"></span><span class="s-rb"><b>聽力對生活的影響（HHIE-S）</b><span>10 題・約 3 分鐘・上次 2026/09/26</span></span><span class="s-ar">›</span></div></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><div class="s-row "><span class="s-ic"></span><span class="s-rb"><b>聽力對生活的影響（HHIE-S）</b><span>10 題・約 3 分鐘<br>上次 2026/09/26・<b>輕度到中度影響</b></span></span><span class="s-ar">›</span></div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>做過的問卷卡，在上次日期後面寫上次的分級（沒有分級的問卷寫分數）。</dd><dt>參考</dt><dd>Apple：狀態放在它描述的東西旁邊</dd><dt>代價</dt><dd>小。卡片多半行字。</dd></dl>
+  
+</article><article class="idea" id="Q2">
+  <div class="idea-head"><h3><span class="idea-id">Q2</span>開始前一句安心話</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">作答頁第一個畫面 <span class="picked-note">11/16 已選</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-h">聽力對生活的影響</p><p class="s-mut">HHIE-S・共 10 題・大約 3 分鐘</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><p class="s-h">聽力對生活的影響</p><p class="s-mut">HHIE-S・共 10 題・大約 3 分鐘</p><p class="s-new">沒有對錯，照您平常的感覺選就好。答到一半離開，答案也會留著。</p></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>第一個畫面多一句，講兩件長輩會擔心的事：答錯怎麼辦、中途離開會不會不見。</dd><dt>參考</dt><dd>沒有查到大廠的明文規定，是我的建議</dd><dt>代價</dt><dd>量表有沒有規定的指導語、能不能加這一句，要你用聽力師的角度判斷。</dd></dl>
+  
+</article></div><div class="group-title"><h2>R. 聽力圖與趨勢</h2><span>第 2 版新增</span></div><div class="ideas"><article class="idea" id="R1">
+  <div class="idea-head"><h3><span class="idea-id">R1</span>存檔前提醒可能漏標的頻率</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">新增／修改聽力圖的最後一步 <span class="picked-note">11/16 已選</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p>右耳：6 個點</p><p>左耳：3 個點</p><div class="s-btn">存檔</div></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><p>右耳：6 個點</p><p>左耳：3 個點</p><p class="s-msg info">ⓘ<span>左耳沒有標 2000、4000、8000 Hz。報告上本來就沒有的話，直接存檔就好。</span></p><div class="s-btn">存檔</div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>存檔前，如果一耳比另一耳少標了頻率，說是哪幾個。只提醒、不擋。</dd><dt>參考</dt><dd>Apple：給人改正的機會</dd><dt>代價</dt><dd>不是每份報告都測所有頻率，提醒太多會煩；規則（差幾個才提醒）要你定。</dd></dl>
+  
+</article><article class="idea" id="R2">
+  <div class="idea-head"><h3><span class="idea-id">R2</span>趨勢圖標出「開始戴助聽器」那一天</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">我的紀錄的趨勢圖 <span class="picked-note">11/16 已選</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><svg class="s-svg" viewBox="0 0 200 80" role="img" aria-label="趨勢圖示意"><path d="M10 20L70 15L130 60L190 62" /><circle cx="10" cy="20" r="4"/><circle cx="70" cy="15" r="4"/><circle cx="130" cy="60" r="4"/><circle cx="190" cy="62" r="4"/></svg></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><svg class="s-svg" viewBox="0 0 200 80" role="img" aria-label="趨勢圖示意，中間一條直線標出開始戴助聽器的日期"><line x1="100" y1="4" x2="100" y2="78" class="ev"/><text x="104" y="12">開始戴 11/20</text><path d="M10 20L70 15L130 60L190 62" /><circle cx="10" cy="20" r="4"/><circle cx="70" cy="15" r="4"/><circle cx="130" cy="60" r="4"/><circle cx="190" cy="62" r="4"/></svg></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>記了配戴日的人，趨勢圖上多一條直線寫「開始戴」，一眼看出戴之前和之後。</dd><dt>參考</dt><dd>沒有查到大廠的明文規定，是我的建議</dd><dt>代價</dt><dd>小。圖下面的文字說明也要補一句，給看不到圖的人。</dd></dl>
+  
+</article><article class="idea" id="R3">
+  <div class="idea-head"><h3><span class="idea-id">R3</span>把報告照片墊在下面描</h3><span class="tag t-new">新功能</span></div>
+  <p class="idea-where">新增聽力圖 </p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><div class="s-chart"><i style="left:55%;top:45%">○</i></div><p class="s-mut">現在：看著紙本報告，自己對格線描。</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><div class="s-chart photo"><i style="left:55%;top:45%">○</i></div><p class="s-mut">之後：拍一張報告，半透明墊在格線下面，照著點。</p></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>拍照或選一張相片，縮放、移動到跟格線對齊，然後照著描。照片只留在手機，不上傳。</dd><dt>參考</dt><dd>沒有查到大廠的明文規定，是我的建議</dd><dt>代價</dt><dd>大。每家醫院的報告格線比例不同，要讓使用者自己對齊，長輩不一定做得來；對不準反而描錯。我的建議是先不做，列出來讓你知道想過。</dd></dl>
+  <label class="want"><input type="checkbox" id="want-R3" value="R3" data-want> 我要這個</label>
+</article></div><div class="group-title"><h2>S. 登入與聯絡</h2><span>第 2 版新增</span></div><div class="ideas"><article class="idea" id="S1">
+  <div class="idea-head"><h3><span class="idea-id">S1</span>登入失敗：錯誤框裡直接給「忘記密碼？」</h3><span class="tag t-ok">可直接做</span></div>
+  <p class="idea-where">登入頁 </p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p class="s-sum"><b><span class="mk">!</span>使用者名稱或密碼錯誤</b></p><p class="s-cut">「忘記密碼？」在頁面最下面</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><div class="s-sum"><b><span class="mk">!</span>使用者名稱或密碼錯誤</b><span>可以按「顯示」看看密碼有沒有打錯。</span><u>忘記密碼？寄信重設</u></div></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>錯誤框裡多兩句：提醒可以按「顯示」檢查，和一個重設密碼的連結。</dd><dt>參考</dt><dd>Apple：做不到時說明為什麼，並給改正的機會</dd><dt>代價</dt><dd>小。</dd></dl>
+  <label class="want"><input type="checkbox" id="want-S1" value="S1" data-want> 我要這個</label>
+</article><article class="idea" id="S2">
+  <div class="idea-head"><h3><span class="idea-id">S2</span>聯絡信箱旁加「複製」</h3><span class="tag t-pick">已選</span></div>
+  <p class="idea-where">頁尾、帳號設定「要修改請寫信到⋯」 <span class="picked-note">11/16 已選</span></p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p>聯絡我們：<u class="s-link">hearwellweb@gmail.com</u></p><p class="s-mut">現在：按了會開手機的郵件程式；沒設定郵件的手機按了沒反應。</p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><p>聯絡我們：<span data-copy-text>hearwellweb@gmail.com</span></p><button type="button" class="s-btn o sm" data-copy>複製信箱</button></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>信箱照樣可以按，旁邊多一顆「複製信箱」，按了變「✓ 已複製」，可以貼到 LINE 或自己的信箱。</dd><dt>參考</dt><dd>網站已有同樣的做法：分享頁的「✓ 已複製」（#326）</dd><dt>代價</dt><dd>小。第 1 批選的頁尾要留位置給這顆按鈕。</dd></dl>
+  
+</article><article class="idea" id="S3">
+  <div class="idea-head"><h3><span class="idea-id">S3</span>會離開聽伴的連結，先講一聲</h3><span class="tag t-ok">可直接做</span></div>
+  <p class="idea-where">選配指引的法規來源、醫院名單、家人專區的出處 </p>
+  <div class="ba">
+    <div><span class="ba-label">現在</span><div class="stage"><p>來源：<u class="s-link">身心障礙者輔具費用補助辦法</u></p></div></div>
+    <div><span class="ba-label after">加了之後</span><div class="stage"><p>來源：<u class="s-link">身心障礙者輔具費用補助辦法 ↗</u><span class="s-mut">（全國法規資料庫，會離開聽伴）</span></p></div></div>
+  </div>
+  <dl class="spec"><dt>做法</dt><dd>連到別的網站的連結後面加一個箭頭和網站名稱。回來要按手機的返回。</dd><dt>參考</dt><dd>沒有查到大廠的明文規定，是我的建議</dd><dt>代價</dt><dd>小。出處很多的頁面會多不少括號，可以只在第一次出現時寫。</dd></dl>
+  <label class="want"><input type="checkbox" id="want-S3" value="S3" data-want> 我要這個</label>
+</article></div>
+
+  <div class="group-title"><h2>上一份盤點你沒選的</h2><span>不重畫，列出來讓你決定要不要重新考慮</span></div>
+  <div class="scroll-x"><table class="list"><tr><td><b>E2</b></td><td>字級 A－ A A＋</td><td>跟這次「可讀性」最有關。長輩不一定會用手機的放大設定。</td></tr><tr><td><b>E6</b></td><td>題目旁「唸給我聽」</td><td>看不清楚字的人可以用聽的；但使用者是聽損者，要你判斷。</td></tr><tr><td><b>E3</b></td><td>點色帶看那一級的意思</td><td>第 3 批把色帶搬進結果框之後，這個會更用得上。</td></tr><tr><td><b>E4</b></td><td>趨勢圖的點可以點</td><td>點了跳到那一次的結果。</td></tr><tr><td><b>D2</b></td><td>箭頭轉半圈、內容滑開</td><td>摺疊打開時知道內容是從哪裡長出來的。</td></tr><tr><td><b>B5</b></td><td>載入中先放灰色骨架</td><td>現在是「載入中…」加跑條。</td></tr><tr><td><b>A1</b></td><td>外框按鈕「按進去」</td><td></td></tr><tr><td><b>A7</b></td><td>主按鈕按下時縮小一點</td><td></td></tr><tr><td><b>B7</b></td><td>送出成功時手機輕震一下</td><td>iPhone 的 Safari 不支援。</td></tr></table></div>
+
+  <div class="group-title"><h2>不建議</h2><span>列出來讓你知道為什麼不做</span></div>
+  <div class="scroll-x"><table class="list"><tr><td><b>自己消失的浮動提示</b></td><td>Material 的 4 到 10 秒就不見；Atlassian 寫明重要訊息不要自動消失。</td></tr><tr><td><b>選了答案自動跳下一題</b></td><td>誤觸就跳走；上次盤點 C6 也是不建議。</td></tr><tr><td><b>左右滑動換題、換卡</b></td><td>看不到後面還有幾張；上次 C7 不建議。</td></tr><tr><td><b>彩帶、煙火</b></td><td>分數高代表影響大，慶祝不合適。</td></tr><tr><td><b>完成音效</b></td><td>使用者是聽損者。</td></tr><tr><td><b>換頁時整頁淡入淡出</b></td><td>#326 你決定只有藥丸滑動，其他不轉場，怕畫面閃。</td></tr><tr><td><b>分數數字往上跑</b></td><td>ADR 0006 已經決定不做。</td></tr></table></div>
+
+  <p class="src">讀過的出處：<a href="https://design-system.service.gov.uk/components/notification-banner/">GOV.UK 通知橫幅</a>、<a href="https://design-system.service.gov.uk/components/error-summary/">GOV.UK 錯誤摘要</a>、<a href="https://design-system.service.gov.uk/patterns/check-answers/">GOV.UK 檢查答案</a>、<a href="https://design-system.service.gov.uk/patterns/confirmation-pages/">GOV.UK 確認頁</a>、<a href="https://service-manual.nhs.uk/design-system/components/error-summary">NHS 錯誤摘要</a>、<a href="https://carbondesignsystem.com/components/notification/usage/">IBM Carbon 通知</a>、<a href="https://carbondesignsystem.com/elements/motion/overview/">IBM Carbon 動畫</a>、<a href="https://developer.apple.com/design/human-interface-guidelines/feedback">Apple 回饋</a>、<a href="https://developer.apple.com/design/human-interface-guidelines/motion">Apple 動畫</a>、<a href="https://atlassian.design/components/empty-state/usage">Atlassian 空狀態</a>、<a href="https://atlassian.design/components/flag/usage">Atlassian 旗標</a>、<a href="https://developer.chrome.com/docs/web-platform/implementing-speculation-rules">Chrome Speculation Rules</a>。</p>
+
+  <div class="chosen" role="region" aria-label="我選的項目">
+    <output id="chosen-out" for="">還沒勾任何一項</output>
+    <button type="button" id="chosen-copy">複製編號</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+  // 再播一次: restart the stage's one-shot animation.
+  $$("[data-replay]").forEach((button) => button.addEventListener("click", () => {
+    $$("[class*='play-']", button.closest(".stage")).forEach((el) => {
+      const name = [...el.classList].find((c) => c.startsWith("play-"));
+      el.classList.remove(name); void el.offsetWidth; el.classList.add(name);
+    });
+  }));
+
+  // G1: the progress line says something at half way, two left and the last question.
+  $$("[data-enc]").forEach((box) => {
+    let step = 6;
+    $("[data-enc-next]", box).addEventListener("click", () => {
+      step = step === 10 ? 6 : step + 1;
+      $$(".s-segs i", box).forEach((seg, i) => seg.classList.toggle("d", i < step - 1));
+      $("[data-enc-n]", box).textContent = `第 ${step} 題／共 10 題`;
+      $("[data-enc-t]", box).textContent = step === 6 ? "已經一半了" : step === 9 ? "剩 2 題" : step === 10 ? "最後一題" : "還剩大約 1 分鐘";
+    });
+  });
+
+  // G3: offline notice on and off.
+  $$("[data-tg]").forEach((box) => $("[data-tg-btn]", box).addEventListener("click", () => {
+    const line = $("[data-tg-show]", box); line.hidden = !line.hidden;
+  }));
+
+  // J1: count the characters.
+  $$("[data-pw]").forEach((input) => input.addEventListener("input", () => {
+    const out = $("[data-pw-out]", input.closest(".stage")); const n = [...input.value].length;
+    out.className = "s-count" + (n >= 8 ? " good" : "");
+    out.textContent = n === 0 ? "還沒輸入" : n < 8 ? `已經輸入 ${n} 個字，還差 ${8 - n} 個` : `✓ 已經輸入 ${n} 個字`;
+  }));
+
+  // J2: a likely mistyped mail host.
+  const HOSTS = { "gmial.com": "gmail.com", "gmai.com": "gmail.com", "gamil.com": "gmail.com", "gmail.con": "gmail.com", "yaho.com.tw": "yahoo.com.tw", "yahoo.con.tw": "yahoo.com.tw", "hotmial.com": "hotmail.com", "hotmai.com": "hotmail.com" };
+  $$("[data-mail]").forEach((input) => {
+    const out = $("[data-mail-out]", input.closest(".stage"));
+    const check = () => {
+      const [name, host] = input.value.trim().split("@"); const fix = host && HOSTS[host.toLowerCase()];
+      out.replaceChildren();
+      if (!fix) return;
+      const button = document.createElement("button"); button.type = "button"; button.textContent = `您是不是要打 ${name}@${fix}？按這裡改`;
+      button.addEventListener("click", () => { input.value = `${name}@${fix}`; check(); });
+      out.append(button);
+    };
+    input.addEventListener("input", check); check();
+  });
+
+  // J3: a made-up answer from the server, for the demo only.
+  $$("[data-user]").forEach((input) => {
+    const out = $("[data-user-out]", input.closest(".stage"));
+    const check = () => {
+      const v = input.value.trim(); const taken = ["wang", "chen", "lin"].includes(v.toLowerCase());
+      out.className = "s-count" + (v && !taken ? " good" : taken ? " bad" : "");
+      out.textContent = !v ? "" : taken ? "已經有人用了，換一個試試（示意）" : "✓ 這個名稱可以用（示意）";
+    };
+    input.addEventListener("input", check); check();
+  });
+
+  // J4: 民國 year to age, this year being 民國 115.
+  $$("[data-year]").forEach((input) => {
+    const out = $("[data-year-out]", input.closest(".stage"));
+    const check = () => {
+      const v = input.value.trim(); const n = Number(v); const right = /^[0-9]+$/.test(v) && n >= 1 && n <= 97;
+      out.className = "s-count" + (right ? " good" : v ? " bad" : "");
+      out.textContent = !v ? "" : right ? `✓ 民國 ${n} 年，今年 ${115 - n} 歲` : "請輸入民國 1 到 97 年之間的數字";
+    };
+    input.addEventListener("input", check); check();
+  });
+
+  // K1: tap the chart; the reading is written large above it.
+  const FREQ = [250, 500, 1000, 2000, 4000, 8000];
+  $$("[data-chart]").forEach((chart) => chart.addEventListener("click", (event) => {
+    const box = chart.getBoundingClientRect();
+    const column = Math.min(5, Math.max(0, Math.round((event.clientX - box.left) / box.width * 5)));
+    const db = Math.min(120, Math.max(-10, Math.round(((event.clientY - box.top) / box.height * 130 - 10) / 5) * 5));
+    const point = $("[data-pt]", chart); point.style.left = `${column * 20}%`; point.style.top = `${(db + 10) / 130 * 100}%`;
+    $("[data-read]", chart.closest(".stage")).textContent = `右耳氣導　${FREQ[column]} Hz　${db} dB`;
+  }));
+
+  // L1: thanks after a vote.
+  $$("[data-vote]").forEach((box) => $$("[data-vote-b]", box).forEach((button) => button.addEventListener("click", () => {
+    box.replaceChildren(Object.assign(document.createElement("p"), { className: "s-count good", textContent: "✓ 謝謝，我們收到了" }));
+  })));
+
+  // L2: the closest questions while typing.
+  const QUESTIONS = ["助聽器補助可以補多少錢？", "申請補助要準備什麼？", "助聽器的電池可以用多久？", "電池要去哪裡買？", "耳鳴會不會好？", "耳鳴要看哪一科？", "助聽器要戴多久才會習慣？", "聽力檢查要去哪裡做？"];
+  $$("[data-qa]").forEach((input) => {
+    const out = $("[data-qa-out]", input.closest(".stage"));
+    input.addEventListener("input", () => {
+      const v = input.value.trim();
+      const hits = v ? QUESTIONS.filter((q) => q.includes(v)).slice(0, 3) : [];
+      out.replaceChildren(...(v && !hits.length ? [Object.assign(document.createElement("p"), { className: "s-mut", textContent: "沒有很像的題目，按查詢看看。" })] : hits.map((q) => {
+        const line = document.createElement("div"); line.className = "s-row";
+        line.innerHTML = '<span class="s-rb"><b></b></span><span class="s-ar">›</span>'; $("b", line).textContent = q; return line;
+      })));
+    });
+  });
+
+  // N2: how many of the list are ticked.
+  $$("[data-cl]").forEach((box) => {
+    const boxes = $$("input", box); const out = $("[data-cl-out]", box);
+    const show = () => {
+      const n = boxes.filter((b) => b.checked).length;
+      out.className = "s-count" + (n === boxes.length ? " good" : "");
+      out.textContent = n === boxes.length ? "✓ 都準備好了" : boxes.length + " 項勾了 " + n + " 項";
+    };
+    boxes.forEach((b) => b.addEventListener("change", show)); show();
+  });
+
+  // O1: the family says they have read it.
+  $$("[data-ack]").forEach((box) => $("[data-ack-b]", box).addEventListener("click", () => {
+    box.replaceChildren(Object.assign(document.createElement("p"), { className: "s-count good", textContent: "✓ 已經告訴他您看過了" }));
+  }));
+
+  // P1: the chapter's own figures, level times ratio.
+  $$("[data-calc]").forEach((box) => {
+    const level = $("[data-calc-level]", box), who = $("[data-calc-who]", box), out = $("[data-calc-out]", box);
+    const show = () => { out.textContent = "每只最多補助 " + (Number(level.value) * Number(who.value)).toLocaleString("en-US") + " 元"; };
+    level.addEventListener("change", show); who.addEventListener("change", show); show();
+  });
+
+  // S2: copy the address; the button says so.
+  $$("[data-copy]").forEach((button) => button.addEventListener("click", () => {
+    const source = $("[data-copy-text]", button.closest(".stage")); const label = button.textContent;
+    const done = () => { button.textContent = "✓ 已複製"; setTimeout(() => { button.textContent = label; }, 2000); };
+    const select = () => { const range = document.createRange(); range.selectNodeContents(source); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(source.textContent).then(done, select); else select();
+  }));
+
+  // 我要這個: list the chosen numbers at the foot, ready to copy.
+  const out = $("#chosen-out");
+  const chosen = () => $$("[data-want]:checked").map((box) => box.value);
+  const show = () => { const ids = chosen(); out.textContent = ids.length ? `我要：${ids.join("、")}` : "還沒勾任何一項"; };
+  $$("[data-want]").forEach((box) => box.addEventListener("change", show)); show();
+  $("#chosen-copy").addEventListener("click", (event) => {
+    const text = out.textContent; const button = event.currentTarget;
+    const done = () => { button.textContent = "✓ 已複製"; setTimeout(() => { button.textContent = "複製編號"; }, 2000); };
+    const select = () => { const range = document.createRange(); range.selectNodeContents(out); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, select); else select();
+  });
+})();
+</script>

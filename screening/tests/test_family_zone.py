@@ -31,8 +31,8 @@ from screening.views import family
 
 FAMILY_CARD = "我是家人：怎麼陪伴聽損的家人"
 LEARN_CARD = "家人專區：溝通與陪伴"
-# The footer's words stay as they were (#427).
-FOOTER_LINK = "家人專區：溝通與陪伴"
+# The footer's short name since readability batch 1 (the owner's A, 2026-11-16).
+FOOTER_LINK = "家人專區"
 # As reviewed on 2026-10-17 (spec appendix A).
 INTRO = (
     "家人有聽力困難時，日常對話常常要講好幾次，雙方都容易累、容易誤會。"

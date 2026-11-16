@@ -1191,36 +1191,56 @@
     font-weight: 700;
   }
 
-  /* Centred like the rest of the footer. Phones: one link per row; from 48em the links share one row with even
-     gaps, each as wide as its words, so a long and a short link look evenly spaced. */
+  /* Centred like the rest of the footer, the links in one row (readability batch 1, the owner's
+     A). Phones: equal columns, each icon over its words; a column is never narrower than its
+     words, so at large text sizes the row wraps rather than breaking a name. From 48em each link
+     is as wide as its words, its icon beside them, with even gaps between. */
   .site-footer-links {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    margin: 0 0 1.25rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.25rem;
+    margin: 0 0 1rem;
     padding: 0;
     list-style: none;
   }
 
-  @media (min-width: 48em) {
-    .site-footer-links {
-      flex-direction: row;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 0.5rem 1rem;
-    }
+  .site-footer-links li {
+    flex: 1 1 0;
+    min-width: max-content;
   }
 
   .site-footer-links a {
-    display: inline-flex;
-    gap: 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
     align-items: center;
+    justify-content: center;
     min-height: 3.25rem;
-    padding: 0.5rem 0.75rem;
+    padding: 0.4rem 0.25rem;
     border-radius: var(--radius-medium);
     font-weight: 500;
+    white-space: nowrap;
     text-decoration-line: none;
+  }
+
+  @media (min-width: 48em) {
+    .site-footer-links {
+      gap: 0.5rem 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .site-footer-links li {
+      flex: none;
+      min-width: 0;
+    }
+
+    .site-footer-links a {
+      display: inline-flex;
+      flex-direction: row;
+      gap: 0.6rem;
+      padding: 0.5rem 0.75rem;
+    }
   }
 
   .site-footer-links a:hover {
@@ -5515,7 +5535,8 @@
     color: var(--color-muted);
   }
 
-  /* The score a size above the next screening's day (#453 Q13). */
+  /* 上次結果's score (#453 Q13), and since readability batch 1 the days to the next screening: a
+     size above the tile's other words. */
   .journey-tile-score {
     font-size: 2.2222rem;
     font-weight: 700;
@@ -5540,9 +5561,9 @@
     line-height: 1;
   }
 
-  /* The 2026-11-14 walkthrough: on a 375 phone the tile's anywhere split 2027/05/14 as
-     2027/05/1 and 4. The day stays on one line and shrinks to the tile's width (the grey
-     tile is its container); with larger text the tiles stack, so it is back at its own size. */
+  /* 還沒排 and 已到期. The 2026-11-14 walkthrough kept the day here on one line, shrunk to the
+     tile's width (the grey tile is its container); since readability batch 1 the day is the
+     small line under the days left, and the rule stays for these words. */
   .journey-tile-date {
     margin-top: 0.4rem;
     white-space: nowrap;
@@ -6315,6 +6336,7 @@
   .answer-meta {
     color: var(--color-muted);
   }
+
 
   /* IOI-HA's norm basis on item 1: a 提示框 (P3), the question straight after it (#362). */
   .answer-norm {

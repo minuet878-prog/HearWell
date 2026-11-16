@@ -117,7 +117,8 @@ PAGE_TOPICS = (
     ("family_talk", ("怎麼跟聽損的家人說話",)),
     ("family_guide", ("陪伴配戴助聽器", "什麼時候要馬上就醫")),
 )
-LINK_TEXT = "家人專區：溝通與陪伴"
+# The footer's link, under its short name since readability batch 1 (the owner's A).
+LINK_TEXT = "家人專區"
 DISCLAIMER = "這些是一般性的建議，不能取代醫師或聽力師的診斷"
 
 

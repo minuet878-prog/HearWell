@@ -441,7 +441,7 @@ class ThiNotLifeImpactTests(ThiTestCase):
         self._record(self.hhie_s, 0, date(2026, 3, 1))
         self._record(self.thi, 2, date(2026, 5, 1))
         main = self._home(date(2026, 8, 1))
-        self.assertIn('<span class="journey-tile-date">2026/09/01</span>', main)
+        self.assertIn('<span class="journey-tile-small">2026/09/01</span>', main)
 
     def test_only_thi_is_a_returning_user_without_a_retest_reminder(self):
         self._record(self.thi, 2, date(2026, 3, 1))
