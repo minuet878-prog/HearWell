@@ -104,18 +104,27 @@ class SaveCardTests(GuestSaveTestCase):
                 self.assertIn(MORE, html)
 
     def test_its_two_buttons_go_to_the_save_page_from_the_card(self):
-        html = self.guest_html([0] * 10)
         next_part = "?next=%2Fguest%2Fsave%3Ffrom%3Dcard"
-        self.assertIn(
-            f'<a class="btn btn-primary btn-lg w-full" href="{reverse("register")}{next_part}">'
-            "註冊保存</a>",
-            html,
-        )
-        self.assertIn(
-            f'<a class="btn btn-outline-primary btn-lg w-full" href="{reverse("login")}'
-            f'{next_part}">登入保存</a>',
-            html,
-        )
+        # Codex cross review of #492, acceptance 14: at each level, not only the first.
+        for level, scores in (
+            ("normal", [0] * 10),
+            ("mild_to_moderate", [4, 4, 2, 0, 0, 0, 4, 0, 0, 2]),
+            ("severe", [4] * 10),
+        ):
+            with self.subTest(level=level):
+                html = self.guest_html(scores)
+                self.assertIn(
+                    f'<a class="btn btn-primary btn-lg w-full" href="{reverse("register")}'
+                    f'{next_part}">註冊保存</a>',
+                    html,
+                )
+                self.assertIn(
+                    f'<a class="btn btn-outline-primary btn-lg w-full" href="{reverse("login")}'
+                    f'{next_part}">登入保存</a>',
+                    html,
+                )
+                # A press inside it is what lets the save page save straight away (Spec 1).
+                self.assertIn('<div class="result-next" data-guest-save-card>', html)
 
     def test_at_its_bottom_how_long_it_stays_and_where(self):
         # The days are the browser's to fill (it alone knows when the result was finished).
@@ -224,6 +233,13 @@ class FromTheCardTests(GuestSaveTestCase):
         )
         self.assertRedirects(response, SAVE_FROM_CARD, fetch_redirect_response=False)
         self.assertEqual(self.client.get(SAVE_FROM_CARD).status_code, 200)
+        # Codex cross review of #492, acceptance 23: in this same signed-in session, what the
+        # save page sends becomes a record of the account logged into, and of no other.
+        response = self.save(self.body(self.hhie_s, [4] * 10, from_guest=True), uuid.uuid4())
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(
+            list(Submission.objects.values_list("user__username", flat=True)), ["has_account"]
+        )
 
     def test_not_agreed_to_the_latest_notice_the_consent_comes_first(self):
         user = User.objects.create_user(username="old_consent", password=PASSWORD)
@@ -465,6 +481,13 @@ class GuestAskOtherWaysInTests(GuestSaveTestCase):
         self.assertContains(response, ASK_SCRIPT)
         self.assertContains(self.client.get(reverse("guest_save")), ASK_TITLE)
         self.assertFalse(Submission.objects.exists())
+        # Codex cross review of #492, acceptance 26: 要 sends what the save page sends, and the
+        # new account then has the record.
+        response = self.save(self.body(self.hhie_s, [4] * 10, from_guest=True), uuid.uuid4())
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(
+            list(Submission.objects.values_list("user__username", flat=True)), ["grandson"]
+        )
 
     def test_logging_in_to_another_account_lands_where_it_is_asked(self):
         consented_user(username="another", password=PASSWORD)

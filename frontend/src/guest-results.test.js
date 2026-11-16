@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { DRAFT_PREFIX, loadDraft, saveDraft } from "./draft.js";
+import { DRAFT_PREFIX, clearAllDrafts, clearDraft, loadDraft, saveDraft } from "./draft.js";
 import {
   GUEST_PREFIX,
   MAX_AGE_MS,
@@ -133,7 +133,8 @@ describe("beside the answer drafts", () => {
     expect(loadGuestResult("hhie-s", NOW)).toBeNull(); // expired, so deleted
     saveGuestResult(guestResult());
     loadGuestResult("hhie-s", NOW);
-    clearGuestResult("hhie-s");
+    clearGuestResult("hhie-s", guestResult().key);
+    expect(loadGuestResult("hhie-s", NOW)).toBeNull(); // really cleared
     expect(loadTheDraft()).toEqual(draft());
   });
 
@@ -142,6 +143,18 @@ describe("beside the answer drafts", () => {
     saveDraft(draft({ savedAt: NOW - 8 * DAY }));
     saveDraft(draft({ questionnaireId: 2, userId: 8 }));
     expect(loadTheDraft()).toBeNull(); // the expired and the other account's drafts go
+    expect(Object.keys(localStorage).filter((key) => key.startsWith(DRAFT_PREFIX))).toEqual([]);
+    expect(loadGuestResult("hhie-s", NOW)).toEqual(guestResult());
+  });
+
+  // Codex cross review of #492, acceptance 20: the drafts' own clearing, one or all, leaves it too.
+  it("is not touched when a draft is cleared, one or every one", () => {
+    saveGuestResult(guestResult());
+    saveDraft(draft());
+    clearDraft(1);
+    expect(loadTheDraft()).toBeNull();
+    saveDraft(draft());
+    clearAllDrafts();
     expect(Object.keys(localStorage).filter((key) => key.startsWith(DRAFT_PREFIX))).toEqual([]);
     expect(loadGuestResult("hhie-s", NOW)).toEqual(guestResult());
   });
@@ -364,6 +377,12 @@ describe("saveGuestResults (the save page)", () => {
     const fetchSave = replies({ 1: 201, 3: 200 });
     await saveGuestResults({ root, keys: BOTH, now: NOW, clock: () => NOW, fetchSave, navigate });
     expect(fetchSave).toHaveBeenCalledTimes(2);
+    // Codex cross review of #492, acceptance 24: one of each, not the same one twice.
+    const sent = fetchSave.mock.calls.map(([, options]) => [
+      JSON.parse(options.body).questionnaire,
+      options.headers["Idempotency-Key"],
+    ]);
+    expect(sent.sort()).toEqual([[1, guestResult().key], [3, HHIA_S.key]]);
     expect(loadGuestResult("hhie-s", NOW)).toBeNull();
     expect(loadGuestResult("hhia-s", NOW)).toBeNull();
     expect(navigate).toHaveBeenCalledWith("/?from=save");
