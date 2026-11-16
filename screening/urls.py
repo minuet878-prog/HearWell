@@ -64,6 +64,7 @@ urlpatterns = [
     path("journey_todo_tick", home.journey_todo_tick, name="journey_todo_tick"),
     path("consent", accounts.consent, name="consent"),
     path("monitoring-test", monitoring.monitoring_test, name="monitoring_test"),
+    path("uptime-check", monitoring.uptime_check, name="uptime_check"),
     path("questionnaire_list", answering.questionnaire_list, name="questionnaire_list"),
     path("questionnaire/<int:questionnaire_id>", answering.screening, name="screening"),
     path("guest/result/<slug:code>", guest.guest_result, name="guest_result"),
