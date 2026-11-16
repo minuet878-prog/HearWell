@@ -91,7 +91,7 @@ describe("showGuestHome", () => {
 
   // #492 acceptance 19, the home's half (self-review P1): past 7 days it is not shown, and gone.
   it("shows no result past its 7 days and deletes it from this browser", () => {
-    saveGuestResult(guestResult({ finishedAt: NOW - 7 * DAY - 1 }));
+    saveGuestResult(guestResult({ finishedAt: NOW - 7 * DAY }));
     show();
     expect(root.hidden).toBe(true);
     expect(root.children).toHaveLength(0);

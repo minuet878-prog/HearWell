@@ -68,14 +68,16 @@ describe("saveGuestResult / loadGuestResult", () => {
     expect(loadGuestResult("hhia-s", NOW).total).toBe(0);
   });
 
+  // #492 acceptance 19 (Codex cross review, Spec 3): gone the moment 7 days are up, not a
+  // moment later, so it never says 0 days are left.
   it("keeps one for 7 days, then deletes it when any is read", () => {
     expect(MAX_AGE_MS).toBe(7 * DAY);
     saveGuestResult(guestResult());
     saveGuestResult(guestResult({ code: "hhia-s", finishedAt: NOW + DAY }));
-    expect(loadGuestResult("hhie-s", NOW + 7 * DAY)).not.toBeNull();
-    expect(loadGuestResult("hhia-s", NOW + 7 * DAY + 1)).not.toBeNull();
+    expect(loadGuestResult("hhie-s", NOW + 7 * DAY - 1)).not.toBeNull();
+    expect(loadGuestResult("hhia-s", NOW + 7 * DAY)).not.toBeNull();
     expect(localStorage.getItem(`${GUEST_PREFIX}hhie-s`)).toBeNull();
-    expect(loadGuestResult("hhie-s", NOW + 7 * DAY + 1)).toBeNull();
+    expect(loadGuestResult("hhie-s", NOW + 7 * DAY)).toBeNull();
   });
 
   it("deletes a broken one", () => {
@@ -460,7 +462,7 @@ describe("a guest result 7 days on (the guest result page)", () => {
     saveGuestResult(guestResult());
     const fetchScore = vi.fn();
     const navigate = vi.fn();
-    await showGuestResult({ root, now: NOW + 7 * DAY + 1, fetchScore, navigate });
+    await showGuestResult({ root, now: NOW + 7 * DAY, fetchScore, navigate });
     expect(fetchScore).not.toHaveBeenCalled();
     expect(navigate).toHaveBeenCalledWith("/");
     expect(root.querySelector("[data-guest-shown]").hidden).toBe(true);
@@ -482,7 +484,7 @@ describe("askAboutGuestResults (every page signed in)", () => {
     const navigate = vi.fn();
     askAboutGuestResults({ askUrl: "/guest/save", now: NOW, navigate });
     saveGuestResult(guestResult());
-    askAboutGuestResults({ askUrl: "/guest/save", now: NOW + 7 * DAY + 1, navigate });
+    askAboutGuestResults({ askUrl: "/guest/save", now: NOW + 7 * DAY, navigate });
     expect(navigate).not.toHaveBeenCalled();
     expect(localStorage.getItem(`${GUEST_PREFIX}hhie-s`)).toBeNull();
   });
@@ -592,6 +594,19 @@ describe("askToSaveGuestResults (the save page's question)", () => {
     expect(Object.keys(localStorage).filter((key) => key.startsWith(GUEST_PREFIX))).toEqual([]);
     expect(navigate).toHaveBeenCalledWith("/");
     expect(localStorage.getItem(`${DRAFT_PREFIX}1`)).not.toBeNull();
+  });
+
+  // #492 acceptance 19, 26 (Codex cross review, Spec 3): the question left open past the 7 days
+  // saves nothing on 要; the time is the moment 要 is pressed, not when the page opened.
+  it("saves nothing on 要 once the result's 7 days are up, and goes home", async () => {
+    saveGuestResult(guestResult());
+    const fetchSave = created();
+    askToSaveGuestResults({ root, now: NOW + 7 * DAY - 60_000, clock: () => NOW + 7 * DAY, fetchSave, navigate });
+    expect(tiles()).toHaveLength(1);
+    root.querySelector("[data-guest-ask-yes]").click();
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith("/"));
+    expect(fetchSave).not.toHaveBeenCalled();
+    expect(localStorage.getItem(`${GUEST_PREFIX}hhie-s`)).toBeNull();
   });
 
   it("goes home when there is nothing to ask about", () => {

@@ -31,7 +31,7 @@ function isUsable(result, code, now) {
     result !== null &&
     result.code === code &&
     Number.isFinite(result.finishedAt) &&
-    now - result.finishedAt <= MAX_AGE_MS &&
+    now - result.finishedAt < MAX_AGE_MS &&
     Array.isArray(result.answers)
   );
 }
@@ -283,6 +283,8 @@ function askTile(result, alone, names, topics) {
 export function askToSaveGuestResults({
   root,
   now = Date.now(),
+  // 要 reads the time when it is pressed: the question may have been left open past the 7 days.
+  clock = () => Date.now(),
   fetchSave = (...args) => fetch(...args),
   navigate = (url) => window.location.replace(url),
 }) {
@@ -299,7 +301,7 @@ export function askToSaveGuestResults({
     .replaceChildren(...results.map((result) => askTile(result, results.length === 1, names, topics)));
   root.querySelector("[data-guest-ask-yes]").addEventListener("click", () => {
     ask.hidden = true;
-    saveGuestResults({ root, now, fetchSave, navigate });
+    saveGuestResults({ root, now: clock(), fetchSave, navigate });
   }, { once: true });
   root.querySelector("[data-guest-ask-no]").addEventListener("click", () => {
     for (const result of results) clearGuestResult(result.code);
