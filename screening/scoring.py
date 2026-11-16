@@ -22,6 +22,10 @@ def retest_next_text(day):
     return f"下次建議 {day:%Y/%m/%d} 再做"
 
 
+# After the total on 我的紀錄's 上一次 line (#646, spec #644 H2).
+LOWER_IS_BETTER = "分數越低越好"
+
+
 def change_label_text(difference):
     # The label on top of 跟上次比 on a graded result page and 我的紀錄's 最近一次 alike (#646,
     # spec #644 H2): numbers and direction only, no verdict (ADR 0010, ADR 0013, ADR 0017).

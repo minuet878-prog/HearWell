@@ -11,6 +11,7 @@ from screening.questionnaires.results import GradedResult
 from screening.scoring import (
     IOI_HA_ITEM_NAMES,
     IOI_HA_NORMS,
+    LOWER_IS_BETTER,
     NORM_COMPARISON_TEXT,
     TREND_STATUS_TEXT,
     change_label_text,
@@ -173,6 +174,7 @@ def my_hearing(request):
                 "latest": latest,
                 "previous": previous,
                 "label": change_label_text(latest.total_answer_score - previous.total_answer_score),
+                "lower_is_better": LOWER_IS_BETTER,
                 "wearing_change": WEARING_CHANGE_TEXT.get(
                     (previous.wearing_hearing_aid, latest.wearing_hearing_aid)
                 ),

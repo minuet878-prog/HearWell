@@ -582,6 +582,16 @@ class HistoryTabsTests(TestCase):
         self.assertIn(f"上一次（{self._date(aided)}）：8 分（分數越低越好）", since_last)
         self.assertIn("比上次多 4 分", since_last)
 
+    def test_since_last_says_which_way_is_better_from_scoring(self):
+        # CODING_STANDARDS 9: 分數越低越好 comes from scoring.py, not a second copy in the template.
+        previous = self._hhie_s(8, True, days_ago=10)
+        self._hhie_s(12, True, days_ago=1)
+        with patch("screening.views.my_hearing.LOWER_IS_BETTER", "替身說明"):
+            main = self._main_html(self.client.get(self._tab_url("hhie-s")))
+        self.assertIn(
+            f"上一次（{self._date(previous)}）：8 分（替身說明）", self._since_last_text(main)
+        )
+
     def test_trend_summary_with_one_record_and_a_score_of_0(self):
         latest = self._hhie_s(0, False, days_ago=1)
         self.assertEqual(
