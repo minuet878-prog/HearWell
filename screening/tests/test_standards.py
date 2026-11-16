@@ -78,6 +78,9 @@ OWNER_KEPT = {
     ".ioi-name": "the IOI-HA chart's item names; the chart stays as drawn (#364)",
     # Sized in SpeechBananaApp.jsx, not site.css: its size in chart units scales with the chart.
     "[data-group] text": "the speech banana chart's words, which scale with it (ADR 0040)",
+    # Sized in AudiogramDemo.jsx, not site.css: screen readers skip the demo, which is there for
+    # the finger and the symbol (owner's pick 2026-11-16, the #613 mockup's part five).
+    ".audiogram-demo-chart text": "the audiogram demo's axis numbers (#611 K2)",
 }
 SMALL_PRINT = SOURCES | OWNER_KEPT
 
