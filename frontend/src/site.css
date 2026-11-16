@@ -4915,9 +4915,10 @@
     margin-bottom: 0;
   }
 
-  /* The privacy notice's highlights in a 提示框: room for their bullets inside it. */
-  ul.tip-box {
-    padding-inline-start: 2.25rem;
+  /* The privacy notice's highlights in a 提示框: room for their bullets inside it, 2.25rem from
+     the box's edge as before readability batch 3 put them in three titled lists. */
+  .privacy .tip-box > ul {
+    padding-inline-start: 1.25rem;
   }
 
   /* A link inside a sentence in a 提示框 (deleting the account's 下載我的資料) keeps its negative

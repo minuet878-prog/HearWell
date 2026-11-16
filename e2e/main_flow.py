@@ -6629,7 +6629,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.open(width=390)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
-            # #461: the bar and the dropdowns are behind 看完整說明, itself a dropdown.
+            # #461: the dropdowns are behind 看完整說明, itself a dropdown (the bar left it for the
+            # result box in readability batch 3).
             self.page.locator(".result-details > summary").click()
             segments = self.page.locator(".score-bar-segment").all()
             self.assertEqual([self.style(s, "backgroundColor") for s in segments], fills)
@@ -9797,11 +9798,10 @@ class GuideMeterFillTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiv
                 self.assertNotIn("paused", {a["state"] for a in found}, meter)
 
     # #338 acceptance 21: the result page's score position bar stays still, scrolled to or not
-    # (#461: SSQ12-TW's position bar went, and the score bar is behind 看完整說明).
+    # (#461: SSQ12-TW's position bar went; readability batch 3: the bar is in the result box).
     def test_result_position_bars_stay_still(self):
         self.open(f"/submission/{self.submission.pk}")
         with self.saving_artifacts():
-            self.main().locator(".result-details > summary").click()
             found = self.page.locator(".score-bar")
             expect(found).to_be_visible()
             self.page.evaluate("window.scrollTo({top: 99999, behavior: 'instant'})")
@@ -13824,6 +13824,7 @@ class ResultPagesT461Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             # screen with the button above, and not behind 看完整說明 as well.
             bar = banner.locator(".score-bar")
             expect(bar).to_be_visible()
+            self.assertEqual(self.style(bar, "backgroundColor"), "rgb(255, 255, 255)")
             self.assertLessEqual(bar.bounding_box()["y"], box["y"])
             summary = self.main().locator(".result-details > summary")
             self.assertGreaterEqual(summary.bounding_box()["height"], 44)

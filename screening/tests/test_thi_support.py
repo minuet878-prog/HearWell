@@ -4,7 +4,7 @@ stories 14 and 20)."""
 from django.urls import reverse
 
 from screening.models import Submission
-from screening.tests import test_thi
+from screening.tests import test_result_score_bar, test_thi
 
 # Draft wording from #211, written out here so a changed definition fails instead of being
 # copied into the expectation.
@@ -37,6 +37,7 @@ class ThiSupportResultTests(test_thi.ThiTestCase):
         banner_end = main.index('<p id="result-score"')
         support = main.index(SUPPORT)
         self.assertLess(banner_end, support)
+        self.assertIn('<div class="score-bar"', test_result_score_bar.result_box(main))
         self.assertLess(main.index('<div class="score-bar"'), support)
         self.assertLess(support, main.index('<div class="result-next">'))
 

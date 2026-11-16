@@ -112,6 +112,7 @@ class ScoreBarTests(TestCase):
     def test_hhia_s_uses_its_own_thresholds(self):
         # HHIA-S's own definition, not HHIE-S's (same numbers, but read independently).
         page = self._get(self._submit(self.hhia_s, self.hhia_questions, [4, 4, 2, 2] + [0] * 6))
+        self.assertIn('<div class="score-bar" aria-hidden="true">', result_box(page))
         self.assertIn(
             'class="score-bar-segment score-bar-segment-normal" style="width: 20.00%"', page
         )

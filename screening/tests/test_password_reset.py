@@ -227,6 +227,9 @@ class SetNewPasswordTests(TestCase):
         self.assertEqual(len(lines), 1)
         self.assertIn('data-for="id_new_password1"', lines[0])
         self.assertIn(f'data-min="{minimum_password_length()}"', lines[0])
+        self.assertRegex(lines[0], r"\shidden[\s>]")  # without JavaScript, the page as before
+        statuses = re.findall(r'class="[^"]*password-count-status[^"]*" role="status"', content)
+        self.assertEqual(len(statuses), 1)
 
     def test_a_password_against_the_rules_is_refused(self):
         user = consented_user(username="wang_ming", email="a@example.com", password=PASSWORD)

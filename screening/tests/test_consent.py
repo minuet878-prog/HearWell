@@ -166,6 +166,8 @@ class PrivacyHighlightsTests(TestCase):
                     [(title, tuple(self._list_items(items))) for title, items in groups],
                     list(HIGHLIGHT_GROUPS),
                 )
+                # All in sight: none of them behind a dropdown in the highlights' section.
+                self.assertNotIn("<details", html[: html.index("</section>")])
 
     def test_grouping_the_highlights_is_not_a_new_version(self):
         # ADR 0061: only the order and the titles changed, so who agreed to version 8 is not
