@@ -250,6 +250,14 @@ class AddTests(TestCase):
         self.assertNotIn("prompt", self.line.authorize)
         self.assertNotIn("disable_auto_login", self.line.authorize)
 
+    def test_in_the_iphone_home_screen_app_line_stays_out_of_its_app(self):
+        # The one exception (2026-11-16): LINE's app would hand the way back to Safari, which has
+        # no trip (oidc.py in_home_screen_app).
+        self.client.cookies[oidc.HOME_SCREEN_APP] = "1"
+        self.start_adding()
+        self.assertEqual(self.line.authorize["disable_auto_login"], "true")
+        self.assertNotIn("prompt", self.line.authorize)
+
     # 16
     def test_a_new_line_is_added_and_signs_into_the_same_account(self):
         audiogram = Audiogram.objects.create(user=self.user, tested_on=datetime.date(2026, 3, 4))

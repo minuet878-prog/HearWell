@@ -149,6 +149,16 @@ class ButtonsTests(TestCase):
             with self.subTest(name):
                 self.assertNotIn(name, query)
 
+    def test_in_the_iphone_home_screen_app_line_stays_out_of_its_app(self):
+        # The one exception (2026-11-16): there LINE's app hands the way back to Safari, which
+        # has no trip, so nobody could confirm at all (oidc.py in_home_screen_app).
+        self.client.cookies[oidc.HOME_SCREEN_APP] = "1"
+        query = off_to(self, press(self.client, "line", "delete_account"), LINE_AUTHORIZE)
+        self.assertEqual(query["disable_auto_login"], "true")
+        for name in ("prompt", "max_age"):
+            with self.subTest(name):
+                self.assertNotIn(name, query)
+
     def test_inside_line_only_the_line_button(self):
         response = self.client.get(CONFIRM_REMOVE_LINE, headers={"user-agent": LINE_BROWSER})
         self.assertEqual(button_order(self, response), [LINE_BUTTON])

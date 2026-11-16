@@ -179,6 +179,8 @@
 
 **本人的決定（2026-11-14）**：確認本人用 LINE 時不帶上面任何一個，強度跟 Google 一樣：擋得住「拿別人的 LINE 來確認」（回來的代號必須是帳號上那一列），擋不住拿著本人已解鎖手機的人。原因：長輩多半記不得 LINE 密碼，強迫重新登入會讓本人自己過不了關。程式在 `screening/oidc.py` 的 `PROVIDERS["line"]`（`reauthenticate` 留空），測試在 `test_line_confirm_identity.py`。
 
+**例外（本人 2026-11-16 決定）**：iPhone 主畫面的聽伴 app 裡，所有 LINE 起點（登入、保存卡、確認本人、新增登入方式）都帶 `disable_auto_login=true`。原因：自動登入會跳去 LINE app，LINE 再把回程交給 Safari；主畫面 app 和 Safari 的 cookie 各自獨立，Safari 沒有這一趟的紀錄，一定顯示「登入沒有完成」。代價：在主畫面 app 第一次用 LINE 時要輸入 LINE 的 email 和密碼，之後有單一登入就按一下。Safari、LINE 裡、Android 不變。程式在 `PROVIDERS["line"]` 的 `in_home_screen_app`，cookie 由 `frontend/src/pwa-nav.js` 留下。
+
 ---
 
 ## 要本人決定的事

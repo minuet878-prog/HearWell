@@ -73,10 +73,11 @@ PROVIDERS = {
         revoke_url="https://api.line.me/oauth2/v2.1/revoke",
         # No reauthenticate: LINE could force a fresh login (prompt=login, max_age), but the owner
         # chose not to (login-research.md section 10): elders need not remember their LINE password.
-        # LINE's auto login opens the LINE app, which hands the way back to Safari; the home-screen
-        # app keeps its own cookies, so the trip is not in that session. Without it LINE's own
-        # page signs in, in the home-screen app (developers.line.biz/en/docs/line-login/
-        # integrate-line-login/, checked 2026-11-16).
+        #
+        # In the home-screen app, no auto login: it opens the LINE app, which hands the way back
+        # to Safari, and the home-screen app keeps its own cookies, so the trip is not in Safari's
+        # session. With auto login off LINE's web page signs in, inside the home-screen app
+        # (developers.line.biz/en/docs/line-login/integrate-line-login/, checked 2026-11-16).
         in_home_screen_app=(("disable_auto_login", "true"),),
     ),
 }
