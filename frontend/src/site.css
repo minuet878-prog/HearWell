@@ -1820,6 +1820,20 @@
     font-size: 1rem;
   }
 
+  /* Readability batch 3 (the owner's C1 B): under a new password, how many characters are in
+     (password-count.js), on the register page and the 設新密碼 page; the success green
+     (--color-normal, ADR 0007) with its tick once there are enough. */
+  .password-count {
+    margin: 0.25rem 0 0;
+    color: var(--color-muted);
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .password-count.is-enough {
+    color: var(--color-normal);
+  }
+
   /* The 2026-11-14 walkthrough (mockup 12A): an audiogram's date as 民國 [ ] 年 [ ] 月 [ ] 日,
      each box as wide as its digits; with larger text the pieces wrap rather than shrink. */
   .date-parts {
