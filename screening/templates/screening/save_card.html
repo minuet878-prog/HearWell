@@ -1,7 +1,7 @@
 {# A guest result's 保存卡 (spec #492, the #493 mockup's B1, C1, D1): in the 照顧旅程 card's place and look, what saving brings at this level, then 註冊保存 and 登入保存, which come back to the save page from the card. The days left are filled in by guest-results.js, which alone knows when the result was finished. #}
 {% url 'guest_save' as save_url %}
 {% with next=save_url|add:"?from=card"|urlencode:"" %}
-<div class="result-next">
+<div class="result-next" data-guest-save-card>
     {# The 2026-11-14 walkthrough (mockup 3A): asked, not advised; the advice is above it. #}
     <p class="result-next-label">想留下這次結果？</p>
     <h2 class="result-next-title">註冊保存</h2>

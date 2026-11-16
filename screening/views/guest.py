@@ -19,8 +19,10 @@ def guest_result(request, code):
 
 # The save page (spec #492): after registering or logging in, and agreeing (it is not one of the
 # consent's OPEN_PAGES), guest-save.js sends every guest result in this browser to the records
-# API. From the save card (?from=card) it saves straight away; the other ways in (layout.html's
-# guest-ask.js brings them) ask first whether to keep them in this account (#497).
+# API. From the save card (?from=card) it saves straight away, but only when guest-results.js
+# remembered a press of the save card in this tab: the address alone can be typed or sent by anyone
+# (Codex cross review of #492). The other ways in (layout.html's guest-ask.js brings them) ask
+# first whether to keep them in this account (#497).
 @login_required
 @health_data_page
 def guest_save(request):

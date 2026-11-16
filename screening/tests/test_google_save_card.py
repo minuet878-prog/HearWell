@@ -106,7 +106,11 @@ class NewAccountTests(GoogleSaveTestCase):
         response = self.client.post(consent, {"agree": "", "next": SAVE_FROM_CARD})
         self.assertRedirects(response, SAVE_FROM_CARD, fetch_redirect_response=False)
         page = self.client.get(SAVE_FROM_CARD)
-        self.assertContains(page, '<h1 class="h3 mt-4">保存這次結果</h1>')
+        self.assertContains(
+            page,
+            '<h1 class="h3 mt-4" data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">'
+            "保存這次結果</h1>",
+        )
         self.assertNotContains(page, "data-asking")
         self.assertEqual(self.save_guest_result().status_code, 201)
         user = User.objects.get(username="存檔阿嬤")

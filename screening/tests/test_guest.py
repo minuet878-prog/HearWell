@@ -70,6 +70,9 @@ class WizardTests(GuestTestCase):
         self.assertContains(response, "您目前的實際年齡？")
         self.assertContains(response, 'name="age_group" value="adult"')
         self.assertContains(response, 'name="age_group" value="older"')
+        # Codex cross review of #492, acceptance 2: what a guest reads beside each.
+        self.assertContains(response, "18–64 歲")
+        self.assertContains(response, "65 歲以上")
         self.assertNotContains(response, "您最想了解什麼？")
         self.assertNotContains(response, 'name="concern"')
         # The catalogue needs an account: no way there from a guest's wizard.
@@ -198,11 +201,15 @@ class GuestScoreTests(GuestTestCase):
 
     def test_saves_nothing(self):
         submissions, answers = Submission.objects.count(), Answer.objects.count()
-        for scores, _shown, _level in self.LEVELS:
-            for questionnaire in (self.hhie_s, self.hhia_s):
-                self.assertEqual(
-                    self.guest_score(self.body(questionnaire, scores)).status_code, 200
-                )
+        # Codex cross review of #492, acceptance 7: also when the result page scores it again to
+        # show it (just_finished false), as the guest sees the result.
+        for just_finished in (True, False):
+            for scores, _shown, _level in self.LEVELS:
+                for questionnaire in (self.hhie_s, self.hhia_s):
+                    body = self.body(questionnaire, scores, just_finished=just_finished)
+                    self.assertEqual(self.guest_score(body).status_code, 200)
+        result_page = self.client.get(reverse("guest_result", args=[hhie_s.CODE]))
+        self.assertEqual(result_page.status_code, 200)
         self.assertEqual(Submission.objects.count(), submissions)
         self.assertEqual(Answer.objects.count(), answers)
 
@@ -384,7 +391,7 @@ class GuestResultPageTests(GuestTestCase):
         html = self.section([4] * 10)
         self.assertNotIn("result-since-last", html)
         # The 照顧旅程 card's place holds the save card instead (#496).
-        self.assertEqual(html.count('<div class="result-next">'), 1)
+        self.assertEqual(html.count('<div class="result-next"'), 1)
         self.assertIn('<h2 class="result-next-title">註冊保存</h2>', html)
         for name in ("share_report", "health_report", "my_hearing"):
             self.assertNotIn(f'href="{reverse(name)}', html)
