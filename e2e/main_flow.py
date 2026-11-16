@@ -67,6 +67,7 @@ from screening.tests.helpers import (
     id_token,
     line_on,
     register,
+    submission_with_answers,
 )
 
 # Playwright runs an event loop in this thread, which makes Django refuse database calls.
@@ -1390,7 +1391,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
             self.step3_retest()
             self.assert_fits_a_phone_at_double_text_size("result")
             self.page.goto(self.live_server_url)
-            expect(self.main().locator(".journey-tiles")).to_contain_text("還有")
+            expect(self.main().locator(".journey-tiles")).to_contain_text("離下次篩檢")
             self.assert_fits_a_phone_at_double_text_size("home, next date")
 
     def test_screening_tab_shows_the_catalogue_with_last_dates(self):
@@ -10288,6 +10289,19 @@ class FooterOneRowTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTe
                         # One line of words, the name not broken.
                         self.assertLess(words["height"], self.rem() * 2, name)
 
+    def test_a_visitor_has_two_links_in_one_row(self):
+        with self.saving_artifacts():
+            self.open("/privacy", (320, 844), signed_in=False)
+            footer = self.page.locator(".site-footer")
+            expect(footer.get_by_role("link", name="帳號設定")).to_have_count(0)
+            boxes = [
+                footer.get_by_role("link", name=name, exact=True).bounding_box()
+                for name in self.LINKS[:2]
+            ]
+            self.assertEqual(len({round(box["y"]) for box in boxes}), 1)
+            for box in boxes:
+                self.assertGreaterEqual(box["height"], 44)
+
     def test_a_computer_keeps_the_icon_beside_the_words(self):
         with self.saving_artifacts():
             self.open("/privacy", self.DESKTOP)
@@ -10363,6 +10377,23 @@ class AnswerHeadFirstScreenTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiv
             expect(self.main().get_by_role("group")).to_contain_text("有沒有戴助聽器")
             self.assert_head_shown()
 
+    def test_every_questionnaire_folds_its_head_after_the_first_screen(self):
+        # Six answer pages share screening.html; SADL and IOI-HA start on question 1.
+        self.sign_in(consented_user(username="answer_head_all", birth_year=1950))
+        with self.saving_artifacts():
+            for code in ("hhie-s", "hhia-s", "ssq12-tw", "ioi-ha", "sadl", "thi"):
+                with self.subTest(code=code):
+                    questionnaire = Questionnaire.objects.get(code=code)
+                    self.open(f"/questionnaire/{questionnaire.pk}")
+                    expect(self.page.locator("html.answer-loading")).to_have_count(0)
+                    title = self.main().get_by_role("heading", level=1)
+                    expect(title).to_be_visible()
+                    self.assertGreater(title.bounding_box()["height"], 10)
+                    self.main().locator(".answer-app").get_by_role("radio").first.check()
+                    self.next()
+                    expect(title).to_have_class(re.compile(r"\bvisually-hidden\b"))
+                    self.assertLessEqual(title.bounding_box()["height"], 1)
+
     def test_without_javascript_the_form_keeps_its_head(self):
         self.sign_in(consented_user(username="answer_head_nojs", birth_year=1950))
         with self.saving_artifacts():
@@ -10382,13 +10413,8 @@ class NextScreeningTileTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
     def setUp(self):
         call_command("seed_questionnaires", verbosity=0)
         self.sign_in(consented_user(username="next_tile_e2e", birth_year=1950))
-        questionnaire = Questionnaire.objects.get(code="hhie-s")
-        record = Submission.objects.create(
-            user=self.user, questionnaire=questionnaire, wearing_hearing_aid=False
-        )
-        Answer.objects.bulk_create(
-            Answer(submission=record, question=question, score=0)
-            for question in questionnaire.questions.all()
+        record = submission_with_answers(
+            self.user, "hhie-s", [0] * QUESTION_COUNT, wearing_hearing_aid=False
         )
         Submission.objects.filter(pk=record.pk).update(
             created_at=timezone.now() - timedelta(days=10)

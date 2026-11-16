@@ -5535,7 +5535,8 @@
     color: var(--color-muted);
   }
 
-  /* The score a size above the next screening's day (#453 Q13). */
+  /* 上次結果's score (#453 Q13), and since readability batch 1 the days to the next screening: a
+     size above the tile's other words. */
   .journey-tile-score {
     font-size: 2.2222rem;
     font-weight: 700;
@@ -5560,9 +5561,9 @@
     line-height: 1;
   }
 
-  /* The 2026-11-14 walkthrough: on a 375 phone the tile's anywhere split 2027/05/14 as
-     2027/05/1 and 4. The day stays on one line and shrinks to the tile's width (the grey
-     tile is its container); with larger text the tiles stack, so it is back at its own size. */
+  /* 還沒排 and 已到期. The 2026-11-14 walkthrough kept the day here on one line, shrunk to the
+     tile's width (the grey tile is its container); since readability batch 1 the day is the
+     small line under the days left, and the rule stays for these words. */
   .journey-tile-date {
     margin-top: 0.4rem;
     white-space: nowrap;
@@ -6336,24 +6337,6 @@
     color: var(--color-muted);
   }
 
-  /* Readability batch 1 (the owner's A): past the first screen the head folds away, so each
-     question has only the progress above it. The title and count stay for screen readers, so the
-     page keeps its heading; the guest line goes, its link with it. */
-  .answer-head.is-past-first > :is(h1, .answer-meta) {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    padding: 0;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
-
-  .answer-head.is-past-first > .answer-guest-line {
-    display: none;
-  }
 
   /* IOI-HA's norm basis on item 1: a 提示框 (P3), the question straight after it (#362). */
   .answer-norm {

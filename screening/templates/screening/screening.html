@@ -33,8 +33,8 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
 </div>
 {% endif %}
 <div>
-    {# Readability batch 1 (the owner's A): React folds this head away past the first screen (answer-main.jsx); the title stays for screen readers. #}
-    <div id="answer-head" class="answer-head">
+    {# Readability batch 1 (the owner's A): React folds this head away past the first screen (answer-main.jsx); the title and count stay for screen readers. #}
+    <div id="answer-head">
     <h1 class="h3 mt-4">{{ questionnaire.definition.topic }}</h1>
     <p class="answer-meta">{{ questionnaire.questionnaire_name }}・共 {{ question_count }} 題・大約 {{ questionnaire.definition.minutes }} 分鐘</p>
     {% if guest %}

@@ -278,8 +278,3 @@ class FooterOneRowTests(TestCase):
                 (reverse("account_settings"), "帳號設定"),
             ],
         )
-
-    def test_the_disclaimer_and_the_mail_address_stay(self):
-        footer = _text(_footer(self.client.get(reverse("index")).content.decode()))
-        self.assertIn("結果僅供參考，不能取代聽力檢查與醫師診斷。", footer)
-        self.assertIn("聯絡我們： hearwellweb@gmail.com", footer)

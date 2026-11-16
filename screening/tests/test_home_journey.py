@@ -252,6 +252,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
         self.make(PTA_55, PTA_55)
         tiles = self.tiles(self.main())
         self.assertIn('<span class="journey-tile-label">下次篩檢</span>', tiles)
+        self.assertIn('<span class="journey-tile-date">已到期</span>', tiles)
         self.assertNotIn("離下次篩檢", tiles)
 
     def test_a_retest_due_before_step_5_says_due_with_a_text_link(self):
