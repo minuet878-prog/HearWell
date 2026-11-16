@@ -10,6 +10,7 @@
 | 選配路線與首頁建議下一步 | [拷問決定](hearing-aid-guide/route-grill-decisions.md) | [#257](https://github.com/minuet878-prog/HearWell/issues/257) |
 | 導覽 A 案（紀錄、了解分頁） | [拷問決定](navigation/grill-decisions.md) | [#268](https://github.com/minuet878-prog/HearWell/issues/268) |
 | 選配路線推進（助聽器與補助資料） | [拷問決定](hearing-aid-guide/route-progress-grill-decisions.md)、[九站拷問](hearing-aid-guide/route-steps-grill-decisions.md) | [#284](https://github.com/minuet878-prog/HearWell/issues/284)，九站改版 [#291](https://github.com/minuet878-prog/HearWell/issues/291) |
+| 補助站預設收起（沒有身障證明的人） | [拷問決定](hearing-aid-guide/subsidy-route-grill-decisions.md) | 尚未開規格 |
 | 捲動輔助（回到頂端、捲到才播、跳轉亮框、還有內容提示） | [拷問決定](scroll-helpers/grill-decisions.md) | [#338](https://github.com/minuet878-prog/HearWell/issues/338) |
 | 家人專區（溝通情境題、陪診與代辦、助聽器） | [拷問決定](family-zone/grill-decisions.md) | [#426](https://github.com/minuet878-prog/HearWell/issues/426) |
 | 互動內容與聽力圖看語言香蕉區 | [拷問決定](speech-banana/grill-decisions.md)、[來源與讀值](speech-banana/research.md) | [#436](https://github.com/minuet878-prog/HearWell/issues/436) |
