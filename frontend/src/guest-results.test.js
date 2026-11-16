@@ -601,7 +601,7 @@ describe("askToSaveGuestResults (the save page's question)", () => {
   beforeEach(() => {
     document.body.innerHTML = `
       <div id="guest-save" data-submissions-url="/api/submissions/" data-done-url="/?from=save" data-home-url="/" data-asking>
-        <h1>要把這次結果存到這個帳號嗎？</h1>
+        <h1 data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">要把這次結果存到這個帳號嗎？</h1>
         <div data-guest-ask hidden>
           <p data-guest-ask-lead></p>
           <div data-guest-ask-list></div>
@@ -684,6 +684,24 @@ describe("askToSaveGuestResults (the save page's question)", () => {
     expect(loadGuestResult("hhie-s", NOW + 120_000)).toEqual(newerResult());
   });
 
+  // Codex cross review of #492, second round, Spec 2 with two shown (the owner's call, 2026-11-16):
+  // 要 saves the one still as shown; the one done again since is not saved, and is asked about
+  // again from the home page.
+  it("要 with two shown, one done again in another tab since, saves only the one unchanged", async () => {
+    saveGuestResult(guestResult());
+    saveGuestResult(HHIA_S);
+    const fetchSave = created();
+    askToSaveGuestResults({ root, now: NOW + DAY, clock: () => NOW + DAY, fetchSave, navigate });
+    expect(tiles()).toHaveLength(2);
+    saveGuestResult(newerResult());
+    root.querySelector("[data-guest-ask-yes]").click();
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith("/?from=save"));
+    expect(fetchSave).toHaveBeenCalledTimes(1);
+    expect(fetchSave.mock.calls[0][1].headers["Idempotency-Key"]).toBe(HHIA_S.key);
+    expect(loadGuestResult("hhia-s", NOW + DAY)).toBeNull();
+    expect(loadGuestResult("hhie-s", NOW + DAY)).toEqual(newerResult());
+  });
+
   it("不要 clears only the results shown, keeping a newer one made in another tab since", () => {
     saveGuestResult(guestResult());
     askToSaveGuestResults({ root, now: NOW, fetchSave: created(), navigate });
@@ -743,7 +761,7 @@ describe("startSavePage (how the save page begins)", () => {
   beforeEach(() => {
     document.body.innerHTML = `
       <div id="guest-save" data-submissions-url="/api/submissions/" data-done-url="/?from=save" data-home-url="/" data-asking>
-        <h1>要把這次結果存到這個帳號嗎？</h1>
+        <h1 data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">要把這次結果存到這個帳號嗎？</h1>
         <div data-guest-ask hidden>
           <p data-guest-ask-lead></p>
           <div data-guest-ask-list></div>
@@ -784,11 +802,17 @@ describe("startSavePage (how the save page begins)", () => {
   });
 
   it("asks first at a ?from=card address opened without pressing the save card", () => {
+    // The page as the server draws it from the card: ready to save, its saving line shown.
     delete root.dataset.asking;
+    root.querySelector("[data-guest-title]").textContent = "保存這次結果";
+    root.querySelector("[data-guest-saving]").hidden = false;
     saveGuestResult(guestResult());
     const fetchSave = created();
     startSavePage({ root, now: NOW, fetchSave, navigate });
     expect(root.querySelector("[data-guest-ask]").hidden).toBe(false);
+    // Codex cross review of #492, second round: under the question's title, nothing said saving.
+    expect(root.querySelector("[data-guest-title]").textContent).toBe("要把這次結果存到這個帳號嗎？");
+    expect(root.querySelector("[data-guest-saving]").hidden).toBe(true);
     expect(fetchSave).not.toHaveBeenCalled();
     expect(navigate).not.toHaveBeenCalled();
   });

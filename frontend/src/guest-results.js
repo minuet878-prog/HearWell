@@ -324,6 +324,11 @@ export function askToSaveGuestResults({
   const names = JSON.parse(root.querySelector("#guest-names").textContent);
   const topics = JSON.parse(root.querySelector("#guest-topics").textContent);
   const ask = root.querySelector("[data-guest-ask]");
+  // From the card without a press remembered in this tab (Codex cross review of #492) the page
+  // came ready to save: it asks instead, under the question's own title.
+  const title = root.querySelector("[data-guest-title]");
+  title.textContent = title.dataset.askTitle;
+  root.querySelector("[data-guest-saving]").hidden = true;
   const count = results.length === 1 ? "一份" : ` ${results.length} 份`;
   root.querySelector("[data-guest-ask-lead]").textContent =
     `這支手機裡有${count}還沒保存的結果。如果是幫家人做的，請選「不要」。`;

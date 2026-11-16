@@ -14607,6 +14607,71 @@ class GuestSaveFromCardTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTes
             self.assertEqual(self.guest_results(), ["hearwell:guest-result:hhie-s"])
             self.assertFalse(Submission.objects.exists())
 
+    def log_in(self, username):
+        self.main().get_by_label("使用者名稱").fill(username)
+        self.main().get_by_label("密碼", exact=True).fill("Fake-pass-2468")
+        self.main().get_by_role("button", name="登入").click()
+
+    def test_an_address_from_the_card_typed_in_asks_first(self):
+        """Codex cross review of #492, Spec 1 (second round): ?from=card typed or sent, the save
+        card never pressed in this tab, shows the question on the real page, and 不要 works."""
+        consented_user(username="typed_card_e2e", password="Fake-pass-2468")
+        with self.saving_artifacts():
+            self.guest_answers_hhie_s()
+            self.page.goto(f"{self.live_server_url}/login?next=%2Fguest%2Fsave%3Ffrom%3Dcard")
+            self.log_in("typed_card_e2e")
+            expect(self.page).to_have_url(f"{self.live_server_url}/guest/save?from=card")
+            expect(
+                self.main().get_by_role("heading", name="要把這次結果存到這個帳號嗎？")
+            ).to_be_visible()
+            expect(self.main().get_by_text("正在保存，請稍候。")).to_be_hidden()
+            self.assertFalse(Submission.objects.exists())
+            self.main().get_by_role("button", name="不要，清掉這次結果").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/")
+            self.assertFalse(Submission.objects.exists())
+            self.assertEqual(self.guest_results(), [])
+
+    def test_logging_in_from_the_card_saves_it_to_that_account(self):
+        """#492 acceptance 23 (Codex cross review, second round): 登入保存 on the card, an account
+        there already, and the record is that account's, saved without being asked."""
+        consented_user(username="card_login_e2e", password="Fake-pass-2468")
+        with self.saving_artifacts():
+            self.guest_answers_hhie_s()
+            self.main().locator(".result-next").get_by_role("link", name="登入保存").click()
+            self.log_in("card_login_e2e")
+            expect(self.page).to_have_url(f"{self.live_server_url}/?from=save")
+            record = Submission.objects.get()
+            self.assertEqual(record.user.username, "card_login_e2e")
+            self.assertEqual(record.result.total, 12)
+            self.assertEqual(self.guest_results(), [])
+
+    def test_registering_from_the_top_asks_and_yes_saves_it_to_the_new_account(self):
+        """#492 acceptance 26 (Codex cross review, second round): registering not from the save
+        card (the tab bar's 登入, then 註冊新帳號), agreeing, the question, and only 要 makes the
+        record in the new account."""
+        with self.saving_artifacts():
+            self.guest_answers_hhie_s()
+            nav = self.page.get_by_role("navigation", name="主要導覽")
+            nav.get_by_role("link", name="登入").click()
+            self.main().get_by_role("link", name="註冊新帳號").click()
+            self.page.get_by_label("使用者名稱").fill("top_register_e2e")
+            self.page.get_by_label("電子郵件").fill("top_register_e2e@example.com")
+            self.page.get_by_label("密碼", exact=True).fill("Fake-pass-2468")
+            self.page.get_by_label("密碼確認", exact=True).fill("Fake-pass-2468")
+            self.main().get_by_role("button", name="註冊").click()
+            self.main().get_by_role("button", name="我同意，開始篩檢", exact=True).click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/guest/save")
+            expect(
+                self.main().get_by_role("heading", name="要把這次結果存到這個帳號嗎？")
+            ).to_be_visible()
+            self.assertFalse(Submission.objects.exists())
+            self.main().get_by_role("button", name="要，存進這個帳號").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/?from=save")
+            record = Submission.objects.get()
+            self.assertEqual(record.user.username, "top_register_e2e")
+            self.assertEqual(record.result.total, 12)
+            self.assertEqual(self.guest_results(), [])
+
 
 class GuestClearTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """#498 (#492 acceptance 34, the third route): a guest finishes HHIE-S, clears the result and
