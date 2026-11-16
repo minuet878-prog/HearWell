@@ -181,7 +181,7 @@ class RouteStop:
     action: tuple[str, str] | None = None  # the 目前這一站's button
     notes: tuple[str, ...] = ()  # dated (#288) or fixed (#294) wordings under the title
     answer: str = ""  # the user's answer in short (#293)
-    answer_links: tuple[tuple[str, str], ...] = ()  # (wording, url) under the answer (#597)
+    answer_link: tuple[str, str] | None = None  # (wording, url) under the answer (#597)
     questions: tuple = ()  # the stop's question forms shown open (#293, #294)
     editable: bool = False  # 修改 opens questions answered but not shown (#294)
     gap: str = ""  # said on the line on to the next stop (#296)
@@ -329,6 +329,7 @@ def _route_stop(state, user, slug, title, url, edit=None, question=None):
     marks, links, action, tested_on = [], [], None, None
     notes = list(ROUTE_REMINDERS.get(slug, ())) if state.subsidy_shown else []
     form_9 = reverse("guide_chapter", args=["form-9"])
+    without_certificate = ("看沒有身障證明時", f"{form_9}#without-certificate")
     if slug == AUDIOGRAM and state.insufficient:
         # Never 已完成 (grill Q9): the title and a link go to editing it instead.
         url = reverse("audiogram_edit", args=[state.audiogram.pk])
@@ -365,12 +366,11 @@ def _route_stop(state, user, slug, title, url, edit=None, question=None):
         and state.threshold["status"] == "not_reached"
     ):
         marks.append("估算未達門檻")
-        links.append(("看沒有身障證明時", f"{form_9}#without-certificate"))
+        links.append(without_certificate)
     # #597 (spec #593 acceptance 21, the #595 mockup): 沒有 always leads on to the help there is
     # without a certificate, under the answer, whatever the estimate.
-    answer_links = ()
-    if slug == "assessment" and subsidy_declined(state.aid):
-        answer_links = (("看沒有身障證明時", f"{form_9}#without-certificate"),)
+    declined = slug == "assessment" and subsidy_declined(state.aid)
+    answer_link = without_certificate if declined else None
     if slug == "form-9" and state.reapply_on:
         notes.append(f"{state.reapply_on:%Y/%m/%d} 起可以再申請補助")  # #284 acceptance 17
     if slug == "form-9" and state.wearing:
@@ -411,7 +411,7 @@ def _route_stop(state, user, slug, title, url, edit=None, question=None):
         action=action,
         notes=tuple(notes),
         answer=answer,
-        answer_links=answer_links,
+        answer_link=answer_link,
         questions=shown,
         editable=editable,
         gap=gap,

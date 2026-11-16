@@ -238,6 +238,8 @@ class RouteQuestionTests(TestCase):
         self.assertEqual(self.marks("assessment"), ["您在這裡", "估算未達門檻"])
         self.answer("applying")
         self.assertEqual(self.marks("assessment"), ["您在這裡", "估算未達門檻"])
+        # #597 (spec #593 acceptance 23): still unfinished, so still led on to the help.
+        self.assertIn("看沒有身障證明時", self.stop("assessment"))
         self.answer("yes")
         self.assertEqual(self.marks("assessment"), ["已完成"])
         self.assertNotIn("看沒有身障證明時", self.stop("assessment"))
@@ -255,6 +257,9 @@ class RouteQuestionTests(TestCase):
                 assessment = self.stop("assessment")
                 self.assertEqual(self.marks("assessment"), ["已完成"])
                 self.assertEqual(assessment.count(self.WITHOUT), 1)
+                # Under the answer, as the #595 mockup has it.
+                answer = assessment.index('<p class="route-answer">沒有身障證明')
+                self.assertGreater(assessment.index(self.WITHOUT), answer)
 
 
 class ChapterQuestionTests(TestCase):
@@ -275,6 +280,7 @@ class ChapterQuestionTests(TestCase):
         card = content[content.index('<section id="stop-question"') : content.index("<footer")]
         self.assertIn(f"{CARD_TITLE}看完了嗎？</h2>", card)
         self.assertIn(QUESTION, card)
+        self.assertIn("第二類 b230、s260，或舊制 02", card)  # #597: the help unchanged
         self.assertIn(f'<input type="hidden" name="next" value="{CHAPTER_CARD}">', card)
         self.assertEqual(buttons(card), offered())
         self.assertIn("答了之後，選配路線會往下一站走。", test_guide.text_of(response))
@@ -431,6 +437,13 @@ class ViewedStaysDoneTests(TestCase):
         self.assertEqual(self.marks("types-and-prices"), ["已完成"])
 
 
+def migrate_to(targets):
+    """The models as they stood at targets, the test database migrated there."""
+    executor = MigrationExecutor(connection)
+    executor.migrate(list(targets))
+    return executor.loader.project_state(list(targets)).apps
+
+
 class CertificateRewordMigrationTests(TransactionTestCase):
     """#597 (spec #593 acceptance 25): the certificate's answers reworded, every stored value
     kept as it was."""
@@ -438,14 +451,12 @@ class CertificateRewordMigrationTests(TransactionTestCase):
     before = (("screening", "0035_signinmethod_line"),)
     after = (("screening", "0036_certificate_answers_reworded"),)
 
-    _migrate = staticmethod(lambda targets: CertificateMigrationTests._migrate(None, targets))
-
     def tearDown(self):
         executor = MigrationExecutor(connection)
         executor.migrate(executor.loader.graph.leaf_nodes())
 
     def test_every_answer_keeps_its_value(self):
-        apps = self._migrate(self.before)
+        apps = migrate_to(self.before)
         old_user, old_aid = (
             apps.get_model("screening", "User"),
             apps.get_model("screening", "AidAndSubsidy"),
@@ -453,7 +464,7 @@ class CertificateRewordMigrationTests(TransactionTestCase):
         stored = {"has_one": "yes", "applying": "applying", "none": "no_subsidy", "blank": ""}
         for name, answer in stored.items():
             old_aid.objects.create(user=old_user.objects.create(username=name), certificate=answer)
-        new_aid = self._migrate(self.after).get_model("screening", "AidAndSubsidy")
+        new_aid = migrate_to(self.after).get_model("screening", "AidAndSubsidy")
         self.assertEqual(dict(new_aid.objects.values_list("user__username", "certificate")), stored)
 
 
