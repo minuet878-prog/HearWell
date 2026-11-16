@@ -150,16 +150,20 @@ class FamilyAdjustingTests(TestCase):
             self.client.get(self.url)
         self.assertIn('"screening_questionnaire"', queries[0]["sql"])
 
-    # Acceptance 32: 陪伴配戴助聽器 on /family, tip by tip, with nothing of this ticket's added.
-    def test_family_page_keeps_its_wording_on_wearing_hearing_aids(self):
-        content = self.client.get("/family").content.decode()
-        # #469: folded in the zone's list, its row's title the section's name.
-        start = content.index('<details id="aid-title"')
-        section = content[start : content.index("</details>", start)]
-        self.assertIn(">陪伴配戴助聽器</span>", section)
-        self.assertEqual(test_family_guide.tips(section), test_family_guide.TIPS["aid-title"])
-        self.assertEqual(section.count("<li>"), len(test_family_guide.TIPS["aid-title"]))
-        self.assertNotIn(YOU_CAN_DO, content)
+    # Acceptance 32: 陪伴配戴助聽器 tip by tip, with nothing of this ticket's added to it.
+    # Readability batch 2 moved it from /family into this section, after the stages' choices.
+    def test_wearing_hearing_aids_tips_keep_their_wording(self):
+        section = self._section()
+        start = section.index('<details id="aid-title"')
+        fold = section[start : section.index("</details>", start)]
+        self.assertIn(">陪伴配戴助聽器</span>", fold)
+        self.assertEqual(test_family_guide.tips(fold), test_family_guide.TIPS["aid-title"])
+        self.assertEqual(fold.count("<li>"), len(test_family_guide.TIPS["aid-title"]))
+        self.assertNotIn(YOU_CAN_DO, fold)
+        # After the stages' choices, before the survey's line.
+        self.assertLess(section.index("</fieldset>"), start)
+        self.assertLess(start, section.index("配戴效果問卷"))
+        self.assertNotIn('id="aid-title"', self.client.get("/family").content.decode())
 
     # The owner, 2026-11-06: an ear that hurts is not one for adjusting first.
     def test_not_wanting_to_wear_them_says_when_to_see_a_doctor(self):

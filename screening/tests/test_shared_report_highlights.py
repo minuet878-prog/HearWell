@@ -196,15 +196,17 @@ class SharedReportHighlightsTests(TestCase):
             links,
             [
                 ("/family/talk", "怎麼跟聽損的家人說話"),
-                ("/family#aid-title", "陪伴配戴助聽器"),
+                ("/family/hearing-aids#aid-title", "陪伴配戴助聽器"),
                 ("/family#urgent-title", "什麼時候要馬上就醫"),
             ],
         )
-        # #469: 怎麼跟聽損的家人說話 has a page of its own; 陪伴配戴助聽器 folds in the zone's list.
+        # #469: 怎麼跟聽損的家人說話 has a page of its own; readability batch 2: 陪伴配戴助聽器
+        # folds on the hearing aids page.
         talk = self.client.get(reverse("family_talk")).content.decode()
         self.assertRegex(talk, r"<h1[^>]*>怎麼跟聽損的家人說話</h1>")
+        aids = self.client.get(reverse("family_hearing_aids")).content.decode()
+        self.assertRegex(aids, r'(?s)<details id="aid-title"[^>]*>.*?>陪伴配戴助聽器</span>')
         guide = self.client.get(reverse("family_guide")).content.decode()
-        self.assertRegex(guide, r'(?s)<details id="aid-title"[^>]*>.*?>陪伴配戴助聽器</span>')
         # #240 put a decorative icon before the title.
         self.assertRegex(
             guide,

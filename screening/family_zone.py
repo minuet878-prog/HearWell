@@ -456,7 +456,8 @@ HEARING_AID_PROBLEMS = PickExplain(
 )
 
 # Drafts for the owner's review (#434, batch-3-wording.md section 2). What /family/reluctant covers
-# is linked, not written again; /family's 陪伴配戴助聽器 stays as reviewed.
+# is linked, not written again; 陪伴配戴助聽器 (on this page since readability batch 2) stays as
+# reviewed.
 _YOU_CAN_DO = "您可以做的事"
 HEARING_AID_STAGES = PickExplain(
     code="hearing-aid-stage",
@@ -800,6 +801,16 @@ HEARING_AID_SOURCES = (
         "Hampshire Hospitals：Hearing Aid Troubleshooting Guide（沒有標日期）",
         "https://www.hampshirehospitals.nhs.uk/our-services/az-departments-and-specialties/"
         "audiology-1/adult-services/hearing-aid-troubleshooting-guide",
+    ),
+    # 陪伴配戴助聽器's two, worded as reviewed on 2026-10-17 (spec appendix A), moved here with its
+    # tips from the zone's home page in readability batch 2.
+    (
+        "美國聽語學會（ASHA）〈Hearing Aids for Adults〉",
+        "https://www.asha.org/practice-portal/professional-issues/hearing-aids-for-adults/",
+    ),
+    (
+        "美國國家耳聾及其他溝通障礙研究院（NIDCD）〈Hearing Aids〉",
+        "https://www.nidcd.nih.gov/sites/default/files/hearing-aids.pdf",
     ),
     # 怎麼戴上、拿下 (#504), the four the owner reviewed in wear-wording.md.
     (

@@ -613,7 +613,8 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
 
     def test_family_guide_marks_the_urgent_one(self):
         """#240: the urgent topic and 119 stand out. #469 (the #468 mockup A): the list has no
-        jump links left; 怎麼跟他說話 is a page of its own and 陪伴配戴助聽器 folds in its row."""
+        jump links left; 怎麼跟他說話 is a page of its own. Readability batch 2: every row opens a
+        page, the urgent box set apart from them."""
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/family")
             entries = self.page.get_by_role("navigation", name="專區內容")
@@ -622,14 +623,14 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             for link in entries.get_by_role("link").all():
                 self.assertNotIn("#", link.get_attribute("href"))
             urgent = self.main().locator("section", has=self.page.locator("#urgent-title"))
-            calm = self.main().locator("#aid-title")
+            calm = entries.get_by_role("link").first
 
             def style(locator, prop):
                 return locator.evaluate(f"el => getComputedStyle(el).{prop}")
 
             self.assertNotEqual(style(urgent, "backgroundColor"), style(calm, "backgroundColor"))
             title = urgent.locator("#urgent-title")
-            calm_title = calm.get_by_text("陪伴配戴助聽器", exact=True)
+            calm_title = calm.locator(".link-card-title")
             self.assertNotEqual(style(title, "color"), style(calm_title, "color"))
             number = urgent.get_by_text("119", exact=True)
             body = urgent.get_by_text("如果同時出現", exact=False)
@@ -4170,12 +4171,13 @@ class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
                 '[aria-current="page"]'
             )
             expect(current).to_have_text("了解")
-            # #469: rows to other pages (#487: the hearing loss simulator first, so five), then
-            # 陪伴配戴助聽器's fold row.
+            # #469: rows to other pages (#487: the hearing loss simulator first, so five);
+            # readability batch 2 moved 陪伴配戴助聽器's fold row to the hearing aids page.
             zone = self.main().get_by_role("navigation", name="專區內容")
             entries = zone.get_by_role("link")
             expect(entries).to_have_count(5)
-            for entry in [*entries.all(), zone.locator("summary")]:
+            expect(zone.locator("summary")).to_have_count(0)
+            for entry in entries.all():
                 with self.subTest(entry=entry.inner_text()):
                     self.assertGreaterEqual(entry.bounding_box()["height"], 44)
             # The line under a title is words to read: at least the 18px body text's 1rem.
@@ -8052,14 +8054,15 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             for signed_in in (False, True):
                 with self.subTest(signed_in=signed_in):
                     # #469: the talk tips on their own page under its title, each under a
-                    # drawing; the aid tips in their fold on /family, opened.
+                    # drawing; the aid tips in their fold, opened (on the hearing aids page since
+                    # readability batch 2).
                     for path, name in (
                         ("/family/talk", "怎麼跟聽損的家人說話"),
-                        ("/family", "陪伴配戴助聽器"),
+                        ("/family/hearing-aids", "陪伴配戴助聽器"),
                     ):
                         with self.subTest(topic=name):
                             self.visit(signed_in, path)
-                            if path == "/family":
+                            if path == "/family/hearing-aids":
                                 self.main().locator("#aid-title > summary").click()
                                 tips = self.main().locator("#aid-title ul.tips")
                             else:
@@ -8079,6 +8082,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                                     # The heading colour, not link blue.
                                     self.assertEqual(self.style(point, "color"), "rgb(33, 37, 41)")
                     # #469: the sources fold into a row; 傳給家人 is a button, not a part.
+                    self.visit(signed_in, "/family")
                     fold = self.main().locator("details.family-sources")
                     fold.locator("summary").click()
                     self.assertGreater(fold.get_by_role("link").count(), 0)
@@ -8139,7 +8143,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             cards = help_block.get_by_role("link")
             self.assertEqual(
                 [card.get_attribute("href") for card in cards.all()],
-                ["/family/talk", "/family#aid-title", "/family#urgent-title"],
+                ["/family/talk", "/family/hearing-aids#aid-title", "/family#urgent-title"],
             )
             for card in cards.all():
                 with self.subTest(card=card.inner_text()):
@@ -9927,8 +9931,9 @@ class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLive
                         self.assertEqual(self.page.evaluate("document.getAnimations().length"), 0)
 
     # Acceptance 14: the family page's topics from the shared report light up whole. #469: the
-    # zone's list has no jump links left; 陪伴配戴助聽器 is a fold row that lights as one, and
-    # 怎麼跟聽損的家人說話 opens a page of its own.
+    # zone's list has no jump links left; 陪伴配戴助聽器 is a fold that lights as one (on the
+    # hearing aids page since readability batch 2), and 怎麼跟聽損的家人說話 opens a page of its
+    # own.
     def test_family_topic_lights_from_the_shared_report(self):
         share = ReportShare.objects.create(user=self.user)
         report = f"{self.live_server_url}/shared/{share.token}/report"
@@ -9937,7 +9942,7 @@ class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLive
             self.page.goto(report)
             self.sample_next_page("details#aid-title")
             self.page.get_by_role("link", name="陪伴配戴助聽器").click()
-            expect(self.page).to_have_url(re.compile(r"/family#aid-title$"))
+            expect(self.page).to_have_url(re.compile(r"/family/hearing-aids#aid-title$"))
             self.assert_lights(self.samples())
 
             self.page.goto(report)
@@ -12144,9 +12149,13 @@ class FamilyScenarioTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
     # still lands on its section.
     def test_old_links_land_on_their_sections(self):
         with self.saving_artifacts():
-            for anchor in ("aid-title", "urgent-title"):
+            # Readability batch 2: aid-title went to the hearing aids page.
+            for path, anchor in (
+                ("/family/hearing-aids", "aid-title"),
+                ("/family", "urgent-title"),
+            ):
                 with self.subTest(anchor=anchor):
-                    self.open(f"/family#{anchor}", signed_in=False)
+                    self.open(f"{path}#{anchor}", signed_in=False)
                     self.page.wait_for_function(
                         "id => Math.abs(document.getElementById(id).getBoundingClientRect().top)"
                         " < 10 && window.scrollY > 0",
@@ -14445,7 +14454,8 @@ class LearnFamilyQaT469Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
     def test_pages_fit_a_phone_at_double_text_size_with_their_folds_open(self):
         pages = (
             ("/learn", ()),
-            ("/family", ("#aid-title", "details.family-sources")),
+            ("/family", ("details.family-sources",)),
+            ("/family/hearing-aids", ("#aid-title", "details.family-sources")),
             ("/family/talk", ("details.family-sources",)),
             ("/family/visits", ("details.family-sources",)),
             ("/qa", ()),
@@ -14502,15 +14512,16 @@ class LearnFamilyQaT469Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
         with self.saving_artifacts():
             self.open(f"/shared/{share.token}/report", (390, 844), signed_in=False)
             self.main().get_by_role("link", name="陪伴配戴助聽器").click()
-            expect(self.page).to_have_url(f"{self.live_server_url}/family#aid-title")
+            expect(self.page).to_have_url(f"{self.live_server_url}/family/hearing-aids#aid-title")
             expect(aid()).to_have_attribute("open", "")
             expect(aid().get_by_text(tip)).to_be_visible()
 
-            self.open("/family", (390, 844), signed_in=False)
+            self.open("/family/hearing-aids", (390, 844), signed_in=False)
             expect(aid()).not_to_have_attribute("open", "")
             expect(aid().get_by_text(tip)).to_be_hidden()
 
-            self.open("/family", (390, 844), signed_in=False, java_script_enabled=False)
+            aids = "/family/hearing-aids"
+            self.open(aids, (390, 844), signed_in=False, java_script_enabled=False)
             expect(aid().get_by_text(tip)).to_be_visible()
 
     # The assistant's urgent answer: the whole red box is one link, big enough to tap.
