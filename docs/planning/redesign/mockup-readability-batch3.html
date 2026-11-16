@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>可讀性第 3 批設計圖</title>
+<style>
+  :root { --primary:#1f4e8c; --heading:#212529; --body:#343a40; --muted:#4a5460; --border:#ced4da; --subtle:#dee2e6; --surface:#f4f6f8; --soft:#eef3fa; --selected:#e8eef7; --mark:#f2a33a;
+          --normal:#14573c; --normal-bg:#e3f4ec; --mild:#704800; --mild-bg:#fff4d6; --severe:#8f2a12; --severe-bg:#feece7; }
+  * { box-sizing:border-box; }
+  html { font-size:18px; }
+  body { margin:0; padding:16px; font-family:"Noto Sans TC",-apple-system,"PingFang TC",sans-serif; line-height:1.5; color:var(--body); background:#e8ebf0; }
+  h1 { font-size:1.5rem; margin:0 0 .25rem; color:var(--heading); }
+  .intro, .topic { max-width:1240px; margin:0 auto 16px; }
+  .intro ul { margin:.25rem 0; padding-left:1.2rem; }
+  .intro a { color:var(--primary); font-weight:700; }
+  .topic { background:#fff; border-radius:12px; padding:16px; margin-top:28px; }
+  .topic > h2 { font-size:1.35rem; margin:0 0 .25rem; color:var(--heading); border-left:6px solid var(--primary); padding-left:.6rem; }
+  .topic > p { margin:.25rem 0 .75rem; }
+  .row { display:flex; flex-wrap:wrap; gap:24px; justify-content:center; align-items:flex-start; }
+  .col { width:377px; }
+  .col h3 { font-size:1.15rem; margin:0 0 .25rem; color:var(--heading); }
+  .col .why { margin:0 0 .5rem; min-height:7.5em; }
+  .pick { display:inline-block; background:var(--primary); color:#fff; border-radius:6px; padding:0 .5rem; font-weight:700; margin-right:.35rem; }
+  .now { background:#5f6b7a; }
+  .size { display:inline-block; background:var(--mark); color:#000; border-radius:4px; padding:0 .4rem; font-weight:700; }
+  .note { background:var(--surface); border-radius:10px; padding:.6rem .9rem; margin:.75rem 0 0; }
+  .note ul { margin:.25rem 0 0; padding-left:1.2rem; }
+  .new { outline:3px solid var(--mark); outline-offset:2px; border-radius:6px; }
+  .cap { margin:.9rem 0 .25rem; font-weight:700; color:var(--heading); }
+  .cap:first-of-type { margin-top:0; }
+
+  .phone { width:377px; border:1px solid #8a96a8; background:#fff; position:relative; overflow:hidden; }
+  .pg { padding:1.1rem 16px 1.25rem; }
+  .pg h4 { font-size:1.45rem; margin:0 0 .25rem; color:var(--heading); line-height:1.3; }
+  .pg p { margin:0 0 .75rem; }
+  .pg .meta { color:var(--muted); }
+  .hd { display:flex; align-items:center; gap:.5rem; height:73px; padding:0 16px; border-bottom:1px solid var(--subtle); color:var(--primary); font-size:1.8rem; font-weight:900; }
+  .hd i { width:40px; height:40px; border-radius:50%; background:var(--primary); display:inline-block; }
+  .btn { min-height:3.1rem; border-radius:.78rem; display:grid; place-items:center; font-weight:700; font-size:1.11rem; background:var(--primary); color:#fff; border:2px solid var(--primary); margin-bottom:.5rem; }
+  .btn.o { background:#fff; color:var(--primary); }
+  .more { color:var(--heading); font-weight:700; border-top:1px solid var(--subtle); border-bottom:1px solid var(--subtle); padding:.8rem 0; display:flex; justify-content:space-between; margin:0 !important; }
+  .mark { border-top:3px dashed var(--mark); margin:0 -16px .6rem; }
+
+  /* 密碼 */
+  .lab { display:flex; justify-content:space-between; align-items:center; margin:0 0 .25rem !important; color:var(--heading); }
+  .show { border:2px solid var(--primary); color:var(--primary); border-radius:.78rem; padding:.3rem .9rem; font-weight:700; }
+  .inp { display:flex; align-items:center; gap:.6rem; min-height:3.2rem; border:2px solid #6b7684; border-radius:.75rem; padding:0 .9rem; margin:0 0 .5rem !important; letter-spacing:.15em; }
+  .inp i { width:2px; height:1.3rem; background:var(--heading); }
+  .tipbox { padding:.875rem 1rem; border-radius:.75rem; background:var(--surface); color:var(--heading); }
+  .tipbox ul { margin:.25rem 0 0; padding-left:1.4rem; }
+  .tipbox ul.checks { list-style:none; padding:0; }
+  .checks li { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; padding:.15rem 0; }
+  .circ { flex:none; width:1.5rem; height:1.5rem; border-radius:50%; border:2px solid #6b7684; display:grid; place-items:center; font-weight:900; font-size:1rem; line-height:1; }
+  .checks .ok { color:var(--normal); font-weight:700; }
+  .checks .ok .circ { background:var(--normal); border-color:var(--normal); color:#fff; }
+  .circ.dash { border-style:dashed; color:var(--muted); }
+  .checks small { font-size:1rem; color:var(--muted); } .checks .txt { flex:1; min-width:0; } .checks li { flex-wrap:nowrap; align-items:flex-start; }
+  .count { margin:0 0 .5rem !important; font-weight:700; color:var(--heading); }
+  .count.good { color:var(--normal); }
+
+  /* 結果框 */
+  .banner { padding:1rem 1.25rem; border-radius:.75rem; background:var(--mild-bg); color:var(--heading); margin:0 0 1rem; }
+  .banner .num { font-size:2.6rem; font-weight:900; color:var(--mild); line-height:1; }
+  .banner .lvl { font-size:1.35rem; font-weight:700; color:var(--mild); }
+  .banner .prev { border-top:1px solid rgba(112,72,0,.35); margin-top:.6rem; padding-top:.6rem; }
+  .sbar { position:relative; margin:1rem 0 .5rem; }
+  .sbar .track { position:relative; }
+  .sbar .segs { display:flex; height:.75rem; border-radius:.25rem; overflow:hidden; }
+  .sbar .segs i { display:block; }
+  .sbar .n { background:var(--normal-bg); box-shadow:inset 0 -.25rem 0 var(--normal); }
+  .sbar .m { background:var(--mild-bg); box-shadow:inset 0 -.25rem 0 var(--mild); }
+  .sbar .s { background:var(--severe-bg); box-shadow:inset 0 -.25rem 0 var(--severe); }
+  .sbar b { position:absolute; top:-.25rem; width:.25rem; height:1.25rem; background:var(--heading); border-radius:.25rem; transform:translateX(-30%); }
+  .sbar .cur { position:relative; height:1.5rem; margin-top:.25rem; }
+  .sbar .cur span { position:absolute; left:30%; transform:translateX(-30%); white-space:nowrap; }
+  .sbar .ends { display:flex; justify-content:space-between; }
+  .sbar.inbox { background:#fff; border-radius:.5rem; padding:.75rem .75rem .25rem; margin:.6rem 0 0; }
+  .next { background:var(--soft); border-radius:1.2rem; padding:1rem 1.1rem .6rem; margin:0 0 1rem; display:flex; flex-direction:column; gap:.2rem; }
+  .next span { color:var(--primary); font-weight:700; } .next b { color:var(--heading); font-size:1.15rem; } .next .btn { margin-top:.5rem; }
+
+  /* 同意書 */
+  .step { margin:0 0 .3rem !important; color:var(--heading); }
+  .bar { display:flex; gap:.25rem; margin-bottom:.75rem; } .bar span { flex:1; height:.5rem; border-radius:99px; background:var(--primary); }
+  .pg h5 { font-size:1.25rem; margin:.25rem 0 .4rem; color:var(--heading); }
+  .pg h6 { font-size:1.08rem; margin:.9rem 0 .2rem; color:var(--primary); }
+  .pg ul { margin:0 0 .75rem; padding-left:1.4rem; }
+  .pg li { margin-bottom:.25rem; }
+  .link { color:var(--primary); font-weight:700; text-decoration:underline; }
+  .fold { display:flex; justify-content:space-between; border:2px solid #6b7684; border-radius:.75rem; padding:.6rem .9rem; font-weight:700; color:var(--primary); margin:0 0 .75rem; }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1>可讀性第 3 批設計圖</h1>
+  <p>三件事各自選：<a href="#password">一、註冊頁的密碼規則</a>　<a href="#result">二、結果頁的分數色帶</a>　<a href="#consent">三、同意書重點</a></p>
+  <ul>
+    <li>每個手機框寬 375px，字級、顏色、間距照現在的網站。灰底標籤「現在」是目前的樣子，藍底英文字母是可以選的做法；橘框是新增或搬過來的地方。</li>
+    <li><strong>2026-11-16 本人選定：密碼規則 B、分數色帶 A、同意書 A。</strong></li>
+    <li><strong>原本排在這一批的「換題時題目淡入」不用畫：已經有了</strong>（#326 C4，換題時題目用 0.35 秒淡入）。我第一次檢查時漏看，檢查文件已經更正。</li>
+    <li><strong>「結果頁加色帶」也跟我原本說的不同</strong>：色帶早就有了，只是收在「看完整說明」裡。所以這裡畫的是「要不要搬出來」。</li>
+  </ul>
+</div>
+
+<section class="topic" id="password">
+  <h2>一、註冊頁：密碼規則</h2>
+  <p>重設密碼頁用同一塊規則，會一起改。每一欄由上到下是：還沒打、打了 5 個字、打了 8 個字。</p>
+  <div class="row">
+    <div class="col">
+      <h3><span class="pick now">現在</span>四條規則固定列著</h3>
+      <p class="why">打字時這一塊不會變，要自己數有沒有 8 個字。不合規則要按「註冊」送出後才知道。</p>
+      <p class="cap">還沒打</p><div class="phone"><div class="pg"><p class="lab"><b>密碼</b><span class="show">顯示</span></p><p class="inp"><span class="lock">🔒</span><span></span></p><div class="tipbox">設定密碼時，請您注意：<ul><li>至少 8 個字</li><li>不要全部是數字</li><li>不要跟您的使用者名稱太像</li><li>不要用太常見的密碼</li></ul></div></div></div>
+      <p class="cap">打了 5 個字</p><div class="phone"><div class="pg"><p class="lab"><b>密碼</b><span class="show">顯示</span></p><p class="inp"><span class="lock">🔒</span><span>●●●●●</span><i></i></p><div class="tipbox">設定密碼時，請您注意：<ul><li>至少 8 個字</li><li>不要全部是數字</li><li>不要跟您的使用者名稱太像</li><li>不要用太常見的密碼</li></ul></div></div></div>
+      <p class="cap">打了 8 個字</p><div class="phone"><div class="pg"><p class="lab"><b>密碼</b><span class="show">顯示</span></p><p class="inp"><span class="lock">🔒</span><span>●●●●●●●●</span><i></i></p><div class="tipbox">設定密碼時，請您注意：<ul><li>至少 8 個字</li><li>不要全部是數字</li><li>不要跟您的使用者名稱太像</li><li>不要用太常見的密碼</li></ul></div></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">A</span>前兩條邊打邊打勾</h3>
+      <p class="why">「至少 8 個字」「不要全部是數字」符合了就變綠勾。後兩條瀏覽器判斷不準，標「送出後檢查」。代價：看到兩個綠勾可能以為一定會過，送出後還是可能被後兩條擋下。</p>
+      <p class="cap">還沒打</p><div class="phone"><div class="pg"><p class="lab"><b>密碼</b><span class="show">顯示</span></p><p class="inp"><span class="lock">🔒</span><span></span></p><div class="tipbox">設定密碼時，請您注意：<ul class="checks"><li class="todo"><span class="circ"></span>至少 8 個字</li><li class="todo"><span class="circ"></span>不要全部是數字</li><li class="later"><span class="circ dash">–</span><span class="txt">不要跟您的使用者名稱太像<small>（送出後檢查）</small></span></li><li class="later"><span class="circ dash">–</span><span class="txt">不要用太常見的密碼<small>（送出後檢查）</small></span></li></ul></div></div></div>
+      <p class="cap">打了 5 個字</p><div class="phone"><div class="pg"><p class="lab"><b>密碼</b><span class="show">顯示</span></p><p class="inp"><span class="lock">🔒</span><span>●●●●●</span><i></i></p><div class="tipbox">設定密碼時，請您注意：<ul class="checks"><li class="todo"><span class="circ"></span>至少 8 個字</li><li class="ok"><span class="circ">✓</span>不要全部是數字</li><li class="later"><span class="circ dash">–</span><span class="txt">不要跟您的使用者名稱太像<small>（送出後檢查）</small></span></li><li class="later"><span class="circ dash">–</span><span class="txt">不要用太常見的密碼<small>（送出後檢查）</small></span></li></ul></div></div></div>
+      <p class="cap">打了 8 個字</p><div class="phone"><div class="pg"><p class="lab"><b>密碼</b><span class="show">顯示</span></p><p class="inp"><span class="lock">🔒</span><span>●●●●●●●●</span><i></i></p><div class="tipbox">設定密碼時，請您注意：<ul class="checks"><li class="ok"><span class="circ">✓</span>至少 8 個字</li><li class="ok"><span class="circ">✓</span>不要全部是數字</li><li class="later"><span class="circ dash">–</span><span class="txt">不要跟您的使用者名稱太像<small>（送出後檢查）</small></span></li><li class="later"><span class="circ dash">–</span><span class="txt">不要用太常見的密碼<small>（送出後檢查）</small></span></li></ul></div></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">B</span>只數字數</h3>
+      <p class="why">規則照舊，只在上面多一行「已經輸入幾個字」。最容易卡住的就是字數；不打勾，就不會讓人以為一定會過。</p>
+      <p class="cap">還沒打</p><div class="phone"><div class="pg"><p class="lab"><b>密碼</b><span class="show">顯示</span></p><p class="inp"><span class="lock">🔒</span><span></span></p><div class="tipbox">設定密碼時，請您注意：<ul><li>至少 8 個字</li><li>不要全部是數字</li><li>不要跟您的使用者名稱太像</li><li>不要用太常見的密碼</li></ul></div></div></div>
+      <p class="cap">打了 5 個字</p><div class="phone"><div class="pg"><p class="lab"><b>密碼</b><span class="show">顯示</span></p><p class="inp"><span class="lock">🔒</span><span>●●●●●</span><i></i></p><div class="new"><p class="count">已經輸入 5 個字，還差 3 個</p></div><div class="tipbox">設定密碼時，請您注意：<ul><li>至少 8 個字</li><li>不要全部是數字</li><li>不要跟您的使用者名稱太像</li><li>不要用太常見的密碼</li></ul></div></div></div>
+      <p class="cap">打了 8 個字</p><div class="phone"><div class="pg"><p class="lab"><b>密碼</b><span class="show">顯示</span></p><p class="inp"><span class="lock">🔒</span><span>●●●●●●●●</span><i></i></p><div class="new"><p class="count good">✓ 已經輸入 8 個字</p></div><div class="tipbox">設定密碼時，請您注意：<ul><li>至少 8 個字</li><li>不要全部是數字</li><li>不要跟您的使用者名稱太像</li><li>不要用太常見的密碼</li></ul></div></div></div>
+    </div>
+  </div>
+  <div class="note">
+    <strong>要先知道的：</strong>
+    <ul>
+      <li>#332 驗收時定過「密碼欄本身不打勾，只有伺服器能說夠不夠好」。A 不是在欄位裡打勾，但精神上接近那條規定的反面，選 A 等於放寬它。</li>
+      <li>「不要跟使用者名稱太像」「不要用太常見的密碼」是伺服器用比對和兩萬筆清單判斷的，瀏覽器做不到一樣準。</li>
+      <li>A、B 都會把變化唸給螢幕閱讀器聽；沒有 JavaScript 時就是現在的樣子。</li>
+    </ul>
+    <strong>我的建議：B。</strong>解決最常見的卡點（字數），又不違反 #332 的決定。
+  </div>
+</section>
+
+<section class="topic" id="result">
+  <h2>二、結果頁：分數色帶放哪裡</h2>
+  <p>色帶畫出 0 到滿分、三個分級各佔多寬、這次分數落在哪。現在收在「看完整說明」裡，不點開看不到。畫的是 HHIE-S 12 分；有分級的問卷（HHIE-S、HHIA-S、THI）都一樣。橘色虛線是「建議您下一步」開始的位置。</p>
+  <div class="row">
+    <div class="col">
+      <h3><span class="pick now">現在</span>色帶在摺疊裡</h3>
+      <p class="why">結果框只有數字和分級名稱。色帶要點開「看完整說明」才看得到。<br><span class="size">建議下一步離頂端約 535px</span></p>
+      <div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg"><h4>聽力對生活的影響</h4><p class="meta">HHIE-S・2026/09/11 作答・沒戴助聽器</p><div class="banner"><div>總分 <span class="num">12</span> 分（滿分 40）</div><div class="lvl">輕度到中度影響</div><div class="prev">上次 2026/09/01 是 0 分，這次多 12 分<br>分級從「無／極輕微影響」變成「輕度到中度影響」</div></div><p>聽力問題已經慢慢影響您的社交活動與情緒，例如與家人因聽不清楚而起爭執、在吵雜場合感到窘迫而退縮。</p><div class="mark" id="r-now"></div><div class="next"><span>建議您下一步</span><b>記錄聽力圖</b><div class="btn">記錄醫院的聽力圖</div></div><p class="more"><span>ⓘ　看完整說明</span><span>⌄</span></p></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">A</span>色帶放進結果框</h3>
+      <p class="why">分級名稱下面直接是色帶，白底襯著。色帶下面那行分級名稱拿掉（上面已經有大字）。<br><span class="size">約 605px，下移 70px</span></p>
+      <div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg"><h4>聽力對生活的影響</h4><p class="meta">HHIE-S・2026/09/11 作答・沒戴助聽器</p><div class="banner"><div>總分 <span class="num">12</span> 分（滿分 40）</div><div class="lvl">輕度到中度影響</div><div class="new"><div class="sbar inbox"><div class="track"><div class="segs"><i class="n" style="width:20%"></i><i class="m" style="width:40%"></i><i class="s" style="width:40%"></i></div><b style="left:30%"></b></div><div class="ends"><span>0</span><span>40</span></div></div></div><div class="prev">上次 2026/09/01 是 0 分，這次多 12 分<br>分級從「無／極輕微影響」變成「輕度到中度影響」</div></div><p>聽力問題已經慢慢影響您的社交活動與情緒，例如與家人因聽不清楚而起爭執、在吵雜場合感到窘迫而退縮。</p><div class="mark" id="r-a"></div><div class="next"><span>建議您下一步</span><b>記錄聽力圖</b><div class="btn">記錄醫院的聽力圖</div></div><p class="more"><span>ⓘ　看完整說明</span><span>⌄</span></p></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">B</span>色帶放在結果框下面</h3>
+      <p class="why">色帶原樣搬到框的正下方，連下面那行分級名稱一起。不用改色帶本身。<br><span class="size">約 615px，下移 80px</span></p>
+      <div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg"><h4>聽力對生活的影響</h4><p class="meta">HHIE-S・2026/09/11 作答・沒戴助聽器</p><div class="banner"><div>總分 <span class="num">12</span> 分（滿分 40）</div><div class="lvl">輕度到中度影響</div><div class="prev">上次 2026/09/01 是 0 分，這次多 12 分<br>分級從「無／極輕微影響」變成「輕度到中度影響」</div></div><div class="new"><div class="sbar "><div class="track"><div class="segs"><i class="n" style="width:20%"></i><i class="m" style="width:40%"></i><i class="s" style="width:40%"></i></div><b style="left:30%"></b></div><div class="cur"><span>輕度到中度影響</span></div><div class="ends"><span>0</span><span>40</span></div></div></div><p>聽力問題已經慢慢影響您的社交活動與情緒，例如與家人因聽不清楚而起爭執、在吵雜場合感到窘迫而退縮。</p><div class="mark" id="r-b"></div><div class="next"><span>建議您下一步</span><b>記錄聽力圖</b><div class="btn">記錄醫院的聽力圖</div></div><p class="more"><span>ⓘ　看完整說明</span><span>⌄</span></p></div></div>
+    </div>
+  </div>
+  <div class="note">
+    <strong>A、B 都一樣的：</strong>
+    <ul>
+      <li>色帶從「看完整說明」搬出來，不會出現兩次。色帶不動畫（ADR 0006）。</li>
+      <li>色帶是給眼睛看的輔助，螢幕閱讀器照舊唸分數和分級文字。</li>
+      <li>門檻、分級、顏色都不動，只搬位置。「無法判讀」的結果本來就沒有色帶。</li>
+      <li>這是「文字多的頁面整理」時收進摺疊的，搬出來等於改掉當時的決定。</li>
+    </ul>
+    <strong>我的建議：A。</strong>12 分算高還是低，看一眼位置就知道；首頁的儀表和我的紀錄的趨勢圖都看得到分級色帶，結果頁反而要點開，不一致。
+  </div>
+</section>
+
+<section class="topic" id="consent">
+  <h2>三、同意書：八條重點</h2>
+  <p>每加一個功能就多一條，現在八條同一層。字句一個字都不改，只分組。同一份重點也出現在隱私權說明最上面，會一起變。橘色虛線是「我同意」按鈕的位置。</p>
+  <div class="row">
+    <div class="col">
+      <h3><span class="pick now">現在</span>八條並列</h3>
+      <p class="why">八條一樣的層級，要從頭讀到尾才知道各在講什麼。<br><span class="size">按鈕離頂端約 865px</span></p>
+      <div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg" data-consent="c-now"><h4>開始使用之前</h4><p class="step"><b>第 2 步／共 2 步：同意隱私權</b></p><div class="bar"><span></span><span></span></div><p>聽伴會保存您的篩檢作答、分數和聽力圖，這些是健康資料，需要您同意才能使用。</p><h5>重點</h5><ul><li>只用來算分數、給建議、保存您的紀錄，不拿去賣或做廣告。</li><li>照顧旅程的待辦打勾也會保存，跟其他紀錄一樣可以下載或刪除。</li><li>忘記密碼時，才會寄重設密碼信到您的信箱；寄信服務 Resend 在美國，信保存 30 天。</li><li>用 LINE 登入時，只拿 LINE 給您的代號，不拿名稱、大頭貼、email 和好友名單。</li><li>用 Google 登入時，只拿 Google 給您的代號和 email，不拿名稱、大頭貼。</li><li>資料存在網站主機和資料庫；網站出錯時送去錯誤監控的內容，不包含您的名稱、作答或分數。</li><li>您可以隨時要求查詢、更正或刪除您的資料。</li><li>結果只是參考，不是醫療診斷。</li></ul><p class="link">閱讀完整的隱私權說明</p><div class="mark" data-agree></div><div class="btn">我同意，開始篩檢</div><div class="btn o">不同意</div></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">A</span>分三組，全部看得到</h3>
+      <p class="why">加三個小標，每組兩三條。全部還是直接看得到，只是有了段落。多三行小標。<br><span class="size">約 1000px</span></p>
+      <div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg" data-consent="c-a"><h4>開始使用之前</h4><p class="step"><b>第 2 步／共 2 步：同意隱私權</b></p><div class="bar"><span></span><span></span></div><p>聽伴會保存您的篩檢作答、分數和聽力圖，這些是健康資料，需要您同意才能使用。</p><h5>重點</h5>
+        <h6 class="new">用來做什麼</h6><ul><li>只用來算分數、給建議、保存您的紀錄，不拿去賣或做廣告。</li><li>照顧旅程的待辦打勾也會保存，跟其他紀錄一樣可以下載或刪除。</li><li>結果只是參考，不是醫療診斷。</li></ul>
+        <h6 class="new">登入和寄信時</h6><ul><li>忘記密碼時，才會寄重設密碼信到您的信箱；寄信服務 Resend 在美國，信保存 30 天。</li><li>用 LINE 登入時，只拿 LINE 給您的代號，不拿名稱、大頭貼、email 和好友名單。</li><li>用 Google 登入時，只拿 Google 給您的代號和 email，不拿名稱、大頭貼。</li></ul>
+        <h6 class="new">存在哪裡、您的權利</h6><ul><li>資料存在網站主機和資料庫；網站出錯時送去錯誤監控的內容，不包含您的名稱、作答或分數。</li><li>您可以隨時要求查詢、更正或刪除您的資料。</li></ul>
+        <p class="link">閱讀完整的隱私權說明</p><div class="mark" data-agree></div><div class="btn">我同意，開始篩檢</div><div class="btn o">不同意</div></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">B</span>分三組，登入和寄信那組收起來</h3>
+      <p class="why">LINE、Google、重設密碼信那三條只跟用到的人有關，收進一個下拉框。按鈕上移最多。代價：同意前沒點開的人沒讀到那三條。<br><span class="size">約 790px</span></p>
+      <div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg" data-consent="c-b"><h4>開始使用之前</h4><p class="step"><b>第 2 步／共 2 步：同意隱私權</b></p><div class="bar"><span></span><span></span></div><p>聽伴會保存您的篩檢作答、分數和聽力圖，這些是健康資料，需要您同意才能使用。</p><h5>重點</h5>
+        <h6 class="new">用來做什麼</h6><ul><li>只用來算分數、給建議、保存您的紀錄，不拿去賣或做廣告。</li><li>照顧旅程的待辦打勾也會保存，跟其他紀錄一樣可以下載或刪除。</li><li>結果只是參考，不是醫療診斷。</li></ul>
+        <h6 class="new">存在哪裡、您的權利</h6><ul><li>資料存在網站主機和資料庫；網站出錯時送去錯誤監控的內容，不包含您的名稱、作答或分數。</li><li>您可以隨時要求查詢、更正或刪除您的資料。</li></ul>
+        <div class="fold new"><span>用 LINE、Google 登入或忘記密碼時</span><span>⌄</span></div>
+        <p class="link">閱讀完整的隱私權說明</p><div class="mark" data-agree></div><div class="btn">我同意，開始篩檢</div><div class="btn o">不同意</div></div></div>
+    </div>
+  </div>
+  <div class="note">
+    <strong>要你判斷的：</strong>
+    <ul>
+      <li>小標「用來做什麼」「登入和寄信時」「存在哪裡、您的權利」是草稿。</li>
+      <li>只分組不改字，同意書要不要升版（升版的話所有人下次登入要再同意一次）。我的看法是不用：告知的內容沒有變。</li>
+      <li>B 把告知事項收起來：個資法要求蒐集前告知，收起來算不算告知到，我沒辦法替你判斷，要你衡量或問懂法律的人。</li>
+      <li>按鈕「我同意，開始篩檢」的字這次不動（動線走查第 5 點另外處理）。</li>
+    </ul>
+    <strong>我的建議：A。</strong>老實說 A 不會變短，還多三行；好處是分段後比較讀得下去。如果你覺得不值得為這個動同意書，維持現在也合理。
+  </div>
+</section>
+
+</body>
+</html>

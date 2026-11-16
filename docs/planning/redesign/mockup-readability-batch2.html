@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>可讀性第 2 批設計圖</title>
+<style>
+  :root { --primary:#1f4e8c; --heading:#212529; --body:#343a40; --muted:#4a5460; --border:#ced4da; --subtle:#dee2e6; --surface:#f4f6f8; --soft:#eef3fa; --selected:#e8eef7; --pull:#e7eef8; --line:#8a94a3; --mark:#f2a33a; }
+  * { box-sizing:border-box; }
+  html { font-size:18px; }
+  body { margin:0; padding:16px; font-family:"Noto Sans TC",-apple-system,"PingFang TC",sans-serif; line-height:1.5; color:var(--body); background:#e8ebf0; }
+  h1 { font-size:1.5rem; margin:0 0 .25rem; color:var(--heading); }
+  .intro, .topic { max-width:1240px; margin:0 auto 16px; }
+  .intro ul { margin:.25rem 0; padding-left:1.2rem; }
+  .intro a { color:var(--primary); font-weight:700; }
+  .topic { background:#fff; border-radius:12px; padding:16px; margin-top:28px; }
+  .topic > h2 { font-size:1.35rem; margin:0 0 .25rem; color:var(--heading); border-left:6px solid var(--primary); padding-left:.6rem; }
+  .topic > p { margin:.25rem 0 .75rem; }
+  .row { display:flex; flex-wrap:wrap; gap:24px; justify-content:center; align-items:flex-start; }
+  .col { width:377px; }
+  .col h3 { font-size:1.15rem; margin:0 0 .25rem; color:var(--heading); }
+  .col .why { margin:0 0 .5rem; min-height:7.5em; }
+  .pick { display:inline-block; background:var(--primary); color:#fff; border-radius:6px; padding:0 .5rem; font-weight:700; margin-right:.35rem; }
+  .now { background:#5f6b7a; }
+  .size { display:inline-block; background:var(--mark); color:#000; border-radius:4px; padding:0 .4rem; font-weight:700; }
+  .note { background:var(--surface); border-radius:10px; padding:.6rem .9rem; margin:.75rem 0 0; }
+  .note ul { margin:.25rem 0 0; padding-left:1.2rem; }
+  .new { outline:3px solid var(--mark); outline-offset:2px; border-radius:6px; }
+
+  .phone { width:377px; border:1px solid #8a96a8; background:#fff; position:relative; overflow:hidden; }
+  .pg { padding:1.25rem 16px 1.5rem; }
+  .pg h4 { font-size:1.45rem; margin:0 0 .5rem; color:var(--heading); line-height:1.3; }
+  .pg h5 { font-size:1.2rem; margin:1.25rem 0 .4rem; color:var(--heading); }
+  .pg p { margin:0 0 .75rem; }
+  .hd { display:flex; align-items:center; gap:.5rem; height:73px; padding:0 16px; border-bottom:1px solid var(--subtle); color:var(--primary); font-size:1.8rem; font-weight:900; }
+  .hd i { width:40px; height:40px; border-radius:50%; background:var(--primary); display:inline-block; }
+  .more { color:var(--primary); font-weight:700; border-top:1px solid var(--subtle); border-bottom:1px solid var(--subtle); padding:.6rem 0; display:flex; justify-content:space-between; margin:0 0 .5rem; }
+  .cut { text-align:center; color:#6b7684; padding:.4rem 0; background:repeating-linear-gradient(135deg,#fff 0 8px,#f1f3f6 8px 16px); border-top:1px dashed #8a96a8; }
+
+  /* 卡片列 */
+  .card { display:flex; align-items:center; gap:.75rem; padding:.8rem .25rem; border-bottom:1px solid var(--subtle); }
+  .card:first-of-type { border-top:1px solid var(--subtle); }
+  .grp + .card { border-top:1px solid var(--subtle); }
+  .ic { flex:none; width:2.75rem; height:2.75rem; border-radius:50%; background:var(--soft); display:grid; place-items:center; }
+  .ic svg { width:1.5rem; height:1.5rem; fill:none; stroke:var(--primary); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .cb { flex:1; min-width:0; display:flex; flex-direction:column; }
+  .cb b { color:var(--heading); }
+  .card .ar { color:var(--primary); font-size:1.6rem; font-weight:700; }
+  .grp { margin:1.4rem 0 .4rem !important; font-size:1.2rem; font-weight:700; color:var(--heading); border-left:5px solid var(--primary); padding-left:.5rem; }
+  .grp:first-of-type { margin-top:.75rem !important; }
+
+  /* 九號表 */
+  .sub { font-weight:700; color:var(--primary); margin:0 0 .4rem !important; }
+  .key { padding:.75rem 1rem .875rem; border-radius:1.5rem; background:var(--surface); color:var(--heading); margin-bottom:.6rem; }
+  .key .big { display:block; font-size:1.45rem; font-weight:700; line-height:1.3; }
+  .key p { margin:0; }
+  .key.dim { opacity:.55; padding:.5rem 1rem; }
+  .key.dim .big { font-size:1.1rem; }
+  .tipbox { padding:.875rem 1rem; border-radius:.75rem; background:var(--surface); color:var(--heading); margin:0 0 1rem !important; }
+  .steps { list-style:none; margin:0 0 1rem; padding:0; }
+  .steps li { position:relative; display:flex; gap:.75rem; padding-bottom:.9rem; }
+  .steps li:not(:last-child)::after { content:""; position:absolute; top:2.5rem; bottom:.25rem; left:calc((2.25rem - 2px)/2); width:2px; background:var(--line); }
+  .no { flex:none; width:2.25rem; height:2.25rem; border:2px solid var(--primary); border-radius:50%; display:grid; place-items:center; color:var(--primary); font-weight:700; background:#fff; }
+  .sb { flex:1; min-width:0; padding-top:.2rem; }
+  .sb b { display:block; color:var(--heading); }
+  .when { display:block; width:fit-content; margin-top:.35rem; padding:0 .6rem; border-radius:99px; background:var(--selected); color:var(--primary); font-weight:700; }
+  .warn { display:block; margin:.35rem 0 .1rem; padding:.4rem .6rem; background:var(--surface); color:var(--heading); font-weight:700; }
+  .flow { font-weight:700; color:var(--heading); }
+
+  /* 說話方法 */
+  .tips { list-style:none; margin:0; padding:0; }
+  .tip { padding:.9rem 0; border-bottom:1px solid var(--subtle); }
+  .tip strong { display:block; color:var(--heading); font-size:1.2rem; }
+  .care-drawing { display:block; width:100%; max-width:15rem; height:auto; margin-bottom:.5rem; }
+  .care-drawing * { fill:none; stroke:var(--primary); stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; vector-effect:non-scaling-stroke; }
+  .care-drawing .soft { fill:var(--pull); } .care-drawing .thin { stroke-width:1.6; } .care-drawing .thick { stroke-width:4; }
+  .care-drawing .dot { fill:var(--primary); stroke:none; } .care-drawing .lens { fill:var(--pull); fill-opacity:.25; }
+  .care-drawing .paper { fill:#fff; stroke:none; } .care-drawing text { fill:var(--primary); stroke:none; font-weight:700; }
+  .tip.side { display:flex; gap:.75rem; align-items:flex-start; }
+  .tip.side .care-drawing { flex:none; margin:0; }
+  .tip.side span { flex:1; min-width:0; }
+  .tip.s96 .care-drawing { width:96px; } .tip.s120 .care-drawing { width:120px; }
+  .tip.side .care-drawing * { stroke-width:1.8; } .tip.side .care-drawing .thin { stroke-width:1.2; } .tip.side .care-drawing .thick { stroke-width:3; }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1>可讀性第 2 批設計圖</h1>
+  <p>四件事各自選：<a href="#catalogue">一、篩檢分頁的問卷分組</a>　<a href="#form9">二、九號表「要怎麼辦？」</a>　<a href="#family">三、家人專區首頁</a>　<a href="#talk">四、怎麼跟他說話</a></p>
+  <ul>
+    <li>每個手機框寬 375px，字級、顏色、間距照現在的網站。logo 用藍色圓點代替，圖示是近似的。</li>
+    <li>灰底標籤「現在」是目前的樣子，藍底英文字母是可以選的做法；橘框是新增或改過字的地方。</li>
+    <li>新的字句（小標、開頭那一句）都是草稿，請用聽力師的角度改。</li>
+    <li><strong>2026-11-16 本人選定：問卷分組 A、九號表 A、家人專區 A、說話方法 A。</strong></li>
+  </ul>
+</div>
+
+<section class="topic" id="catalogue">
+  <h2>一、篩檢分頁：六份問卷分組</h2>
+  <p>畫的是做過幾份問卷的老使用者點「篩檢」看到的目錄。上面有「推薦您做這一份」時，那一塊不動。卡片上的字都不改。</p>
+  <div class="row">
+    <div class="col">
+      <h3><span class="pick now">現在</span>六張卡一路排下來</h3>
+      <p class="why">順序是 HHIE-S、IOI-HA、SADL、HHIA-S、SSQ12、THI，兩份「聽力對生活的影響」中間隔了兩份助聽器問卷。「幫我選問卷」在最下面。</p>
+      <div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg">
+        <h4>自行選擇問卷</h4>
+        <h5 style="margin-top:.5rem">全部問卷</h5>
+        <div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M7 12a5 5 0 1 1 10 0c0 3-3 3.500-3 6.500a2.500 2.500 0 0 1-5 0"/><path d="M10 12a2 2 0 1 1 4 0"/></svg></span><span class="cb"><b>聽力對生活的影響（HHIE-S）</b><span>適合 65 歲以上的長輩。</span><span>10 題・約 3 分鐘・上次 2026/09/26</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M9 4h4a3 3 0 0 1 3 3v6a4 4 0 0 1-4 4h-1v3"/><circle cx="11" cy="9" r="1.500"/></svg></span><span class="cb"><b>助聽器使用成效（IOI-HA）</b><span>適合已配戴助聽器的人。</span><span>7 題・約 2 分鐘・上次 2026/09/27</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M9 4h4a3 3 0 0 1 3 3v6a4 4 0 0 1-4 4h-1v3"/><circle cx="11" cy="9" r="1.500"/></svg></span><span class="cb"><b>助聽器滿意度（SADL）</b><span>給正在戴或最近戴過助聽器的人。</span><span>15 題・約 5 分鐘</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M7 12a5 5 0 1 1 10 0c0 3-3 3.500-3 6.500a2.500 2.500 0 0 1-5 0"/><path d="M10 12a2 2 0 1 1 4 0"/></svg></span><span class="cb"><b>聽力對生活的影響（HHIA-S）</b><span>適合 18–64 歲成人。</span><span>10 題・約 3 分鐘・上次 2026/09/22</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M9 3h6v4H9zM6 5h12v16H6zM9 11h6M9 15h6"/></svg></span><span class="cb"><b>日常聆聽能力（SSQ12-TW）</b><span>了解您目前生活中的聆聽能力。</span><span>12 題・約 5 分鐘・上次 2026/09/23</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M7 12a5 5 0 1 1 10 0c0 3-3 3.500-3 6.500a2.500 2.500 0 0 1-5 0"/><path d="M10 12a2 2 0 1 1 4 0"/></svg></span><span class="cb"><b>耳鳴對生活的影響（THI）</b><span>給有耳鳴的人，不限年齡。</span><span>25 題・約 5 分鐘</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.500 9.500a2.500 2.500 0 1 1 3.500 2.300c-.700.400-1 .900-1 1.700M12 17v.500"/></svg></span><span class="cb"><b>幫我選問卷</b><span>不確定做哪一份？</span></span><span class="ar">›</span></div>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">A</span>分三組，「幫我選問卷」在最下面</h3>
+      <p class="why">加三個小標：聽力與生活、戴助聽器之後、耳鳴。「全部問卷」那個小標拿掉。「幫我選問卷」照 ADR 0030 留在最後一列。</p>
+      <div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg">
+        <h4>自行選擇問卷</h4>
+        <p class="grp">聽力與生活</p><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M7 12a5 5 0 1 1 10 0c0 3-3 3.500-3 6.500a2.500 2.500 0 0 1-5 0"/><path d="M10 12a2 2 0 1 1 4 0"/></svg></span><span class="cb"><b>聽力對生活的影響（HHIE-S）</b><span>適合 65 歲以上的長輩。</span><span>10 題・約 3 分鐘・上次 2026/09/26</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M7 12a5 5 0 1 1 10 0c0 3-3 3.500-3 6.500a2.500 2.500 0 0 1-5 0"/><path d="M10 12a2 2 0 1 1 4 0"/></svg></span><span class="cb"><b>聽力對生活的影響（HHIA-S）</b><span>適合 18–64 歲成人。</span><span>10 題・約 3 分鐘・上次 2026/09/22</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M9 3h6v4H9zM6 5h12v16H6zM9 11h6M9 15h6"/></svg></span><span class="cb"><b>日常聆聽能力（SSQ12-TW）</b><span>了解您目前生活中的聆聽能力。</span><span>12 題・約 5 分鐘・上次 2026/09/23</span></span><span class="ar">›</span></div><p class="grp">戴助聽器之後</p><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M9 4h4a3 3 0 0 1 3 3v6a4 4 0 0 1-4 4h-1v3"/><circle cx="11" cy="9" r="1.500"/></svg></span><span class="cb"><b>助聽器使用成效（IOI-HA）</b><span>適合已配戴助聽器的人。</span><span>7 題・約 2 分鐘・上次 2026/09/27</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M9 4h4a3 3 0 0 1 3 3v6a4 4 0 0 1-4 4h-1v3"/><circle cx="11" cy="9" r="1.500"/></svg></span><span class="cb"><b>助聽器滿意度（SADL）</b><span>給正在戴或最近戴過助聽器的人。</span><span>15 題・約 5 分鐘</span></span><span class="ar">›</span></div><p class="grp">耳鳴</p><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M7 12a5 5 0 1 1 10 0c0 3-3 3.500-3 6.500a2.500 2.500 0 0 1-5 0"/><path d="M10 12a2 2 0 1 1 4 0"/></svg></span><span class="cb"><b>耳鳴對生活的影響（THI）</b><span>給有耳鳴的人，不限年齡。</span><span>25 題・約 5 分鐘</span></span><span class="ar">›</span></div>
+        <div style="margin-top:1.4rem"><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.500 9.500a2.500 2.500 0 1 1 3.500 2.300c-.700.400-1 .900-1 1.700M12 17v.500"/></svg></span><span class="cb"><b>幫我選問卷</b><span>不確定做哪一份？</span></span><span class="ar">›</span></div></div>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">B</span>分三組，「幫我選問卷」移到最上面</h3>
+      <p class="why">跟 A 一樣分組，但不確定的人一進來就先看到「幫我選問卷」。代價：改掉 ADR 0030 當時的決定；常來的人每次都要先滑過這一列。</p>
+      <div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg">
+        <h4>自行選擇問卷</h4>
+        <div class="new"><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.500 9.500a2.500 2.500 0 1 1 3.500 2.300c-.700.400-1 .900-1 1.700M12 17v.500"/></svg></span><span class="cb"><b>幫我選問卷</b><span>不確定做哪一份？</span></span><span class="ar">›</span></div></div>
+        <p class="grp">聽力與生活</p><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M7 12a5 5 0 1 1 10 0c0 3-3 3.500-3 6.500a2.500 2.500 0 0 1-5 0"/><path d="M10 12a2 2 0 1 1 4 0"/></svg></span><span class="cb"><b>聽力對生活的影響（HHIE-S）</b><span>適合 65 歲以上的長輩。</span><span>10 題・約 3 分鐘・上次 2026/09/26</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M7 12a5 5 0 1 1 10 0c0 3-3 3.500-3 6.500a2.500 2.500 0 0 1-5 0"/><path d="M10 12a2 2 0 1 1 4 0"/></svg></span><span class="cb"><b>聽力對生活的影響（HHIA-S）</b><span>適合 18–64 歲成人。</span><span>10 題・約 3 分鐘・上次 2026/09/22</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M9 3h6v4H9zM6 5h12v16H6zM9 11h6M9 15h6"/></svg></span><span class="cb"><b>日常聆聽能力（SSQ12-TW）</b><span>了解您目前生活中的聆聽能力。</span><span>12 題・約 5 分鐘・上次 2026/09/23</span></span><span class="ar">›</span></div><p class="grp">戴助聽器之後</p><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M9 4h4a3 3 0 0 1 3 3v6a4 4 0 0 1-4 4h-1v3"/><circle cx="11" cy="9" r="1.500"/></svg></span><span class="cb"><b>助聽器使用成效（IOI-HA）</b><span>適合已配戴助聽器的人。</span><span>7 題・約 2 分鐘・上次 2026/09/27</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M9 4h4a3 3 0 0 1 3 3v6a4 4 0 0 1-4 4h-1v3"/><circle cx="11" cy="9" r="1.500"/></svg></span><span class="cb"><b>助聽器滿意度（SADL）</b><span>給正在戴或最近戴過助聽器的人。</span><span>15 題・約 5 分鐘</span></span><span class="ar">›</span></div><p class="grp">耳鳴</p><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M7 12a5 5 0 1 1 10 0c0 3-3 3.500-3 6.500a2.500 2.500 0 0 1-5 0"/><path d="M10 12a2 2 0 1 1 4 0"/></svg></span><span class="cb"><b>耳鳴對生活的影響（THI）</b><span>給有耳鳴的人，不限年齡。</span><span>25 題・約 5 分鐘</span></span><span class="ar">›</span></div>
+      </div></div>
+    </div>
+  </div>
+  <div class="note">
+    <strong>A、B 都一樣的：</strong>
+    <ul>
+      <li>組內順序：HHIE-S、HHIA-S、SSQ12；IOI-HA、SADL；THI。之後新增問卷時，在問卷定義檔寫它屬於哪一組。</li>
+      <li>小標「聽力與生活」「戴助聽器之後」「耳鳴」是草稿。</li>
+      <li>代價：多三個小標，整頁比現在長約 150px。</li>
+      <li>沒登入的訪客看不到這個目錄（只有年齡精靈），不受影響。</li>
+    </ul>
+    <strong>我的建議：A。</strong>分組已經讓人找得到；常來的人不用每次滑過「幫我選問卷」。
+  </div>
+</section>
+
+<section class="topic" id="form9">
+  <h2>二、九號表：「要怎麼辦？」那一段</h2>
+  <p>現在「先核定再買」在前兩個螢幕出現三次，申請流程六個步驟反而收在「看更多」裡。只畫有改的兩塊：第一張重點卡和「要怎麼辦？」；其他段落不動。</p>
+  <div class="row">
+    <div class="col">
+      <h3><span class="pick now">現在</span>看得到的只有提醒</h3>
+      <p class="why">「要怎麼辦？」打開前，唯一看得到的是跟上面重點卡同一句的提醒。六個步驟要點「看更多」。</p>
+      <div class="phone"><div class="pg">
+        <p class="sub">先知道三件事</p>
+        <div class="key"><span class="big">先核定，再買</span><p>重要：一定要先拿到核定通知再買，沒核定就先買的不補助。</p></div><div class="key dim"><span class="big">3 個月內有效</span></div><div class="key dim"><span class="big">2,000～30,000 元</span></div>
+        <h5>要怎麼辦？</h5>
+        <p class="tipbox">重要：一定要先拿到核定通知再買，沒核定就先買的不補助。</p>
+        <p class="more"><span>看更多</span><span>⌄</span></p>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">A</span>六個步驟的標題直接露出</h3>
+      <p class="why">步驟編號、標題和時限直接看得到，每一步的說明收在「看每一步的說明」。提醒放在第 4 步（要買的那一步）。代價：這一段沒點開就比現在長約 420px。</p>
+      <div class="phone"><div class="pg">
+        <p class="sub">先知道三件事</p>
+        <div class="key"><span class="big">先核定，再買</span><p class="new">沒核定就先買的不補助。</p></div><div class="key dim"><span class="big">3 個月內有效</span></div><div class="key dim"><span class="big">2,000～30,000 元</span></div>
+        <h5>要怎麼辦？</h5>
+        <ol class="steps"><li><span class="no">1</span><span class="sb"><b>做評估，拿到九號表</b><span class="when">3 個月內有效</span></span></li><li><span class="no">2</span><span class="sb"><b>到公所申請</b></span></li><li><span class="no">3</span><span class="sb"><b>等核定通知</b><span class="when">10 天內核定</span></span></li><li><span class="no">4</span><span class="sb"><b>購買並請款</b><span class="warn new">先拿到核定通知再買，沒核定就先買的不補助。</span><span class="when">6 個月內</span></span></li><li><span class="no">5</span><span class="sb"><b>使用效益驗證</b><span class="when">配戴 1–3 個月內</span></span></li><li><span class="no">6</span><span class="sb"><b>核銷</b><span class="when">1 個月內撥款</span></span></li></ol>
+        <p class="more"><span>看每一步的說明</span><span>⌄</span></p>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">B</span>露出一句流程，其他照舊</h3>
+      <p class="why">看得到的那一句從提醒換成整個流程的順序。六個步驟的細節還是在「看更多」裡，打開後跟現在一樣。改動最小。</p>
+      <div class="phone"><div class="pg">
+        <p class="sub">先知道三件事</p>
+        <div class="key"><span class="big">先核定，再買</span><p class="new">沒核定就先買的不補助。</p></div><div class="key dim"><span class="big">3 個月內有效</span></div><div class="key dim"><span class="big">2,000～30,000 元</span></div>
+        <h5>要怎麼辦？</h5>
+        <p class="flow new">六個步驟：評估 → 申請 → 等核定 → 購買 → 效益驗證 → 核銷。</p>
+        <p class="more"><span>看更多</span><span>⌄</span></p>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3>A 點開「看每一步的說明」之後</h3>
+      <p class="why">跟現在點開「看更多」的內容一樣，一個字都沒少；只多了第 4 步的提醒。</p>
+      <div class="phone"><div class="pg">
+        <h5 style="margin-top:0">要怎麼辦？</h5>
+        <ol class="steps"><li><span class="no">1</span><span class="sb"><b>做評估，拿到九號表</b>找聽力師或縣市輔具中心。九號表 3 個月內有效。<span class="when">3 個月內有效</span></span></li><li><span class="no">2</span><span class="sb"><b>到公所申請</b>帶申請表、身分證正本和九號表，到戶籍所在地的公所，也可以線上申請。</span></li><li><span class="no">3</span><span class="sb"><b>等核定通知</b>主管機關收到評估報告後，10 天內會核定。<span class="when">10 天內核定</span></span></li><li><span class="no">4</span><span class="sb"><b>購買並請款</b>收到核定通知後 6 個月內。<span class="warn new">先拿到核定通知再買，沒核定就先買的不補助。</span><span class="when">6 個月內</span></span></li><li><span class="no">5</span><span class="sb"><b>使用效益驗證</b>買中階型、進階型或雙對側傳聲型的人，配戴滿 1 個月到 3 個月內要做，拿到二十五號表。<span class="when">配戴 1–3 個月內</span></span></li><li><span class="no">6</span><span class="sb"><b>核銷</b>帶購買憑證、保固書影本（和二十五號表）。受理後 1 個月內撥款。<span class="when">1 個月內撥款</span></span></li></ol>
+        <p>來源：身心障礙者輔具費用補助辦法、補助基準表</p>
+      </div></div>
+    </div>
+  </div>
+  <div class="note">
+    <strong>A、B 都一樣的：</strong>
+    <ul>
+      <li>第一張重點卡的小字從「重要：一定要先拿到核定通知再買，沒核定就先買的不補助。」改成「沒核定就先買的不補助。」，大字已經說了前半句。</li>
+      <li>從別頁跳到「要怎麼辦？」（我的選配指引的「看申請流程」）還是會自動展開。</li>
+      <li>補助規定的內容、數字、來源都不動。</li>
+    </ul>
+    <strong>我的建議：A。</strong>來這一頁的人就是想知道「接下來要做什麼」，六個標題一眼看完；提醒放在要買的那一步，比放在最上面更不會漏。
+  </div>
+</section>
+
+<section class="topic" id="family">
+  <h2>三、家人專區首頁</h2>
+  <p>只畫上半頁（開頭和選單）。下面的「傳給家人」「什麼時候要馬上就醫」「出處」都不動。</p>
+  <div class="row">
+    <div class="col">
+      <h3><span class="pick now">現在</span>五個連結＋一個原地展開</h3>
+      <p class="why">開頭說「下面幾個小方法」，但下面是選單。最後一列「陪伴配戴助聽器」是原地展開的六條提醒，跟上一列「助聽器」裡的「陪長輩適應」講同一件事。</p>
+      <div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg">
+        <h4>家人專區</h4>
+        <p>家人有聽力困難時，日常對話常常要講好幾次，雙方都容易累、容易誤會。下面幾個小方法，可以讓溝通輕鬆一點。</p>
+        <div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 10v4h3l5 4V6L7 10zM16 9a4 4 0 0 1 0 6M18.500 6.500a8 8 0 0 1 0 11"/></svg></span><span class="cb"><b>先聽聽看他聽到的聲音</b><span>選程度，聽同一句話怎麼變</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16.500" cy="9" r="2.500"/><path d="M2.500 20a5.500 5.500 0 0 1 11 0M13 20a4 4 0 0 1 8 0"/></svg></span><span class="cb"><b>怎麼跟他說話</b><span>情境題與溝通重點</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M9 3h6v4H9zM6 5h12v16H6zM9 11h6M9 15h6"/></svg></span><span class="cb"><b>陪診與代辦</b><span>要帶什麼、想問什麼、補助還缺什麼、期限到哪天</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 4h16v12H9l-5 4zM10 8.500a2 2 0 1 1 3 1.700c-.600.400-1 .800-1 1.300M12 13.500v.300"/></svg></span><span class="cb"><b>長輩不肯去怎麼說</b><span>不想檢查、不想戴時可以試的說法</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M7 12a5 5 0 1 1 10 0c0 3-3 3.500-3 6.500a2.500 2.500 0 0 1-5 0"/><path d="M10 12a2 2 0 1 1 4 0"/></svg></span><span class="cb"><b>助聽器</b><span>怪怪的怎麼辦、怎麼陪他適應、日常保養</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M7 12a5 5 0 1 1 10 0c0 3-3 3.500-3 6.500a2.500 2.500 0 0 1-5 0"/><path d="M10 12a2 2 0 1 1 4 0"/></svg></span><span class="cb"><b>陪伴配戴助聽器</b><span>剛開始不習慣、回診和保養時可以怎麼陪</span></span><span class="ar">⌄</span></div>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">A</span>開頭一句＋五個連結</h3>
+      <p class="why">開頭縮成一句。六條提醒搬到「助聽器」頁的「陪長輩適應」下面（看最後一張），字不改。這一頁只剩可以點進去的五列。</p>
+      <div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg">
+        <h4>家人專區</h4>
+        <p class="new">想幫聽力不好的家人，可以從這裡開始。</p>
+        <div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 10v4h3l5 4V6L7 10zM16 9a4 4 0 0 1 0 6M18.500 6.500a8 8 0 0 1 0 11"/></svg></span><span class="cb"><b>先聽聽看他聽到的聲音</b><span>選程度，聽同一句話怎麼變</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16.500" cy="9" r="2.500"/><path d="M2.500 20a5.500 5.500 0 0 1 11 0M13 20a4 4 0 0 1 8 0"/></svg></span><span class="cb"><b>怎麼跟他說話</b><span>情境題與溝通重點</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M9 3h6v4H9zM6 5h12v16H6zM9 11h6M9 15h6"/></svg></span><span class="cb"><b>陪診與代辦</b><span>要帶什麼、想問什麼、補助還缺什麼、期限到哪天</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 4h16v12H9l-5 4zM10 8.500a2 2 0 1 1 3 1.700c-.600.400-1 .800-1 1.300M12 13.500v.300"/></svg></span><span class="cb"><b>長輩不肯去怎麼說</b><span>不想檢查、不想戴時可以試的說法</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M7 12a5 5 0 1 1 10 0c0 3-3 3.500-3 6.500a2.500 2.500 0 0 1-5 0"/><path d="M10 12a2 2 0 1 1 4 0"/></svg></span><span class="cb"><b>助聽器</b><span>怪怪的怎麼辦、怎麼陪他適應、日常保養</span></span><span class="ar">›</span></div>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">B</span>只改開頭那一句</h3>
+      <p class="why">選單六列都留著，只把開頭換成一句。改動最小；兩列講同一件事的問題還在。</p>
+      <div class="phone"><div class="hd"><i></i>聽伴</div><div class="pg">
+        <h4>家人專區</h4>
+        <p class="new">想幫聽力不好的家人，可以從這裡開始。</p>
+        <div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 10v4h3l5 4V6L7 10zM16 9a4 4 0 0 1 0 6M18.500 6.500a8 8 0 0 1 0 11"/></svg></span><span class="cb"><b>先聽聽看他聽到的聲音</b><span>選程度，聽同一句話怎麼變</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16.500" cy="9" r="2.500"/><path d="M2.500 20a5.500 5.500 0 0 1 11 0M13 20a4 4 0 0 1 8 0"/></svg></span><span class="cb"><b>怎麼跟他說話</b><span>情境題與溝通重點</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M9 3h6v4H9zM6 5h12v16H6zM9 11h6M9 15h6"/></svg></span><span class="cb"><b>陪診與代辦</b><span>要帶什麼、想問什麼、補助還缺什麼、期限到哪天</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 4h16v12H9l-5 4zM10 8.500a2 2 0 1 1 3 1.700c-.600.400-1 .800-1 1.300M12 13.500v.300"/></svg></span><span class="cb"><b>長輩不肯去怎麼說</b><span>不想檢查、不想戴時可以試的說法</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M7 12a5 5 0 1 1 10 0c0 3-3 3.500-3 6.500a2.500 2.500 0 0 1-5 0"/><path d="M10 12a2 2 0 1 1 4 0"/></svg></span><span class="cb"><b>助聽器</b><span>怪怪的怎麼辦、怎麼陪他適應、日常保養</span></span><span class="ar">›</span></div><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M7 12a5 5 0 1 1 10 0c0 3-3 3.500-3 6.500a2.500 2.500 0 0 1-5 0"/><path d="M10 12a2 2 0 1 1 4 0"/></svg></span><span class="cb"><b>陪伴配戴助聽器</b><span>剛開始不習慣、回診和保養時可以怎麼陪</span></span><span class="ar">⌄</span></div>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3>A 的六條提醒搬到這裡</h3>
+      <p class="why">「助聽器」頁的「陪長輩適應」：原本的三個階段選項不動，下面多一個摺疊，裡面是那六條提醒。</p>
+      <div class="phone"><div class="pg">
+        <h5 style="margin-top:0">陪長輩適應</h5>
+        <p><b>他現在是哪個階段？</b></p>
+        <p class="tipbox" style="margin-bottom:.5rem !important">○　剛開始戴</p>
+        <p class="tipbox" style="margin-bottom:.5rem !important">○　戴了不習慣</p>
+        <p class="tipbox">○　不想再戴</p>
+        <div class="new"><div class="card"><span class="ic"><svg viewBox="0 0 24 24"><path d="M7 12a5 5 0 1 1 10 0c0 3-3 3.500-3 6.500a2.500 2.500 0 0 1-5 0"/><path d="M10 12a2 2 0 1 1 4 0"/></svg></span><span class="cb"><b>每個階段都用得上的提醒</b><span>不習慣是正常的、鼓勵每天戴、陪他回診……</span></span><span class="ar">⌄</span></div></div>
+      </div></div>
+    </div>
+  </div>
+  <div class="note">
+    <strong>要你用聽力師的角度看的：</strong>
+    <ul>
+      <li>開頭那一句「想幫聽力不好的家人，可以從這裡開始。」是草稿。</li>
+      <li>A：六條提醒和三個階段選項有些內容重複（例如「前幾週覺得聲音怪是常見的」兩邊都有）。這次先原文搬過去；要不要刪掉重複的，由你決定。</li>
+      <li>A：分享給家人的聽力報告上有一個「陪伴配戴助聽器」連結，現在跳到家人專區這一列，之後會改跳到「助聽器」頁的新位置。</li>
+    </ul>
+    <strong>我的建議：A。</strong>首頁每一列都是「點進去」，不用分辨哪一列會原地展開。
+  </div>
+</section>
+
+<section class="topic" id="talk">
+  <h2>四、怎麼跟他說話：九個方法</h2>
+  <p>現在整頁七個螢幕高，大半是這九個方法。圖是你審過的線條圖，只縮小、不重畫；字不改。下面的情境題不動。</p>
+  <div class="row">
+    <div class="col">
+      <h3><span class="pick now">現在</span>圖在字上面</h3>
+      <p class="why">每個方法一張大圖加兩三行字。這個手機框只放前三個。<br><span class="size">九個共約 2780px 高</span></p>
+      <div class="phone"><div class="pg" id="t-now"><ul class="tips"><li class="tip "><svg class="care-drawing" viewBox="0 0 240 160" aria-hidden="true" focusable="false"><circle cx="68" cy="50" r="18"/><path class="soft" d="M34 150c0-40 15-64 34-64s34 24 34 64"/><circle cx="168" cy="52" r="18"/><path class="soft" d="M134 150c0-38 15-62 34-62s34 24 34 62"/><path d="M96 108c16-10 30-14 46-12"/><circle class="dot" cx="144" cy="96" r="5"/><path class="thin" d="M150 28c-6-6-14-8-22-6M146 20c-8-6-18-8-28-4"/><circle class="dot" cx="162" cy="50" r="2"/></svg><span><strong>先叫名字，等他看你再說</strong>可以輕拍肩膀，不要從背後或隔壁房間說話。</span></li><li class="tip "><svg class="care-drawing" viewBox="0 0 240 160" aria-hidden="true" focusable="false"><circle cx="78" cy="78" r="24"/><path class="soft" d="M40 156c0-26 17-42 38-42s38 16 38 42"/><circle cx="162" cy="78" r="24"/><path class="soft" d="M124 156c0-26 17-42 38-42s38 16 38 42"/><circle class="dot" cx="90" cy="74" r="2.4"/><circle class="dot" cx="150" cy="74" r="2.4"/><path class="thin" d="M86 88c4 3 8 3 10 0M144 88c2 3 6 3 10 0"/><circle class="soft" cx="120" cy="22" r="10"/><path class="thin" d="M120 4v-2M102 22h-4M142 22h-4M107 9l-3-3M133 9l3-3"/></svg><span><strong>面對面、讓他看得到你的臉</strong>表情和嘴型能幫助理解。站在光線照得到你臉的地方，不要背光。</span></li><li class="tip "><svg class="care-drawing" viewBox="0 0 240 160" aria-hidden="true" focusable="false"><path class="soft" d="M44 24h152a16 16 0 0 1 16 16v56a16 16 0 0 1-16 16H100l-28 24v-24H44a16 16 0 0 1-16-16V40a16 16 0 0 1 16-16z"/><path d="M52 68c14-12 28 12 42 0s28 12 42 0 28 12 42 0"/></svg><span><strong>說清楚、稍微放慢，不用大喊</strong>大喊會讓聲音變形，反而更難聽懂，也容易聽起來像在生氣。</span></li></ul><div class="cut">…還有 6 個…</div></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">A</span>圖在左邊，寬 96px</h3>
+      <p class="why">圖縮小放左邊、字在右邊，九個全部畫出來。線條跟著調細一點，不然擠在一起。<br><span class="size">九個共約 1370px，少一半</span></p>
+      <div class="phone"><div class="pg" id="t-a"><ul class="tips"><li class="tip side s96"><svg class="care-drawing" viewBox="0 0 240 160" aria-hidden="true" focusable="false"><circle cx="68" cy="50" r="18"/><path class="soft" d="M34 150c0-40 15-64 34-64s34 24 34 64"/><circle cx="168" cy="52" r="18"/><path class="soft" d="M134 150c0-38 15-62 34-62s34 24 34 62"/><path d="M96 108c16-10 30-14 46-12"/><circle class="dot" cx="144" cy="96" r="5"/><path class="thin" d="M150 28c-6-6-14-8-22-6M146 20c-8-6-18-8-28-4"/><circle class="dot" cx="162" cy="50" r="2"/></svg><span><strong>先叫名字，等他看你再說</strong>可以輕拍肩膀，不要從背後或隔壁房間說話。</span></li><li class="tip side s96"><svg class="care-drawing" viewBox="0 0 240 160" aria-hidden="true" focusable="false"><circle cx="78" cy="78" r="24"/><path class="soft" d="M40 156c0-26 17-42 38-42s38 16 38 42"/><circle cx="162" cy="78" r="24"/><path class="soft" d="M124 156c0-26 17-42 38-42s38 16 38 42"/><circle class="dot" cx="90" cy="74" r="2.4"/><circle class="dot" cx="150" cy="74" r="2.4"/><path class="thin" d="M86 88c4 3 8 3 10 0M144 88c2 3 6 3 10 0"/><circle class="soft" cx="120" cy="22" r="10"/><path class="thin" d="M120 4v-2M102 22h-4M142 22h-4M107 9l-3-3M133 9l3-3"/></svg><span><strong>面對面、讓他看得到你的臉</strong>表情和嘴型能幫助理解。站在光線照得到你臉的地方，不要背光。</span></li><li class="tip side s96"><svg class="care-drawing" viewBox="0 0 240 160" aria-hidden="true" focusable="false"><path class="soft" d="M44 24h152a16 16 0 0 1 16 16v56a16 16 0 0 1-16 16H100l-28 24v-24H44a16 16 0 0 1-16-16V40a16 16 0 0 1 16-16z"/><path d="M52 68c14-12 28 12 42 0s28 12 42 0 28 12 42 0"/></svg><span><strong>說清楚、稍微放慢，不用大喊</strong>大喊會讓聲音變形，反而更難聽懂，也容易聽起來像在生氣。</span></li><li class="tip side s96"><svg class="care-drawing" viewBox="0 0 240 160" aria-hidden="true" focusable="false"><circle class="soft" cx="120" cy="74" r="50"/><circle class="dot" cx="102" cy="62" r="3"/><circle class="dot" cx="138" cy="62" r="3"/><rect x="92" y="84" width="56" height="30" rx="10"/><path class="thin" d="M92 92l-18-8M148 92l18-8"/><path class="thick" d="M180 28l-120 112"/></svg><span><strong>說話時不要遮住嘴巴</strong>不要邊吃東西、邊走開或戴著口罩說重要的事。</span></li><li class="tip side s96"><svg class="care-drawing" viewBox="0 0 240 160" aria-hidden="true" focusable="false"><path class="soft" d="M20 30h80a12 12 0 0 1 12 12v40a12 12 0 0 1-12 12H52l-18 16V94H20a12 12 0 0 1-12-12V42a12 12 0 0 1 12-12z"/><path class="thin" d="M24 54c5-10 10 10 15 0s10 10 15 0 10 10 15 0 10 10 15 0 10 10 12 0M24 72c5-10 10 10 15 0s10 10 15 0 10 10 15 0 10 10 15 0"/><path d="M116 62h18M128 56l6 6-6 6"/><path class="soft" d="M150 38h70a12 12 0 0 1 12 12v32a12 12 0 0 1-12 12h-8v16l-18-16h-44a12 12 0 0 1-12-12V50a12 12 0 0 1 12-12z"/><path d="M162 66h46"/></svg><span><strong>聽不懂時，換個說法</strong>同一句話重複很多次不一定有用，換成比較簡單或不同的詞試試看。</span></li><li class="tip side s96"><svg class="care-drawing" viewBox="0 0 240 160" aria-hidden="true" focusable="false"><rect class="soft" x="24" y="30" width="112" height="80" rx="10"/><rect class="thin" x="36" y="42" width="88" height="56" rx="6"/><path d="M66 110l-10 20M94 110l10 20M48 130h64"/><path class="thin" d="M150 56c7 7 7 21 0 28M162 46c12 12 12 36 0 48M174 36c17 17 17 51 0 68"/><path class="thick" d="M214 34v66M202 88l12 14 12-14"/></svg><span><strong>減少背景噪音</strong>說話前先把電視、收音機關小聲，在餐廳選安靜的角落。</span></li><li class="tip side s96"><svg class="care-drawing" viewBox="0 0 240 160" aria-hidden="true" focusable="false"><path class="soft" d="M50 16h96l24 24v108H50z"/><path class="thin" d="M146 16v24h24"/><circle class="thin" cx="78" cy="42" r="12"/><path class="thin" d="M78 35v7l5 4"/><path class="thin" d="M66 74h86M66 94h86M66 114h60"/><path class="soft" d="M200 60l16 10-38 62-18 10 2-20z"/><path class="thin" d="M162 122l16 10M194 70l16 10"/></svg><span><strong>重要的事寫下來</strong>看診時間、地點、吃藥方式，說完再寫在紙上或傳文字訊息，請他確認。</span></li><li class="tip side s96"><svg class="care-drawing" viewBox="0 0 240 160" aria-hidden="true" focusable="false"><circle cx="50" cy="72" r="16"/><path class="soft" d="M20 154c0-34 13-56 30-56s30 22 30 56"/><circle cx="120" cy="72" r="16"/><path class="soft" d="M90 154c0-34 13-56 30-56s30 22 30 56"/><circle cx="190" cy="72" r="16"/><path class="soft" d="M160 154c0-34 13-56 30-56s30 22 30 56"/><circle class="dot" cx="56" cy="70" r="2"/><circle class="dot" cx="184" cy="70" r="2"/><path class="soft" d="M132 8h48a10 10 0 0 1 10 10v12a10 10 0 0 1-10 10h-34l-10 10V40h-4a10 10 0 0 1-10-10V18a10 10 0 0 1 10-10z"/><circle class="dot" cx="144" cy="24" r="2.5"/><circle class="dot" cx="156" cy="24" r="2.5"/><circle class="dot" cx="168" cy="24" r="2.5"/></svg><span><strong>多人聊天時，一次一個人說話</strong>換話題時先提醒「我們在講……」。</span></li><li class="tip side s96"><svg class="care-drawing" viewBox="0 0 240 160" aria-hidden="true" focusable="false"><circle cx="70" cy="64" r="18"/><path class="soft" d="M36 150c0-38 15-60 34-60s34 22 34 60"/><circle cx="170" cy="64" r="18"/><path class="soft" d="M136 150c0-38 15-60 34-60s34 22 34 60"/><circle class="dot" cx="78" cy="62" r="2"/><circle class="dot" cx="162" cy="62" r="2"/><path class="thin" d="M74 72c3 2 6 2 8 0M158 72c2 2 5 2 8 0"/><path class="soft" d="M186 12h36a10 10 0 0 1 10 10v12a10 10 0 0 1-10 10h-22l-8 8v-8h-6a10 10 0 0 1-10-10V22a10 10 0 0 1 10-10z"/><circle class="dot" cx="194" cy="28" r="2.2"/><circle class="dot" cx="204" cy="28" r="2.2"/><circle class="dot" cx="214" cy="28" r="2.2"/></svg><span><strong>耐心，也讓他參與</strong>不要替他回答，也不要說「算了，沒事」，被排除在對話外會讓人更不想說話。</span></li></ul></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">B</span>圖在左邊，寬 120px</h3>
+      <p class="why">圖大一點、看得比較清楚，字的那一欄窄一點。總高度跟 A 差不多。<br><span class="size">九個共約 1400px，少一半</span></p>
+      <div class="phone"><div class="pg" id="t-b"><ul class="tips"><li class="tip side s120"><svg class="care-drawing" viewBox="0 0 240 160" aria-hidden="true" focusable="false"><circle cx="68" cy="50" r="18"/><path class="soft" d="M34 150c0-40 15-64 34-64s34 24 34 64"/><circle cx="168" cy="52" r="18"/><path class="soft" d="M134 150c0-38 15-62 34-62s34 24 34 62"/><path d="M96 108c16-10 30-14 46-12"/><circle class="dot" cx="144" cy="96" r="5"/><path class="thin" d="M150 28c-6-6-14-8-22-6M146 20c-8-6-18-8-28-4"/><circle class="dot" cx="162" cy="50" r="2"/></svg><span><strong>先叫名字，等他看你再說</strong>可以輕拍肩膀，不要從背後或隔壁房間說話。</span></li><li class="tip side s120"><svg class="care-drawing" viewBox="0 0 240 160" aria-hidden="true" focusable="false"><circle cx="78" cy="78" r="24"/><path class="soft" d="M40 156c0-26 17-42 38-42s38 16 38 42"/><circle cx="162" cy="78" r="24"/><path class="soft" d="M124 156c0-26 17-42 38-42s38 16 38 42"/><circle class="dot" cx="90" cy="74" r="2.4"/><circle class="dot" cx="150" cy="74" r="2.4"/><path class="thin" d="M86 88c4 3 8 3 10 0M144 88c2 3 6 3 10 0"/><circle class="soft" cx="120" cy="22" r="10"/><path class="thin" d="M120 4v-2M102 22h-4M142 22h-4M107 9l-3-3M133 9l3-3"/></svg><span><strong>面對面、讓他看得到你的臉</strong>表情和嘴型能幫助理解。站在光線照得到你臉的地方，不要背光。</span></li><li class="tip side s120"><svg class="care-drawing" viewBox="0 0 240 160" aria-hidden="true" focusable="false"><path class="soft" d="M44 24h152a16 16 0 0 1 16 16v56a16 16 0 0 1-16 16H100l-28 24v-24H44a16 16 0 0 1-16-16V40a16 16 0 0 1 16-16z"/><path d="M52 68c14-12 28 12 42 0s28 12 42 0 28 12 42 0"/></svg><span><strong>說清楚、稍微放慢，不用大喊</strong>大喊會讓聲音變形，反而更難聽懂，也容易聽起來像在生氣。</span></li><li class="tip side s120"><svg class="care-drawing" viewBox="0 0 240 160" aria-hidden="true" focusable="false"><circle class="soft" cx="120" cy="74" r="50"/><circle class="dot" cx="102" cy="62" r="3"/><circle class="dot" cx="138" cy="62" r="3"/><rect x="92" y="84" width="56" height="30" rx="10"/><path class="thin" d="M92 92l-18-8M148 92l18-8"/><path class="thick" d="M180 28l-120 112"/></svg><span><strong>說話時不要遮住嘴巴</strong>不要邊吃東西、邊走開或戴著口罩說重要的事。</span></li><li class="tip side s120"><svg class="care-drawing" viewBox="0 0 240 160" aria-hidden="true" focusable="false"><path class="soft" d="M20 30h80a12 12 0 0 1 12 12v40a12 12 0 0 1-12 12H52l-18 16V94H20a12 12 0 0 1-12-12V42a12 12 0 0 1 12-12z"/><path class="thin" d="M24 54c5-10 10 10 15 0s10 10 15 0 10 10 15 0 10 10 15 0 10 10 12 0M24 72c5-10 10 10 15 0s10 10 15 0 10 10 15 0 10 10 15 0"/><path d="M116 62h18M128 56l6 6-6 6"/><path class="soft" d="M150 38h70a12 12 0 0 1 12 12v32a12 12 0 0 1-12 12h-8v16l-18-16h-44a12 12 0 0 1-12-12V50a12 12 0 0 1 12-12z"/><path d="M162 66h46"/></svg><span><strong>聽不懂時，換個說法</strong>同一句話重複很多次不一定有用，換成比較簡單或不同的詞試試看。</span></li><li class="tip side s120"><svg class="care-drawing" viewBox="0 0 240 160" aria-hidden="true" focusable="false"><rect class="soft" x="24" y="30" width="112" height="80" rx="10"/><rect class="thin" x="36" y="42" width="88" height="56" rx="6"/><path d="M66 110l-10 20M94 110l10 20M48 130h64"/><path class="thin" d="M150 56c7 7 7 21 0 28M162 46c12 12 12 36 0 48M174 36c17 17 17 51 0 68"/><path class="thick" d="M214 34v66M202 88l12 14 12-14"/></svg><span><strong>減少背景噪音</strong>說話前先把電視、收音機關小聲，在餐廳選安靜的角落。</span></li><li class="tip side s120"><svg class="care-drawing" viewBox="0 0 240 160" aria-hidden="true" focusable="false"><path class="soft" d="M50 16h96l24 24v108H50z"/><path class="thin" d="M146 16v24h24"/><circle class="thin" cx="78" cy="42" r="12"/><path class="thin" d="M78 35v7l5 4"/><path class="thin" d="M66 74h86M66 94h86M66 114h60"/><path class="soft" d="M200 60l16 10-38 62-18 10 2-20z"/><path class="thin" d="M162 122l16 10M194 70l16 10"/></svg><span><strong>重要的事寫下來</strong>看診時間、地點、吃藥方式，說完再寫在紙上或傳文字訊息，請他確認。</span></li><li class="tip side s120"><svg class="care-drawing" viewBox="0 0 240 160" aria-hidden="true" focusable="false"><circle cx="50" cy="72" r="16"/><path class="soft" d="M20 154c0-34 13-56 30-56s30 22 30 56"/><circle cx="120" cy="72" r="16"/><path class="soft" d="M90 154c0-34 13-56 30-56s30 22 30 56"/><circle cx="190" cy="72" r="16"/><path class="soft" d="M160 154c0-34 13-56 30-56s30 22 30 56"/><circle class="dot" cx="56" cy="70" r="2"/><circle class="dot" cx="184" cy="70" r="2"/><path class="soft" d="M132 8h48a10 10 0 0 1 10 10v12a10 10 0 0 1-10 10h-34l-10 10V40h-4a10 10 0 0 1-10-10V18a10 10 0 0 1 10-10z"/><circle class="dot" cx="144" cy="24" r="2.5"/><circle class="dot" cx="156" cy="24" r="2.5"/><circle class="dot" cx="168" cy="24" r="2.5"/></svg><span><strong>多人聊天時，一次一個人說話</strong>換話題時先提醒「我們在講……」。</span></li><li class="tip side s120"><svg class="care-drawing" viewBox="0 0 240 160" aria-hidden="true" focusable="false"><circle cx="70" cy="64" r="18"/><path class="soft" d="M36 150c0-38 15-60 34-60s34 22 34 60"/><circle cx="170" cy="64" r="18"/><path class="soft" d="M136 150c0-38 15-60 34-60s34 22 34 60"/><circle class="dot" cx="78" cy="62" r="2"/><circle class="dot" cx="162" cy="62" r="2"/><path class="thin" d="M74 72c3 2 6 2 8 0M158 72c2 2 5 2 8 0"/><path class="soft" d="M186 12h36a10 10 0 0 1 10 10v12a10 10 0 0 1-10 10h-22l-8 8v-8h-6a10 10 0 0 1-10-10V22a10 10 0 0 1 10-10z"/><circle class="dot" cx="194" cy="28" r="2.2"/><circle class="dot" cx="204" cy="28" r="2.2"/><circle class="dot" cx="214" cy="28" r="2.2"/></svg><span><strong>耐心，也讓他參與</strong>不要替他回答，也不要說「算了，沒事」，被排除在對話外會讓人更不想說話。</span></li></ul></div></div>
+    </div>
+  </div>
+  <div class="note">
+    <strong>A、B 都一樣的：</strong>
+    <ul>
+      <li>字放大到 200% 時，圖自動回到字的上面（跟現在一樣），不會把字擠成一行兩三個字。</li>
+      <li>九個方法的順序、標題、說明都不動。</li>
+    </ul>
+    <strong>我的建議：A。</strong>請特別看縮小後每張圖還認不認得出來，這個只有你能判斷；認不出來的話選 B。
+  </div>
+</section>
+
+<!--MEASURE-->
+</body>
+</html>

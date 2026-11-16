@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>可讀性第 1 批設計圖</title>
+<style>
+  :root { --primary:#1f4e8c; --heading:#212529; --body:#343a40; --muted:#4a5460; --border:#ced4da; --subtle:#dee2e6; --surface:#f4f6f8; --soft:#eef3fa; --selected:#e8eef7; --green-bg:#e3f1e8; --green-ink:#0f4d2a; --mark:#f2a33a; }
+  * { box-sizing:border-box; }
+  html { font-size:18px; }
+  body { margin:0; padding:16px; font-family:"Noto Sans TC",-apple-system,"PingFang TC",sans-serif; line-height:1.5; color:var(--body); background:#e8ebf0; }
+  h1 { font-size:1.5rem; margin:0 0 .25rem; color:var(--heading); }
+  .intro, .topic { max-width:1240px; margin:0 auto 16px; }
+  .intro ul { margin:.25rem 0; padding-left:1.2rem; }
+  .intro a { color:var(--primary); font-weight:700; }
+  .topic { background:#fff; border-radius:12px; padding:16px; margin-top:28px; }
+  .topic > h2 { font-size:1.35rem; margin:0 0 .25rem; color:var(--heading); border-left:6px solid var(--primary); padding-left:.6rem; }
+  .topic > p { margin:.25rem 0 .75rem; }
+  .row { display:flex; flex-wrap:wrap; gap:24px; justify-content:center; align-items:flex-start; }
+  .col { width:377px; }
+  .col h3 { font-size:1.15rem; margin:0 0 .25rem; color:var(--heading); }
+  .col .why { margin:0 0 .5rem; min-height:6em; }
+  .pick { display:inline-block; background:var(--primary); color:#fff; border-radius:6px; padding:0 .5rem; font-weight:700; margin-right:.35rem; }
+  .now { background:#5f6b7a; }
+  .size { display:inline-block; background:var(--mark); color:#000; border-radius:4px; padding:0 .4rem; font-weight:700; }
+  .note { background:var(--surface); border-radius:10px; padding:.6rem .9rem; margin:.75rem 0 0; }
+  .note ul { margin:.25rem 0 0; padding-left:1.2rem; }
+
+  /* 手機外框：寬 375px，跟真的頁面一樣左右留 16px */
+  .phone { width:377px; border:1px solid #8a96a8; background:#fff; position:relative; overflow:hidden; }
+  .pad { padding:0 16px; }
+  .cut { text-align:center; color:#6b7684; font-size:1rem; padding:.4rem 0; background:repeating-linear-gradient(135deg,#fff 0 8px,#f1f3f6 8px 16px); border-bottom:1px dashed #8a96a8; }
+
+  /* ── 頁首 ── */
+  .hd { display:flex; align-items:center; gap:.5rem; height:73px; padding:0 16px; border-bottom:1px solid var(--subtle); color:var(--primary); font-size:1.8rem; font-weight:900; }
+  .hd i { width:40px; height:40px; border-radius:50%; background:var(--primary); display:inline-block; }
+
+  /* ── 頁尾 ── */
+  .ft { position:relative; margin-top:5.5rem; padding:1.5rem 0 calc(1.5rem + 5rem); background:var(--surface); text-align:center; color:var(--body); }
+  .ft::before { content:""; position:absolute; top:-3.25rem; left:50%; width:6.5rem; height:3.3rem; transform:translateX(-50%); border-radius:3.25rem 3.25rem 0 0; background:var(--surface); }
+  .ft::after { content:""; position:absolute; top:-2.4rem; left:50%; width:2.4rem; height:2.4rem; transform:translateX(-50%); border-radius:50%; background:var(--primary); }
+  .ft p { margin:0 0 .25rem; font-size:1rem; }
+  .ft a { color:var(--primary); font-weight:700; }
+  .ft svg { flex:none; width:1.6rem; height:1.6rem; fill:none; stroke:var(--primary); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .ft ul { list-style:none; margin:0 0 1.25rem; padding:0; }
+  .ft-stack { display:flex; flex-direction:column; align-items:center; gap:.5rem; }
+  .ft-stack a { display:inline-flex; gap:.6rem; align-items:center; min-height:3.25rem; padding:.5rem .75rem; font-weight:500; text-decoration:none; }
+  .ft-cols { display:flex; justify-content:center; gap:.25rem; padding:0 8px !important; margin-bottom:.9rem !important; }
+  .ft-cols li { flex:1 1 0; min-width:0; }
+  .ft-cols a { display:flex; flex-direction:column; align-items:center; gap:.2rem; min-height:3.6rem; padding:.4rem .1rem; border-radius:.75rem; font-weight:500; text-decoration:none; white-space:nowrap; }
+  .ft-line { display:flex; flex-wrap:wrap; justify-content:center; gap:0 .25rem; padding:0 8px !important; margin-bottom:.75rem !important; }
+  .ft-line a { display:inline-flex; align-items:center; min-height:2.75rem; padding:0 .6rem; font-weight:500; text-decoration:underline; text-underline-offset:.2em; }
+  .tabbar { position:absolute; left:12px; right:12px; bottom:12px; height:66px; border-radius:1.5rem; background:rgba(255,255,255,.92); box-shadow:0 2px 12px rgba(0,0,0,.18); display:flex; align-items:center; justify-content:space-around; font-size:1rem; color:var(--body); }
+  .tabbar b { background:var(--selected); color:var(--primary); border-radius:1.2rem; padding:.9rem 1.1rem; }
+
+  /* ── 作答頁 ── */
+  .ans { padding:1.5rem 16px 1.25rem; }
+  .ans h4 { font-size:1.55rem; margin:0 0 .25rem; color:var(--heading); line-height:1.3; }
+  .ans .meta { color:var(--muted); margin:0 0 .75rem; }
+  .ans .guest { display:flex; gap:.5rem; margin:0 0 .75rem; }
+  .ans .guest u { color:var(--primary); }
+  .ans .name { color:var(--muted); margin:0 0 .5rem; font-weight:700; }
+  .bar { display:flex; gap:.25rem; margin-bottom:.5rem; } .bar span { flex:1; height:.5rem; border-radius:99px; background:var(--border); } .bar .on { background:var(--primary); }
+  .prog { color:var(--muted); margin:0 0 .75rem; }
+  .q { font-size:1.36rem; font-weight:700; color:var(--heading); margin:0 0 .6rem; line-height:1.5; }
+  .opt { display:flex; align-items:center; gap:.75rem; min-height:3.2rem; border:2px solid #6b7684; border-radius:.75rem; padding:.4rem .9rem; margin-bottom:.6rem; font-size:1.22rem; }
+  .opt::before { content:""; width:1.4rem; height:1.4rem; border:2px solid #6b7684; border-radius:50%; flex:none; }
+  .btns { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; margin-top:.9rem; }
+  .btns.one { grid-template-columns:1fr; }
+  .btn { min-height:3.1rem; border-radius:.78rem; display:grid; place-items:center; font-weight:700; font-size:1.11rem; background:var(--primary); color:#fff; border:2px solid var(--primary); }
+  .btn.o { background:#fff; color:var(--primary); }
+  .hint { margin:.9rem 0 0; }
+  .gone { outline:3px solid var(--mark); outline-offset:3px; border-radius:6px; }
+  .mark { border-top:3px dashed var(--mark); position:relative; margin:0 -16px; }
+  .mark span { position:absolute; right:6px; top:-1.7rem; background:var(--mark); color:#000; font-weight:700; border-radius:4px; padding:0 .4rem; font-size:1rem; }
+
+  /* ── 首頁兩格 ── */
+  .home { padding:1.25rem 16px 1.5rem; }
+  .home h4 { font-size:1.45rem; margin:0; color:var(--heading); }
+  .tiles { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; margin:1rem 0 0; }
+  .tile { display:flex; flex-direction:column; min-width:0; padding:.75rem .875rem .875rem; border-radius:.75rem; overflow-wrap:anywhere; position:relative; }
+  .tile.g { background:var(--green-bg); color:var(--green-ink); }
+  .tile.i { background:var(--surface); color:var(--heading); }
+  .tile .lb { font-weight:700; } .tile.i .lb, .tile .sm { color:var(--muted); }
+  .tile .sc { font-size:2.2222rem; font-weight:700; line-height:1.15; } .tile .sc small { font-size:1.1111rem; }
+  .tile .lv { font-weight:700; }
+  .tile .dt { margin-top:.4rem; font-size:1.4444rem; font-weight:700; line-height:1.25; }
+  .tile .ar { position:absolute; top:.5rem; right:.75rem; color:var(--primary); font-size:1.6667rem; font-weight:700; line-height:1; }
+  .w320 { width:322px; }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1>可讀性第 1 批設計圖</h1>
+  <p>三件事各自選：<a href="#footer">一、頁尾</a>　<a href="#answer">二、作答頁每題上面的字</a>　<a href="#tile">三、首頁「下次篩檢」</a></p>
+  <ul>
+    <li>每個手機框寬 375px，字級、顏色、間距照現在的網站。logo 用藍色圓點代替。</li>
+    <li>灰底標籤「現在」是目前的樣子，藍底英文字母是可以選的做法；橘色標籤是量到的高度。</li>
+    <li>文字都還能改，先看版面。</li>
+    <li><strong>2026-11-16 本人選定：頁尾 A、作答頁 A、下次篩檢 B。</strong></li>
+  </ul>
+</div>
+
+<!-- ═══════════ 一、頁尾 ═══════════ -->
+<section class="topic" id="footer">
+  <h2>一、頁尾（每一頁都有）</h2>
+  <p>畫的是登入後、捲到頁面最底的樣子，下面浮著的是底部分頁列。高度是在這張設計圖上量的，真的網站行距稍大，數字會再高一點，差距差不多。沒登入時少「帳號設定」那一項。小拱門和小鳥三種做法都留著。</p>
+  <div class="row">
+
+    <div class="col">
+      <h3><span class="pick now">現在</span>連結一項一列</h3>
+      <p class="why">三個連結直排，每個佔一列。<br><span class="size">高約 450px</span></p>
+      <div class="phone">
+        <div class="cut">…頁面內容…</div>
+        <div class="ft" id="ft-now">
+          <ul class="ft-stack">
+            <li><a href="#footer"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20a5.5 5.5 0 0 1 11 0M13 20a4 4 0 0 1 8 0"/></svg>家人專區：溝通與陪伴</a></li>
+            <li><a href="#footer"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>隱私權說明</a></li>
+            <li><a href="#footer"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>帳號設定</a></li>
+          </ul>
+          <p class="pad">結果僅供參考，不能取代聽力檢查與醫師診斷。</p>
+          <p class="pad">聯絡我們：<a href="#footer">hearwellweb@gmail.com</a></p>
+          <div class="tabbar"><span>首頁</span><span>篩檢</span><span>紀錄</span><b>了解</b></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <h3><span class="pick">A</span>連結排成一列，圖示在字上面</h3>
+      <p class="why">三個連結並排，圖示留著。「家人專區：溝通與陪伴」縮成「家人專區」。聲明和信箱不變。<br><span class="size">高約 325px，少 125px</span></p>
+      <div class="phone">
+        <div class="cut">…頁面內容…</div>
+        <div class="ft" id="ft-a">
+          <ul class="ft-cols">
+            <li><a href="#footer"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20a5.5 5.5 0 0 1 11 0M13 20a4 4 0 0 1 8 0"/></svg>家人專區</a></li>
+            <li><a href="#footer"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>隱私權說明</a></li>
+            <li><a href="#footer"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>帳號設定</a></li>
+          </ul>
+          <p class="pad">結果僅供參考，不能取代聽力檢查與醫師診斷。</p>
+          <p class="pad">聯絡我們：<a href="#footer">hearwellweb@gmail.com</a></p>
+          <div class="tabbar"><span>首頁</span><span>篩檢</span><span>紀錄</span><b>了解</b></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <h3><span class="pick">B</span>連結排成一列，只有字</h3>
+      <p class="why">拿掉圖示，三個連結是一行有底線的字（每個還是有 44px 高可以按）。最矮。聲明和信箱不變。<br><span class="size">高約 295px，少 155px</span></p>
+      <div class="phone">
+        <div class="cut">…頁面內容…</div>
+        <div class="ft" id="ft-b">
+          <ul class="ft-line">
+            <li><a href="#footer">家人專區</a></li>
+            <li><a href="#footer">隱私權說明</a></li>
+            <li><a href="#footer">帳號設定</a></li>
+          </ul>
+          <p class="pad">結果僅供參考，不能取代聽力檢查與醫師診斷。</p>
+          <p class="pad">聯絡我們：<a href="#footer">hearwellweb@gmail.com</a></p>
+          <div class="tabbar"><span>首頁</span><span>篩檢</span><span>紀錄</span><b>了解</b></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <h3><span class="pick">C</span>A ＋「聯絡我們」變成第四格</h3>
+      <p class="why">信箱那一行收進第四格，按了開寄信畫面。代價：畫面上看不到信箱地址，想抄下來的人抄不到。<br><span class="size">高約 290px，少 160px</span></p>
+      <div class="phone">
+        <div class="cut">…頁面內容…</div>
+        <div class="ft" id="ft-c">
+          <ul class="ft-cols">
+            <li><a href="#footer"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20a5.5 5.5 0 0 1 11 0M13 20a4 4 0 0 1 8 0"/></svg>家人專區</a></li>
+            <li><a href="#footer"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>隱私權</a></li>
+            <li><a href="#footer"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>帳號設定</a></li>
+            <li><a href="#footer"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>聯絡我們</a></li>
+          </ul>
+          <p class="pad">結果僅供參考，不能取代聽力檢查與醫師診斷。</p>
+          <div class="tabbar"><span>首頁</span><span>篩檢</span><span>紀錄</span><b>了解</b></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="note">
+    <strong>三種做法都一樣的：</strong>
+    <ul>
+      <li>電腦寬度不變（現在電腦上本來就是一列）。</li>
+      <li>字放大到 200% 時，一列放不下會自動折成兩列，不會左右捲動。</li>
+      <li>最下面那段空白是留給底部分頁列的，三種都一樣高。</li>
+    </ul>
+    <strong>我的建議：A。</strong>圖示留著好認，跟底部分頁列的樣子一致；信箱看得到。
+  </div>
+</section>
+
+<!-- ═══════════ 二、作答頁 ═══════════ -->
+<section class="topic" id="answer">
+  <h2>二、作答頁：每一題上面的字</h2>
+  <p>畫的是沒註冊的訪客做 HHIE-S 第 3 題。登入後沒有「沒註冊時只計算、不儲存」那一行，其他一樣。橘色虛線是題目開始的位置。</p>
+  <div class="row">
+
+    <div class="col">
+      <h3><span class="pick now">現在</span>每一題都有五行</h3>
+      <p class="why">橘框的三行每一題都重複。「共 10 題」「大約 3 分鐘」下面的進度又說一次。<br><span class="size">題目離畫面頂端約 280px</span></p>
+      <div class="phone">
+        <div class="hd"><i></i>聽伴</div>
+        <div class="ans">
+          <div class="gone">
+            <h4>聽力對生活的影響</h4>
+            <p class="meta">HHIE-S・共 10 題・大約 3 分鐘</p>
+            <p class="guest"><span>🔒</span><span>沒註冊時只計算、不儲存。<u>隱私權說明</u></span></p>
+          </div>
+          <div class="bar"><span class="on"></span><span class="on"></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          <p class="prog">第 3 題／共 10 題・還剩大約 2 分鐘</p>
+          <div class="mark" id="q-now"></div>
+          <p class="q">聽力問題會讓你和家人起爭執嗎？</p>
+          <div class="opt">常常</div><div class="opt">有時</div><div class="opt">從未</div>
+          <div class="btns"><div class="btn o">← 上一題</div><div class="btn" id="b-now">下一題 →</div></div>
+          <p class="hint">先選一個答案，才能按「下一題」。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <h3><span class="pick">A</span>第一個畫面才有，之後只留進度</h3>
+      <p class="why">第一個畫面照舊（看最後一張）。之後每一題只剩進度條和「第幾題」。<br><span class="size">約 160px，上移 120px</span></p>
+      <div class="phone">
+        <div class="hd"><i></i>聽伴</div>
+        <div class="ans">
+          <div class="bar"><span class="on"></span><span class="on"></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          <p class="prog">第 3 題／共 10 題・還剩大約 2 分鐘</p>
+          <div class="mark" id="q-a"></div>
+          <p class="q">聽力問題會讓你和家人起爭執嗎？</p>
+          <div class="opt">常常</div><div class="opt">有時</div><div class="opt">從未</div>
+          <div class="btns"><div class="btn o">← 上一題</div><div class="btn">下一題 →</div></div>
+          <p class="hint">先選一個答案，才能按「下一題」。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <h3><span class="pick">B</span>A ＋留一行問卷名稱</h3>
+      <p class="why">進度條上面留一行灰色的問卷名稱。中途離開再回來的人，看得出這是哪一份。多一行。<br><span class="size">約 195px，上移 85px</span></p>
+      <div class="phone">
+        <div class="hd"><i></i>聽伴</div>
+        <div class="ans">
+          <p class="name">聽力對生活的影響（HHIE-S）</p>
+          <div class="bar"><span class="on"></span><span class="on"></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          <p class="prog">第 3 題／共 10 題・還剩大約 2 分鐘</p>
+          <div class="mark" id="q-b"></div>
+          <p class="q">聽力問題會讓你和家人起爭執嗎？</p>
+          <div class="opt">常常</div><div class="opt">有時</div><div class="opt">從未</div>
+          <div class="btns"><div class="btn o">← 上一題</div><div class="btn">下一題 →</div></div>
+          <p class="hint">先選一個答案，才能按「下一題」。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <h3>A、B 共用：第一個畫面不變</h3>
+      <p class="why">進來的第一個畫面跟現在一樣：標題、題數、時間、隱私都在，要知道的事在這裡說一次。</p>
+      <div class="phone">
+        <div class="hd"><i></i>聽伴</div>
+        <div class="ans">
+          <h4>聽力對生活的影響</h4>
+          <p class="meta">HHIE-S・共 10 題・大約 3 分鐘</p>
+          <p class="guest"><span>🔒</span><span>沒註冊時只計算、不儲存。<u>隱私權說明</u></span></p>
+          <p class="q">這次填答時，您有沒有戴助聽器？</p>
+          <div class="opt">沒戴</div><div class="opt">有戴</div>
+          <div class="btns one"><div class="btn">下一題 →</div></div>
+          <p class="hint">先選一個答案，才能按「下一題」。</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="note">
+    <strong>A、B 都一樣的：</strong>
+    <ul>
+      <li>「這份問卷在問什麼？」摺疊、自動存檔那一行留在按鈕下面，每題都還看得到。</li>
+      <li>六份問卷的作答頁一起改；不能跑 JavaScript 時的整張表單版不變。</li>
+      <li>螢幕閱讀器照舊唸「第 3 題／共 10 題」和題目。</li>
+      <li>分頁標題（瀏覽器上方那一行）還是寫「HHIE-S 作答｜聽伴」。</li>
+    </ul>
+    <strong>我的建議：A。</strong>作答只要幾分鐘，中途忘記是哪一份的機會很小；回來接著答時，本來就會先看到「上次答到第幾題，要接著答嗎？」。
+  </div>
+</section>
+
+<!-- ═══════════ 三、首頁下次篩檢 ═══════════ -->
+<section class="topic" id="tile">
+  <h2>三、首頁「下次篩檢」那一格</h2>
+  <p>左邊「上次結果」那一格不動，只改右邊。上排是 375px 寬的手機，下排是 320px 寬的小手機。</p>
+  <div class="row">
+
+    <div class="col">
+      <h3><span class="pick now">現在</span>日期大、天數小</h3>
+      <p class="why">日期放不下，斷成兩行。要自己算離今天多久。</p>
+      <div class="phone"><div class="home">
+        <h4>早安，今天只要做一件事</h4>
+        <div class="tiles">
+          <div class="tile g"><span class="lb">上次結果</span><span class="sc">6 <small>分</small></span><span class="lv">無／極輕微影響</span><span class="ar">›</span></div>
+          <div class="tile i"><span class="lb">下次篩檢</span><span class="dt">2027/03/26</span><span class="sm">還有 176 天</span></div>
+        </div>
+      </div></div>
+      <p></p>
+      <div class="phone w320"><div class="home">
+        <div class="tiles" style="margin-top:0">
+          <div class="tile g"><span class="lb">上次結果</span><span class="sc">6 <small>分</small></span><span class="lv">無／極輕微影響</span><span class="ar">›</span></div>
+          <div class="tile i"><span class="lb">下次篩檢</span><span class="dt">2027/03/26</span><span class="sm">還有 176 天</span></div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="col">
+      <h3><span class="pick">A</span>天數大、日期小（照定稿圖）</h3>
+      <p class="why">跟左邊「6 分」同一種寫法：大數字＋小單位。日期變小字，不會斷行。</p>
+      <div class="phone"><div class="home">
+        <h4>早安，今天只要做一件事</h4>
+        <div class="tiles">
+          <div class="tile g"><span class="lb">上次結果</span><span class="sc">6 <small>分</small></span><span class="lv">無／極輕微影響</span><span class="ar">›</span></div>
+          <div class="tile i"><span class="lb">下次篩檢</span><span class="sc">176 <small>天</small></span><span class="sm">2027/03/26</span></div>
+        </div>
+      </div></div>
+      <p></p>
+      <div class="phone w320"><div class="home">
+        <div class="tiles" style="margin-top:0">
+          <div class="tile g"><span class="lb">上次結果</span><span class="sc">6 <small>分</small></span><span class="lv">無／極輕微影響</span><span class="ar">›</span></div>
+          <div class="tile i"><span class="lb">下次篩檢</span><span class="sc">176 <small>天</small></span><span class="sm">2027/03/26</span></div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="col">
+      <h3><span class="pick">B</span>A ＋小標改成「離下次篩檢」</h3>
+      <p class="why">「下次篩檢　176 天」可能被讀成「篩檢要 176 天」。小標多一個「離」字，連著唸就是「離下次篩檢 176 天」。「還沒排」「已到期」時小標還是「下次篩檢」。</p>
+      <div class="phone"><div class="home">
+        <h4>早安，今天只要做一件事</h4>
+        <div class="tiles">
+          <div class="tile g"><span class="lb">上次結果</span><span class="sc">6 <small>分</small></span><span class="lv">無／極輕微影響</span><span class="ar">›</span></div>
+          <div class="tile i"><span class="lb">離下次篩檢</span><span class="sc">176 <small>天</small></span><span class="sm">2027/03/26</span></div>
+        </div>
+      </div></div>
+      <p></p>
+      <div class="phone w320"><div class="home">
+        <div class="tiles" style="margin-top:0">
+          <div class="tile g"><span class="lb">上次結果</span><span class="sc">6 <small>分</small></span><span class="lv">無／極輕微影響</span><span class="ar">›</span></div>
+          <div class="tile i"><span class="lb">離下次篩檢</span><span class="sc">176 <small>天</small></span><span class="sm">2027/03/26</span></div>
+        </div>
+      </div></div>
+    </div>
+
+  </div>
+  <div class="note">
+    <strong>A、B 都一樣的：</strong>
+    <ul>
+      <li>「還沒排」「已到期」兩種狀態不變。</li>
+      <li>旅程第 5 步下面那一行「下次篩檢 2027/03/26・還有 176 天」不變。</li>
+      <li>天數是每天算的，不會動畫往上跑（ADR 0006）。</li>
+    </ul>
+    <strong>我的建議：B。</strong>多一個字，換來不會讀錯。
+  </div>
+</section>
+
+</body>
+</html>
