@@ -1,3 +1,4 @@
+import hashlib
 import re
 
 from django.test import TestCase
@@ -443,3 +444,16 @@ class CentrePhoneLinksTests(TestCase):
                 self.assertIn(
                     '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">', shown
                 )
+
+    # The list's words left the chapter's template for device_centres.py, so the template's
+    # digest (test_family_zone's ReviewedPagesTests) no longer holds them; this one does. It is
+    # of the 47 rows as read on the page, worked out from the rows of the #577 mockup the owner
+    # accepted on 2026-11-16. Failing here means reviewed words changed: have the owner review
+    # them before updating the digest.
+    ROWS_DIGEST = "41c3826b639e8e5c43ab0d587b916be524cad56081ea0876199b1ff6441d1b58"
+
+    def test_the_rows_read_as_the_owner_accepted_them(self):
+        block = centre_list(self.client.get(self.url))
+        rows = [without_tags(row) for row in CENTRE_ROW.findall(block)]
+        self.assertEqual(len(rows), CENTRE_COUNT)
+        self.assertEqual(hashlib.sha256("\n".join(rows).encode()).hexdigest(), self.ROWS_DIGEST)
