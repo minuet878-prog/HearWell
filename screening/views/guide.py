@@ -425,7 +425,10 @@ def _chapter_page(request, chapter, question=None):
     """A chapter, with its stop's question at the foot (#293) while a signed-in, consented
     user has not answered it, and 已記下 with the answer once they have (#294), but neither
     where the stop is 不適用 (#291 review); question is a form sent back with its errors."""
-    context = {"chapter": chapter}
+    # #579 (spec #576): the next chapter in reading order, the same for everyone; the route's
+    # progress is not read. None after the last.
+    following = GUIDE_CHAPTERS[GUIDE_CHAPTERS.index(chapter) + 1 :]
+    context = {"chapter": chapter, "next_chapter": following[0] if following else None}
     if chapter.extra_context:
         context.update(chapter.extra_context(request))
     user = request.user
