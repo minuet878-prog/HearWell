@@ -14,7 +14,7 @@ from screening.fitting_route import (
     SUBSIDY_STOPS,
     fitting_state,
     not_applicable_stops,
-    route_stops,
+    stops_on_route,
     subsidy_declined,
 )
 from screening.forms import STOP_QUESTIONS
@@ -311,7 +311,7 @@ def _route(state, user, edit=None, question=None):
         "payout": ("等待補助發放", steps),
     }
     # Signed out, the 補助站 are folded, so neither the reminder nor the line on to form 25.
-    shown = route_stops(state is not None and state.subsidy_shown)
+    shown = stops_on_route(False) if state is None else state.stops
     stops = [(slug, *places[slug]) for slug in shown]
     if state is None:
         return [RouteStop(slug=slug, title=title, url=url) for slug, title, url in stops]
@@ -394,8 +394,7 @@ def _route_stop(state, user, slug, title, url, edit=None, question=None):
             shown = (reached[-1](instance=state.aid),)
         editable = bool(answer) and len(shown) < len(reached)
     # On the line on to form 25, unless form 25 is 不適用 or folded away (#596).
-    on_to_form_25 = state.subsidy_shown and "form-25" not in state.not_applicable
-    gap = FORM_25_GAP if slug == "after-fitting" and on_to_form_25 else ""
+    gap = FORM_25_GAP if slug == "after-fitting" and state.form_25_on_route else ""
     return RouteStop(
         slug=slug,
         title=title,

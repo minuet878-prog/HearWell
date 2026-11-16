@@ -262,11 +262,13 @@ class CertificateStopTests(TestCase):
         self.assertEqual(state.stop, "assessment")
 
     def test_wearing_and_not_applying_passes_form_25_and_the_payout_by(self):
+        # #596 (ADR 0063): folded away, so neither is 不適用 either; nothing left to be here.
         AidAndSubsidy.objects.create(
             user=self.user, certificate="no_subsidy", fitted_on=date(2026, 5, 1), subsidy="other"
         )
         state = self.state()
-        self.assertLessEqual({"form-25", "payout"}, state.not_applicable)
+        self.assertEqual(state.stops, FIVE_STOPS)
+        self.assertEqual(state.not_applicable, frozenset())
         self.assertIsNone(state.stop)
 
     def test_changing_back_to_applying_undoes_it(self):
@@ -348,9 +350,10 @@ class SubsidyStopsFoldTests(TestCase):
                 self.assertEqual(self.state(**answers).stops, NINE_STOPS)
 
     def test_bought_paying_otherwise_without_the_certificate_stays_folded_with_no_stop(self):
-        # Acceptance 13.
+        # Acceptance 13; folded, form 25 and the payout are not 不適用 either.
         state = self.state(fitted_on=date(2026, 5, 1), subsidy="other")
         self.assertEqual(state.stops, FIVE_STOPS)
+        self.assertEqual(state.not_applicable, frozenset())
         self.assertIn("after-fitting", state.done)
         self.assertIsNone(state.stop)
 
@@ -547,7 +550,8 @@ class Form25AndPayoutStopTests(TestCase):
         self.assertEqual(state.stop, "payout")
 
     def test_paying_otherwise_passes_both_by_and_leaves_no_stop(self):
-        state = self.state(subsidy="other")
+        # With a certificate, so the 補助站 are on the route to be 不適用 (#596).
+        state = self.state(certificate="yes", subsidy="other")
         self.assertEqual(state.not_applicable, {"form-25", "payout"})
         self.assertIsNone(state.stop)
 

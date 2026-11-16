@@ -3328,6 +3328,8 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             assessment = self.main().locator('[data-stop="assessment"]')
             expect(assessment.locator(".route-mark")).to_have_text(["已完成"])
             expect(assessment.locator(".route-answer")).to_have_text("有身障證明 修改")
+            expect(self.main().locator(".route-stop")).to_have_count(9)  # #596: unfolded
+            expect(self.main().locator(".route-fold")).to_have_count(0)
             expect(self.main().locator('[aria-current="step"]')).to_contain_text("九號表")
             assessment.get_by_role("link", name="修改身障鑑定與鑑定醫院的回答").click()
 
@@ -7872,8 +7874,10 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     else:
                         expect(route.locator(".route-mark")).to_have_count(0)
                         self.assert_subsidy_fold(route)
-                    self.visit(signed_in, path, width=320)
-                    self.assert_fits_uncut(name)
+                    # #596 (spec #593 acceptance 33): 390px as well as 320px.
+                    for width in (320, 390):
+                        self.visit(signed_in, path, width=width)
+                        self.assert_fits_uncut(f"{name}, {width}px", width)
 
     def assert_subsidy_fold(self, route):
         """#596 (spec #593 acceptance 33–35): the 補助站's line, outside the route's list, its

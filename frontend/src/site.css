@@ -1886,9 +1886,14 @@
 
   /* My guide's 選配路線 (#258, #467): numbered stops on a line (N3, ADR 0043), the line blue as
      far as the 目前這一站, which is a pale blue card beside it (the home page's 現在這一步).
-     Marks are words, never the level colours (ADR 0007). */
-  .route {
+     Marks are words, never the level colours (ADR 0007). The number's size is shared with the
+     folded 補助站's line (#596), so that line is level with the titles. */
+  .route,
+  .route-fold {
     --route-size: 1.7778rem;
+  }
+
+  .route {
     container-type: inline-size;
     list-style: none;
     margin: 0;
@@ -5131,7 +5136,7 @@
 
   .route-fold p {
     margin: 0;
-    padding-inline-start: calc(1.7778rem + 1rem);
+    padding-inline-start: calc(var(--route-size) + 1rem);
   }
 
   @container (max-width: 15rem) {

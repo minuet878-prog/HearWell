@@ -483,12 +483,12 @@ class SubsidyFoldPageTests(TestCase):
         self.assertNotIn("is-na", self.page())
 
     def test_folded_types_and_prices_does_not_say_the_six_months(self):
-        # Acceptance 42.
-        for signed_in in (True, False):
-            with self.subTest(signed_in=signed_in):
-                if not signed_in:
-                    self.client.logout()
-                self.assertNotIn(REMINDER, self.page())
+        # Acceptance 42: nothing answered, 沒有, and signed out.
+        self.assertNotIn(REMINDER, self.page())
+        self.answer(certificate="no_subsidy")
+        self.assertNotIn(REMINDER, self.page())
+        self.client.logout()
+        self.assertNotIn(REMINDER, self.page())
 
     def test_unfolded_types_and_prices_still_says_the_six_months(self):
         self.answer(certificate="applying")
@@ -496,7 +496,10 @@ class SubsidyFoldPageTests(TestCase):
         self.assertIn(f'<p class="route-note">{REMINDER}</p>', stop)
 
     def test_folded_after_fitting_has_no_line_on_to_form_25(self):
-        # Acceptance 43: neither signed out nor bought with the subsidy and then 沒有.
+        # Acceptance 43: fitted with nothing said of the subsidy, bought with it and then 沒有,
+        # and signed out.
+        self.answer(fitted_on=date(2026, 5, 1))
+        self.assertNotIn("route-gap", self.page())
         self.answer(
             certificate="no_subsidy", fitted_on=date(2026, 5, 1), subsidy="disability", level="mid"
         )
