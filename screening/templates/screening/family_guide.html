@@ -15,9 +15,6 @@
 {# Readability batch 2 (the owner's words, 2026-11-16): one sentence over the list; the talking tips' own words stay on family_talk. #}
 <p>想幫聽力不好的家人，可以從這裡開始。</p>
 
-{% url 'family_guide' as family_path %}
-{# The site always redirects to HTTPS; the server cannot tell behind Render's proxy. #}
-{% with family_url="https://"|add:request.get_host|add:family_path %}
 {# #427 (spec #426): the zone's entries, comparison page option A. Only what is live has one. #469 (the #468 mockup A): list rows; 怎麼跟他說話 has a page of its own and 陪伴配戴助聽器 folds open in its row. #}
 <nav aria-label="專區內容">
     <ul class="list-unstyled family-entries">
@@ -85,7 +82,6 @@
 <p class="mt-6">這些是一般性的建議，不能取代醫師或聽力師的診斷。有任何疑問，請和您的醫師或聽力師討論。</p>
 
 <p>可以複製這個網址傳給家人：<span class="wrap-anywhere font-bold">{{ family_url }}</span></p>
-{% endwith %}
 
 <details class="result-details family-sources">
     {% include "screening/result_details_summary.html" with title="出處" %}

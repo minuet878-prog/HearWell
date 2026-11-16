@@ -2222,17 +2222,15 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             # #332: the button itself says it now.
             expect(self.main().get_by_role("button", name="已複製", exact=True)).to_be_visible()
             copied = self.page.evaluate("navigator.clipboard.readText()")
-            # The site always serves HTTPS; the test server only speaks HTTP, so the family
-            # opens the copied path on it.
-            host = self.page.evaluate("location.host")
-            self.assertEqual(copied, f"https://{host}/shared/{share.token}")
+            # The link takes the page's own scheme: http on the test server, https on the site.
+            self.assertEqual(copied, f"{self.live_server_url}/shared/{share.token}")
             # The copy button takes the address's place; it comes back only if copying fails.
             expect(self.page.locator("#share-url")).to_be_hidden()
 
             family = self.browser.new_context(viewport={"width": 390, "height": 900})
             self.addCleanup(family.close)
             family_page = family.new_page()
-            family_page.goto(copied.replace(f"https://{host}", self.live_server_url))
+            family_page.goto(copied)
             expect(
                 family_page.get_by_role("heading", name="家人分享了一份聽伴聽力報告給您")
             ).to_be_visible()
@@ -11299,7 +11297,7 @@ class FamilyAndAccountT361Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
         with self.saving_artifacts():
             self.open("/family", self.DESKTOP, script=self.NO_SHARE_SHEET)
             section = self.main()
-            address = section.get_by_text(re.compile(r"^https://.*/family$"))
+            address = section.get_by_text(re.compile(r"^http://.*/family$"))
             # Found by id: its name turns into 已複製 once pressed.
             button = section.locator("#copy-link")
             expect(address).to_be_visible()
@@ -11327,7 +11325,7 @@ class FamilyAndAccountT361Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
         with self.saving_artifacts():
             self.open("/family", self.DESKTOP, java_script_enabled=False)
             section = self.main()
-            expect(section.get_by_text(re.compile(r"^https://.*/family$"))).to_be_visible()
+            expect(section.get_by_text(re.compile(r"^http://.*/family$"))).to_be_visible()
             expect(section.get_by_role("button", name="複製網址")).to_be_hidden()
 
     # Acceptance 6: on a desktop the password field and the buttons start where the text does,

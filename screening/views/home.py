@@ -92,7 +92,9 @@ def journey_todo_tick(request):
 def family_guide(request):
     # Spec phase8_c1_family_guide.md: the same reviewed content for everyone, no user data.
     # #469: its communication tips and scenarios are on family_talk.
-    return render(request, "screening/family_guide.html")
+    # The address to pass on takes the scheme the page was opened with (https on tingpal.tw).
+    context = {"family_url": request.build_absolute_uri(reverse("family_guide"))}
+    return render(request, "screening/family_guide.html", context)
 
 
 def learn(request):

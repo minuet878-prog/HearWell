@@ -2,6 +2,7 @@ from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import F, Prefetch
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
 from django.views.decorators.http import require_http_methods
@@ -96,10 +97,15 @@ def health_report(request):
 def share_report(request):
     # #193: what the family will see, then one press makes the link; only the user's own link.
     user = request.user
+    share = user.report_shares.active().first()
     context = {
         "has_records": user.submissions.exists() or user.audiograms.exists(),
-        "share": user.report_shares.active().first(),
+        "share": share,
     }
+    if share:
+        # The link to pass on takes the scheme the page was opened with (https on tingpal.tw).
+        path = reverse("shared_cover", args=[share.token])
+        context["share_url"] = request.build_absolute_uri(path)
     return render(request, "screening/share_report.html", context)
 
 
