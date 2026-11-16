@@ -90,9 +90,10 @@ Gandi 後台 → **Domain** → `tingpal.tw` → **DNS Records** → **Add recor
 **做對了會看到**：「已成功提交 Sitemap」（Sitemap submitted successfully）。下方「已提交的 Sitemap」（Submitted sitemaps）多一列 `/sitemap.xml`。
 
 - **狀態**（Status）一開始可能是「無法擷取」（Couldn't fetch）或空白：Google 還沒來讀，是正常的。隔天再看。
-- 隔天應該是 **「成功」**（Success），**「已找到的網頁」**（Discovered pages）跟 sitemap 的網址數一樣（2026-11-16 是 29）。
+- 隔天應該是 **「成功」**（Success），**「系統探索到的網頁」**（Discovered pages）跟 sitemap 的網址數一樣（2026-11-16 是 29）。
+- 2026-11-16 第一次提交時，Google 當場就讀完了：狀態直接是「成功」、29。
 
-**回報**：狀態和已找到的網頁數，截圖給代理（規格驗收 28）。
+**回報**：狀態和系統探索到的網頁數，截圖給代理（規格驗收 28）。
 
 數字不一樣，或隔天還是「無法擷取」→ 截圖給代理。
 
