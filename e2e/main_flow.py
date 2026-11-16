@@ -1459,7 +1459,10 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
             # #463: count, minutes and 上次 in one grey line, 上次 and its date kept together.
             last = cards.locator(".inline-block", has_text="上次")
             expect(last).to_have_count(1)
-            expect(cards.first.locator(".inline-block")).to_have_text(f"上次 {self.old_date}")
+            # #649: then the last result, every answer 4 (40 points).
+            expect(cards.first.locator(".inline-block")).to_have_text(
+                f"上次 {self.old_date}・顯著影響"
+            )
             # #347: the retest is due, so HHIE-S is recommended on top, and still a card below.
             recommended = self.main().get_by_role("region", name="推薦您做這一份")
             expect(recommended).to_contain_text("HHIE-S")
@@ -16860,3 +16863,63 @@ class EmptyStatesT648Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
                         self.assertGreaterEqual(solid.bounding_box()["height"], 44, path)
                         self.double_text(on=False)
                         self.assertGreaterEqual(solid.bounding_box()["height"], 44, path)
+
+
+class LastResultT649Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#649 (spec #644 Q1, acceptance 38): the catalogue's cards, the recommended one too, say
+    the last result after 上次 and still fit a phone at 200% text, 上次 and its words on one
+    line together inside the card."""
+
+    fixtures = ("questions_fixture.json",)
+    record = ResultPagesT461Test.record
+    TAIPEI = ResultPagesT461Test.TAIPEI
+    # Each card's 上次 words; HHIE-S 200 days ago, so it is also the recommendation (retest due).
+    LAST: ClassVar = {
+        "hhie-s": "輕度到中度影響",
+        "thi": "極重度障礙",
+        "ssq12-tw": "未計算：包含不適用題目",
+        "sadl": "整體滿意度：4.0",
+        "ioi-ha": None,
+    }
+    # Where the words end, overflow too, and where their card or the recommended block ends.
+    WORDS_END = """e => [
+        e.getBoundingClientRect().left + e.scrollWidth,
+        e.closest("a, section").getBoundingClientRect().right,
+    ]"""
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+        self.sign_in(consented_user(username="last_result_t649", birth_year=1956))
+        old = datetime.now(self.TAIPEI) - timedelta(days=200)
+        self.days = {"hhie-s": f"{old:%Y/%m/%d}"}
+        hhie_s = self.record("hhie-s", [4, 4, 2, 2] + [0] * 6, wearing_hearing_aid=False)
+        Submission.objects.filter(pk=hhie_s.pk).update(created_at=old)
+        self.record("thi", [4] * 25)
+        self.record("ssq12-tw", [8] * 11 + [None], wearing_hearing_aid=False)
+        self.record("sadl", [4] * 15, wearing_hearing_aid=True)
+        self.record("ioi-ha", [3] * 7, norm_group=NormGroup.UNGROUPED)
+        today = f"{datetime.now(self.TAIPEI):%Y/%m/%d}"
+        for code in ("thi", "ssq12-tw", "sadl", "ioi-ha"):
+            self.days[code] = today
+
+    def test_fits_a_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            for width in (320, 390):
+                with self.subTest(width=width):
+                    self.open("/questionnaire_list", (width, 844))
+                    recommended = self.main().get_by_role("region", name="推薦您做這一份")
+                    expect(recommended.locator(".inline-block")).to_have_text(
+                        f"上次 {self.days['hhie-s']}・輕度到中度影響"
+                    )
+                    for code, said in self.LAST.items():
+                        name = Questionnaire.objects.get(code=code).questionnaire_name
+                        card = self.main().locator("a.questionnaire-card", has_text=f"（{name}）")
+                        last = f"上次 {self.days[code]}" + (f"・{said}" if said else "")
+                        expect(card.locator(".inline-block")).to_have_text(last)
+                    self.assert_fits_a_phone_at_double_text_size("catalogue", width)
+                    # Each 上次 and its words end inside their card or the recommended block. At
+                    # 320px the date alone is wider than the recommended block's words (as it was
+                    # before #649), so it may run into the block's padding, never past it.
+                    for tag in self.main().locator(".inline-block", has_text="上次").all():
+                        words_end, box_end = tag.evaluate(self.WORDS_END)
+                        self.assertLessEqual(words_end, box_end, tag.text_content())

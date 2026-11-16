@@ -593,7 +593,11 @@ class ReturningCatalogueTests(TestCase):
             text = cards[reverse("screening", args=[questionnaire.pk])]
             with self.subTest(code=questionnaire.code):
                 # #463: one line of muted words, 上次 and its date kept together.
-                last = {"hhie-s": "2026/03/02", "thi": "2026/02/10"}.get(questionnaire.code)
+                # #649: then the record's level; these have no answers, so the lowest.
+                last = {
+                    "hhie-s": "2026/03/02・無／極輕微影響",
+                    "thi": "2026/02/10・無障礙或輕微障礙",
+                }.get(questionnaire.code)
                 count, minutes = questionnaire.questions.count(), questionnaire.definition.minutes
                 facts = f"{count} 題・約 {minutes} 分鐘"
                 if last:
@@ -602,9 +606,10 @@ class ReturningCatalogueTests(TestCase):
 
     def test_the_dates_come_in_one_query_however_many_cards_have_one(self):
         # A recent life-impact record on both sides, none answered worn: the recommendation asks
-        # the same queries each time and finds none, so only the dates could differ.
+        # the same queries each time and finds none, so only the dates could differ. No SADL:
+        # these records have no answers to score it by (#649's results: test_questionnaire_cards).
         counts = []
-        for codes in (("hhie-s",), ("hhie-s", "thi", "ssq12-tw", "sadl")):
+        for codes in (("hhie-s",), ("hhie-s", "thi", "ssq12-tw", "ioi-ha")):
             self.login(*codes)
             with CaptureQueriesContext(connection) as queries:
                 page = self.catalogue()

@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
 from django.core import signing
 from django.db import IntegrityError
-from django.db.models import Count, OuterRef, Subquery, prefetch_related_objects
+from django.db.models import Count, Prefetch, prefetch_related_objects
 from django.http import Http404, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -29,7 +29,7 @@ from screening.main_flow import (
     get_user_state,
     life_impact_questionnaire,
 )
-from screening.models import Questionnaire, Submission
+from screening.models import Answer, Questionnaire
 from screening.questionnaires.definition import (
     HEARING_AID,
     LIFE_IMPACT,
@@ -146,15 +146,26 @@ def questionnaire_list(request):
     if "choose" in request.GET or (
         returning and not any(name in request.GET for name in WIZARD_PARAMS)
     ):
-        # Each card's 「上次」 date in the same query, not one query per card.
-        latest = (
-            Submission.objects.filter(user=user, questionnaire=OuterRef("pk"))
-            .order_by("-created_at")
-            .values("created_at")[:1]
+        # Each card's 「上次」 (#649): every questionnaire's latest record, worn or not, scored in
+        # one query and its answers in one more (a subscale result reads them), not per card.
+        # DISTINCT ON picks them in a subquery: Django cannot put it beside the scores' GROUP BY.
+        latest_ids = (
+            user.submissions.order_by("questionnaire_id", "-created_at", "-id")
+            .distinct("questionnaire_id")
+            .values("id")
         )
-        questionnaires = sorted(
-            questionnaires.annotate(last_answered_at=Subquery(latest)), key=list_order
-        )
+        latest = {
+            submission.questionnaire_id: submission
+            for submission in user.submissions.filter(id__in=latest_ids)
+            .with_scores()
+            .select_related("questionnaire")
+            .prefetch_related(
+                Prefetch("answers", queryset=Answer.objects.select_related("question"))
+            )
+        }
+        questionnaires = sorted(questionnaires, key=list_order)
+        for questionnaire in questionnaires:
+            questionnaire.last_submission = latest.get(questionnaire.pk)
         return render(
             request,
             "screening/questionnaire.html",

@@ -38,6 +38,9 @@ class Result:
     # The record's row of 我的紀錄 (#409) and its result page; page_context() is the page's data
     # of this type, the view adding what every page has.
     row_template = None
+    # The questionnaire catalogue card's words after 「上次」 and its date (#649), from the same
+    # line as its row; None: the date alone.
+    card_template = None
     page_template = None
     page_shows_wearing = True  # the result page's header says how the hearing aids were worn
 
@@ -81,6 +84,7 @@ class GradedResult(Result):
     """分級: the total graded by thresholds, with advice (HHIE-S, HHIA-S, THI)."""
 
     row_template = "screening/record_rows/graded.html"
+    card_template = "screening/summaries/level.html"
     page_template = "screening/result.html"
 
     @classmethod
@@ -245,6 +249,7 @@ class AverageResult(Result):
     """平均: the average of the items, no grade (SSQ12-TW)."""
 
     row_template = "screening/record_rows/average.html"
+    card_template = "screening/summaries/average.html"
     page_template = "screening/ssq12_result.html"
     not_applicable_choice = "不適用"
 
@@ -381,6 +386,7 @@ class SubscaleResult(Result):
     """分量表: the overall and subscale averages (SADL)."""
 
     row_template = "screening/record_rows/subscale.html"
+    card_template = "screening/summaries/subscale.html"
     page_template = "screening/sadl_result.html"
     page_shows_wearing = False  # not asked: always worn (always_aided)
     not_applicable_choice = "不適用"
