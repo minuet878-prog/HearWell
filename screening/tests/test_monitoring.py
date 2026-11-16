@@ -283,7 +283,6 @@ class MonitoringTests(TestCase):
         self.assertNotIn("site_admin", payload)
         self.assertNotIn("user", event)
 
-
     # Spec #561 acceptance 2: the 運作檢查 with the database down answers 503 itself, and the
     # outside monitor raises the alarm; nothing goes to Sentry every minute.
     def test_uptime_check_with_the_database_down_answers_503_and_sends_nothing(self):
@@ -292,6 +291,7 @@ class MonitoringTests(TestCase):
             status, _ = self._send("get", reverse("uptime_check"))
         self.assertEqual(status, 503)
         self.assertEqual(self._events(), [])
+
 
 class MonitoringSwitchTests(SimpleTestCase):
     """Spec docs/specs/phase-06/phase6_error_monitoring.md, acceptance 5."""

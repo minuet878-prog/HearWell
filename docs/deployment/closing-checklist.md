@@ -302,8 +302,137 @@ ls ~/backups/hearwell-vps
 
 ## 5. 設定 Sentry 監控（#569）
 
-運作檢查（#562）合併、部署到正式站之後補上這一段。
+運作檢查（#562）合併、照平常的方式部署到正式站之後做。做好之後：Sentry 每分鐘打開一次 `https://tingpal.tw/uptime-check`，連續 3 次不正常就開一個問題、寄 email 給你（[拷問決定](../planning/found-by-family/closing-grill-decisions.md) Q11、Q12，[外部監控研究](../planning/found-by-family/monitoring-research.md)）。
+
+代理看不到 Sentry 後台，下面照 Sentry 官方說明寫欄位；按鈕的位置與名稱以 Sentry 畫面為準。畫面上找不到某個欄位、或免費方案不讓你選，先停下來告訴代理，不要換別家（備案 UptimeRobot 要先問本人）。
+
+### 5-1 確認運作檢查已上線
+
+在 Mac 的終端機：
+
+```bash
+curl -s -w '\n%{http_code}\n' https://tingpal.tw/uptime-check
+curl -s -o /dev/null -w '%{http_code}\n' -A 'SentryUptimeBot/1.0' https://tingpal.tw/uptime-check
+curl -sI https://tingpal.tw/uptime-check | grep -i -E 'x-robots-tag|cache-control|set-cookie'
+```
+
+做對了會看到：
+
+- 第一行印 `ok`，下一行 `200`。
+- 第二行 `200`：假裝成 Sentry 的探測機器人（它的名稱是 `SentryUptimeBot/1.0`）也打得開，代表 Nginx 沒擋它。
+- 第三個指令有 `x-robots-tag: noindex, nofollow` 和含 `no-store` 的 `cache-control`，**沒有** `set-cookie`。
+
+### 5-2 建 uptime 監控
+
+在 Sentry 網站，到 Monitors（監控）頁新增一個 Uptime Monitor：
+
+| 欄位 | 填什麼 |
+|---|---|
+| URL | `https://tingpal.tw/uptime-check` |
+| Method | `GET` |
+| Interval | `1 minute`；免費方案不能選的話，選能選的最短，並告訴代理 |
+| Timeout | 預設就好 |
+| Headers、Body | 空白 |
+| Failure Tolerance（失敗幾次才開問題） | 預設 3 |
+| Recovery Tolerance（成功幾次才算恢復） | 預設 1 |
+
+- Sentry 說明寫它可能已經依錯誤紀錄裡最常出現的網址，自動建了一個監控。有的話，把那一個的 URL 改成上表的網址，不要留兩個（免費方案只有一個）。
+- 建好之後，監控頁應該顯示它在檢查、狀態是正常。
+
+### 5-3 建寄 email 的警示
+
+Sentry 說明寫：要另外建一條「警示」（Alert），條件對到 uptime 的問題（outage／downtime），動作選寄 email，才會收到通知。
+
+- 收件人：你自己的 Sentry 帳號 email。
+- 建好之後在警示清單看得到這一條。
+
+### 5-4 讓手機會響
+
+- iPhone 的 Gmail app：設定 → 你的帳號 → 通知，選「所有新郵件」，或選「僅限高優先順序」並在第 6 段第一次收到 Sentry 的信時，把它標成重要。
+- 第一次收到的信如果在「促銷內容」「垃圾郵件」，移到主要收件匣。
 
 ## 6. 兩次停機測試（#569）
 
-跟第 5 段一起補上。
+故意停掉服務，確認第 5 段的通知真的收得到、服務救得回來（[拷問決定](../planning/found-by-family/closing-grill-decisions.md) Q13）。兩次分開做，第一次完全恢復之後再做第二次。停下來的那幾分鐘網站打不開，挑沒人在用的時間（例如晚上）。
+
+先開一個 SSH 連線，整段都在 VPS 上做：
+
+```bash
+ssh hearwell-vps
+```
+
+### 6-1 停之前
+
+看最近有沒有人在用（最後幾行的時間、網址；`SentryUptimeBot` 那幾行是監控自己，不用管）：
+
+```bash
+sudo tail -n 20 /var/log/nginx/access.log
+```
+
+最近幾分鐘只有 `SentryUptimeBot` 就可以開始。再手動備份一次（產生的檔名跟每日備份一樣，會照常 8 天後自動刪掉）：
+
+```bash
+sudo systemctl start hearwell-backup.service
+ls -lt ~/backups | head -2
+```
+
+做對了會看到：最上面多了一份剛剛時間的 `hearwell-db-….dump`。
+
+### 6-2 第一次：停網站程式（Gunicorn）
+
+記下現在的時間，然後：
+
+```bash
+sudo systemctl stop hearwell
+```
+
+在 Mac 上確認真的停了：
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://tingpal.tw/uptime-check
+```
+
+會看到 `502`（Nginx 找不到後面的程式）。等 Sentry 的信，**最多等 10 分鐘**。收到後記下時間、手機有沒有響，然後恢復：
+
+```bash
+sudo systemctl start hearwell
+systemctl is-active hearwell
+```
+
+做對了會看到：`active`；Mac 上再跑一次上面的 `curl` 是 `200`；過一兩分鐘 Sentry 的監控頁顯示恢復正常、那個問題變成已解決。
+
+10 分鐘都沒收到信：先恢復服務，再告訴代理（附 Sentry 監控頁的截圖）。
+
+### 6-3 第二次：停資料庫（PostgreSQL）
+
+第一次完全恢復後再做。記下時間，然後：
+
+```bash
+sudo systemctl stop postgresql
+```
+
+在 Mac 上確認：
+
+```bash
+curl -s -w '\n%{http_code}\n' https://tingpal.tw/uptime-check
+```
+
+會看到 `database unavailable` 和 `503`：網站還開著，只有資料庫停了，這正是只查首頁時抓不到的情況。等 Sentry 的信，最多 10 分鐘。收到後記下時間、手機有沒有響，然後恢復：
+
+```bash
+sudo systemctl start postgresql
+systemctl is-active postgresql
+```
+
+做對了會看到：
+
+- `active`。
+- Mac 上再跑一次 `curl` 是 `ok` 和 `200`。
+- 用瀏覽器登入 `https://tingpal.tw`，打開「紀錄」看得到自己的紀錄。
+- Sentry 的監控頁顯示恢復正常。
+
+資料庫重新啟動後網站不用重啟：Django 下一次連線時會自己重新連上。登入失敗或頁面出錯，再重啟一次網站程式（`sudo systemctl restart hearwell`）並告訴代理。
+
+### 6-4 記錄
+
+把兩次各自的「停下的時間、收到信的時間、手機有沒有響、恢復後的 `curl` 結果」告訴代理，代理寫進驗證紀錄（規格驗收 22–24）。
