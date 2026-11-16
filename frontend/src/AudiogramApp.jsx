@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import AudiogramChart from "./AudiogramChart.jsx";
+import AudiogramDemo from "./AudiogramDemo.jsx";
 import AudiogramReading, { readingText } from "./AudiogramReading.jsx";
 import FoldSummary from "./FoldSummary.jsx";
 import { DB_MAX, DB_MIN, SYMBOLS, frequenciesFor, place, pointKey } from "./audiogram.js";
@@ -261,6 +262,8 @@ export default function AudiogramApp({
         ))}
       </ol>
       <p className="mb-0">報告上符號下面有箭頭（無反應），就往下拖出圖外。</p>
+      {/* #618 (K2): keyed by the ear, so the other ear's step starts it over. */}
+      <AudiogramDemo key={ear} ear={ear} />
     </>
   );
 

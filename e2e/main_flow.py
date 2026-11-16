@@ -15813,7 +15813,8 @@ class AudiogramReadingTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServ
         return self.main().get_by_role("img", name=re.compile("聽力圖"))
 
     def reading(self):
-        return self.main().locator(".audiogram-reading")
+        # The one over the chart, not the one in #618's demo.
+        return self.main().locator(".audiogram-app > .audiogram-reading")
 
     def said(self):
         return self.main().locator(".audiogram-app [role=status]")
@@ -15920,3 +15921,114 @@ class AudiogramReadingTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServ
         with self.saving_artifacts():
             expect(self.chart()).to_be_visible()
             expect(self.reading()).to_have_count(0)
+
+
+class AudiogramDemoTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#618 (spec #611 K2, the #613 mockup's part five): 看示範 under 怎麼標記 in a real browser.
+    How it is timed frame by frame is AudiogramDemo.test.jsx's; this is that it plays once on the
+    page and stops, on a chart of its own, and fits a phone."""
+
+    # The same steps, chart and reading over it as #617's.
+    open_step = AudiogramReadingTest.open_step
+    chart = AudiogramReadingTest.chart
+    reading = AudiogramReadingTest.reading
+    at = AudiogramReadingTest.at
+
+    def setUp(self):
+        self.sign_in(consented_user(username="audiogram_demo_e2e"))
+
+    def demo(self):
+        return self.main().locator(".audiogram-demo")
+
+    def demo_button(self, name="看示範"):
+        return self.main().get_by_role("button", name=name, exact=True)
+
+    def finger(self):
+        return self.demo().locator(".audiogram-demo-finger").get_attribute("transform")
+
+    # Acceptance 43, 44 and 46: it plays on a tap and stops on its last frame, offers 再看一次 and
+    # plays again; the user's point, count and reading over the chart stay as they were.
+    def test_plays_once_on_its_own_chart(self):
+        self.open_step(2)
+        with self.saving_artifacts():
+            self.chart().scroll_into_view_if_needed()
+            self.page.mouse.click(*self.at(2000, 60))
+            expect(self.reading().locator("span")).to_have_text(["右耳氣導", "2000 Hz　60 dB"])
+            count = self.main().locator(".audiogram-count")
+            expect(count).to_have_text("右耳已標：氣導 1 個、骨導 0 個")
+            # Acceptance 45: nothing moves before the tap.
+            start = self.finger()
+            self.page.wait_for_timeout(2500)
+            self.assertEqual(self.finger(), start)
+            expect(self.demo().locator(".audiogram-demo-mark")).to_have_count(0)
+
+            self.demo_button().click()
+            expect(self.demo().locator(".audiogram-reading span")).to_have_text(
+                ["右耳氣導", "1000 Hz　45 dB"]
+            )
+            expect(self.demo_button("再看一次")).to_be_visible()
+            end = self.finger()
+            self.assertNotEqual(end, start)
+            # Not looping: still where it stopped a while later.
+            self.page.wait_for_timeout(2500)
+            self.assertEqual(self.finger(), end)
+            expect(self.demo().locator(".audiogram-demo-mark")).to_have_count(1)
+
+            expect(self.chart().locator("[data-point]")).to_have_count(1)
+            expect(self.chart().locator('[data-point="right-air-2000"]')).to_have_count(1)
+            expect(count).to_have_text("右耳已標：氣導 1 個、骨導 0 個")
+            expect(self.reading().locator("span")).to_have_text(["右耳氣導", "2000 Hz　60 dB"])
+
+            self.demo_button("再看一次").click()
+            expect(self.demo().locator(".audiogram-reading")).to_have_text("點一下圖來標記")
+            expect(self.demo().locator(".audiogram-reading span")).to_have_text(
+                ["右耳氣導", "1000 Hz　45 dB"]
+            )
+            expect(self.demo().locator(".audiogram-demo-finger")).to_have_attribute(
+                "transform", end
+            )
+
+    # Acceptance 42 and 48: folded under 怎麼標記 on the second ear, there once opened; the demo
+    # is hidden from screen readers, the button is heard as 看示範.
+    def test_folded_on_the_second_ear(self):
+        self.open_step(3)
+        with self.saving_artifacts():
+            expect(self.demo_button()).to_be_hidden()
+            self.main().get_by_text("怎麼標記", exact=True).click()
+            expect(self.demo_button()).to_be_visible()
+            expect(self.demo()).to_have_attribute("aria-hidden", "true")
+            self.demo_button().click()
+            expect(self.demo().locator(".audiogram-reading span")).to_have_text(
+                ["左耳氣導", "1000 Hz　45 dB"]
+            )
+
+    # Acceptance 47.
+    def test_reduced_motion_has_no_button(self):
+        self.open_step(2)
+        with self.saving_artifacts():
+            self.page.emulate_media(reduced_motion="reduce")
+            self.page.reload()
+            self.main().get_by_role("button", name=AUDIOGRAM_FORWARD).click()
+            expect(self.main().get_by_text("選下面的符號")).to_be_visible()
+            expect(self.demo_button()).to_have_count(0)
+            expect(self.demo()).to_have_count(0)
+
+    # Acceptance 49: at 390px, at the usual and at 200% text, nothing scrolls sideways and the
+    # button is at least 44 x 44px.
+    def test_fits_a_phone_at_double_text_size(self):
+        for double in (False, True):
+            with self.subTest(double_text=double):
+                self.open_step(2)
+                if double:
+                    self.double_text()
+                self.assertLessEqual(
+                    self.page.evaluate("document.documentElement.scrollWidth"), 390
+                )
+                for part in (self.demo(), self.demo_button()):
+                    box = part.bounding_box()
+                    self.assertGreaterEqual(box["x"], 0)
+                    self.assertLessEqual(box["x"] + box["width"], 390)
+                box = self.demo_button().bounding_box()
+                self.assertGreaterEqual(box["height"], 44)
+                self.assertGreaterEqual(box["width"], 44)
+                self.assertGreaterEqual(self.font_size(self.demo_button()), self.rem())

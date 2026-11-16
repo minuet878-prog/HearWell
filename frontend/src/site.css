@@ -3423,6 +3423,68 @@
     font-weight: 500;
   }
 
+  /* #618 (spec #611 K2, the #613 mockup's part five): 看示範's small chart under 怎麼標記, the top of
+     an audiogram in a thin frame with its own reading over it, a size down from the one over the
+     user's chart. In rem, so at 200% text it takes the width it is given and no more. */
+  .audiogram-demo {
+    max-width: 16rem;
+    margin: 0.75rem 0 0.5rem;
+  }
+
+  .audiogram-demo .audiogram-reading {
+    margin: 0 0 0.35rem;
+  }
+
+  .audiogram-demo .audiogram-reading::before,
+  .audiogram-demo .audiogram-reading::after,
+  .audiogram-demo .audiogram-reading-value {
+    font-size: 1.2rem;
+  }
+
+  .audiogram-demo .audiogram-reading-hint {
+    font-size: 1rem;
+  }
+
+  .audiogram-demo-chart {
+    padding: 0.4rem 0.3rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-small);
+    background-color: #fff;
+    overflow: hidden;
+  }
+
+  .audiogram-demo-chart svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .audiogram-demo-mark {
+    fill: #fff;
+    stroke-width: 2;
+  }
+
+  .audiogram-demo-mark.ear-right { stroke: var(--color-ear-right); }
+  .audiogram-demo-mark.ear-left { stroke: var(--color-ear-left); stroke-width: 2.2; }
+
+  .audiogram-demo-ring {
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 1.6;
+    stroke-dasharray: 3 3;
+  }
+
+  .audiogram-demo-finger {
+    fill: var(--color-pull);
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .audiogram-demo-nail { fill: #fff; stroke-width: 1.4; }
+  .audiogram-demo-knuckle { fill: none; stroke-width: 1.4; }
+
   /* Masking switch (#333): 遮蔽, a track and knob, then 開／關. The track is grey off and orange on
      (the white knob is 4.69:1 and 4.83:1 on them), with a matching chart frame; rem, so it grows
      with the user's font size. Hover, press and focus only change colours (ADR 0028). */

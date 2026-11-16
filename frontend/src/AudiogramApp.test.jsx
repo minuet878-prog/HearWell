@@ -8,8 +8,12 @@ const TODAY = "2026-10-16";
 let navigate;
 
 // jsdom has no layout: make one screen pixel equal one chart unit, and scrolling a no-op.
+// Nor media queries: motion is not reduced unless a test says so (#618's 看示範).
+let reduceMotion;
 beforeEach(() => {
   navigate = vi.fn();
+  reduceMotion = false;
+  window.matchMedia = (query) => ({ matches: query === "(prefers-reduced-motion: reduce)" && reduceMotion });
   Element.prototype.scrollIntoView = vi.fn();
   SVGElement.prototype.getBoundingClientRect = () => ({
     left: 0,
@@ -821,7 +825,8 @@ describe("edit", () => {
 
 // #617 (spec #611 K1): the last point of this step, large, right over the chart.
 describe("reading over the chart (#617)", () => {
-  const reading = () => document.querySelector(".audiogram-reading");
+  // The one over the chart, not the one in #618's demo.
+  const reading = () => document.querySelector(".audiogram-app > .audiogram-reading");
   const shown = () => [...reading().children].map((row) => row.textContent);
   const said = () => screen.getByRole("status").textContent;
   const HINT = ["點一下圖來標記"];
@@ -988,5 +993,70 @@ describe("layout (#465)", () => {
     const table = document.querySelector("details.audiogram-table");
     expect(table.classList.contains("result-details")).toBe(true);
     expect(table.querySelector("summary .link-card-title").textContent).toBe("用數值輸入（鍵盤或螢幕閱讀器）");
+  });
+});
+
+// #618 (spec #611 K2): 看示範 under 怎麼標記 plays on a small chart of its own.
+describe("demo under 怎麼標記 (#618)", () => {
+  const howto = () => document.querySelector(".audiogram-howto").parentElement;
+  const demoButton = () => [...howto().querySelectorAll("button")].find((b) => /看示範|再看一次/.test(b.textContent));
+  const renderEdit = () =>
+    render(<AudiogramApp today={TODAY} csrfToken="csrf-token" navigate={navigate} audiogramId={7} initialTestedOn="2026-01-10" />);
+
+  it("is in how to mark on both ear steps, open or folded, new or editing (acceptance 42)", () => {
+    renderRight();
+    expect(demoButton().textContent).toBe("▶ 看示範");
+    expect(howto().querySelector(".audiogram-demo")).not.toBeNull();
+    forward();
+    expect(howto().closest("details")).not.toBeNull();
+    expect(demoButton().textContent).toBe("▶ 看示範");
+    cleanup();
+    renderEdit();
+    forward();
+    expect(demoButton()).toBeDefined();
+    forward();
+    expect(demoButton()).toBeDefined();
+    forward();
+    expect(document.querySelector(".audiogram-demo")).toBeNull();
+  });
+
+  it("leaves the user's points, the count and the reading over the chart as they were (acceptance 46)", () => {
+    vi.useFakeTimers();
+    renderRight();
+    drag(2000, 60, 60);
+    const userReading = () => [...document.querySelector(".audiogram-app > .audiogram-reading").children].map((row) => row.textContent);
+    fireEvent.click(demoButton());
+    act(() => vi.advanceTimersByTime(2100));
+    expect(demoButton().textContent).toBe("↺ 再看一次");
+    expect(chart().querySelectorAll("[data-point]")).toHaveLength(1);
+    expect(point("right-air-2000").dataset.db).toBe("60");
+    expect(document.querySelector(".audiogram-count").textContent).toBe("右耳已標：氣導 1 個、骨導 0 個");
+    expect(userReading()).toEqual(["右耳氣導", "2000 Hz　60 dB"]);
+    expect(screen.getByRole("status").textContent).toBe("右耳氣導　2000 Hz　60 dB");
+    expect(screen.getByRole("button", { name: "清除 右耳氣導 2000 Hz" })).toBeTruthy();
+  });
+
+  it("starts again on the other ear's step, with that ear's symbol", () => {
+    vi.useFakeTimers();
+    renderEdit();
+    forward();
+    fireEvent.click(demoButton());
+    act(() => vi.advanceTimersByTime(2100));
+    forward();
+    expect(demoButton().textContent).toBe("▶ 看示範");
+    expect(document.querySelector(".audiogram-demo-mark")).toBeNull();
+  });
+
+  it("has no button with reduced motion, the words as they were (acceptance 47)", () => {
+    reduceMotion = true;
+    renderRight();
+    expect(demoButton()).toBeUndefined();
+    expect(document.querySelector(".audiogram-demo")).toBeNull();
+    expect([...document.querySelectorAll(".audiogram-howto .step-list-body")].map((li) => li.textContent)).toEqual([
+      "選下面的符號",
+      "在圖上按住，上下拖到報告上的位置",
+      "放開就標好了；標錯就在那個點上點一下，可以刪除",
+    ]);
+    expect(screen.getByText("報告上符號下面有箭頭（無反應），就往下拖出圖外。")).toBeTruthy();
   });
 });
