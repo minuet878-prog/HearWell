@@ -23,7 +23,8 @@ from screening.views.common import form_page
 # register pages (owner's acceptance of spec #355, 2026-11-14); so is signing in or up with Google
 # or LINE, which makes nothing before the name page (spec #505, #506). The 運作檢查 shows no one's
 # data and answers the same for everyone (spec #561). 意見回饋 is open to everyone and kept apart
-# from any account (spec #633, ADR 0064), so it is the same before agreeing.
+# from any account (spec #633, ADR 0064), so it is the same before agreeing; 關於聽伴 shows only
+# the privacy notice's highlights (#640).
 OPEN_PAGES = {
     "index",
     "privacy",
@@ -63,6 +64,7 @@ OPEN_PAGES = {
     "uptime_check",
     "feedback",
     "feedback_sent",
+    "about",
 }
 
 

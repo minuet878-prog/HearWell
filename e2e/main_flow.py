@@ -8206,9 +8206,9 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     def test_learn_cards_are_list_rows(self):
         with self.saving_artifacts():
             self.visit(False, "/learn")
-            # #487: the hearing loss simulator is the fourth.
+            # #487: the hearing loss simulator is the fourth; #640: 關於聽伴 the fifth.
             cards = self.main().get_by_role("link")
-            self.assertEqual(cards.count(), 4)
+            self.assertEqual(cards.count(), 5)
             for card in cards.all():
                 with self.subTest(card=card.inner_text()):
                     self.assert_list_row(card)
@@ -10340,7 +10340,7 @@ class FooterOneRowTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTe
     mockup's A); a computer keeps the icon beside the words. The links stay at least 44px tall to
     tap."""
 
-    LINKS = ("家人專區", "意見回饋", "隱私權說明", "帳號設定")
+    LINKS = ("家人專區", "關於聽伴", "意見回饋", "隱私權說明", "帳號設定")
     # The box of a link's words alone, without its icon.
     WORDS = """el => {
         const words = [...el.childNodes].find((n) => n.nodeType === 3 && n.data.trim());
@@ -11310,9 +11310,9 @@ class ReportShareLearnT366Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
     def test_learn_card_titles_end_with_more_than_one_character(self):
         self.open("/learn", self.PHONE, signed_in=False)
         with self.saving_artifacts():
-            # #487: the hearing loss simulator is the fourth.
+            # #487: the hearing loss simulator is the fourth; #640: 關於聽伴 the fifth.
             titles = self.main().locator(".link-card-title")
-            expect(titles).to_have_count(4)
+            expect(titles).to_have_count(5)
             for title in titles.all():
                 lines = self.lines(title)
                 with self.subTest(title=lines):
@@ -16632,8 +16632,8 @@ class AnswerReassuranceTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
 
 
 class FeedbackTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
-    """Spec #633 (#636, the #634 mockup's A): 意見回饋 from any footer, sent with or without
-    JavaScript, its pages on a phone (the footer's rows: FooterOneRowTest)."""
+    """Spec #633 (#636, #640, the #634 mockup's A): 意見回饋 from any footer, sent with or
+    without JavaScript, its pages and 關於聽伴 on a phone (the footer's rows: FooterOneRowTest)."""
 
     def footer_links(self):
         return self.page.locator(".site-footer-links a")
@@ -16653,6 +16653,13 @@ class FeedbackTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCa
             expect(self.page).to_have_url(f"{self.live_server_url}/privacy")
         feedback = Feedback.objects.get()
         self.assertEqual((feedback.text, feedback.page), ("字太小了", "隱私權說明"))
+
+    def test_the_about_page_fits_a_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            for width in (320, 390):
+                with self.subTest(width=width):
+                    self.open("/about", (width, 844), signed_in=False)
+                    self.assert_fits_a_phone_at_double_text_size("about", width)
 
     def test_its_pages_fit_a_phone_at_double_text_size(self):
         with self.saving_artifacts():

@@ -54,6 +54,7 @@ urlpatterns = [
     ),
     path("register", accounts.register, name="register"),
     path("privacy", accounts.privacy, name="privacy"),
+    path("about", home.about, name="about"),
     path("feedback", feedback.feedback, name="feedback"),
     path("feedback/sent", feedback.feedback_sent, name="feedback_sent"),
     path("family", home.family_guide, name="family_guide"),

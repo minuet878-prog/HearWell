@@ -38,6 +38,7 @@ PAGE_NAMES = {
     "line_name": "用 LINE 註冊",
     "consent": "同意書",
     "privacy": "隱私權說明",
+    "about": "關於聽伴",
     "add_to_home": "加到手機主畫面",
     "learn": "了解",
     "hearing_loss_simulator": "聽損模擬",

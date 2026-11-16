@@ -1,0 +1,22 @@
+{% extends "screening/layout.html" %}
+
+{% block body %}
+{# Spec #633 (#640), the #634 mockup's A: four parts laid out in turn. The owner writes 誰做的, 內容怎麼查核 and 不能取代檢查 (#635); #642 puts them in. 誰做的 says only 執業聽力師, no name or workplace (the grill's Q13). #}
+<h1 class="h3 mt-2">關於聽伴</h1>
+<section class="mt-6" aria-labelledby="about-who">
+    <h2 id="about-who" class="h4">誰做的</h2>
+</section>
+<section class="mt-6" aria-labelledby="about-checked">
+    <h2 id="about-checked" class="h4">內容怎麼查核</h2>
+</section>
+{# Q15: the privacy notice's own highlights, so the two never say it differently. #}
+<section class="mt-6" aria-labelledby="about-data">
+    <h2 id="about-data" class="h4">資料怎麼處理</h2>
+    {% include "screening/consent_highlights.html" with class="tip-box" %}
+    <p><a class="inline-link" href="{% url 'privacy' %}">看完整的隱私權說明</a></p>
+</section>
+<section class="mt-6" aria-labelledby="about-not-a-test">
+    <h2 id="about-not-a-test" class="h4">不能取代檢查</h2>
+</section>
+<p class="guide-checked">本頁資料查核於 {{ checked_on|date:"Y/m/d" }}。</p>
+{% endblock %}

@@ -261,7 +261,8 @@ class FooterOneRowTests(TestCase):
     def _links(self, content):
         return re.findall(r"<a href=\"([^\"]+)\">.*?</svg>([^<]*)</a>", _footer(content), re.S)
 
-    # Spec #633 (#636): 意見回饋 joins them, after the family zone (the #634 mockup's A).
+    # Spec #633 (#636, #640): 關於聽伴 and 意見回饋 join them, after the family zone (the #634
+    # mockup's A).
     FEEDBACK = f"{reverse('feedback')}?page=index&amp;next=%2F"
 
     def test_a_visitor_sees_the_links_with_short_names(self):
@@ -270,6 +271,7 @@ class FooterOneRowTests(TestCase):
             self._links(content),
             [
                 (reverse("family_guide"), "家人專區"),
+                (reverse("about"), "關於聽伴"),
                 (self.FEEDBACK, "意見回饋"),
                 (reverse("privacy"), "隱私權說明"),
             ],
@@ -282,6 +284,7 @@ class FooterOneRowTests(TestCase):
             self._links(content),
             [
                 (reverse("family_guide"), "家人專區"),
+                (reverse("about"), "關於聽伴"),
                 (self.FEEDBACK, "意見回饋"),
                 (reverse("privacy"), "隱私權說明"),
                 (reverse("account_settings"), "帳號設定"),

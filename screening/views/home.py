@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.http import Http404, HttpResponseBadRequest, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
@@ -93,6 +95,17 @@ def family_guide(request):
     # The address to pass on takes the scheme the page was opened with (https on tingpal.tw).
     context = {"family_url": request.build_absolute_uri(reverse("family_guide"))}
     return render(request, "screening/family_guide.html", context)
+
+
+# Spec #633 (#640): the day the owner last checked 關於聽伴; on the yearly review list. #642 sets
+# it to the day the owner's words are final.
+ABOUT_CHECKED_ON = date(2026, 11, 16)
+
+
+def about(request):
+    # Spec #633 (#640): open to everyone, like the privacy notice whose highlights it shows; it
+    # reads no records.
+    return render(request, "screening/about.html", {"checked_on": ABOUT_CHECKED_ON})
 
 
 def learn(request):
