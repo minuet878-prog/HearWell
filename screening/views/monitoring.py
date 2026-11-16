@@ -22,13 +22,11 @@ def uptime_check(request):
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
+        text, status = "ok", 200
     except Error:
         # Answered here, not raised: the monitor's own alert says the site is down, and an
         # error sent to Sentry every minute would bury the real ones.
-        response = HttpResponse(
-            "database unavailable", content_type="text/plain; charset=utf-8", status=503
-        )
-    else:
-        response = HttpResponse("ok", content_type="text/plain; charset=utf-8")
+        text, status = "database unavailable", 503
+    response = HttpResponse(text, content_type="text/plain; charset=utf-8", status=status)
     response["X-Robots-Tag"] = "noindex, nofollow"
     return response

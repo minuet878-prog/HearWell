@@ -362,10 +362,11 @@ class UptimeCheckTests(TestCase):
                 self.assertIn("no-store", response["Cache-Control"])
                 self.assertEqual(response.cookies, {})
         self.assertEqual(unavailable.status_code, 503)
+        self.assertEqual(unavailable.content, b"database unavailable")
         self.assertEqual(Session.objects.count(), 0)
 
     # 4
-    def test_post_is_refused(self):
+    def test_answers_only_get_and_head(self):
         self.assertEqual(self.client.post(reverse("uptime_check")).status_code, 405)
         self.assertEqual(self.client.head(reverse("uptime_check")).status_code, 200)
 

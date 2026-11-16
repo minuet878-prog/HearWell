@@ -322,6 +322,19 @@ curl -sI https://tingpal.tw/uptime-check | grep -i -E 'x-robots-tag|cache-contro
 - 第二行 `200`：假裝成 Sentry 的探測機器人（它的名稱是 `SentryUptimeBot/1.0`）也打得開，代表 Nginx 沒擋它。
 - 第三個指令有 `x-robots-tag: noindex, nofollow` 和含 `no-store` 的 `cache-control`，**沒有** `set-cookie`。
 
+再確認防火牆沒有限定只有哪些 IP 能連 443（Sentry 從好幾個不同的 IP 來查，上面的 `curl` 是從你的 Mac 來的，驗不到這一點）：
+
+```bash
+ssh hearwell-vps
+```
+
+```bash
+sudo ufw status
+exit
+```
+
+做對了會看到：`Nginx Full`（或 `443`）那一列的 From 是 `Anywhere`，不是某個特定的 IP。
+
 ### 5-2 建 uptime 監控
 
 在 Sentry 網站，到 Monitors（監控）頁新增一個 Uptime Monitor：
@@ -354,6 +367,8 @@ Sentry 說明寫：要另外建一條「警示」（Alert），條件對到 upti
 ## 6. 兩次停機測試（#569）
 
 故意停掉服務，確認第 5 段的通知真的收得到、服務救得回來（[拷問決定](../planning/found-by-family/closing-grill-decisions.md) Q13）。兩次分開做，第一次完全恢復之後再做第二次。停下來的那幾分鐘網站打不開，挑沒人在用的時間（例如晚上）。
+
+服務名稱：網站程式是 `hearwell`、備份是 `hearwell-backup`、資料庫是 `postgresql`，出處是本人 `vpsdeploy.md` 的「Gunicorn 與 systemd」「systemd service 與 timer」「PostgreSQL」。名稱跟筆記不同就以筆記為準，並告訴代理。
 
 先開一個 SSH 連線，整段都在 VPS 上做：
 
@@ -421,12 +436,12 @@ curl -s -w '\n%{http_code}\n' https://tingpal.tw/uptime-check
 
 ```bash
 sudo systemctl start postgresql
-systemctl is-active postgresql
+pg_lsclusters
 ```
 
 做對了會看到：
 
-- `active`。
+- `pg_lsclusters` 那一列的 Status 是 `online`。不要只看 `systemctl is-active postgresql`：`postgresql` 只是總開關，真正的資料庫沒起來它也可能顯示 `active`（`vpsdeploy.md`「檢查誰在聽哪裡」）。
 - Mac 上再跑一次 `curl` 是 `ok` 和 `200`。
 - 用瀏覽器登入 `https://tingpal.tw`，打開「紀錄」看得到自己的紀錄。
 - Sentry 的監控頁顯示恢復正常。
