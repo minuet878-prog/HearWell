@@ -5,7 +5,7 @@
     <h2 id="trend-title" class="h4">{{ questionnaire.questionnaire_name }} 總分變化</h2>
     <p>分數越低，{{ questionnaire.definition.topic }}越小。</p>
     <div class="chart-canvas">
-        <div id="trend-plot" class="h-[20rem]" data-questionnaire="{{ questionnaire.code }}">
+        <div id="trend-plot" class="h-[20rem]" data-questionnaire="{{ questionnaire.code }}"{% if chart.fitted_on %} data-fitted-on="{{ chart.fitted_on|date:'Y/m/d' }}"{% endif %}>
             {# Shown until React draws; TrendChart.jsx shows the same text while it loads. Hidden #}
             {# from screen readers like the chart: the score block and the cards say the same. #}
             <p class="trend-plot-message loading-message" aria-hidden="true">趨勢圖載入中…</p>
@@ -37,5 +37,10 @@
         </ul>
         {% endif %}
     </div>
+    {% if chart.fitted_on %}
+    {# #650 (spec #644 R2): outside the frame, which pages without JavaScript hide; screen #}
+    {# readers skip the chart's line, so they hear the day here. #}
+    <p class="trend-fitted">{{ chart.fitted_on|date:"Y/m/d" }} 開始戴助聽器。</p>
+    {% endif %}
 </section>
 </div>

@@ -337,7 +337,7 @@ class UndefinedResultTests(TestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_history_report_and_export_skip_it(self):
-        self.assertContains(self.client.get(reverse("my_hearing")), "您還沒有做過篩檢紀錄")
+        self.assertContains(self.client.get(reverse("my_hearing")), "還沒有紀錄</h2>")
         report = self.client.get(reverse("health_report"))
         self.assertEqual(report.status_code, 200)
         self.assertNotContains(report, "無定義")

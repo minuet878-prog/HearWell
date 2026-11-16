@@ -46,8 +46,9 @@
     {% if since_last or score_block.change %}
     <div class="result-since-last"{% if since_last %} id="since-last"{% endif %}>
         {% if since_last %}
-        <p>{{ since_last.text }}</p>
-        <p>上一次（{{ since_last.previous.created_at|date:"Y/m/d" }}{% if since_last.previous.id in same_day %} {{ since_last.previous.created_at|date:"H:i" }}{% endif %}）：{{ since_last.previous.result.total }} 分</p>
+        {# #646 (spec #644 H2): the result page's label; 分數越低越好 (scoring.py) moved to the 上一次 line. #}
+        <p class="change-label">{{ since_last.label }}</p>
+        <p>上一次（{{ since_last.previous.created_at|date:"Y/m/d" }}{% if since_last.previous.id in same_day %} {{ since_last.previous.created_at|date:"H:i" }}{% endif %}）：{{ since_last.previous.result.total }} 分（{{ since_last.lower_is_better }}）</p>
         {% if since_last.wearing_change %}<p>{{ since_last.wearing_change }}</p>{% endif %}
         {% else %}<p>{{ score_block.change }}</p>{% endif %}
     </div>
@@ -55,15 +56,10 @@
 </div>
 {% endwith %}
 {% endif %}
-{% if user_state.retest_due %}
-<a class="link-card action-card mt-4" href="{% url 'health_report' %}">
-    {% include "screening/action_icon.html" with icon="report" %}
-    <span class="link-card-body">
-        <span class="link-card-title">看／印聽力報告</span>
-        <span>可以印出來或存成 PDF</span>
-    </span>
-    <span class="link-card-arrow" aria-hidden="true">›</span>
-</a>
+{% if not submissions %}
+{% include "screening/empty_state.html" with icon="records" title="還沒有紀錄" text="做完第一份問卷，分數和變化會出現在這裡。" button="做第一份問卷" href=first_questionnaire_href %}
+{% elif user_state.retest_due %}
+{% include "screening/records_report_row.html" with spaced=True %}
 {% else %}
 <a class="btn btn-primary btn-lg w-full mt-4 mb-4" href="{% url 'health_report' %}">看／印聽力報告</a>
 {% endif %}
@@ -86,10 +82,10 @@
     </div>
 </details>
 {% endif %}
-{% else %}
-<p>您還沒有做過篩檢紀錄</p>
 {% endif %}
 <div class="mt-6">
+    {# #648: with nothing yet, 做第一份問卷 is the one solid button and the report a row, as while a retest is due. #}
+    {% if not submissions %}{% include "screening/records_report_row.html" %}{% endif %}
     <a class="link-card action-card" href="{% url 'share_report' %}">
         {% include "screening/action_icon.html" with icon="share" %}
         <span class="link-card-body">

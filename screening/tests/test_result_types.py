@@ -488,8 +488,8 @@ class SummaryTemplateTests(ResultTestCase):
                 f"<p>最近一次（{date}，{status}）</p>"
                 f'<p class="result-score"><span class="result-number">{score}</span> 分</p>'
                 f'<p class="result-block-level">{level}</p>'
-                f'<div class="result-since-last" id="since-last"><p>{text}</p>'
-                f"<p>上一次（{previous_date}）：{previous_score} 分</p></div></div>"
+                f'<div class="result-since-last" id="since-last"><p class="change-label">{text}</p>'
+                f"<p>上一次（{previous_date}）：{previous_score} 分（分數越低越好）</p></div></div>"
             )
 
         def badge(level, text):
@@ -514,7 +514,7 @@ class SummaryTemplateTests(ResultTestCase):
                 since_last(
                     ("2026/03/01", 20),
                     ("2026/04/01", 40, "沒戴助聽器", "severe", "顯著影響"),
-                    "比上一次多 20 分（分數越低越好）",
+                    "比上次多 20 分",
                 ),
             ),
             (
@@ -535,7 +535,7 @@ class SummaryTemplateTests(ResultTestCase):
                 since_last(
                     ("2026/03/02", 50),
                     ("2026/04/02", 100, "助聽器未記錄", "severe", "極重度障礙"),
-                    "比上一次多 50 分（分數越低越好）",
+                    "比上次多 50 分",
                 ),
             ),
             (
@@ -609,14 +609,15 @@ class SummaryTemplateTests(ResultTestCase):
                 self.assertFalse((templates / "screening" / f"{old}.html").exists())
 
     def test_my_hearing_takes_the_same_queries_for_two_or_four_records_of_each_type(self):
-        # Counts measured before the change; 我的紀錄's HHIE-S tab is test_thi's 8.
+        # Counts measured before the change; 我的紀錄's HHIE-S tab is test_thi's 9. #650: the
+        # trend chart's tabs (HHIE-S, THI) read the fitting day, one query more.
         self.client.force_login(self.user)
         for round_ in range(2):
             for code, scores, fields, (year, month, day) in self.RECORDS:
                 self.record(self.user, code, scores, fields, (year, month + 2 * round_, day))
             for code, queries in (
-                (hhie_s.CODE, 8),
-                (thi.CODE, 7),
+                (hhie_s.CODE, 9),
+                (thi.CODE, 8),
                 (ssq12_tw.CODE, 9),
                 (ioi_ha.CODE, 8),
                 (sadl.CODE, 7),
@@ -628,7 +629,8 @@ class SummaryTemplateTests(ResultTestCase):
     def test_a_saved_comparison_takes_my_hearing_no_more_queries_than_before(self):
         # The report's pair reads its records' questionnaires with them: reading result.total
         # without them took two more queries than main (12 -> 14 on HHIE-S, spec #385 check).
-        for code, count in ((hhie_s.CODE, 10), (hhia_s.CODE, 10)):
+        # #650: HHIE-S's trend chart reads the fitting day, one query more than HHIA-S.
+        for code, count, queries in ((hhie_s.CODE, 10, 13), (hhia_s.CODE, 10, 12)):
             with self.subTest(code=code):
                 user = consented_user(username=f"saved_comparison_{code}")
                 self.client.force_login(user)
@@ -641,7 +643,7 @@ class SummaryTemplateTests(ResultTestCase):
                 user.report_comparisons.create(
                     questionnaire=unaided.questionnaire, unaided=unaided, aided=aided
                 )
-                with self.assertNumQueries(12):  # the same count as main
+                with self.assertNumQueries(queries):  # the same count as main
                     self.client.get(reverse("my_hearing"), {"questionnaire": code})
 
 
