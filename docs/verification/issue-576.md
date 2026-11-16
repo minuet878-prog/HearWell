@@ -2,7 +2,7 @@
 
 日期：2026-11-16。基準：`ac89d53`（origin/main）；分支：`feat/576-content-contact`。規格 [#576](https://github.com/minuet878-prog/HearWell/issues/576)，票 #577（設計圖）、#578（電話）、#579（下一章）、#580（複製信箱）。依據：[拷問決定](../planning/redesign/interaction-grill-decisions.md)、[設計圖](../planning/redesign/mockup-577-content-contact.html)。
 
-狀態：自動測試全過，等本人實際操作驗收。
+狀態：2026-11-16 本人在這個分支的開發伺服器（8002，8001 被別的 worktree 佔著）實際操作後回覆「驗收通過」。自動測試全過。
 
 - 本人在設計圖選定：電話 A、47 列照對照表、下一章 A、複製信箱 A（2026-11-16）。
 - 不需要交叉審查：沒改計分、分級、門檻，沒有 migration，沒碰權限。
@@ -59,7 +59,7 @@
 | 26 | 分享頁「複製連結」行為不變 | ✅ 自動 | 單元：原有 9 條一行沒改、全過；端對端原有的分享頁複製測試照跑 |
 | 27 | 三項都先有設計圖、本人選定 | ✅ 文件 | [設計圖](../planning/redesign/mockup-577-content-contact.html)、[選定紀錄](../planning/redesign/interaction-grill-decisions.md) |
 | 28 | 47 列新舊對照表逐筆列出 | ✅ 文件＋自動 | 設計圖第一段最下面；頁面 `test_guide_form_9.py:461`（頁面上 47 列的文字跟對照表右欄算出的摘要相同） |
-| — | 手機上按號碼真的跳出撥號、貼到 LINE 的樣子 | ⬜ 本人 | 測不到，見「人工驗收」 |
+| — | 實際走起來（電話、下一章、複製信箱） | ✅ 本人 | 2026-11-16 本人回覆「驗收通過」，見下方「人工驗收」 |
 
 ## 測試與審查
 
@@ -84,10 +84,10 @@
 
 ## 人工驗收
 
-8001 開在這個分支的 worktree（前端已建置）：
+開在這個分支的 worktree（前端已建置）。8001 當時被另一個 worktree（`492-cross-review`）的開發伺服器佔著，改用 8002：
 
 ```bash
-cd /Users/huangweizhe/HearWell/.claude/worktrees/576-content-contact && /Users/huangweizhe/HearWell/py313/bin/python manage.py runserver 8001
+cd /Users/huangweizhe/HearWell/.claude/worktrees/576-content-contact && /Users/huangweizhe/HearWell/py313/bin/python manage.py runserver 8002
 ```
 
 用手機寬度操作（最好用真的手機連進來，才試得到撥號）：
