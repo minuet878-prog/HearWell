@@ -32,12 +32,13 @@ class ThiSupportResultTests(test_thi.ThiTestCase):
         self.assertIn('總分 <span class="result-number">4</span> 分（滿分 100）', main)
         self.assertIn('aria-describedby="result-score">無障礙或輕微障礙</h2>', main)
         self.assertIn(SUPPORT, main)
-        # Under the level: after the banner, before the 建議下一步 and the folded score bar.
+        # Under the level: after the banner and the score bar in it (readability batch 3),
+        # before the 建議下一步.
         banner_end = main.index('<p id="result-score"')
         support = main.index(SUPPORT)
         self.assertLess(banner_end, support)
+        self.assertLess(main.index('<div class="score-bar"'), support)
         self.assertLess(support, main.index('<div class="result-next">'))
-        self.assertLess(support, main.index('<div class="score-bar"'))
 
     def test_item_11_or_item_23_alone_often_shows_the_support_message(self):
         for number in (11, 23):

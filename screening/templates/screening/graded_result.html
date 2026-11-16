@@ -3,6 +3,8 @@
 <div class="result-banner result-banner-{{ result.level.color }}">
     <p id="result-score" class="result-score">總分 <span class="result-number">{{ result.total }}</span> 分{% if max_score is not None %}（滿分 {{ max_score }}）{% endif %}</p>
     <h2 class="result-block-level" aria-describedby="result-score">{{ result.level.text }}</h2>
+    {# Readability batch 3 (the owner's B6 A): where this score sits, on white under the level; out of 看完整說明, where the text-heavy pages tidy-up had put it. #}
+    {% if score_bar %}{% include "screening/score_bar.html" with bar=score_bar %}{% endif %}
     {% if result.since_last %}
     <div class="result-since-last">
         <p>{{ result.since_last.text }}</p>
@@ -38,9 +40,6 @@
 <details class="result-details">
     {% include "screening/result_details_summary.html" %}
     <div class="result-details-body">
-        {% if score_bar %}
-        {% include "screening/score_bar.html" with bar=score_bar %}
-        {% endif %}
         {% for step in fold_steps %}
         <p>{{ step.text }}</p>
         {% if step.action_label or step.second_label %}

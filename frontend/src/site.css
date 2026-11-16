@@ -2935,7 +2935,7 @@
     line-height: 1;
   }
 
-  /* Score position bar (ticket #158), on the result page and the home page's example: no fill or
+  /* Score position bar (ticket #158), in the graded result page's result box: no fill or
      entrance animation (ADR 0006). Since round 4 each pale segment has a level-coloured lower edge. */
   .score-bar {
     position: relative;
@@ -2997,25 +2997,6 @@
     /* Shifted by its own width in proportion, so 0 and full marks sit flush inside the bar. */
     left: var(--position);
     transform: translateX(calc(-1 * var(--position)));
-  }
-
-  /* Text-heavy pages tidy-up: this score's level under the marker, placed and shifted like the
-     marker so it stays inside the bar at either end; then 0 and the top score. */
-  .score-bar-current {
-    position: relative;
-    height: 1.5rem;
-    margin-top: 0.25rem;
-    font-size: 1rem;
-    line-height: 1.5rem;
-  }
-
-  .score-bar-current span {
-    position: absolute;
-    left: var(--position);
-    transform: translateX(calc(-1 * var(--position)));
-    color: var(--color-heading);
-    font-weight: 700;
-    white-space: nowrap;
   }
 
   .score-bar-ends {
@@ -4493,6 +4474,15 @@
     margin: 0;
   }
 
+  /* Readability batch 3 (the owner's B6 A): the score bar in the result box, on white so its
+     pale segments show against the level's pale colour. */
+  .result-banner .score-bar {
+    margin: 0.75rem 0 0;
+    padding: 0.75rem 0.75rem 0.25rem;
+    border-radius: var(--radius-small);
+    background-color: #fff;
+  }
+
   /* Not graded: a 提示框's pale grey (P3), the words in the heading colour. */
   .result-summary {
     padding: 1rem 1.25rem;
@@ -4654,10 +4644,6 @@
   .result-details-body {
     padding: 0 0.25rem 1rem;
     overflow-wrap: anywhere;
-  }
-
-  .result-details-body .score-bar {
-    margin-top: 0.5rem;
   }
 
   /* #498 (the #493 mockup's E1): a guest's 清除這次結果 row is red, as 刪除帳號 is; its question

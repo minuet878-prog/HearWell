@@ -1516,6 +1516,9 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         )
         folded = self.main().locator(".result-details-body")
         expect(folded).to_be_hidden()
+        # Readability batch 3 (B6 A): the bar in sight in the result box, not behind the fold.
+        expect(self.main().locator(".result-banner .score-bar")).to_be_visible()
+        expect(folded.locator(".score-bar")).to_have_count(0)
         self.main().locator(".result-details > summary").click()
         expect(folded).to_contain_text("建議前往醫院耳鼻喉科進行聽力相關檢查")
         expect(folded.get_by_role("link", name="看助聽器選配與補助")).to_be_visible()
@@ -1531,13 +1534,8 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         mild = self.page.locator(".score-bar-segment-mild_to_moderate").bounding_box()
         centre = marker["x"] + marker["width"] / 2
         self.assertTrue(mild["x"] < centre < mild["x"] + mild["width"])
-        # Text-heavy pages tidy-up: only this score's level, in bold under the marker, and the
-        # two ends, 0 and 40.
-        current = self.page.locator(".score-bar-current span")
-        expect(current).to_have_text("輕度到中度影響")
-        self.assertEqual(current.evaluate("el => getComputedStyle(el).fontWeight"), "700")
-        label = current.bounding_box()
-        self.assertTrue(label["x"] < centre < label["x"] + label["width"])
+        # Readability batch 3: only the two ends, 0 and 40; the level is in large type over it.
+        expect(self.page.locator(".score-bar-current")).to_have_count(0)
         expect(self.page.locator(".score-bar-ends > span")).to_have_text(["0", "40"])
 
     def step5_home_shows_the_next_date(self):
@@ -10535,15 +10533,16 @@ class TypeSizesT357Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerT
         self.answered_chapter()
         return "/guide"
 
-    # Acceptance 2: the score bar's level and both ends, IOI-HA's scale ends and the guide's
-    # meter label are 1rem; on a narrow phone the bar's level stays whole inside the bar.
+    # Acceptance 2: the score bar's ends, IOI-HA's scale ends and the guide's meter label are
+    # 1rem; on a narrow phone both ends stay whole under the bar (its level line went in
+    # readability batch 3).
     def test_labels_needed_to_read_a_chart_are_1rem(self):
         cases = (
             (
                 "result's score bar",
                 True,
                 lambda test: test.result("hhie-s", 4),
-                (".score-bar-current span", ".score-bar-ends > span"),
+                (".score-bar-ends > span",),
             ),
             ("IOI-HA result", True, lambda test: test.ioi_ha_result(), (".ioi-scale-ends > span",)),
             ("guide's meter", True, lambda test: test.guide_with_records(), (".meter-scale",)),
@@ -10551,21 +10550,15 @@ class TypeSizesT357Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerT
         for name, signed_in, path, selectors in cases:
             with self.subTest(page=name):
                 self.visit(signed_in, path, width=320)
-                if "result" in name:  # #461: behind 看完整說明
+                if name == "IOI-HA result":  # #461: behind 看完整說明
                     self.main().locator(".result-details > summary").click()
                 for selector in selectors:
                     labels = self.main().locator(selector)
                     expect(labels.first).to_be_visible()
                     for label in labels.all():
                         self.assertEqual(self.font_size(label), self.REM, selector)
-                if ".score-bar-current span" in selectors:
-                    bar = self.main().locator(".score-bar").bounding_box()
-                    row = self.main().locator(".score-bar-current").bounding_box()
-                    level = self.main().locator(".score-bar-current span").bounding_box()
-                    self.assertGreaterEqual(level["x"], bar["x"])
-                    self.assertLessEqual(level["x"] + level["width"], bar["x"] + bar["width"])
-                    self.assertGreaterEqual(level["y"], row["y"])
-                    self.assertLessEqual(level["y"] + level["height"], row["y"] + row["height"])
+                if ".score-bar-ends > span" in selectors:
+                    bar = self.main().locator(".score-bar-segments").bounding_box()
                     # Both ends, 0 and 40, whole on the screen and under the bar's own ends.
                     ends = self.main().locator(".score-bar-ends > span")
                     expect(ends).to_have_text(["0", "40"])

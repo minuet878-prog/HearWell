@@ -75,16 +75,34 @@ class ScoreBarTests(TestCase):
         )
         self.assertIn('class="score-bar-marker" style="--position: 30.00%"', page)
 
-    # Text-heavy pages tidy-up (replacing round 4's label per segment, too crowded for THI's five):
-    # only this score's level, under the marker, then 0 and the top score.
-    def test_names_only_this_score_s_level_under_the_marker_and_the_two_ends(self):
+    # Readability batch 3 (the owner's B6 A): out of 看完整說明 into the result box, under the
+    # level in large type, so the line naming this score's level under the marker went; 0 and the
+    # top score stay. Text-heavy pages tidy-up had put it behind the fold.
+    def test_sits_in_the_result_box_under_the_level_with_only_the_two_ends(self):
         page = self._get(self._hhie_s(12))
-        current = '<div class="score-bar-current" style="--position: 30.00%">'
-        self.assertIn(f"{current}<span>輕度到中度影響</span></div>", page)
-        self.assertIn('<div class="score-bar-ends"><span>0</span><span>40</span></div>', page)
-        for other in ("無／極輕微影響", "顯著影響"):
-            with self.subTest(level=other):
-                self.assertNotIn(f"<span>{other}</span>", page[page.index('class="score-bar"') :])
+        banner = page[page.index('<div class="result-banner') : page.index('class="result-one-line"')]
+        self.assertLess(
+            banner.index('<h2 class="result-block-level"'),
+            banner.index('<div class="score-bar" aria-hidden="true">'),
+        )
+        self.assertIn('<div class="score-bar-ends"><span>0</span><span>40</span></div>', banner)
+        self.assertNotIn("score-bar-current", page)
+        # Once on the page: not behind 看完整說明 as well.
+        self.assertEqual(page.count('class="score-bar"'), 1)
+        fold = page[page.index('<details class="result-details">') :]
+        self.assertNotIn("score-bar", fold)
+
+    def test_comes_before_what_changed_since_last_time(self):
+        # 上次 needs both records worn the same way (spec #453).
+        for total in (0, 12):
+            submission = self._hhie_s(total)
+            submission.wearing_hearing_aid = False
+            submission.save()
+        page = self._get(submission)
+        banner = page[page.index('<div class="result-banner') : page.index('class="result-one-line"')]
+        self.assertLess(
+            banner.index('class="score-bar"'), banner.index('class="result-since-last"')
+        )
 
     def test_hhia_s_uses_its_own_thresholds(self):
         # HHIA-S's own definition, not HHIE-S's (same numbers, but read independently).
@@ -116,8 +134,7 @@ class ScoreBarTests(TestCase):
             'class="score-bar-segment score-bar-segment-high" style="width: 50.00%"', page
         )
         self.assertIn('style="--position: 25.00%"', page)
-        # This score's level and the definition's own top score.
-        self.assertIn('style="--position: 25.00%"><span>低</span></div>', page)
+        # The definition's own top score.
         self.assertIn('<div class="score-bar-ends"><span>0</span><span>20</span></div>', page)
 
     def test_second_of_two_levels_sharing_a_colour_is_the_deeper_shade(self):
