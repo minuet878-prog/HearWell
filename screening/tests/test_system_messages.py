@@ -91,3 +91,22 @@ class DoneSentenceTests(TestCase):
         response = self.client.post(reverse("logout"), follow=True)
         self.assertEqual(response.redirect_chain[-1][0], reverse("index"))
         self.assertIn(("success", "status", "已登出。"), banners(response.content.decode()))
+
+
+class DownloadNoteTests(TestCase):
+    """F4 B: 下載我的資料 gets what download-note.js needs; its words are in its own test."""
+
+    def test_the_row_and_its_status_area_wait_for_the_script(self):
+        self.client.force_login(consented_user(username="downloader"))
+        content = self.client.get(reverse("account_settings")).content.decode()
+        self.assertIn("screening/download-note.js", content)
+        link = re.search(r"<a [^>]*data-download-note[^>]*>(.*?)</a>", content, re.S)
+        self.assertIn(f'href="{reverse("download_my_data")}"', link.group(0))
+        self.assertIn(
+            "<span data-download-words>把您在聽伴的所有資料下載成一個檔案保存。</span>",
+            link.group(1),
+        )
+        self.assertRegex(
+            content[link.end() :],
+            r'^\s*<span class="visually-hidden" role="status" data-download-status></span>',
+        )

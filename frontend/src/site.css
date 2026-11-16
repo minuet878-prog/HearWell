@@ -1405,6 +1405,22 @@
     stroke-linejoin: round;
   }
 
+  /* The feedback batch (the owner's F4 B): 下載我的資料 pressed, its circle and line in the success
+     green (ADR 0007, 0028), as ✓ 已複製 is; only the colours change (ADR 0006). */
+  .action-card.is-download-started .action-card-icon {
+    background-color: var(--color-normal-bg);
+  }
+
+  .action-card.is-download-started .action-card-icon svg {
+    stroke: var(--color-normal);
+    stroke-width: 2.5;
+  }
+
+  .action-card.is-download-started [data-download-words] {
+    color: var(--color-normal);
+    font-weight: 700;
+  }
+
   /* The row turns pale blue under a mouse or a finger; the circle turns white to stay apart. */
   .link-card:active :is(.action-card-icon, .questionnaire-icon) {
     background-color: #fff;
