@@ -7,18 +7,13 @@ import struct
 
 from django.conf import settings
 from django.contrib.staticfiles import finders
-from django.test import TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from screening import public_pages, questionnaires
 from screening.models import Questionnaire, ReportShare
 from screening.tests import test_search_titles
 from screening.tests.helpers import consented_user
-
-
-def hhie_s_code():
-    return questionnaires.hhie_s.CODE
-
 
 # The table's E1, as the owner confirmed it (#587).
 SITE_DESCRIPTION = (
@@ -52,7 +47,9 @@ class PublicPagePreviewTests(TestCase):
 class OtherPagePreviewTests(TestCase):
     def test_pages_kept_out_of_search_show_their_title_and_the_site_description(self):
         # Spec #583 acceptance 20: e.g. the 傳給他 link of item 5 lands on the guest's wizard.
-        hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code=hhie_s_code())
+        hhie_s = Questionnaire.objects.create(
+            questionnaire_name="HHIE-S", code=questionnaires.hhie_s.CODE
+        )
         for url in (
             reverse("questionnaire_list"),
             reverse("guest_result", args=[hhie_s.code]),
@@ -87,6 +84,22 @@ class OtherPagePreviewTests(TestCase):
         )
         self.assertNotIn("美玉", response.content.decode())
 
+    def test_the_shared_report_and_a_dead_link_name_no_one_either(self):
+        # The ticket's three shared pages: the report itself (health data on the page, none in the
+        # preview) and the page a cancelled or unknown link answers with.
+        user = consented_user(username="mei", first_name="美玉", birth_year=1950)
+        share = ReportShare.objects.create(user=user)
+        image = preview_of(self.client.get("/"))["image"]
+        for url, title in (
+            (reverse("shared_report", args=[share.token]), "聽伴聽力報告"),
+            (reverse("shared_cover", args=["no-such-link"]), "連結已經失效｜聽伴"),  # noqa: RUF001
+        ):
+            with self.subTest(url=url):
+                self.assertEqual(
+                    preview_of(self.client.get(url)),
+                    {"title": title, "description": SITE_DESCRIPTION, "image": image},
+                )
+
 
 class PreviewImageTests(TestCase):
     def test_the_image_is_a_1200_by_630_png_served_as_a_static_file(self):
@@ -101,3 +114,12 @@ class PreviewImageTests(TestCase):
             head = image.read(24)
         self.assertEqual(head[:8], b"\x89PNG\r\n\x1a\n")
         self.assertEqual(struct.unpack(">II", head[16:24]), (1200, 630))
+
+    @override_settings(WHITENOISE_USE_FINDERS=True)
+    def test_the_image_opens_without_logging_in(self):
+        # Spec #583 acceptance 22: what LINE fetches. WhiteNoise serves static files before any
+        # login check; in tests it finds them in the app folders, as collectstatic does on deploy.
+        address = preview_of(self.client.get("/"))["image"]
+        response = Client().get(address.removeprefix("https://testserver"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "image/png")

@@ -8,8 +8,8 @@ register = template.Library()
 
 
 class CaptureNode(template.Node):
-    child_nodelists = ("nodelist",)  # so a {% block %} inside is still found and overridden
-
+    # Its nodelist, like any Node's, is searched for {% block %}: a page's title block inside
+    # still overrides the layout's.
     def __init__(self, nodelist, name):
         self.nodelist = nodelist
         self.name = name

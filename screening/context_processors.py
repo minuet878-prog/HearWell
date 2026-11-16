@@ -3,7 +3,7 @@ from django.templatetags.static import static
 from screening.public_pages import PREVIEW_IMAGE, PROTOCOL, SITE_DESCRIPTION, page_at
 
 
-def public_page(request):
+def page_head(request):
     """The 公開頁面 being shown, for the layout's title, description and canonical address, and
     what a LINE preview of any page shows (spec #583). public_page is None on every other page,
     which keeps its own title and takes the site's description in its preview."""
