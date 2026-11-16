@@ -2,6 +2,8 @@
 
 日期：2026-10-23（本人審定，[九站拷問](../planning/hearing-aid-guide/route-steps-grill-decisions.md) Q1–Q15）
 
+> 「不申請身障補助，跟補助有關的站標不適用」已由 [ADR 0063](0063-subsidy-stops-folded-until-answered.md) 取代；其他仍有效。
+
 ## 情境
 
 ADR 0020 讓本人在一頁表單填四項資料，路線照著推進。驗收時本人發現：選配指引上的「去填」不明顯，日期要按清除才回得去；而且表單跟路線分開，長輩不知道要先去填表。
