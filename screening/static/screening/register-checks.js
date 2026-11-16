@@ -50,9 +50,9 @@
       .trim()
       .replace(/[０-９]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 0xfee0));
     const value = Number(digits);
-    const right = /^[0-9]+$/.test(digits) && value >= 1 && value <= Number(year.dataset.max);
-    age.textContent = right ? `今年滿 ${Number(year.dataset.thisYear) - value} 歲` : "";
-    show(year, right, `格式正確，${age.textContent}`);
+    const valid = /^[0-9]+$/.test(digits) && value >= 1 && value <= Number(year.dataset.max);
+    age.textContent = valid ? `今年滿 ${Number(year.dataset.thisYear) - value} 歲` : "";
+    show(year, valid, `格式正確，${age.textContent}`);
   }
 
   function checkConfirmation() {

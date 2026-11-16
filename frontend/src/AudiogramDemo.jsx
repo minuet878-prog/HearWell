@@ -52,7 +52,7 @@ function Mark({ ear }) {
 }
 
 export default function AudiogramDemo({ ear }) {
-  const [still] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const [reducedMotion] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   // Each tap on the button adds a play; the last one runs, from the start.
   const [plays, setPlays] = useState(0);
   const [elapsed, setElapsed] = useState(0);
@@ -72,7 +72,7 @@ export default function AudiogramDemo({ ear }) {
     return () => cancelAnimationFrame(frame);
   }, [plays]);
 
-  if (still) return null;
+  if (reducedMotion) return null;
 
   const [fx, fy, turn] = fingerAt(elapsed);
   const tapped = elapsed >= TAP;

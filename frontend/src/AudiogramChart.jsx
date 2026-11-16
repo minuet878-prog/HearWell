@@ -131,14 +131,14 @@ export default function AudiogramChart({ points, oldPoints, symbol, masked = fal
   };
   // The point under the finger, as a marked point is shaped.
   const draftOf = ({ frequency, level }) => ({ ear: symbol.ear, conduction: symbol.conduction, frequency, db: level.db, no_response: level.noResponse, masked });
-  const show = (next) => {
+  const updatePreview = (next) => {
     setPreview(next);
     onPreview?.(next && draftOf(next));
   };
   const track = (event, frequency) => {
     const next = { frequency, level: levelAt(toChart(event).py, symbol.conduction) };
     dragging.current = next;
-    show(next);
+    updatePreview(next);
     return next;
   };
 
@@ -147,7 +147,7 @@ export default function AudiogramChart({ points, oldPoints, symbol, masked = fal
 
   const finish = ({ frequency, level }) => {
     dragging.current = null;
-    show(null);
+    updatePreview(null);
     onCommit(frequency, level);
   };
 
@@ -156,7 +156,7 @@ export default function AudiogramChart({ points, oldPoints, symbol, masked = fal
       // A second finger means zooming, not marking: the mark under way is dropped.
       if (dragging.current) {
         dragging.current = null;
-        show(null);
+        updatePreview(null);
         return;
       }
       event.preventDefault();
@@ -177,7 +177,7 @@ export default function AudiogramChart({ points, oldPoints, symbol, masked = fal
     },
     onPointerCancel() {
       dragging.current = null;
-      show(null);
+      updatePreview(null);
     },
   };
 
