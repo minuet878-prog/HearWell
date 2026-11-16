@@ -200,8 +200,8 @@ export async function showGuestResult({
 // The save page (guest_save.html, spec #492): every guest result sent to the records API as the
 // answer page sends an account's answers, with its own receipt number (a resend makes no second
 // record) and the guest mark. One saved leaves this browser; one not saved stays and is named.
-// All saved: home saying so (the 2026-11-14 walkthrough), whose 照顧旅程 says what comes
-// next; none here: home.
+// All saved: the page stays and shows its box with 看我的下一步 and 看這次的紀錄 (the feedback
+// batch, the owner's F3, in place of going home saying so); none here: home.
 //
 // receipts: the receipt numbers to save, the ones the person said yes to (Codex cross review of #492,
 // Spec 2); a result in their place since, done again in another tab, is not theirs to save.
@@ -213,7 +213,7 @@ export async function saveGuestResults({
   fetchSave = (...args) => fetch(...args),
   navigate = (url) => window.location.replace(url),
 }) {
-  const { submissionsUrl, doneUrl, homeUrl } = root.dataset;
+  const { submissionsUrl, homeUrl } = root.dataset;
   const results = loadGuestResults(now).filter((result) => receipts.includes(result.key));
   if (results.length === 0) return navigate(homeUrl);
   const saving = root.querySelector("[data-guest-saving]");
@@ -249,8 +249,13 @@ export async function saveGuestResults({
     else failed.push(result);
   }
   if (failed.length === 0) {
-    saving.textContent = "已保存，正在打開首頁。";
-    return navigate(doneUrl);
+    // The feedback batch (the owner's F3): the page stays and the saving line gives way to the
+    // box with what comes next; the title above it goes, the box's own saying it is saved.
+    saving.hidden = true;
+    root.querySelector("[data-guest-title]").hidden = true;
+    root.querySelector("[data-guest-done]").hidden = false;
+    root.querySelector("[data-guest-done-title]").focus();
+    return;
   }
   const names = JSON.parse(root.querySelector("#guest-names").textContent);
   root.querySelector("[data-guest-failed-list]").replaceChildren(

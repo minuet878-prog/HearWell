@@ -138,9 +138,7 @@
     {% endwith %}
 
     <main id="main-content" tabindex="-1" class="container my-6">
-        {% for message in messages %}
-        <p class="text-xl/normal font-bold">{{ message }}</p>
-        {% endfor %}
+        {% include "screening/system_message.html" %}
         {% block body %}{% endblock %}
     </main>
     </div>
