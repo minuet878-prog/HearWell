@@ -293,6 +293,9 @@ describe("showGuestResult (the guest result page)", () => {
 });
 
 // The save page (guest_save.html), #492 acceptance 22, 24, 25.
+// The feedback batch (the owner's F3): saved, the page stays and shows its box with the next steps.
+const savedShown = (root) => !root.querySelector("[data-guest-done]").hidden;
+
 describe("saveGuestResults (the save page)", () => {
   const HHIA_S = guestResult({
     code: "hhia-s", questionnaireId: 3, answers: [{ question: 31, score: 2 }], wearing: true,
@@ -305,7 +308,8 @@ describe("saveGuestResults (the save page)", () => {
 
   beforeEach(() => {
     document.body.innerHTML = `
-      <div id="guest-save" data-submissions-url="/api/submissions/" data-done-url="/?from=save" data-home-url="/">
+      <div id="guest-save" data-submissions-url="/api/submissions/" data-home-url="/">
+        <div data-guest-done hidden><h1 tabindex="-1" data-guest-done-title>✓ 結果已經保存</h1></div>
         <p data-guest-saving role="status" tabindex="-1">正在保存，請稍候。</p>
         <div data-guest-failed hidden>
           <div role="alert" tabindex="-1" data-guest-failed-list></div>
@@ -370,7 +374,7 @@ describe("saveGuestResults (the save page)", () => {
     });
   });
 
-  it("saves both, clears them and goes home saying so", async () => {
+  it("saves both, clears them and says so in the box", async () => {
     saveGuestResult(guestResult());
     saveGuestResult(HHIA_S);
     // 200: sent again, the record already there; saved all the same.
@@ -385,7 +389,7 @@ describe("saveGuestResults (the save page)", () => {
     expect(sent.sort()).toEqual([[1, guestResult().key], [3, HHIA_S.key]]);
     expect(loadGuestResult("hhie-s", NOW)).toBeNull();
     expect(loadGuestResult("hhia-s", NOW)).toBeNull();
-    expect(navigate).toHaveBeenCalledWith("/?from=save");
+    expect(savedShown(root)).toBe(true);
   });
 
   it("keeps one not saved and says which, clearing the one saved", async () => {
@@ -412,7 +416,7 @@ describe("saveGuestResults (the save page)", () => {
     expect(loadGuestResult("hhie-s", NOW)).toEqual(guestResult());
     expect(root.querySelector("[data-guest-failed-list]").textContent).toContain("「聽力對生活的影響（HHIE-S）」沒有存成");
     root.querySelector("[data-guest-retry]").click();
-    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith("/?from=save"));
+    await vi.waitFor(() => expect(savedShown(root)).toBe(true));
     expect(fetchSave).toHaveBeenCalledTimes(2);
     // The same receipt number both times, so a lost reply cannot make two records.
     expect(fetchSave.mock.calls[1][1].headers["Idempotency-Key"]).toBe(guestResult().key);
@@ -420,7 +424,7 @@ describe("saveGuestResults (the save page)", () => {
   });
 
   // Self-review B2: a screen reader hears it is saving, then how it went.
-  it("moves focus to the saving line while saving, and says when it is saved", async () => {
+  it("moves focus to the saving line while saving, then to the box once saved", async () => {
     saveGuestResult(guestResult());
     let reply;
     const fetchSave = vi.fn(() => new Promise((resolve) => { reply = resolve; }));
@@ -430,8 +434,11 @@ describe("saveGuestResults (the save page)", () => {
     expect(line.textContent).toBe("正在保存，請稍候。");
     reply({ ok: true, status: 201, json: () => Promise.resolve({}) });
     await saving;
-    expect(line.textContent).toBe("已保存，正在打開首頁。");
-    expect(navigate).toHaveBeenCalledWith("/?from=save");
+    // The feedback batch (F3): it stays, the saving line giving way to the box, focus on its title.
+    expect(line.hidden).toBe(true);
+    expect(savedShown(root)).toBe(true);
+    expect(document.activeElement).toBe(root.querySelector("[data-guest-done-title]"));
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   it("moves focus to what was not saved, and back to the saving line on 再試一次", async () => {
@@ -600,7 +607,7 @@ describe("askToSaveGuestResults (the save page's question)", () => {
 
   beforeEach(() => {
     document.body.innerHTML = `
-      <div id="guest-save" data-submissions-url="/api/submissions/" data-done-url="/?from=save" data-home-url="/" data-asking>
+      <div id="guest-save" data-submissions-url="/api/submissions/" data-home-url="/" data-asking>
         <h1 data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">要把這次結果存到這個帳號嗎？</h1>
         <div data-guest-ask hidden>
           <p data-guest-ask-lead></p>
@@ -608,6 +615,7 @@ describe("askToSaveGuestResults (the save page's question)", () => {
           <button type="button" data-guest-ask-yes>要，存進這個帳號</button>
           <button type="button" data-guest-ask-no>不要，清掉這次結果</button>
         </div>
+        <div data-guest-done hidden><h1 tabindex="-1" data-guest-done-title>✓ 結果已經保存</h1></div>
         <p data-guest-saving role="status" tabindex="-1" hidden>正在保存，請稍候。</p>
         <div data-guest-failed hidden>
           <div role="alert" tabindex="-1" data-guest-failed-list></div>
@@ -655,7 +663,7 @@ describe("askToSaveGuestResults (the save page's question)", () => {
     ]);
   });
 
-  it("要，存進這個帳號 saves them as from the save card and goes home saying so", async () => {
+  it("要，存進這個帳號 saves them as from the save card and says so in the box", async () => {
     saveGuestResult(guestResult());
     saveGuestResult(HHIA_S);
     const fetchSave = created();
@@ -664,7 +672,7 @@ describe("askToSaveGuestResults (the save page's question)", () => {
     expect(root.querySelector("[data-guest-ask]").hidden).toBe(true);
     // Self-review B2: not left on the button just hidden.
     expect(document.activeElement).toBe(root.querySelector("[data-guest-saving]"));
-    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith("/?from=save"));
+    await vi.waitFor(() => expect(savedShown(root)).toBe(true));
     expect(fetchSave).toHaveBeenCalledTimes(2);
     const keys = fetchSave.mock.calls.map(([, options]) => options.headers["Idempotency-Key"]).sort();
     expect(keys).toEqual([HHIA_S.key, guestResult().key].sort());
@@ -696,7 +704,7 @@ describe("askToSaveGuestResults (the save page's question)", () => {
     expect(tiles()).toHaveLength(2);
     saveGuestResult(newerResult());
     root.querySelector("[data-guest-ask-yes]").click();
-    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith("/?from=save"));
+    await vi.waitFor(() => expect(savedShown(root)).toBe(true));
     expect(fetchSave).toHaveBeenCalledTimes(1);
     expect(fetchSave.mock.calls[0][1].headers["Idempotency-Key"]).toBe(HHIA_S.key);
     expect(loadGuestResult("hhia-s", NOW + DAY)).toBeNull();
@@ -772,7 +780,7 @@ describe("startSavePage (how the save page begins)", () => {
 
   beforeEach(() => {
     document.body.innerHTML = `
-      <div id="guest-save" data-submissions-url="/api/submissions/" data-done-url="/?from=save" data-home-url="/" data-asking>
+      <div id="guest-save" data-submissions-url="/api/submissions/" data-home-url="/" data-asking>
         <h1 data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">要把這次結果存到這個帳號嗎？</h1>
         <div data-guest-ask hidden>
           <p data-guest-ask-lead></p>
@@ -780,6 +788,7 @@ describe("startSavePage (how the save page begins)", () => {
           <button type="button" data-guest-ask-yes>要，存進這個帳號</button>
           <button type="button" data-guest-ask-no>不要，清掉這次結果</button>
         </div>
+        <div data-guest-done hidden><h1 tabindex="-1" data-guest-done-title>✓ 結果已經保存</h1></div>
         <p data-guest-saving role="status" tabindex="-1" hidden>正在保存，請稍候。</p>
         <div data-guest-failed hidden>
           <div role="alert" tabindex="-1" data-guest-failed-list></div>
@@ -805,7 +814,7 @@ describe("startSavePage (how the save page begins)", () => {
     sessionStorage.setItem(SAVE_INTENT, JSON.stringify([guestResult().key]));
     const fetchSave = created();
     startSavePage({ root, now: NOW + DAY, clock: () => NOW + DAY, fetchSave, navigate });
-    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith("/?from=save"));
+    await vi.waitFor(() => expect(savedShown(root)).toBe(true));
     expect(fetchSave).toHaveBeenCalledTimes(1);
     expect(fetchSave.mock.calls[0][1].headers["Idempotency-Key"]).toBe(guestResult().key);
     expect(root.querySelector("[data-guest-ask]").hidden).toBe(true);

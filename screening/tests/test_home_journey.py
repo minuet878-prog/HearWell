@@ -180,26 +180,13 @@ class EmptyStateHomeTests(HomeJourneyTestCase):
 
 
 class SavedNoteTests(HomeJourneyTestCase):
-    """The 2026-11-14 walkthrough (mockup 6): a guest result saved, the save page opens home with
-    from=save, and the home page says so once above its greeting."""
+    """The 2026-11-14 walkthrough's note on the home page went with the feedback batch (the
+    owner's F3): the save page shows its own box instead (test_guest_save)."""
 
-    NOTE = '<p class="saved-note" role="status">✓ 已保存這次結果</p>'
-
-    def test_from_the_save_page_the_note_is_above_the_greeting(self):
+    def test_from_save_in_the_address_shows_no_note(self):
         self.answer()
-        content = self.client.get(f"{reverse('index')}?from=save").content.decode()
-        main = content[content.index("<main") : content.index("</main>")]
-        self.assertIn(self.NOTE, main)
-        self.assertLess(main.index(self.NOTE), main.index("今天只要做一件事"))
-
-    def test_any_other_way_home_has_no_note(self):
-        self.answer()
-        self.assertNotIn("saved-note", self.main())
-
-    def test_without_an_account_no_note(self):
-        self.client.logout()
         response = self.client.get(f"{reverse('index')}?from=save")
-        self.assertNotContains(response, "saved-note")
+        self.assertNotContains(response, "已保存這次結果")
 
 
 class JourneyHomeTests(HomeJourneyTestCase):
