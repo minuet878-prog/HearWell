@@ -5118,6 +5118,41 @@
     font-weight: 400;
   }
 
+  /* #596 (ADR 0063, the #595 mockup's 甲): the folded 補助站, a line under the route, no stop:
+     a thin rule, then a sentence and a link level with the stops' titles (a number's width and
+     the gap beside it, plus the rows' own inset). At large text sizes, where the stops drop
+     under their numbers, it is not indented either. */
+  .route-fold {
+    container-type: inline-size;
+    margin-top: 0.25rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-line);
+  }
+
+  .route-fold p {
+    margin: 0;
+    padding-inline-start: calc(1.7778rem + 1rem);
+  }
+
+  @container (max-width: 15rem) {
+    .route-fold p {
+      padding-inline-start: 0;
+    }
+  }
+
+  .route-fold .tap-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: var(--spacing-touch);
+    font-weight: 700;
+  }
+
+  .route-fold .route-chevron {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
   /* The 目前這一站: a pale blue card beside the line, as the home page's 現在這一步 (ADR 0043),
      its circle level with the card's first line and the line above reaching down to it. */
   .route-card {

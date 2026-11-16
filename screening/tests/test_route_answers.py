@@ -185,16 +185,18 @@ class RouteQuestionTests(TestCase):
         self.assertIn('<p class="route-answer">正在申請鑑定</p>', assessment)
         self.assert_question(assessment, filled="applying")
 
-    def test_not_applying_marks_the_subsidy_s_stops_not_applicable_and_pale(self):
+    def test_not_applying_folds_the_subsidy_s_stops_away_none_not_applicable(self):
+        # #596 (spec #593 acceptance 8, ADR 0063): in place of four pale 不適用 stops.
         self.answer("no_subsidy")
         self.assertIn('<p class="route-answer">不申請身障補助 <a', self.stop("assessment"))
         page = self.page()
+        stops = dict(route_stops(page))
         for slug in ("form-9", "notice", "form-25", "payout"):
             with self.subTest(stop=slug):
-                self.assertEqual(self.marks(slug), ["不適用"])
-                self.assertRegex(page, rf'<li class="route-stop[^"]* is-na" data-stop="{slug}"')
+                self.assertNotIn(slug, stops)
         self.assertEqual(self.marks("types-and-prices"), ["您在這裡"])
-        self.assertEqual(page.count("is-na"), 4)
+        self.assertNotIn("is-na", page)
+        self.assertIn('<div class="route-fold">', page)
 
     def test_edit_opens_the_question_again_with_the_current_answer(self):
         self.answer("yes")
@@ -358,12 +360,19 @@ class NotApplicableOverDoneTests(TestCase):
     def chapter(self, slug):
         return self.client.get(reverse("guide_chapter", args=[slug]))
 
-    def test_form_9_done_then_not_applying_is_not_applicable_only(self):
+    def test_form_9_done_then_not_applying_folds_it_away_and_its_chapter_asks_nothing(self):
+        # #596 (spec #593 acceptance 14, 19): 沒有 folds the 補助站 away, form 9 done or not.
         self.answer("assessment", "certificate", "yes")
         self.answer("form-9", "form_9_done", "True")
         self.answer("assessment", "certificate", "no_subsidy")
-        self.assertEqual(self.marks("form-9"), ["不適用"])
-        self.assertNotContains(self.chapter("form-9"), 'id="stop-question"')
+        self.assertNotIn("form-9", dict(route_stops(self.page())))
+        for slug in ("form-9", "form-25"):
+            with self.subTest(chapter=slug):
+                self.assertNotContains(self.chapter(slug), 'id="stop-question"')
+
+    def test_the_certificate_unanswered_form_9_s_chapter_still_asks(self):
+        # #596 (spec #593 acceptance 20): folded is not 沒有; answering it unfolds them.
+        self.assertContains(self.chapter("form-9"), "九號表完成了嗎？")
 
     def test_basic_with_form_25_done_is_not_applicable_only(self):
         AidAndSubsidy.objects.create(

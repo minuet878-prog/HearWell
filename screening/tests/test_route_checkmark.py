@@ -87,8 +87,10 @@ class RouteCheckmarkTests(TestCase):
     def test_you_are_here_turning_not_applicable_shows_no_tick(self):
         # Wearing with 身障補助 at 中階型, 您在這裡 is 二十五號表; changing 配戴之後 to 自費或其他
         # makes it 不適用.
+        # The certificate answered, so the 補助站 stay on the route either way (#596).
         AidAndSubsidy.objects.create(
             user=self.user,
+            certificate="yes",
             fitted_on=date(2026, 9, 1),
             ear="both",
             subsidy="disability",
