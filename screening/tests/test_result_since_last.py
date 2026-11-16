@@ -253,7 +253,7 @@ class ChangeLabelOnTheResultPageTests(TestCase):
 
     def test_nothing_to_compare_has_no_label_and_no_sentence(self):
         # Acceptance 4: the first record, one without a hearing aid status, one worn otherwise
-        # and one that cannot be graded (a guest's: test_guest).
+        # and one that cannot be graded (a guest's: test_result_from_answers, NoAccountTests).
         first = self.hhie_s(18, (2026, 3, 26))
         unrecorded = self.hhie_s(14, (2026, 4, 1), wearing=None)
         worn = self.hhie_s(10, (2026, 5, 1), wearing=True)
