@@ -1,7 +1,7 @@
 # 分享連結不再寫死 `https://`
 
 日期：2026-11-16；分支 `fix/share-link-scheme`（從 `main` 的 `95d80b7` 開出）。
-狀態：程式與自動驗證完成；**不需交叉審查**（不碰計分、分級、門檻、migration、權限）。等本人驗收。
+狀態：完成，2026-11-16 部署到正式站（`main` 的 `0b3b196`）並由本人驗收；**不需交叉審查**（不碰計分、分級、門檻、migration、權限）。
 
 ## 起因
 
@@ -29,6 +29,6 @@ VPS 部署筆記的待辦：分享報告頁與家人專區要給家人的網址�
 
 ## 本人驗收
 
-- [ ] 本機預覽：登入 → 分享報告 → 產生連結，「可以複製這個網址傳給家人」是 `http://localhost:8001/shared/…`，按「複製連結」貼到網址列打得開
-- [ ] 本機預覽：家人專區最下面的網址是 `http://localhost:8001/family`
-- [ ] 部署後在正式站：兩處都是 `https://tingpal.tw/…`
+- [ ] 本機預覽：登入 → 分享報告 → 產生連結，「可以複製這個網址傳給家人」是 `http://localhost:8001/shared/…`，按「複製連結」貼到網址列打得開（沒做：PR 在本機操作前就合併了；同樣的行為由 `test_link_scheme_follows_the_request` 的 http 情況與 e2e 分享流程直接開複製到的網址證明）
+- [ ] 本機預覽：家人專區最下面的網址是 `http://localhost:8001/family`（同上，由 `test_address_scheme_follows_the_request` 與 e2e 家人專區兩項證明）
+- [x] 部署後在正式站：2026-11-16 本人回覆「都ok」：`curl https://tingpal.tw/family` 抓到 `https://tingpal.tw/family`，手機登入後分享報告的網址是 `https://tingpal.tw/shared/…`
