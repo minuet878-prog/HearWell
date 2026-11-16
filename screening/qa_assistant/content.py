@@ -18,6 +18,8 @@ class Faq:
     sources: tuple
     # 本頁資料查核於: checked with the hearing-aid guide each year (ADR 0033).
     checked_on: date
+    # Under the title in search results, reviewed with the answer (spec #583, #587).
+    description: str
     # Other ways of asking it, for typed questions (#399).
     other_phrasings: tuple = ()
     # Codes of the related questions shown under the answer (#398).
@@ -34,6 +36,20 @@ TOPICS = (
     ("hearing-health", "聽力保健常識"),
 )
 
+# Each topic page's title and description in search results (spec #583, #587). A topic listing no
+# question is no 公開頁面, so 網站怎麼用 has none yet.
+TOPIC_SEARCH = {
+    "questionnaires": ("聽力問卷的常見問題｜聽伴", "聽伴的問卷在問什麼、分數怎麼看的常見問題。"),  # noqa: RUF001
+    "hearing-aids": (
+        "助聽器選配與補助的常見問題｜聽伴",  # noqa: RUF001
+        "助聽器補助怎麼申請、集音器和助聽器有什麼不同、助聽器去哪裡買的常見問題。",
+    ),
+    "hearing-health": (
+        "聽力保健的常見問題｜聽伴",  # noqa: RUF001
+        "聽力檢查去哪裡做、什麼情況要盡快就醫的常見問題。",
+    ),
+}
+
 # The answers below are placeholders for the owner to review; #402 writes the real ones.
 FAQS = (
     Faq(
@@ -48,6 +64,7 @@ FAQS = (
         ),
         sources=(("聽伴隱私權說明：不是醫療診斷", "/privacy#diagnosis-title"),),
         checked_on=date(2026, 10, 27),
+        description="每次做完問卷，結果頁都有分級和建議。小助手不解讀個人的結果，想進一步了解可以把結果帶給聽力師看。",
         other_phrasings=("分數代表什麼", "結果是什麼意思", "我幾分算嚴重"),
         related=("diagnosis-and-medication", "brands-and-shops"),
         referral=True,
@@ -63,6 +80,7 @@ FAQS = (
         ),
         sources=(("聽伴隱私權說明：不是醫療診斷", "/privacy#diagnosis-title"),),
         checked_on=date(2026, 10, 27),
+        description="診斷和用藥要由醫師看過、做過檢查才能判斷。聽力變差或耳朵不舒服，請到耳鼻喉科就診。",
         other_phrasings=("要吃什麼藥", "耳朵的病要怎麼治療"),
         related=("sudden-hearing-loss", "my-results"),
         referral=True,
@@ -85,6 +103,7 @@ FAQS = (
             ("助聽器選配與補助：身障鑑定與鑑定醫院", "/guide/assessment"),
         ),
         checked_on=date(2026, 10, 27),
+        description="適合的助聽器要看聽力圖和生活需要，由聽力師評估後一起挑選。這裡不推薦品牌或店家，可以先看助聽器的外型、價格和補助上限。",
         other_phrasings=("推薦哪個牌子", "去哪裡買助聽器", "哪家店比較好"),
         related=("my-results", "diagnosis-and-medication"),
         referral=True,
@@ -114,6 +133,7 @@ FAQS = (
             ),
         ),
         checked_on=date(2026, 10, 27),
+        description="請盡快到耳鼻喉科就醫，不要等下次回診。突然聽不到可能是突發性聽力損失，越早治療效果越好。",
         other_phrasings=("突然聽不到", "耳朵流血", "一邊耳朵突然聽不見"),
         related=("diagnosis-and-medication", "my-results"),
         referral=True,
@@ -139,6 +159,7 @@ FAQS = (
             ),
         ),
         checked_on=date(2026, 11, 14),
+        description="可以到醫院或診所掛耳鼻喉科，跟醫師說想做聽力檢查。做完可以要一份聽力檢查報告（聽力圖）。",
         other_phrasings=("去哪裡做聽力檢查", "哪裡可以檢查聽力", "聽力檢查要掛哪一科"),
         related=("sudden-hearing-loss", "diagnosis-and-medication"),
     ),
@@ -155,6 +176,7 @@ FAQS = (
         ),
         sources=(("助聽器選配與補助：九號表：申請助聽器補助", "/guide/form-9"),),
         checked_on=date(2026, 10, 27),
+        description="有聽覺機能身心障礙證明的人，先做評估拿到九號表，再到戶籍所在地的公所申請。要先拿到核定通知再買。",
         other_phrasings=("助聽器有補助嗎", "怎麼申請補助", "補助可以拿多少"),
         related=("sound-amplifier-vs-hearing-aid", "brands-and-shops"),
     ),
@@ -178,6 +200,7 @@ FAQS = (
             ),
         ),
         checked_on=date(2026, 10, 27),
+        description="助聽器是醫療器材，要有醫療器材許可證；集音器、輔聽器一般不是，依法不能宣稱改善聽損。",
         other_phrasings=("集音器是不是助聽器", "集音器可以代替助聽器嗎", "集音器跟助聽器差在哪"),
         related=("hearing-aid-subsidy", "brands-and-shops"),
     ),

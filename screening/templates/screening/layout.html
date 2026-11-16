@@ -4,7 +4,12 @@
 <html lang="zh-Hant">
 
 <head>
-    <title>{% block title %}聽伴{% endblock %}</title>
+    {# 公開頁面 (spec #583): title and description from screening/public_pages.py; every other page keeps its own title. #}
+    <title>{% if public_page %}{{ public_page.title }}{% else %}{% block title %}聽伴{% endblock %}{% endif %}</title>
+    {% if public_page %}
+    <meta name="description" content="{{ public_page.description }}">
+    <link rel="canonical" href="{{ canonical_url }}">
+    {% endif %}
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <link href="{% static 'screening/frontend/site.css' %}" rel="stylesheet">
     {# Add to home screen (PWA): app info and icons only, no service worker. #}
