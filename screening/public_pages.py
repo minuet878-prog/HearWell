@@ -13,7 +13,7 @@ from screening.views.guide import GUIDE_CHAPTERS
 from screening.views.qa_assistant import topic_faqs
 
 # One address each, by URL name.
-FIXED = (
+SINGLE_PAGES = (
     "index",
     "learn",
     "hearing_loss_simulator",
@@ -35,7 +35,7 @@ def public_urls():
     """Every 公開頁面's address, as a path. Pages are defined in code, so they never change while
     the site runs."""
     return (
-        *(reverse(name) for name in FIXED),
+        *(reverse(name) for name in SINGLE_PAGES),
         *(reverse("guide_chapter", args=[chapter.slug]) for chapter in GUIDE_CHAPTERS),
         *(reverse("qa_topic", args=[slug]) for slug, _name in content.TOPICS if topic_faqs(slug)),
         # Every answer, a referral answer too; one taken out (ADR 0033) is no longer in FAQS.

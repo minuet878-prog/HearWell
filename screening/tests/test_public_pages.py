@@ -1,5 +1,6 @@
 """公開頁面 (GLOSSARY.md, ADR 0062): only they may be indexed by search engines (spec #583)."""
 
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
@@ -18,7 +19,8 @@ class NotIndexedByDefaultTests(TestCase):
     def test_pages_open_without_logging_in_are_not_all_public(self):
         # Steps of a flow, not content: the guest's wizard, signing up, the forgotten password,
         # adding to the home screen, and what the uptime monitor opens.
-        for name in ("questionnaire_list", "register", "password_reset", "add_to_home"):
+        pages = ("questionnaire_list", "register", "password_reset", "add_to_home", "uptime_check")
+        for name in pages:
             with self.subTest(page=name):
                 response = self.client.get(reverse(name))
                 self.assertEqual(response.status_code, 200)
@@ -46,10 +48,17 @@ class NotIndexedByDefaultTests(TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertIn("noindex", response["X-Robots-Tag"])
 
-    def test_a_public_page_answering_with_an_error_is_kept_out_of_search(self):
-        # A question that never existed, under the address every answer page shares.
+    def test_an_answer_that_never_existed_is_kept_out_of_search(self):
+        # Under the address every answer page shares.
         response = self.client.get(reverse("qa_answer", args=["no-such-question"]))
         self.assertEqual(response.status_code, 404)
+        self.assertIn("noindex", response["X-Robots-Tag"])
+
+    def test_a_public_page_answering_with_a_redirect_is_kept_out_of_search(self):
+        # Signed in without having agreed to the privacy notice, 了解 sends to the consent page.
+        self.client.force_login(get_user_model().objects.create_user("not-agreed"))
+        response = self.client.get(reverse("learn"))
+        self.assertEqual(response.status_code, 302)
         self.assertIn("noindex", response["X-Robots-Tag"])
 
     def test_the_admin_and_the_api_are_kept_out_of_search(self):
@@ -77,27 +86,14 @@ class PublicPageTests(TestCase):
             "/qa",
         }
         chapters = {f"/guide/{chapter.slug}" for chapter in guide.GUIDE_CHAPTERS}
-        topics = {"/qa/topic/questionnaires", "/qa/topic/hearing-aids", "/qa/topic/hearing-health"}
+        topics = {
+            f"/qa/topic/{slug}"
+            for slug, _name in content.TOPICS
+            if self.client.get(f"/qa/topic/{slug}").context["faqs"]
+        }
         answers = {f"/qa/{faq.code}" for faq in content.FAQS}
         self.assertEqual(len(chapters), 6)
         self.assertEqual(set(public_pages.public_urls()), fixed | chapters | topics | answers)
-
-    def test_every_public_page_opens_without_logging_in(self):
-        for url in public_pages.public_urls():
-            with self.subTest(url=url):
-                response = self.client.get(url)
-                self.assertEqual(response.status_code, 200)
-                self.assertNotIn("X-Robots-Tag", response)
-
-    def test_a_public_page_may_be_indexed(self):
-        response = self.client.get(reverse("family_talk"))
-        self.assertEqual(response.status_code, 200)
-        self.assertNotIn("X-Robots-Tag", response)
-
-    def test_each_guide_chapter_may_be_indexed(self):
-        response = self.client.get(reverse("guide_chapter", args=["types-and-prices"]))
-        self.assertEqual(response.status_code, 200)
-        self.assertNotIn("X-Robots-Tag", response)
 
     def test_each_answer_may_be_indexed_a_referral_answer_too(self):
         referral = next(faq for faq in content.FAQS if faq.referral)
@@ -116,5 +112,5 @@ class PublicPageTests(TestCase):
             listing[slug] = bool(response.context["faqs"])
             with self.subTest(topic=slug):
                 self.assertEqual("X-Robots-Tag" not in response, listing[slug])
-        # Both kinds exist today, so both are checked: 網站怎麼用 has no question yet.
-        self.assertEqual(set(listing.values()), {True, False})
+        # 網站怎麼用 has no question yet (2026-11-16): the topic that checks the empty side.
+        self.assertIn(False, listing.values())

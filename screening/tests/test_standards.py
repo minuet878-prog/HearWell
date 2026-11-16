@@ -527,9 +527,11 @@ class OpenHealthDataPageTests(TestCase):
                 self.assertEqual(unmarked([(name, views[name])], {}), [])
 
 
-def indexable(answers):
+def indexable(responses):
     """Names of the (name, response) pairs a search engine may index: no noindex on them."""
-    return [name for name, response in answers if "noindex" not in response.get("X-Robots-Tag", "")]
+    return [
+        name for name, response in responses if "noindex" not in response.get("X-Robots-Tag", "")
+    ]
 
 
 class NotIndexedTests(TestCase):
@@ -539,23 +541,32 @@ class NotIndexedTests(TestCase):
     def test_only_public_pages_may_be_indexed(self):
         client = Client()
         public = set(public_pages.public_urls())
-        answers = [
+        responses = [
             (f"{method} {pattern.name}", client.generic(method, url))
             for pattern, url in page_urls()
             if url not in public
             for method in ("GET", "POST")
         ]
         # The scan meets pages open without logging in, and those sending to log in.
-        self.assertIn("GET questionnaire_list", dict(answers))
-        self.assertIn("GET my_hearing", dict(answers))
+        self.assertIn("GET questionnaire_list", dict(responses))
+        self.assertIn("GET my_hearing", dict(responses))
         self.assertEqual(
-            indexable(answers), [], "add the page to screening/public_pages.py if it is one"
+            indexable(responses), [], "add the page to screening/public_pages.py if it is one"
         )
+
+    def test_every_public_page_opens_without_logging_in_and_may_be_indexed(self):
+        # Spec #583 acceptance 1.
+        client = Client()
+        for url in public_pages.public_urls():
+            with self.subTest(url=url):
+                response = client.get(url)
+                self.assertEqual(response.status_code, 200)
+                self.assertNotIn("X-Robots-Tag", response)
 
     def test_a_page_without_noindex_is_caught(self):
         kept_out = HttpResponse(headers={"X-Robots-Tag": "noindex, nofollow"})
-        answers = [("open", HttpResponse()), ("kept_out", kept_out)]
-        self.assertEqual(indexable(answers), ["open"])
+        responses = [("open", HttpResponse()), ("kept_out", kept_out)]
+        self.assertEqual(indexable(responses), ["open"])
 
 
 class MigrationsUpToDateTests(TestCase):
