@@ -15674,3 +15674,85 @@ class GuestSaveWithLineTest(GuestSavesFromTheCard, StaticLiveServerTestCase):
             "revoke": {},
         }
         return answers[LINE_ENDPOINTS[url]]
+
+
+class FeedbackBatchTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """The feedback batch (the owner's picks in mockup-feedback.html, 2026-11-16): the bar a page
+    shows after something was done (F1 A), 已登出 (F2) and 下載我的資料's line (F4 B). The save
+    page's box (F3) is in GuestSaveTest's flows."""
+
+    GREEN = "rgb(20, 87, 60)"  # --color-normal, the success green
+    GREEN_BG = "rgb(227, 244, 236)"  # --color-normal-bg
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.user = consented_user(username="feedback_e2e")
+        self.client.force_login(self.user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, width):
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": 800}, reduced_motion="reduce", accept_downloads=True
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def style(self, locator, prop):
+        return locator.evaluate("(el, prop) => getComputedStyle(el)[prop]", prop)
+
+    def test_logging_out_shows_a_green_bar_read_out_above_the_page(self):
+        for width, double in ((390, False), (320, True)):
+            with self.subTest(width=width, double_text=double), self.saving_artifacts():
+                self.open(width)
+                self.page.goto(f"{self.live_server_url}/")
+                self.page.get_by_role("button", name="登出").click()
+                bar = self.main().get_by_role("status").filter(has_text="已登出。")
+                expect(bar).to_be_visible()
+                self.assertEqual(self.style(bar, "backgroundColor"), self.GREEN_BG)
+                self.assertEqual(self.style(bar, "color"), self.GREEN)
+                mark = bar.locator(".system-message-mark")
+                self.assertEqual(self.style(mark, "backgroundColor"), self.GREEN)
+                # Above the page's own first words, and still there a while later (no fading).
+                first = self.main().locator("h1").first
+                self.assertLess(bar.bounding_box()["y"], first.bounding_box()["y"])
+                self.page.wait_for_timeout(1500)
+                expect(bar).to_be_visible()
+                if double:
+                    self.assert_fits_a_phone_at_double_text_size("home after logging out", width)
+                # Signed in again for the next round: logging out ended this session.
+                self.client.force_login(self.user)
+                self.cookie["value"] = self.client.cookies[settings.SESSION_COOKIE_NAME].value
+
+    def test_download_says_it_has_started_and_where_the_file_goes(self):
+        for width, double in ((390, False), (320, True)):
+            with self.subTest(width=width, double_text=double), self.saving_artifacts():
+                self.open(width)
+                self.page.goto(f"{self.live_server_url}/account")
+                row = self.main().get_by_role("link", name=re.compile("下載我的資料"))
+                with self.page.expect_download():
+                    row.click()
+                words = row.locator("[data-download-words]")
+                expect(words).to_have_text("✓ 已開始下載，請到手機的「下載項目」找。")
+                self.assertEqual(self.style(words, "color"), self.GREEN)
+                expect(self.page.locator("[data-download-status]")).to_have_text(
+                    "已開始下載，請到手機的「下載項目」找。"
+                )
+                if double:
+                    self.assert_fits_a_phone_at_double_text_size("account after a download", width)
