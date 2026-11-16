@@ -9,7 +9,7 @@ from django.utils.cache import add_never_cache_headers
 from django.views.decorators.http import require_http_methods
 
 from screening import models
-from screening.care_journey import life_impact_url
+from screening.care_journey import first_questionnaire_url
 from screening.main_flow import get_user_state
 from screening.models import Answer, Questionnaire, User
 from screening.questionnaires.results import AverageResult, GradedResult, NormResult, SubscaleResult
@@ -83,11 +83,6 @@ def _report_context(user):
     return context
 
 
-def _first_questionnaire_href(user):
-    # #648: an empty page's 做第一份問卷 goes where the home page's step 1 does.
-    return life_impact_url(user, get_user_state(user, timezone.localdate()))
-
-
 @login_required
 @health_data_page
 def health_report(request):
@@ -97,7 +92,9 @@ def health_report(request):
     aid = models.AidAndSubsidy.for_user(request.user)
     context["aid_report_text"] = aid.report_text if aid else ""
     if not context["has_records"]:
-        context["first_questionnaire_href"] = _first_questionnaire_href(request.user)
+        context["first_questionnaire_href"] = first_questionnaire_url(
+            request.user, timezone.localdate()
+        )
     return render(request, "screening/health_report.html", context)
 
 
@@ -116,7 +113,7 @@ def share_report(request):
         path = reverse("shared_cover", args=[share.token])
         context["share_url"] = request.build_absolute_uri(path)
     elif not context["has_records"]:
-        context["first_questionnaire_href"] = _first_questionnaire_href(user)
+        context["first_questionnaire_href"] = first_questionnaire_url(user, timezone.localdate())
     return render(request, "screening/share_report.html", context)
 
 

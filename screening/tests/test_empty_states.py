@@ -6,6 +6,7 @@ look shared by the four: an icon, a title, a sentence and (but on the audiogram 
 import re
 from datetime import date
 from io import StringIO
+from unittest.mock import patch
 
 from django.core.management import call_command
 from django.test import TestCase
@@ -248,3 +249,16 @@ class ReportAndShareEmptyTests(EmptyStateTestCase):
                 self.assertIsNotNone(_empty_state(main))
                 self.assertEqual(len(re.findall(r"<h1[\s>]", main)), 1)
                 self.assertRegex(main, r'<div class="empty-state">\s*<span[^>]*aria-hidden="true"')
+
+    def test_the_three_buttons_ask_one_place_where_to_go(self):
+        # 做第一份問卷 on 我的紀錄, the report and the share page: care_journey's one function.
+        for module, url in (
+            ("my_hearing", QUESTIONNAIRES),
+            ("reports", reverse("health_report")),
+            ("reports", reverse("share_report")),
+        ):
+            target = f"screening.views.{module}.first_questionnaire_url"
+            with self.subTest(url), patch(target, return_value="/stand-in/") as asked:
+                _, _, _, (_, href) = _empty_state(self.main(url))
+                self.assertEqual(href, "/stand-in/")
+                asked.assert_called_once_with(self.user, timezone.localdate())
