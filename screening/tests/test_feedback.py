@@ -1,13 +1,16 @@
 from datetime import UTC, datetime, timedelta
 from unittest import mock
 
+from django.conf import settings
+from django.core import mail
 from django.core.cache import caches
-from django.db import connection
-from django.test import TestCase
+from django.core.mail.backends.base import BaseEmailBackend
+from django.db import IntegrityError, connection, transaction
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from screening.models import Feedback, ReportShare, User
+from screening.models import Feedback, FeedbackNotice, ReportShare, User
 from screening.tests.helpers import consented_user
 
 
@@ -257,3 +260,77 @@ class FeedbackLimitTests(TestCase):
             self.make_kept(100)
         with mock.patch("django.utils.timezone.now", return_value=evening + timedelta(minutes=45)):
             self.assertRedirects(self.send(), reverse("feedback_sent"))
+
+
+class RefusingBackend(BaseEmailBackend):
+    """A mail service that answers with an error, as Resend's can."""
+
+    def send_messages(self, messages):
+        raise OSError(f"Resend refused {messages[0].to[0]}")
+
+
+ADMIN_LIST = "https://testserver/admin/screening/feedback/"
+
+
+class FeedbackNoticeTests(TestCase):
+    """Spec #633 (#638, acceptance 32-36): the first 意見回饋 of a Taipei day sends the owner one
+    回饋通知信, with the admin list's link and nothing that was sent."""
+
+    def setUp(self):
+        caches["password_reset"].clear()
+
+    def send(self, text="字太小了", **data):
+        return self.client.post(reverse("feedback"), {"text": text, **data})
+
+    def test_the_first_today_sends_one_notice_with_only_the_admin_link(self):
+        self.send(text="報告印不出來", email="wang@example.com", page="health_report")
+        (notice,) = mail.outbox
+        self.assertEqual(notice.to, ["hearwellweb@gmail.com"])
+        self.assertEqual(notice.from_email, settings.DEFAULT_FROM_EMAIL)
+        self.assertIn(ADMIN_LIST, notice.body)
+        for sent in ("報告印不出來", "wang@example.com", "聽力報告"):
+            with self.subTest(sent=sent):
+                self.assertNotIn(sent, notice.subject)
+                self.assertNotIn(sent, notice.body)
+
+    def test_the_rest_of_the_day_sends_none(self):
+        for text in ("一", "二", "三"):
+            self.send(text=text, REMOTE_ADDR=f"10.0.0.{len(mail.outbox) + len(text)}")
+        self.assertEqual(Feedback.objects.count(), 3)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_a_taipei_day_later_one_more(self):
+        # 2026-11-16 23:30 in Taipei is 15:30 UTC; 45 minutes later it is the 17th there.
+        evening = datetime(2026, 11, 16, 15, 30, tzinfo=UTC)
+        with mock.patch("django.utils.timezone.now", return_value=evening):
+            self.send()
+        with mock.patch("django.utils.timezone.now", return_value=evening + timedelta(minutes=45)):
+            self.send(REMOTE_ADDR="10.0.0.2")
+        self.assertEqual(len(mail.outbox), 2)
+
+    def test_a_day_is_noticed_once_even_at_the_same_moment(self):
+        # Two sent together both find no notice yet; only the one that writes the day sends.
+        FeedbackNotice.objects.create(day=timezone.localdate())
+        self.send()
+        self.assertEqual(mail.outbox, [])
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            FeedbackNotice.objects.create(day=timezone.localdate())
+
+    @override_settings(EMAIL_BACKEND=f"{__name__}.RefusingBackend")
+    def test_a_notice_that_cannot_be_sent_keeps_the_feedback_and_tells_sentry(self):
+        with self.assertLogs("screening.views.feedback", "ERROR") as logs:
+            response = self.send(text="報告印不出來", email="wang@example.com")
+        self.assertRedirects(response, reverse("feedback_sent"))
+        self.assertEqual(Feedback.objects.get().text, "報告印不出來")
+        (record,) = logs.records
+        self.assertIsNotNone(record.exc_info)
+        self.assertNotIn("報告印不出來", record.getMessage())
+        self.assertNotIn("wang@example.com", record.getMessage())
+        self.assertEqual(record.args, ())
+
+    def test_nothing_kept_sends_nothing(self):
+        self.send(website="http://spam.example")
+        self.send(text="")
+        Feedback.objects.bulk_create(Feedback(text="之前的") for _ in range(100))
+        self.send(REMOTE_ADDR="10.0.0.3")
+        self.assertEqual(mail.outbox, [])

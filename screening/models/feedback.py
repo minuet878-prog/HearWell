@@ -28,6 +28,18 @@ class Feedback(models.Model):
         return f"意見回饋 #{self.pk}"
 
 
+class FeedbackNotice(models.Model):
+    # 回饋通知信 (GLOSSARY, spec #633 Q10, #638): the Taipei days a notice was sent for. Only the
+    # one request that writes the day sends it, so two feedbacks at the same moment send one.
+    day = models.DateField("日期", unique=True)
+
+    class Meta:
+        verbose_name = verbose_name_plural = "回饋通知信"
+
+    def __str__(self):
+        return f"{self.day:%Y/%m/%d}"
+
+
 def purge_feedback():
     """Delete each 意見回饋 over 90 days; returns how many (#639).
 

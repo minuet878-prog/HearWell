@@ -1,6 +1,10 @@
+import logging
 from urllib.parse import urlencode
 
+from django.conf import settings
+from django.core.mail import send_mail
 from django.shortcuts import redirect, render
+from django.template import loader
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
@@ -9,12 +13,14 @@ from rest_framework.throttling import BaseThrottle
 from screening.forms import (
     FEEDBACKS_PER_ADDRESS,
     FEEDBACKS_PER_DAY,
+    HELP_ADDRESS,
     TOO_MANY_FEEDBACKS_AN_HOUR,
     FeedbackForm,
     add_attempt,
     attempts,
 )
-from screening.models import Feedback
+from screening.models import Feedback, FeedbackNotice
+from screening.public_pages import PROTOCOL
 from screening.qa_assistant import content
 from screening.views.common import safe_next
 from screening.views.guide import GUIDE_CHAPTERS
@@ -79,6 +85,26 @@ def page_words(page):
     return "" if code else PAGE_NAMES.get(name, "")
 
 
+logger = logging.getLogger(__name__)
+
+
+def notify_owner(request):
+    """#638 (spec #633 Q10): the first 意見回饋 of a Taipei day sends the owner one 回饋通知信,
+    the admin list's link and nothing that was sent. A notice that cannot go is not sent again:
+    the feedback is kept all the same, and the owner sees the error in Sentry."""
+    _, first = FeedbackNotice.objects.get_or_create(day=timezone.localdate())
+    if not first:
+        return
+    admin_url = f"{PROTOCOL}://{request.get_host()}{reverse('admin:screening_feedback_changelist')}"
+    subject = loader.render_to_string("screening/feedback_notice_subject.txt").strip()
+    body = loader.render_to_string("screening/feedback_notice_email.txt", {"admin_url": admin_url})
+    try:
+        send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [HELP_ADDRESS])
+    except Exception:
+        # A fixed message: the mail service's own words may hold an address (Sentry drops them).
+        logger.exception("A feedback notice could not be sent")
+
+
 def kept_today():
     """How many 意見回饋 the site kept today, Taipei time (#637)."""
     return Feedback.objects.filter(created_at__date=timezone.localdate()).count()
@@ -118,6 +144,7 @@ def feedback(request):
                     email=form.cleaned_data["email"],
                     page=page_words(page),
                 )
+                notify_owner(request)
                 # Post/Redirect/Get: reloading the sent page sends nothing again.
                 return redirect(sent)
     return render(
