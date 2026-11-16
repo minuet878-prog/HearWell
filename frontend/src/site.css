@@ -3943,6 +3943,31 @@
     vector-effect: non-scaling-stroke;
   }
 
+  /* Readability batch 2 (the owner's A): 怎麼跟他說話's tips, each drawing 96px wide at the left
+     of its words, its lines a little lighter at that size. Where the list is under 15rem wide
+     (large text sizes) the drawing stays over the words, as the care steps' are. */
+  .talk-tips {
+    container-type: inline-size;
+  }
+
+  @container (min-width: 15rem) {
+    .talk-tips > li {
+      display: grid;
+      grid-template-columns: 5.3333rem 1fr;
+      column-gap: 0.75rem;
+      align-items: start;
+    }
+
+    .talk-tips .care-drawing {
+      grid-row: span 2;
+      margin-bottom: 0;
+    }
+
+    .talk-tips .care-drawing * { stroke-width: 1.8; }
+    .talk-tips .care-drawing .thin { stroke-width: 1.2; }
+    .talk-tips .care-drawing .thick { stroke-width: 3; }
+  }
+
   .care-drawing .soft { fill: var(--color-pull); }
   .care-drawing .thin { stroke-width: 1.6; }
   .care-drawing .thick { stroke-width: 4; }

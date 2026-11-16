@@ -10451,6 +10451,40 @@ class NextScreeningTileTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
             self.assert_one_line(self.tile().locator(".journey-tile-score"))
 
 
+class TalkTipsSideBySideTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Readability batch 2 (docs/planning/redesign/mockup-readability-batch2.html, the owner's A):
+    怎麼跟他說話's nine tips each with its drawing 96px wide at the left and its words at the right;
+    at large text sizes the drawing goes back over the words."""
+
+    def tips(self):
+        tips = self.main().locator("ul.tips > li")
+        expect(tips).to_have_count(9)
+        return tips.all()
+
+    def test_on_a_phone_each_drawing_is_at_the_left_of_its_words(self):
+        with self.saving_artifacts():
+            for width in (320, 390):
+                with self.subTest(width=width):
+                    self.open("/family/talk", (width, 844), signed_in=False)
+                    for tip in self.tips():
+                        drawing = tip.locator("svg.care-drawing").bounding_box()
+                        point = tip.locator("strong").bounding_box()
+                        with self.subTest(tip=tip.locator("strong").inner_text()):
+                            self.assertAlmostEqual(drawing["width"], 96, delta=2)
+                            self.assertLessEqual(drawing["x"] + drawing["width"], point["x"])
+                            self.assertAlmostEqual(drawing["y"], point["y"], delta=24)
+
+    def test_double_text_size_puts_the_drawing_back_over_the_words(self):
+        with self.saving_artifacts():
+            self.open("/family/talk", (320, 640), signed_in=False)
+            self.assert_fits_a_phone_at_double_text_size("/family/talk")
+            for tip in self.tips():
+                drawing = tip.locator("svg.care-drawing").bounding_box()
+                point = tip.locator("strong").bounding_box()
+                with self.subTest(tip=tip.locator("strong").inner_text()):
+                    self.assertLessEqual(drawing["y"] + drawing["height"], point["y"] + 1)
+
+
 class TypeSizesT357Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """#357 (spec #354): text a reader needs is at least 1rem, and the site-wide small styles."""
 
