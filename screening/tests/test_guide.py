@@ -135,7 +135,11 @@ class GuideContentsTests(TestCase):
         self.assertIn(f'<h1 class="h3 mt-4">{TITLE}</h1>', content)
         self.assertIn(LOGIN_NOTE, content)
         self.assertIn(CONTENTS_TITLE, content)
-        positions = [content.index(title) for title in CHAPTERS]
+        # In the body: the head's description (spec #583) names some chapters too.
+        body = content[content.index("<body") :]
+        # #596: signed out the 補助站 are folded, so form 9 and form 25 are no stops.
+        shown = [title for title in CHAPTERS if not title.startswith(("九號表", "二十五號表"))]
+        positions = [body.index(title) for title in shown]
         self.assertEqual(positions, sorted(positions))
 
     def test_logged_in_user_sees_the_contents_without_the_login_note(self):
@@ -145,11 +149,14 @@ class GuideContentsTests(TestCase):
         self.assertNotIn(LOGIN_NOTE, content)
 
     def test_every_chapter_is_linked(self):
+        # #596 (ADR 0063's cost): folded, form 25 is reached from form 9's chapter, which the
+        # line under the route links.
         content = self.client.get(self.url).content.decode()
+        form_9 = self.client.get(reverse("guide_chapter", args=["form-9"])).content.decode()
         for chapter in GUIDE_CHAPTERS:
             href = f'href="{reverse("guide_chapter", args=[chapter.slug])}"'
             with self.subTest(chapter=chapter.slug):
-                self.assertIn(href, content)
+                self.assertIn(href, form_9 if chapter.slug == "form-25" else content)
 
 
 class GuideChapterTests(TestCase):
@@ -162,7 +169,9 @@ class GuideChapterTests(TestCase):
         with self.assertNumQueries(0):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "<title>去找聽力師之前\uff5c聽伴</title>")
+        self.assertContains(
+            response, "<title>第一次配助聽器要準備什麼？去找聽力師之前\uff5c聽伴</title>"
+        )
         self.assertContains(response, '<h1 class="h3 mt-4">去找聽力師之前</h1>')
         text = article_text(response)
         positions = [text.index(sentence) for sentence in BEFORE_YOU_GO]

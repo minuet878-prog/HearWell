@@ -24,12 +24,11 @@ SAVE_FROM_CARD = "/guest/save?from=card"
 PASSWORD = "Fake-pass-2468"
 SAVE_TITLE = '<h2 class="result-next-title">註冊保存</h2>'
 MORE = "註冊後還有耳鳴、在吵雜環境聽不聽得清楚等問卷可以做。"
+# #598 (spec #593 acceptance 27, 28): the two that lead on to the fitting promise no subsidy.
 REASONS = {
     "normal": "註冊保存後，半年後會提醒您再做一次，跟這次的結果比一比。",
-    "mild_to_moderate": (
-        "註冊保存後，看完醫師可以接著記下聽力圖，網站會一步步帶您走助聽器選配與補助。"
-    ),
-    "severe": "註冊保存後，就醫拿到聽力圖可以記下來，網站會一步步帶您走助聽器選配與補助申請。",
+    "mild_to_moderate": ("註冊保存後，看完醫師可以接著記下聽力圖，網站會一步步帶您走助聽器選配。"),
+    "severe": "註冊保存後，就醫拿到聽力圖可以記下來，網站會一步步帶您走助聽器選配。",
 }
 
 

@@ -80,15 +80,17 @@ class RouteCheckmarkTests(TestCase):
         self.assertEqual(self.ticked(), [])
 
     def test_stops_turned_not_applicable_show_no_tick(self):
-        # 不申請身障補助 makes 身障鑑定 done and the subsidy's four stops 不適用: only the first.
+        # 沒有 makes 身障鑑定 done and folds the 補助站 away (#596): only the first.
         self.answer(certificate="no_subsidy")
         self.assertEqual(self.ticked(), ["assessment"])
 
     def test_you_are_here_turning_not_applicable_shows_no_tick(self):
         # Wearing with 身障補助 at 中階型, 您在這裡 is 二十五號表; changing 配戴之後 to 自費或其他
         # makes it 不適用.
+        # The certificate answered, so the 補助站 stay on the route either way (#596).
         AidAndSubsidy.objects.create(
             user=self.user,
+            certificate="yes",
             fitted_on=date(2026, 9, 1),
             ear="both",
             subsidy="disability",

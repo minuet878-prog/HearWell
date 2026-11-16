@@ -74,7 +74,10 @@ class SimulatorPageTests(test_family_zone.SignsInWithARecord, TestCase):
         # whose hex digits can spell the record's 16, out of the look for the record.
         words = re.sub(r'<script id="simulator-data".*?</script>', "", signed_in, flags=re.S)
         self.assert_shows_no_record(words, "simulator_reader")
-        self.assertRegex(signed_in, rf"<title>\s*{TITLE}｜聽伴\s*</title>")  # noqa: RUF001
+        self.assertRegex(
+            signed_in,
+            rf"<title>\s*聽力不好的人聽到的聲音是什麼樣子？{TITLE}｜聽伴\s*</title>",  # noqa: RUF001
+        )
         nav = test_pages.RedesignLayoutTests.NAV.search(signed_in).group()
         self.assertEqual(
             re.findall(r'aria-current="page"[^>]*>.*?<span>([^<]+)</span>', nav, re.S),

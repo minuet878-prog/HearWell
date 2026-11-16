@@ -186,7 +186,10 @@ class FamilyDeadlinesPageTests(test_family_zone.SignsInWithARecord, TestCase):
     def test_page_has_one_heading_its_title_and_the_learn_tab(self):
         content = self.get().content.decode()
         self.assertEqual(re.findall(r"<h1[^>]*>([^<]*)</h1>", content), ["期限試算"])
-        self.assertRegex(content, r"<title>\s*期限試算｜聽伴\s*</title>")  # noqa: RUF001
+        self.assertRegex(
+            content,
+            r"<title>\s*助聽器補助的期限到哪一天？輸入日期試算｜聽伴\s*</title>",  # noqa: RUF001
+        )
         nav = test_pages.RedesignLayoutTests.NAV.search(content).group()
         self.assertEqual(
             re.findall(r'aria-current="page"[^>]*>.*?<span>([^<]+)</span>', nav, re.S),

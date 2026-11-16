@@ -18,6 +18,7 @@ from screening import forms as screening_forms
 from screening import public_pages, questionnaires
 from screening import urls as screening_urls
 from screening.models import Questionnaire
+from screening.tests import test_search_titles
 from screening.views.common import health_data_page
 
 BASE_DIR = Path(settings.BASE_DIR)
@@ -537,6 +538,11 @@ def indexable(responses):
     ]
 
 
+def repeated(words):
+    """The words appearing more than once."""
+    return sorted({word for word in words if words.count(word) > 1})
+
+
 class NotIndexedTests(TestCase):
     """ADR 0062 (spec #583 acceptance 2): every address of screening's URLs outside the 公開頁面
     list tells search engines to keep it out, whatever it answers a logged-out visitor with."""
@@ -565,6 +571,30 @@ class NotIndexedTests(TestCase):
                 response = client.get(url)
                 self.assertEqual(response.status_code, 200)
                 self.assertNotIn("X-Robots-Tag", response)
+
+    def test_every_public_page_has_its_own_title_and_description(self):
+        # Spec #583 acceptance 13: none left empty, and no two pages alike.
+        client = Client()
+        heads = [test_search_titles.head_of(client.get(url)) for url in public_pages.public_urls()]
+        titles = [title for title, _description in heads]
+        descriptions = [description for _title, description in heads]
+        self.assertNotIn("", titles)
+        self.assertNotIn(None, descriptions)
+        self.assertNotIn("", descriptions)
+        self.assertEqual(repeated(titles), [])
+        self.assertEqual(repeated(descriptions), [])
+
+    def test_every_public_page_names_its_address_without_parameters(self):
+        # Spec #583 acceptance 17, for each page: the same canonical with parameters added.
+        client = Client()
+        for url in public_pages.public_urls():
+            canonical = f'<link rel="canonical" href="https://testserver{url}">'
+            for opened in (url, f"{url}?from=search"):
+                with self.subTest(url=opened):
+                    self.assertContains(client.get(opened), canonical, html=True)
+
+    def test_a_repeated_title_is_caught(self):
+        self.assertEqual(repeated(["家人專區", "聽損模擬", "家人專區"]), ["家人專區"])
 
     def test_a_page_without_noindex_is_caught(self):
         kept_out = HttpResponse(headers={"X-Robots-Tag": "noindex, nofollow"})

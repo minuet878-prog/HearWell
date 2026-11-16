@@ -421,7 +421,7 @@ class SubsidyCheckPageTests(test_family_zone.SignsInWithARecord, TestCase):
     def test_page_has_one_heading_its_title_and_the_learn_tab(self):
         content = self.client.get(self.url).content.decode()
         self.assertEqual(re.findall(r"<h1[^>]*>([^<]*)</h1>", content), ["補助檢核"])
-        self.assertRegex(content, r"<title>\s*補助檢核｜聽伴\s*</title>")  # noqa: RUF001
+        self.assertRegex(content, r"<title>\s*助聽器補助還缺什麼？回答幾題就知道｜聽伴\s*</title>")  # noqa: RUF001
         nav = test_pages.RedesignLayoutTests.NAV.search(content).group()
         self.assertEqual(
             re.findall(r'aria-current="page"[^>]*>.*?<span>([^<]+)</span>', nav, re.S),

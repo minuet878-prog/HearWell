@@ -73,7 +73,7 @@ class TypesAndPricesChapterTests(TestCase):
         with self.assertNumQueries(0):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "<title>助聽器的種類與價格")
+        self.assertContains(response, "<title>助聽器是不是都很貴？種類、價格與補助上限")
         self.assertContains(response, '<h1 class="h3 mt-4">助聽器的種類與價格</h1>')
         text = "".join(test_guide.article_text(response).split())
         positions = [text.index("".join(sentence.split())) for sentence in SENTENCES]
@@ -106,5 +106,7 @@ class TypesAndPricesChapterTests(TestCase):
     def test_the_only_outside_links_are_the_fda_search_and_the_official_sources(self):
         # No shop or brand site: every link leaving 聽伴 is one of these.
         content = self.client.get(self.url).content.decode()
-        outside = set(re.findall(r'href="(https?://[^"]+)"', content))
+        # The page's links: the head's canonical address (spec #583) is this page's own.
+        body = content[content.index("<body") :]
+        outside = set(re.findall(r'href="(https?://[^"]+)"', body))
         self.assertEqual(outside, {FDA_SEARCH} | {url for _, url in SOURCES})

@@ -217,6 +217,18 @@ class FittingStepsTests(CareJourneyTestCase):
         )
         self.assertEqual(journey.card.button, ("看二十五號表要帶什麼", "/guide/form-25"))
 
+    def test_the_subsidy_s_stops_folded_by_none_step_4_is_never_form_25(self):
+        # #596 (spec #593 acceptance 32): 沒有 keeps the 補助站 folded, whatever 配戴之後 says.
+        self.answer()
+        self.fit(date(2026, 10, 1), Subsidy.DISABILITY, AidLevel.MID)
+        AidAndSubsidy.objects.filter(user=self.user).update(certificate=Certificate.NO_SUBSIDY)
+        journey = self.journey()
+        self.assertEqual(journey.current, 4)
+        self.assertNotEqual(journey.card.title, "二十五號表：使用效益驗證")
+        self.assertEqual(
+            journey.card.because, "再 50 天滿 3 個月，到時候做使用效益問卷（IOI-HA）。"
+        )
+
     def test_without_form_25_step_4_counts_down_to_3_months_without_a_button(self):
         # Spec #453 acceptance 11: fitted 40 days ago, 2026/10/03; 3 months is 2027/01/03.
         self.answer()
@@ -397,7 +409,8 @@ class StepAboutTests(CareJourneyTestCase):
             [
                 "先做一份生活影響問卷，了解聽力對您生活的影響。",
                 "選配指引要用聽力圖才能整理下一步。",
-                "照選配路線一站一站走，從找聽力師、申請補助到開始戴助聽器。",
+                # #598 (spec #593 acceptance 29): no subsidy on everyone's way.
+                "照選配路線一站一站走，從找聽力師到開始戴助聽器。",
                 "買了助聽器、戴滿 3 個月後，做使用效益問卷（IOI-HA），看助聽器幫了多少。",
                 "時間到了，這裡會出現「再做一次」的按鈕。",
             ],

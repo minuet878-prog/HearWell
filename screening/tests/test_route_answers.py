@@ -17,10 +17,11 @@ CHAPTER_CARD = "/guide/assessment#stop-question"
 CARD_TITLE = '<h2 id="stop-question-title" class="h4">'
 PTA_55 = test_guide_summary.PTA_55
 QUESTION = "您有聽覺機能的身心障礙證明嗎？"
+# #597 (spec #593 acceptance 17): no reason asked of 沒有, and room for those about to apply.
 ANSWERS = (
     ("yes", "有"),
-    ("applying", "還沒有，正在申請鑑定"),
-    ("no_subsidy", "沒有，不申請身障補助"),
+    ("applying", "還沒有，打算申請或正在申請鑑定"),
+    ("no_subsidy", "沒有"),
 )
 
 
@@ -182,19 +183,21 @@ class RouteQuestionTests(TestCase):
         self.answer("applying")
         self.assertEqual(self.marks("assessment"), ["您在這裡"])
         assessment = self.stop("assessment")
-        self.assertIn('<p class="route-answer">正在申請鑑定</p>', assessment)
+        self.assertIn('<p class="route-answer">打算申請或正在申請鑑定</p>', assessment)
         self.assert_question(assessment, filled="applying")
 
-    def test_not_applying_marks_the_subsidy_s_stops_not_applicable_and_pale(self):
+    def test_not_applying_folds_the_subsidy_s_stops_away_none_not_applicable(self):
+        # #596 (spec #593 acceptance 8, ADR 0063): in place of four pale 不適用 stops.
         self.answer("no_subsidy")
-        self.assertIn('<p class="route-answer">不申請身障補助 <a', self.stop("assessment"))
+        self.assertIn('<p class="route-answer">沒有身障證明 <a', self.stop("assessment"))
         page = self.page()
+        stops = dict(route_stops(page))
         for slug in ("form-9", "notice", "form-25", "payout"):
             with self.subTest(stop=slug):
-                self.assertEqual(self.marks(slug), ["不適用"])
-                self.assertRegex(page, rf'<li class="route-stop[^"]* is-na" data-stop="{slug}"')
+                self.assertNotIn(slug, stops)
         self.assertEqual(self.marks("types-and-prices"), ["您在這裡"])
-        self.assertEqual(page.count("is-na"), 4)
+        self.assertNotIn("is-na", page)
+        self.assertIn('<div class="route-fold">', page)
 
     def test_edit_opens_the_question_again_with_the_current_answer(self):
         self.answer("yes")
@@ -235,9 +238,28 @@ class RouteQuestionTests(TestCase):
         self.assertEqual(self.marks("assessment"), ["您在這裡", "估算未達門檻"])
         self.answer("applying")
         self.assertEqual(self.marks("assessment"), ["您在這裡", "估算未達門檻"])
-        self.answer("no_subsidy")
+        # #597 (spec #593 acceptance 23): still unfinished, so still led on to the help.
+        self.assertIn("看沒有身障證明時", self.stop("assessment"))
+        self.answer("yes")
         self.assertEqual(self.marks("assessment"), ["已完成"])
         self.assertNotIn("看沒有身障證明時", self.stop("assessment"))
+
+    WITHOUT = '<a class="tap-link" href="/guide/form-9#without-certificate">看沒有身障證明時</a>'
+
+    def test_none_always_links_to_help_without_a_certificate(self):
+        # #597 (spec #593 acceptance 21): whatever the estimate, and with no audiogram too.
+        for audiograms in ((PTA_55, PTA_55), ((30, 30, 30, 30), (20, 20, 20, 20)), None):
+            with self.subTest(audiograms=audiograms):
+                self.user.audiograms.all().delete()
+                if audiograms:
+                    self.make(*audiograms)
+                self.answer("no_subsidy")
+                assessment = self.stop("assessment")
+                self.assertEqual(self.marks("assessment"), ["已完成"])
+                self.assertEqual(assessment.count(self.WITHOUT), 1)
+                # Under the answer, as the #595 mockup has it.
+                answer = assessment.index('<p class="route-answer">沒有身障證明')
+                self.assertGreater(assessment.index(self.WITHOUT), answer)
 
 
 class ChapterQuestionTests(TestCase):
@@ -258,6 +280,7 @@ class ChapterQuestionTests(TestCase):
         card = content[content.index('<section id="stop-question"') : content.index("<footer")]
         self.assertIn(f"{CARD_TITLE}看完了嗎？</h2>", card)
         self.assertIn(QUESTION, card)
+        self.assertIn("第二類 b230、s260，或舊制 02", card)  # #597: the help unchanged
         self.assertIn(f'<input type="hidden" name="next" value="{CHAPTER_CARD}">', card)
         self.assertEqual(buttons(card), offered())
         self.assertIn("答了之後，選配路線會往下一站走。", test_guide.text_of(response))
@@ -358,12 +381,19 @@ class NotApplicableOverDoneTests(TestCase):
     def chapter(self, slug):
         return self.client.get(reverse("guide_chapter", args=[slug]))
 
-    def test_form_9_done_then_not_applying_is_not_applicable_only(self):
+    def test_form_9_done_then_not_applying_folds_it_away_and_its_chapter_asks_nothing(self):
+        # #596 (spec #593 acceptance 14, 19): 沒有 folds the 補助站 away, form 9 done or not.
         self.answer("assessment", "certificate", "yes")
         self.answer("form-9", "form_9_done", "True")
         self.answer("assessment", "certificate", "no_subsidy")
-        self.assertEqual(self.marks("form-9"), ["不適用"])
-        self.assertNotContains(self.chapter("form-9"), 'id="stop-question"')
+        self.assertNotIn("form-9", dict(route_stops(self.page())))
+        for slug in ("form-9", "form-25"):
+            with self.subTest(chapter=slug):
+                self.assertNotContains(self.chapter(slug), 'id="stop-question"')
+
+    def test_the_certificate_unanswered_form_9_s_chapter_still_asks(self):
+        # #596 (spec #593 acceptance 20): folded is not 沒有; answering it unfolds them.
+        self.assertContains(self.chapter("form-9"), "九號表完成了嗎？")
 
     def test_basic_with_form_25_done_is_not_applicable_only(self):
         AidAndSubsidy.objects.create(
@@ -405,6 +435,37 @@ class ViewedStaysDoneTests(TestCase):
         )
         self.assertEqual(self.marks("before-you-go"), ["已完成"])
         self.assertEqual(self.marks("types-and-prices"), ["已完成"])
+
+
+def migrate_to(targets):
+    """The models as they stood at targets, the test database migrated there."""
+    executor = MigrationExecutor(connection)
+    executor.migrate(list(targets))
+    return executor.loader.project_state(list(targets)).apps
+
+
+class CertificateRewordMigrationTests(TransactionTestCase):
+    """#597 (spec #593 acceptance 25): the certificate's answers reworded, every stored value
+    kept as it was."""
+
+    before = (("screening", "0035_signinmethod_line"),)
+    after = (("screening", "0036_certificate_answers_reworded"),)
+
+    def tearDown(self):
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
+
+    def test_every_answer_keeps_its_value(self):
+        apps = migrate_to(self.before)
+        old_user, old_aid = (
+            apps.get_model("screening", "User"),
+            apps.get_model("screening", "AidAndSubsidy"),
+        )
+        stored = {"has_one": "yes", "applying": "applying", "none": "no_subsidy", "blank": ""}
+        for name, answer in stored.items():
+            old_aid.objects.create(user=old_user.objects.create(username=name), certificate=answer)
+        new_aid = migrate_to(self.after).get_model("screening", "AidAndSubsidy")
+        self.assertEqual(dict(new_aid.objects.values_list("user__username", "certificate")), stored)
 
 
 class CertificateMigrationTests(TransactionTestCase):
@@ -690,7 +751,7 @@ class FittingRouteTests(TestCase):
     legends = Form9AndNoticeRouteTests.legends
 
     def without_the_notice(self):
-        # 不申請身障補助: 九號表 and the notice do not apply, so 您在這裡 is 配戴之後.
+        # 沒有: 九號表 and the notice are folded away (#596), so 您在這裡 is 配戴之後.
         AidAndSubsidy.objects.create(user=self.user, certificate="no_subsidy")
 
     def test_without_the_notice_it_asks_the_date_the_ear_the_subsidy_and_the_level(self):
