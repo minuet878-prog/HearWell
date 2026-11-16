@@ -62,6 +62,13 @@
         </li>
         {% endfor %}
     </ol>
+    {# #596 (ADR 0063, the #595 mockup's A and 甲): the 補助站 folded into a line under the route, outside its list so it is no stop; signed out too. #}
+    {% if subsidy_folded %}
+    <div class="route-fold">
+        <p>有身障證明的人另外有四站：九號表、等待核定公文、二十五號表、等待補助發放</p>
+        <p><a class="tap-link" href="{% url 'guide_chapter' 'form-9' %}">看申請補助的流程<span class="route-chevron" aria-hidden="true"></span></a></p>
+    </div>
+    {% endif %}
 </section>
 {% if latest and not audiogram %}
 {% if life_impact %}

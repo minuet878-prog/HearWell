@@ -81,8 +81,9 @@ class EveryStopNextStepTests(TestCase):
         )
 
     def at(self, stop):
+        # The 補助站 shown too, or the four of them are folded off the route (#596).
         def state_at(user, today):
-            return replace(fitting_state(user, today), stop=stop)
+            return replace(fitting_state(user, today), stop=stop, subsidy_shown=True)
 
         return patch("screening.care_journey.fitting_state", state_at)
 

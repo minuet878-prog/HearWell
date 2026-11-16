@@ -293,9 +293,11 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
         return content[content.index("<main") : content.index("</main>")]
 
     def here(self, guide):
-        """The 您在這裡 card, as far as the next stop."""
+        """The 您在這裡 card, as far as the next stop or the route's end (配戴之後 is the last
+        while the 補助站 are folded, #596)."""
         start = guide.index('<div class="route-box route-card">')
-        return guide[start : guide.index('<li class="route-stop', start)]
+        ends = (guide.find('<li class="route-stop', start), guide.index("</ol>", start))
+        return guide[start : min(end for end in ends if end != -1)]
 
     def current_card(self, main):
         """The 現在這一步's card with its to-dos, as far as the next step or the list's end."""

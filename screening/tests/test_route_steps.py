@@ -227,8 +227,8 @@ class HereTests(TestCase):
 
 
 class CertificateStopTests(TestCase):
-    """#293 (spec #291 acceptance 7): 身障鑑定與鑑定醫院 is done by the certificate answer; not
-    applying makes the subsidy's stops 不適用, and 您在這裡 passes them by."""
+    """#293 (spec #291 acceptance 7): 身障鑑定與鑑定醫院 is done by the certificate answer.
+    What 沒有 does to the 補助站 is SubsidyStopsFoldTests' (#596, ADR 0063)."""
 
     def setUp(self):
         self.user = consented_user(username="certificate_user")
@@ -261,22 +261,14 @@ class CertificateStopTests(TestCase):
         self.assertNotIn("assessment", state.done)
         self.assertEqual(state.stop, "assessment")
 
-    def test_not_applying_is_done_and_the_subsidy_s_stops_do_not_apply(self):
-        state = self.state("no_subsidy")
-        self.assertIn("assessment", state.done)
-        self.assertEqual(state.not_applicable, {"form-9", "notice", "form-25", "payout"})
-        self.assertEqual(state.stop, "types-and-prices")
-
-    def test_not_applying_with_types_and_prices_read_moves_on_to_after_fitting(self):
-        GuideChapterView.objects.create(user=self.user, chapter="types-and-prices")
-        self.assertEqual(self.state("no_subsidy").stop, "after-fitting")
-
     def test_wearing_and_not_applying_passes_form_25_and_the_payout_by(self):
+        # #596 (ADR 0063): folded away, so neither is 不適用 either; nothing left to be here.
         AidAndSubsidy.objects.create(
             user=self.user, certificate="no_subsidy", fitted_on=date(2026, 5, 1), subsidy="other"
         )
         state = self.state()
-        self.assertLessEqual({"form-25", "payout"}, state.not_applicable)
+        self.assertEqual(state.stops, FIVE_STOPS)
+        self.assertEqual(state.not_applicable, frozenset())
         self.assertIsNone(state.stop)
 
     def test_changing_back_to_applying_undoes_it(self):
@@ -287,8 +279,119 @@ class CertificateStopTests(TestCase):
         self.assertEqual(state.stop, "assessment")
 
 
+FIVE_STOPS = ("audiogram", "before-you-go", "assessment", "types-and-prices", "after-fitting")
+NINE_STOPS = (
+    "audiogram",
+    "before-you-go",
+    "assessment",
+    "form-9",
+    "notice",
+    "types-and-prices",
+    "after-fitting",
+    "form-25",
+    "payout",
+)
+
+
+class SubsidyStopsFoldTests(TestCase):
+    """#596 (spec #593, ADR 0063): the four 補助站 are folded away until the person answers
+    that they have a certificate or are applying, or has answered one of those stops."""
+
+    def setUp(self):
+        self.user = consented_user(username="subsidy_fold_user")
+        self.make(*OVER_25)
+        GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
+
+    make = test_guide_summary.GuideSummaryTests.make
+
+    def state(self, **answers):
+        if answers:
+            AidAndSubsidy.objects.update_or_create(user=self.user, defaults=answers)
+        return fitting_state(self.user, TODAY)
+
+    def test_nothing_answered_has_the_five_stops(self):
+        state = self.state()
+        self.assertEqual(state.stops, FIVE_STOPS)
+        self.assertEqual(state.stop, "assessment")
+
+    def test_a_certificate_or_applying_unfolds_the_nine_stops(self):
+        # Acceptance 5–7.
+        for certificate, here in (("yes", "form-9"), ("applying", "assessment")):
+            with self.subTest(certificate=certificate):
+                state = self.state(certificate=certificate)
+                self.assertEqual(state.stops, NINE_STOPS)
+                self.assertEqual(state.stop, here)
+                self.assertEqual(state.not_applicable, frozenset())
+
+    def test_none_keeps_them_folded_none_of_them_not_applicable(self):
+        # Acceptance 8–10: 您在這裡 moves on to types and prices.
+        state = self.state(certificate="no_subsidy")
+        self.assertEqual(state.stops, FIVE_STOPS)
+        self.assertIn("assessment", state.done)
+        self.assertEqual(state.not_applicable, frozenset())
+        self.assertEqual(state.stop, "types-and-prices")
+
+    def test_none_with_types_and_prices_read_moves_on_to_after_fitting(self):
+        GuideChapterView.objects.create(user=self.user, chapter="types-and-prices")
+        self.assertEqual(self.state(certificate="no_subsidy").stop, "after-fitting")
+
+    def test_an_answer_at_one_of_them_unfolds_them_without_the_certificate(self):
+        # Acceptance 11, 12: form 9 done or not yet, the notice, form 25, or bought with the
+        # subsidy at 配戴之後.
+        for answers in (
+            {"form_9_done": True},
+            {"form_9_done": False},
+            {"notice_received": False},
+            {"form_25_done": False},
+            {"fitted_on": date(2026, 5, 1), "subsidy": "disability"},
+        ):
+            with self.subTest(answers=answers):
+                AidAndSubsidy.objects.filter(user=self.user).delete()
+                self.assertEqual(self.state(**answers).stops, NINE_STOPS)
+
+    def test_bought_paying_otherwise_without_the_certificate_stays_folded_with_no_stop(self):
+        # Acceptance 13; folded, form 25 and the payout are not 不適用 either.
+        state = self.state(fitted_on=date(2026, 5, 1), subsidy="other")
+        self.assertEqual(state.stops, FIVE_STOPS)
+        self.assertEqual(state.not_applicable, frozenset())
+        self.assertIn("after-fitting", state.done)
+        self.assertIsNone(state.stop)
+
+    def test_none_wins_over_their_answers_and_changing_back_keeps_them(self):
+        # Acceptance 14.
+        self.state(certificate="yes", form_9_done=True)
+        folded = self.state(certificate="no_subsidy")
+        self.assertEqual(folded.stops, FIVE_STOPS)
+        self.assertNotIn("form-9", folded.done)
+        unfolded = self.state(certificate="yes")
+        self.assertEqual(unfolded.stops, NINE_STOPS)
+        self.assertIn("form-9", unfolded.done)
+
+    def test_none_and_fitted_with_the_subsidy_has_no_form_25_date_or_stop_in_them(self):
+        state = self.state(
+            certificate="no_subsidy", fitted_on=date(2026, 5, 1), subsidy="disability", level="mid"
+        )
+        self.assertEqual(state.stops, FIVE_STOPS)
+        self.assertIsNone(state.form_25)
+        self.assertIsNone(state.stop)
+
+    def test_unfolded_paying_otherwise_and_basic_keep_their_not_applicable(self):
+        # Acceptance 15, 16.
+        for subsidy, level, not_applicable in (
+            ("other", "", {"form-25", "payout"}),
+            ("disability", "basic", {"form-25"}),
+        ):
+            with self.subTest(subsidy=subsidy):
+                state = self.state(
+                    certificate="yes", fitted_on=date(2026, 5, 1), subsidy=subsidy, level=level
+                )
+                self.assertEqual(state.stops, NINE_STOPS)
+                self.assertEqual(state.not_applicable, not_applicable)
+
+
 class PurchaseReminderTests(TestCase):
-    """#294 (spec #291 acceptance 10, Q12): 種類與價格 always says the six months to buy in;
+    """#294 (spec #291 acceptance 10, Q12): 種類與價格 says the six months to buy in, to
+    everyone the 補助站 are shown to (#596: folded or signed out, it says nothing of a notice);
     the notice's date is not asked."""
 
     REMINDER = '<p class="route-note">收到核定通知後 6 個月內要買。</p>'
@@ -298,10 +401,14 @@ class PurchaseReminderTests(TestCase):
         start = content.index('data-stop="types-and-prices"')
         return content[start : content.index("</li>", start)]
 
-    def test_signed_in_or_out_the_stop_says_it(self):
+    def test_shown_the_subsidy_s_stops_the_stop_says_it(self):
+        user = consented_user(username="reminder_user")
+        AidAndSubsidy.objects.create(user=user, certificate="yes")
+        self.client.force_login(user)
         self.assertIn(self.REMINDER, self.stop())
-        self.client.force_login(consented_user(username="reminder_user"))
-        self.assertIn(self.REMINDER, self.stop())
+
+    def test_signed_out_it_says_nothing_of_the_notice(self):
+        self.assertNotIn(self.REMINDER, self.stop())
 
 
 class Form9AndNoticeStopTests(TestCase):
@@ -443,7 +550,8 @@ class Form25AndPayoutStopTests(TestCase):
         self.assertEqual(state.stop, "payout")
 
     def test_paying_otherwise_passes_both_by_and_leaves_no_stop(self):
-        state = self.state(subsidy="other")
+        # With a certificate, so the 補助站 are on the route to be 不適用 (#596).
+        state = self.state(certificate="yes", subsidy="other")
         self.assertEqual(state.not_applicable, {"form-25", "payout"})
         self.assertIsNone(state.stop)
 

@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from screening.models import AidAndSubsidy, Questionnaire, Submission
 from screening.questionnaires import hhie_s
-from screening.tests import test_guide, test_guide_summary, test_route_steps
+from screening.tests import test_guide, test_guide_summary, test_home_journey, test_route_steps
 from screening.tests.helpers import consented_user, route_stops
 
 PTA_55 = test_guide_summary.PTA_55
@@ -73,10 +73,12 @@ class GuideRouteTests(TestCase):
         link = rf'<a [^>]*href="{re.escape(href)}"[^>]*>(<span>)?{re.escape(text)}<'
         self.assertRegex(markup, link)
 
-    # #467 (I1): each stop opens to say what it is, its link on inside, named by the stop.
+    # #467 (I1): each stop opens to say what it is, its link on inside, named by the stop; the
+    # 補助站 unfolded (#596).
     def test_nine_stops_in_order_each_linked(self):
-        self.client.logout()
-        stops = self.stops()
+        AidAndSubsidy.objects.create(user=self.user, certificate="yes")
+        # Signed in, the 您在這裡 stop's to-dos say their state to screen readers (#481).
+        stops = [(slug, test_home_journey.TODOS.sub("", markup)) for slug, markup in self.stops()]
         self.assertEqual([slug for slug, _ in stops], [slug for slug, _ in STOPS])
         for (slug, markup), (_, title) in zip(stops, STOPS, strict=True):
             if slug == "audiogram":
@@ -97,7 +99,7 @@ class GuideRouteTests(TestCase):
     def test_each_stop_takes_the_focus_its_address_points_to(self):
         # Back from an answer at /guide#stop-<slug>, the focus lands on that stop.
         stops = re.findall(r'<li class="route-stop[^"]*"[^>]*>', self.page())
-        self.assertEqual(len(stops), len(STOPS))
+        self.assertEqual(len(stops), len(test_route_steps.FIVE_STOPS))
         for stop in stops:
             self.assertIn(' tabindex="-1"', stop)
 
@@ -126,7 +128,7 @@ class GuideRouteTests(TestCase):
 
     def test_signed_out_no_stop_is_marked(self):
         self.client.logout()
-        self.assertEqual(self.tags(), {slug: [] for slug, _ in STOPS})
+        self.assertEqual(self.tags(), {slug: [] for slug in test_route_steps.FIVE_STOPS})
         self.assertNotIn('aria-current="step"', self.page())
 
     def test_without_an_audiogram_recording_one_is_here(self):
@@ -201,11 +203,16 @@ class GuideRouteTests(TestCase):
         record = reverse("guide_chapter", args=["after-fitting"]) + "#record-title"
         self.assert_link(self.stop("after-fitting"), record, "記錄配戴的效果")
         reapply = reverse("guide_chapter", args=["form-9"]) + "#reapply"
+        # #596: folded, form 9 is off the route; the hearing part under it keeps the link.
+        self.assertNotIn("form-9", dict(self.stops()))
+        self.assert_link(self.page(), reapply, "看再次申請的規定")
+        AidAndSubsidy.objects.create(user=self.user, certificate="yes")
         self.assert_link(self.stop("form-9"), reapply, "看再次申請的規定")
 
     def test_not_wearing_has_no_reapplying_link_on_the_route(self):
         self.answer(wearing=False)
         self.make(PTA_55, PTA_55)
+        AidAndSubsidy.objects.create(user=self.user, certificate="yes")
         self.assertNotIn("#reapply", self.stop("form-9"))
 
     def test_both_ears_within_25_have_no_stop_here(self):
@@ -299,18 +306,22 @@ class Form25DeadlineTests(TestCase):
         self.assertIn('<span class="route-mark">您在這裡</span>', form_25)
 
     def test_basic_or_paying_has_no_form_25_date(self):
+        # Paying otherwise without a certificate answered, form 25 is folded away (#596).
         self.today = date(2026, 7, 15)
         for subsidy, level in (("disability", "basic"), ("other", "")):
             with self.subTest(subsidy=subsidy, level=level):
                 AidAndSubsidy.objects.filter(user=self.user).delete()
                 self.fit(subsidy=subsidy, level=level)
-                self.assertNotIn("2026/", self.stop("form-25"))
+                self.assertNotIn("2026/", dict(self.stops()).get("form-25", ""))
+                self.assertNotIn("前要做完", self.page())
 
     def test_the_subsidy_unanswered_is_here_at_after_fitting_and_form_25_is_not_dated(self):
-        # Spec #291 Q16: an older record with the date alone has not finished 配戴之後.
+        # Spec #291 Q16: an older record with the date alone has not finished 配戴之後; with
+        # nothing said of the subsidy, form 25 is folded away (#596).
         self.fit(subsidy="", level="")
         self.assertIn('<span class="route-mark">您在這裡</span>', self.stop("after-fitting"))
-        self.assertNotIn("2026/", self.stop("form-25"))
+        self.assertNotIn("form-25", dict(self.stops()))
+        self.assertNotIn("前要做完", self.page())
 
     GAP = '<p class="route-gap">至少 1 個月</p>'
 
@@ -323,9 +334,10 @@ class Form25DeadlineTests(TestCase):
         self.assertGreater(after_fitting.index(self.GAP), after_fitting.index("</div>"))
         self.assertEqual(self.page().count("route-gap"), 1)
 
-    def test_signed_out_the_line_says_it_too(self):
+    def test_signed_out_the_line_says_nothing_as_form_25_is_folded(self):
+        # #596 (spec #593 acceptance 43).
         self.client.logout()
-        self.assertIn(self.GAP, self.stop("after-fitting"))
+        self.assertNotIn("route-gap", self.stop("after-fitting"))
 
     def test_without_form_25_the_line_says_nothing(self):
         for subsidy, level in (("disability", "basic"), ("other", "")):
@@ -403,3 +415,100 @@ class AidOnlyRecordsTests(TestCase):
     def test_a_row_left_unanswered_is_not_a_record(self):
         AidAndSubsidy.objects.create(user=self.user)
         self.assertIn(test_guide_summary.NO_RECORDS, self.text())
+
+
+FIVE = test_route_steps.FIVE_STOPS
+FOLD = "有身障證明的人另外有四站：九號表、等待核定公文、二十五號表、等待補助發放"
+REMINDER = "收到核定通知後 6 個月內要買。"
+GAP = '<p class="route-gap">至少 1 個月</p>'
+
+
+class SubsidyFoldPageTests(TestCase):
+    """#596 (spec #593 acceptance 1–4, 8, 33–36, 42, 43): my guide shows the five stops and a
+    line under the route while the 補助站 are folded, and the nine once unfolded."""
+
+    def setUp(self):
+        self.user = consented_user(username="subsidy_fold_reader")
+        self.client.force_login(self.user)
+
+    page = GuideRouteTests.page
+    assert_link = GuideRouteTests.assert_link
+
+    def slugs(self):
+        return tuple(slug for slug, _ in route_stops(self.page()))
+
+    def fold(self):
+        """The folded line's markup, from after the route's list to the end of its section;
+        None without one."""
+        page = self.page()
+        route_end = page.index("</ol>", page.index('<ol class="route"'))
+        after = page[route_end : page.index("</section>", route_end)]
+        return after if "route-fold" in after else None
+
+    def answer(self, **answers):
+        AidAndSubsidy.objects.update_or_create(user=self.user, defaults=answers)
+
+    def test_signed_out_and_nothing_answered_have_the_five_stops_and_the_line(self):
+        for signed_in in (True, False):
+            with self.subTest(signed_in=signed_in):
+                if not signed_in:
+                    self.client.logout()
+                self.assertEqual(self.slugs(), FIVE)
+                fold = self.fold()
+                self.assertIsNotNone(fold)
+                self.assertIn(f"<p>{FOLD}</p>", fold)
+                self.assert_link(
+                    fold, reverse("guide_chapter", args=["form-9"]), "看申請補助的流程"
+                )
+
+    def test_the_line_is_no_stop_and_has_one_link(self):
+        # Acceptance 4, 34: outside the route's list, no number, no mark, nothing to open.
+        fold = self.fold()
+        self.assertNotIn("route-stop", fold)
+        self.assertNotIn("<details", fold)
+        for mark in (DONE, HERE, "不適用"):
+            self.assertNotIn(mark, fold)
+        self.assertEqual(fold.count("<a "), 1)
+        self.assertIn('<span class="route-chevron" aria-hidden="true"></span>', fold)
+
+    def test_a_certificate_unfolds_the_nine_stops_without_the_line(self):
+        self.answer(certificate="yes")
+        self.assertEqual(self.slugs(), tuple(slug for slug, _ in STOPS))
+        self.assertIsNone(self.fold())
+
+    def test_none_keeps_the_five_and_no_stop_is_not_applicable(self):
+        self.answer(certificate="no_subsidy")
+        self.assertEqual(self.slugs(), FIVE)
+        self.assertIsNotNone(self.fold())
+        self.assertNotIn("is-na", self.page())
+
+    def test_folded_types_and_prices_does_not_say_the_six_months(self):
+        # Acceptance 42: nothing answered, 沒有, and signed out.
+        self.assertNotIn(REMINDER, self.page())
+        self.answer(certificate="no_subsidy")
+        self.assertNotIn(REMINDER, self.page())
+        self.client.logout()
+        self.assertNotIn(REMINDER, self.page())
+
+    def test_unfolded_types_and_prices_still_says_the_six_months(self):
+        self.answer(certificate="applying")
+        stop = dict(route_stops(self.page()))["types-and-prices"]
+        self.assertIn(f'<p class="route-note">{REMINDER}</p>', stop)
+
+    def test_folded_after_fitting_has_no_line_on_to_form_25(self):
+        # Acceptance 43: fitted with nothing said of the subsidy, bought with it and then 沒有,
+        # and signed out.
+        self.answer(fitted_on=date(2026, 5, 1))
+        self.assertNotIn("route-gap", self.page())
+        self.answer(
+            certificate="no_subsidy", fitted_on=date(2026, 5, 1), subsidy="disability", level="mid"
+        )
+        self.assertNotIn("route-gap", self.page())
+        self.client.logout()
+        self.assertNotIn("route-gap", self.page())
+
+    def test_unfolded_after_fitting_still_has_the_line_on_to_form_25(self):
+        self.answer(
+            certificate="yes", fitted_on=date(2026, 5, 1), subsidy="disability", level="mid"
+        )
+        self.assertIn(GAP, dict(route_stops(self.page()))["after-fitting"])

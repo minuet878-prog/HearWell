@@ -166,7 +166,8 @@ RETEST_COUNTDOWN_TEXT = "時間到了，這裡會出現「再做一次」的按�
 CARE_JOURNEY_ABOUT = (
     LIFE_IMPACT_BECAUSE,
     "選配指引要用聽力圖才能整理下一步。",
-    "照選配路線一站一站走，從找聽力師、申請補助到開始戴助聽器。",
+    # #598 (spec #593): no subsidy on everyone's way, the owner's wording on #595.
+    "照選配路線一站一站走，從找聽力師到開始戴助聽器。",
     "買了助聽器、戴滿 3 個月後，做使用效益問卷（IOI-HA），看助聽器幫了多少。",
     RETEST_COUNTDOWN_TEXT,
 )

@@ -137,7 +137,9 @@ class GuideContentsTests(TestCase):
         self.assertIn(CONTENTS_TITLE, content)
         # In the body: the head's description (spec #583) names some chapters too.
         body = content[content.index("<body") :]
-        positions = [body.index(title) for title in CHAPTERS]
+        # #596: signed out the 補助站 are folded, so form 9 and form 25 are no stops.
+        shown = [title for title in CHAPTERS if not title.startswith(("九號表", "二十五號表"))]
+        positions = [body.index(title) for title in shown]
         self.assertEqual(positions, sorted(positions))
 
     def test_logged_in_user_sees_the_contents_without_the_login_note(self):
@@ -147,11 +149,14 @@ class GuideContentsTests(TestCase):
         self.assertNotIn(LOGIN_NOTE, content)
 
     def test_every_chapter_is_linked(self):
+        # #596 (ADR 0063's cost): folded, form 25 is reached from form 9's chapter, which the
+        # line under the route links.
         content = self.client.get(self.url).content.decode()
+        form_9 = self.client.get(reverse("guide_chapter", args=["form-9"])).content.decode()
         for chapter in GUIDE_CHAPTERS:
             href = f'href="{reverse("guide_chapter", args=[chapter.slug])}"'
             with self.subTest(chapter=chapter.slug):
-                self.assertIn(href, content)
+                self.assertIn(href, form_9 if chapter.slug == "form-25" else content)
 
 
 class GuideChapterTests(TestCase):
