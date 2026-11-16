@@ -1,6 +1,7 @@
 from django.contrib.auth.views import redirect_to_login
 from django.urls import reverse
 
+from screening.public_pages import is_public
 from screening.views.common import form_page
 
 # Pages a signed-in user may use before agreeing to the privacy notice
@@ -85,3 +86,19 @@ class ConsentRequiredMiddleware:
         if getattr(view_func, "form_address", False):
             return redirect_to_login(form_page(request), reverse("consent"))
         return redirect_to_login(request.get_full_path(), reverse("consent"))
+
+
+class NotIndexedMiddleware:
+    """ADR 0062: every answer but a 公開頁面's tells search engines to keep it out, pages and
+    redirects, errors, the API and the admin alike. A view's own stricter header (the shared
+    report's nofollow) stays."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        # A public page that answered with anything but itself (an error) is not indexed either.
+        if not (response.status_code == 200 and is_public(request.path)):
+            response.setdefault("X-Robots-Tag", "noindex")
+        return response
