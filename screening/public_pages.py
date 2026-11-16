@@ -6,6 +6,7 @@ listed here. The one list of the site: the sitemap reads it too (spec #583).
 
 from functools import cache
 
+from django.contrib.sitemaps import Sitemap
 from django.urls import reverse
 
 from screening.qa_assistant import content
@@ -45,3 +46,15 @@ def public_urls():
 
 def is_public(path):
     return path in public_urls()
+
+
+class PublicPagesSitemap(Sitemap):
+    # The addresses only: Google ignores changefreq and priority, and takes lastmod only when it is
+    # always right (spec #583). The host is the request's, as the sites framework is not installed.
+    protocol = "https"
+
+    def items(self):
+        return public_urls()
+
+    def location(self, item):
+        return item
