@@ -4,6 +4,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from screening.tests import test_guide
+from screening.tests.helpers import consented_user
 
 # Wording finalised in #220 (C2–C31; C31 names the New Taipei centre), shortened in the guide
 # chapters tidy-up (2026-10-23, the owner's request): step titles, the amounts as rows of numbers.
@@ -96,12 +97,13 @@ COUNTIES = (
     "臺東縣", "花蓮縣", "宜蘭縣", "澎湖縣", "金門縣", "連江縣",
 )  # fmt: skip
 CENTRE_COUNT = 47
+# Rows as read on the page, the tags gone (#578: the owner's wording in the #577 mockup).
 CENTRES_SAMPLE = (
-    "基隆市輔具資源中心：(02)2469-6966#211",
-    "新北市輔具資源中心(蘆洲)：(02)8286-7045",
-    "嘉義市輔具資源中心 西區服務處：(05)285-8212",
-    "臺南市輔具資源中心 永華中心：(06)209-8938",
-    "連江縣輔具資源中心：(0836)25022#302 或 (0836)23050",
+    "基隆市輔具資源中心 (02)2469-6966 轉 211",
+    "新北市輔具資源中心(蘆洲) (02)8286-7045",
+    "嘉義市輔具資源中心 西區服務處 (05)285-8212",
+    "臺南市輔具資源中心 永華中心 (06)209-8938",
+    "連江縣輔具資源中心 (0836)25022 轉 302 或 (0836)23050",
 )
 CENTRES_SOURCE = "資料來源： 輔具資源入口網"
 
@@ -152,14 +154,19 @@ class Form9ChapterTests(TestCase):
     def test_issuer_section_lists_every_county_centre_with_its_source(self):
         response = self.client.get(self.url)
         content = response.content.decode()
-        start = content.index('<ul aria-labelledby="centres-title">')
+        start = content.index(
+            '<ul class="centre-list" role="list" aria-labelledby="centres-title">'
+        )
         centres = content[start : content.index("</section>", start)]
-        positions = [centres.index(f"<li>{county}") for county in COUNTIES]
+        positions = [
+            centres.index(f'<li><span class="centre-county">{county}</span>') for county in COUNTIES
+        ]
         self.assertEqual(positions, sorted(positions))
         self.assertEqual(centres.count("<li>") - len(COUNTIES), CENTRE_COUNT)
+        rows = [without_tags(row) for row in CENTRE_ROW.findall(centres)]
         for entry in CENTRES_SAMPLE:
             with self.subTest(entry=entry):
-                self.assertIn(f"<li>{entry}</li>", centres)
+                self.assertIn(entry, rows)
         text = test_guide.text_of(response)
         self.assertIn('<h3 id="centres-title" class="h5 mt-4">各縣市輔具中心</h3>', content)
         # Guide chapters tidy-up: the list is folded away under the heading.
@@ -245,3 +252,194 @@ class BeforeYouGoLinkTests(TestCase):
         self.assertIn(link, content)
         reminder = test_guide.BEFORE_YOU_GO[-1]
         self.assertLess(content.index(reminder), content.index(link))
+
+
+# The centre list's numbers before #578, each centre's in page order, as area code and number
+# without punctuation. They are reviewed data: #578 changes how they look, never a digit
+# (spec #576 acceptance 3).
+NUMBERS_BEFORE = (
+    ("基隆市輔具資源中心", ("0224696966",)),
+    ("臺北市西區輔具中心", ("0225237902",)),
+    ("臺北市南區輔具中心", ("0227207364",)),
+    ("臺北市合宜輔具中心", ("0277137760",)),
+    ("新北市輔具資源中心(蘆洲)", ("0282867045",)),
+    ("新北市輔具資源中心(新店)", ("0229121911",)),
+    (
+        "桃園市北區輔具資源中心",
+        (
+            "033683040",
+            "033732028",
+        ),
+    ),
+    ("桃園市南區輔具資源中心", ("034890298",)),
+    ("新竹市輔具資源中心", ("035623707",)),
+    ("新竹縣北區輔具資源中心", ("035527316",)),
+    ("新竹縣南區輔具資源中心", ("035111015",)),
+    (
+        "北區輔具資源中心",
+        (
+            "037268462",
+            "037268463",
+        ),
+    ),
+    ("南區輔具資源中心", ("037752642",)),
+    ("臺中市北區輔具資源中心", ("0425314200",)),
+    ("臺中市南區輔具資源中心", ("0424713589",)),
+    ("臺中市海線輔具資源中心", ("0426627152",)),
+    ("彰化縣二林輔具資源中心 總站", ("048962178",)),
+    ("彰化縣二林輔具資源中心 彰化據點", ("047229767",)),
+    ("彰化縣田尾輔具資源中心", ("048836311",)),
+    (
+        "南投縣第一輔具資源中心",
+        (
+            "0492420338",
+            "0492420390",
+        ),
+    ),
+    ("南投縣第二輔具資源中心", ("0492228086",)),
+    ("雲林縣輔助器具資源中心", ("055339620",)),
+    ("雲林縣輔助器具資源中心虎尾站", ("056339620",)),
+    ("嘉義市輔具資源中心 東區服務處", ("052256686",)),
+    ("嘉義市輔具資源中心 西區服務處", ("052858212",)),
+    ("嘉義縣輔具資源中心 山線服務中心", ("052793350",)),
+    ("嘉義縣輔具資源中心 海線服務據點", ("053791851",)),
+    ("嘉義縣民雄輔具資源中心", ("052268005",)),
+    ("臺南市輔具資源中心 官田中心", ("065790636",)),
+    ("臺南市輔具資源中心 佳里中心", ("067266700",)),
+    ("臺南市輔具資源中心 永華中心", ("062098938",)),
+    ("高雄市北區輔具資源中心 總站", ("076226730",)),
+    ("高雄市北區輔具資源中心 鳳山據點", ("077100366",)),
+    ("高雄市北區輔具資源中心 旗山據點", ("076625695",)),
+    (
+        "高雄市南區輔具資源中心 總站",
+        (
+            "078416336",
+            "078151500",
+        ),
+    ),
+    ("高雄市南區輔具資源中心 楠梓據點", ("073661130",)),
+    ("屏東縣屏北區輔具資源中心", ("087365455",)),
+    ("屏東縣屏中區輔具資源中心 總站", ("087899599",)),
+    ("屏東縣屏中區輔具資源中心 屏南工作站", ("088883741",)),
+    ("臺東縣輔具資源中心", ("089232263",)),
+    (
+        "花蓮縣輔具資源中心",
+        (
+            "038225365",
+            "038241657",
+            "038241658",
+        ),
+    ),
+    (
+        "花蓮縣南區輔具資源中心",
+        (
+            "038886586",
+            "038887992",
+        ),
+    ),
+    ("宜蘭縣溪北輔具資源中心", ("039320920",)),
+    ("宜蘭縣溪南輔具資源中心", ("039544106",)),
+    ("澎湖縣輔具資源中心", ("069262740",)),
+    (
+        "金門縣輔具資源中心",
+        (
+            "082333629",
+            "082333269",
+        ),
+    ),
+    (
+        "連江縣輔具資源中心",
+        (
+            "083625022",
+            "083623050",
+        ),
+    ),
+)
+
+DIAL_LINK = re.compile(r'<a href="(tel:[^"]*)"[^>]*>(.*?)</a>', re.S)
+# A centre's row: an item of the list with no list inside it.
+CENTRE_ROW = re.compile(r"<li>((?:(?!<li>|<ul).)*?)</li>", re.S)
+
+
+def centre_list(response):
+    content = response.content.decode()
+    start = content.index('aria-labelledby="centres-title"')
+    return content[start : content.index("</details>", start)]
+
+
+def without_tags(html):
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html)).strip()
+
+
+class CentrePhoneLinksTests(TestCase):
+    """#578 (spec #576): every phone number of the assistive device centres dials."""
+
+    def setUp(self):
+        self.url = reverse("guide_chapter", args=["form-9"])
+
+    def test_every_number_is_a_dial_link_with_the_digits_it_had(self):
+        signed_in = consented_user(username="centre_phone_user")
+        for user in (None, signed_in):
+            if user:
+                self.client.force_login(user)
+            with self.subTest(signed_in=bool(user)):
+                block = centre_list(self.client.get(self.url))
+                rows = []
+                for row in CENTRE_ROW.findall(block):
+                    name = re.match(r"\s*([^<]+)", row).group(1).strip()
+                    links = DIAL_LINK.findall(row)
+                    for href, shown in links:
+                        number = without_tags(shown)
+                        # The link is the number alone, as (area code)number.
+                        self.assertRegex(number, r"^\(0\d{1,3}\)\d[\d-]*\d$")
+                        # It dials that number from anywhere: +886, the leading 0 dropped.
+                        self.assertEqual(href, "tel:+886" + re.sub(r"\D", "", number)[1:])
+                    rows.append((name, tuple(re.sub(r"\D", "", without_tags(s)) for _, s in links)))
+                self.assertEqual(tuple(rows), NUMBERS_BEFORE)
+                # No number is left as plain words: outside the links, nothing as long as one.
+                self.assertNotRegex(without_tags(DIAL_LINK.sub("", block)), r"\d[\d-]{5,}")
+
+    # Spec #576 acceptance 4 to 6, each kind of row the owner read in the #577 mockup: an
+    # extension is 轉 after its number, a range whole; several numbers are several links; a
+    # note stays beside what it is about. (That a link holds its number alone is tested above.)
+    ROWS = (
+        "基隆市輔具資源中心 (02)2469-6966 轉 211",
+        "桃園市北區輔具資源中心 (03)368-3040 (03)373-2028",
+        "桃園市南區輔具資源中心 (03)4890298 轉 2000～2020",  # noqa: RUF001
+        "新竹市輔具資源中心 (03)562-3707 轉 131～142",  # noqa: RUF001
+        "新竹縣北區輔具資源中心 (03)552-7316 總機 9、轉 10～16",  # noqa: RUF001
+        "臺中市海線輔具資源中心 (04)2662-7152 轉 35～39",  # noqa: RUF001
+        "高雄市北區輔具資源中心 總站 (07)6226730 轉 145（輔具租借、諮詢）；轉 112、113（輔具申請）",
+        "高雄市南區輔具資源中心 總站 (07)841-6336 (07)815-1500 轉 111",
+        "花蓮縣輔具資源中心 (03)8225365 (03)8241657 (03)8241658",
+        "宜蘭縣溪南輔具資源中心 (03)9544106 轉 8114",
+        "金門縣輔具資源中心 服務電話 (082)333629 意見專線 (082)333269",
+        "連江縣輔具資源中心 (0836)25022 轉 302 或 (0836)23050",
+    )
+
+    def test_extensions_and_notes_are_plain_words_beside_their_number(self):
+        block = centre_list(self.client.get(self.url))
+        rows = [without_tags(row) for row in CENTRE_ROW.findall(block)]
+        for row in self.ROWS:
+            with self.subTest(row=row):
+                self.assertIn(row, rows)
+
+    # Spec #576 acceptance 9: dozens of numbers on one page, so a link's name says whose it
+    # is; the phone icon before it is drawn only.
+    def test_a_link_is_named_by_its_centre_and_number_and_its_icon_is_not_read(self):
+        block = centre_list(self.client.get(self.url))
+        self.assertIn(
+            '<a href="tel:+88678151500" aria-label="撥打高雄市南區輔具資源中心 總站 (07)815-1500">',
+            block,
+        )
+        links = re.findall(r'<a href="tel:[^"]*" aria-label="([^"]*)">(.*?)</a>', block, re.S)
+        self.assertEqual(len(links), 56)
+        for name, shown in links:
+            with self.subTest(name=name):
+                # The words in sight are part of the name, for voice control.
+                self.assertTrue(name.startswith("撥打"))
+                self.assertTrue(name.endswith(without_tags(shown)))
+                self.assertEqual(shown.count("<svg"), 1)
+                self.assertIn(
+                    '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">', shown
+                )
