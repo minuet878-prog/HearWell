@@ -7,6 +7,10 @@
 // level are the server's, for the home page.
 export const GUEST_PREFIX = "hearwell:guest-result:";
 export const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+// Codex cross review of #492, Spec 1: a press of the save card, remembered in this tab only
+// (sessionStorage) with the receipt numbers kept then; the save page takes it once. An address
+// with ?from=card cannot make one, so without it the save page asks.
+export const SAVE_INTENT = "hearwell:guest-save-intent";
 const LOAD_FAILED = "結果載入失敗，請重新整理這一頁";
 
 function attempt(action) {
@@ -125,11 +129,23 @@ function offerClearing(root, navigate, key) {
   });
 }
 
+// Any of the save card's ways in (註冊保存, 登入保存, LINE, Google) remembers the press.
+function rememberSaveCardPress(root, clock) {
+  const card = root.querySelector("[data-guest-save-card]");
+  if (!card) return;
+  card.addEventListener("click", (event) => {
+    if (!event.target.closest("a")) return;
+    const keys = loadGuestResults(clock()).map((result) => result.key);
+    attempt(() => sessionStorage.setItem(SAVE_INTENT, JSON.stringify(keys)));
+  });
+}
+
 // The guest result page (guest_result.html): the kept answers scored again by the server, which
 // draws the result page's section; without a result (none, expired, cleared) it goes home.
 export async function showGuestResult({
   root,
   now = Date.now(),
+  clock = () => Date.now(),
   fetchScore = (...args) => fetch(...args),
   navigate = (url) => window.location.replace(url),
 }) {
@@ -169,6 +185,7 @@ export async function showGuestResult({
     const days = root.querySelector("[data-guest-days-left]");
     if (days) days.textContent = String(daysLeft(result.finishedAt, now));
     offerClearing(root, navigate, result.key);
+    rememberSaveCardPress(root, clock);
     root.querySelector("[data-guest-shown]").hidden = false;
     error.textContent = "";
   } else if (response?.status === 400) {
@@ -322,4 +339,22 @@ export function askToSaveGuestResults({
     navigate(root.dataset.homeUrl);
   }, { once: true });
   ask.hidden = false;
+}
+
+// The save page begins (guest-save-main.js): straight to saving only when it came from the save
+// card (no data-asking, the server's reading of ?from=card) and the press was remembered in this
+// tab, saving just what it remembered; otherwise it asks. The press is forgotten either way.
+export function startSavePage({
+  root,
+  now = Date.now(),
+  clock = () => Date.now(),
+  fetchSave = (...args) => fetch(...args),
+  navigate = (url) => window.location.replace(url),
+}) {
+  const remembered = parse(attempt(() => sessionStorage.getItem(SAVE_INTENT)));
+  attempt(() => sessionStorage.removeItem(SAVE_INTENT));
+  if (!("asking" in root.dataset) && Array.isArray(remembered)) {
+    return saveGuestResults({ root, keys: remembered, now, clock, fetchSave, navigate });
+  }
+  return askToSaveGuestResults({ root, now, clock, fetchSave, navigate });
 }

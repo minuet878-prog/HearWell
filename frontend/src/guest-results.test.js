@@ -11,7 +11,9 @@ import {
   loadGuestResult,
   saveGuestResult,
   saveGuestResults,
+  SAVE_INTENT,
   showGuestResult,
+  startSavePage,
 } from "./guest-results.js";
 
 const NOW = Date.parse("2026-11-13T10:00:00+08:00");
@@ -46,6 +48,7 @@ const loadTheDraft = () => loadDraft({ questionnaireId: 1, userId: 7, questionId
 
 afterEach(() => {
   localStorage.clear();
+  sessionStorage.clear();
   vi.restoreAllMocks();
 });
 
@@ -244,6 +247,27 @@ describe("showGuestResult (the guest result page)", () => {
   });
 
   // #492 acceptance 15, on the save card (the #493 mockup's D1): 2 days after, 5 days left.
+  // Codex cross review of #492, Spec 1: pressing one of the save card's ways in is what lets the
+  // save page save straight away; it is remembered in this tab only, with the receipt numbers kept.
+  it("remembers in this tab, on a press of the save card, which results are kept then", async () => {
+    const withCard = {
+      ...SCORED,
+      html: `<div data-guest-save-card><a href="#register" data-way>註冊保存</a><p>想留下這次結果？</p></div>${CLEAR_ROW}`,
+    };
+    saveGuestResult(guestResult());
+    saveGuestResult(guestResult({ code: "hhia-s", questionnaireId: 3, key: "1f0e2d3c-4b5a-4968-8776-655443322110" }));
+    await showGuestResult({ root, now: NOW, clock: () => NOW, fetchScore: reply(200, withCard), navigate });
+    expect(sessionStorage.getItem(SAVE_INTENT)).toBeNull();
+    root.querySelector("[data-guest-save-card] p").click(); // not one of its ways in
+    expect(sessionStorage.getItem(SAVE_INTENT)).toBeNull();
+    root.querySelector("[data-way]").addEventListener("click", (event) => event.preventDefault());
+    root.querySelector("[data-way]").click();
+    expect(JSON.parse(sessionStorage.getItem(SAVE_INTENT)).sort()).toEqual(
+      [guestResult().key, "1f0e2d3c-4b5a-4968-8776-655443322110"].sort(),
+    );
+    expect(localStorage.getItem(SAVE_INTENT)).toBeNull(); // not kept beyond this tab
+  });
+
   it("says on the save card how many days the result has left", async () => {
     const withCard = { ...SCORED, html: `<p>還留 <span data-guest-days-left></span> 天</p>${CLEAR_ROW}` };
     for (const [finishedAt, left] of [[NOW - 2 * DAY, "5"], [NOW, "7"], [NOW - 6.5 * DAY, "1"]]) {
@@ -674,6 +698,43 @@ describe("askToSaveGuestResults (the save page's question)", () => {
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith("/"));
     expect(fetchSave).not.toHaveBeenCalled();
     expect(localStorage.getItem(`${GUEST_PREFIX}hhie-s`)).toBeNull();
+  });
+
+  // Codex cross review of #492, Spec 1: ?from=card in the address is not enough to skip the
+  // question; only a press of the save card in this tab is, and only for what it remembered.
+  it("from the save card pressed in this tab, saves just what it remembered and forgets the press", async () => {
+    delete root.dataset.asking; // ?from=card
+    saveGuestResult(guestResult());
+    saveGuestResult(HHIA_S);
+    sessionStorage.setItem(SAVE_INTENT, JSON.stringify([guestResult().key]));
+    const fetchSave = created();
+    startSavePage({ root, now: NOW + DAY, clock: () => NOW + DAY, fetchSave, navigate });
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith("/?from=save"));
+    expect(fetchSave).toHaveBeenCalledTimes(1);
+    expect(fetchSave.mock.calls[0][1].headers["Idempotency-Key"]).toBe(guestResult().key);
+    expect(root.querySelector("[data-guest-ask]").hidden).toBe(true);
+    expect(sessionStorage.getItem(SAVE_INTENT)).toBeNull();
+    expect(loadGuestResult("hhia-s", NOW + DAY)).toEqual(HHIA_S);
+  });
+
+  it("asks first at a ?from=card address opened without pressing the save card", () => {
+    delete root.dataset.asking;
+    saveGuestResult(guestResult());
+    const fetchSave = created();
+    startSavePage({ root, now: NOW, fetchSave, navigate });
+    expect(root.querySelector("[data-guest-ask]").hidden).toBe(false);
+    expect(fetchSave).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("asks when not from the save card, forgetting a press left from before", () => {
+    saveGuestResult(guestResult());
+    sessionStorage.setItem(SAVE_INTENT, JSON.stringify([guestResult().key]));
+    const fetchSave = created();
+    startSavePage({ root, now: NOW, fetchSave, navigate });
+    expect(root.querySelector("[data-guest-ask]").hidden).toBe(false);
+    expect(fetchSave).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem(SAVE_INTENT)).toBeNull();
   });
 
   it("goes home when there is nothing to ask about", () => {
