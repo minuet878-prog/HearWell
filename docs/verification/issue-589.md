@@ -48,7 +48,7 @@
 |---|---|
 | Django 測試（`--parallel 4`） | 2668 項通過（自審修正之後） |
 | `ruff check`、`ruff format --check` | 通過 |
-| e2e（`e2e.main_flow --parallel 4`） | 第一次 452 項中 1 項失敗（上面「傳給家人」的標題）；改了預期、做完自審修正後重跑，452 項通過 |
+| e2e（`e2e.main_flow --parallel 4`） | 第一次 452 項中 1 項失敗（上面「傳給家人」的標題）；改了預期、做完自審修正後重跑，452 項通過；跟 #590 一起併入 `main` 後再跑，455 項通過 |
 
 ## 自審（Matt 的 `/code-review`，基準點 `origin/main`）
 

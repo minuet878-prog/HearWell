@@ -40,9 +40,9 @@ L:42–44 先寫、看它因為頁面還沒有預覽標記而失敗，再寫程�
 
 | 項目 | 結果 |
 |---|---|
-| Django 測試（`--parallel 4`） | 2674 項通過（自審修正之後） |
+| Django 測試（`--parallel 4`） | 2674 項通過（自審修正之後）；推送前併入 `main` 後再跑，2684 項通過 |
 | `ruff check`、`ruff format --check` | 通過 |
-| e2e（`e2e.main_flow --parallel 4`） | 452 項通過（自審修正之前的 commit）；修正之後重跑：見下 |
+| e2e（`e2e.main_flow --parallel 4`） | 452 項通過（自審修正之前的 commit）；自審修正並併入 `main` 之後重跑，455 項通過 |
 
 ## 自審（Matt 的 `/code-review`，基準點 #589 最後一個 commit `707524aa`）
 
