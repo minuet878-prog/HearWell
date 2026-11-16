@@ -39,6 +39,22 @@ export function levelAt(py, conduction) {
 
 export const pointKey = (ear, conduction, frequency) => `${ear}-${conduction}-${frequency}`;
 
+// #619 (spec #611 R1): for each ear with any air point, the air frequencies the other ear has and
+// it has not, low to high; right first, ears missing nothing left out. Bone is never compared, and
+// a no-response or masked point counts as marked.
+export function missedAir(points) {
+  const air = (ear) => new Set(points.filter((p) => p.ear === ear && p.conduction === "air").map((p) => p.frequency));
+  const right = air("right");
+  const left = air("left");
+  return [
+    ["right", right, left],
+    ["left", left, right],
+  ]
+    .filter(([, own]) => own.size > 0)
+    .map(([ear, own, other]) => ({ ear, frequencies: [...other].filter((f) => !own.has(f)).sort((a, b) => a - b) }))
+    .filter(({ frequencies }) => frequencies.length > 0);
+}
+
 // Releasing on the very point (value, no response and masking) deletes it; anything else adds,
 // moves or re-marks it, so tapping with the other masking converts the point.
 export function place(points, symbol, frequency, level, masked = false) {

@@ -521,3 +521,24 @@ class GuestFallbackTests(GuestTestCase):
         self.assertNotIn('id="answer-guest-fallback"', content)
         self.assertNotIn(self.CANNOT_LOAD, content)
         self.assertNotIn("data-register-url", content)
+
+
+class ReassuranceLineTests(GuestTestCase):
+    """Spec #611 Q2 (acceptance 62, 66): a guest keeps no draft, so only the first sentence, above
+    the guest line, which stays."""
+
+    FIRST = "這不是考試，沒有對錯。"
+
+    def test_a_guest_has_the_first_sentence_above_the_guest_line(self):
+        for questionnaire in (self.hhie_s, self.hhia_s):
+            with self.subTest(code=questionnaire.code):
+                content = self.client.get(reverse("screening", args=[questionnaire.pk]))
+                content = content.content.decode()
+                self.assertIn(f'<p class="answer-reassure">{self.FIRST}</p>', content)
+                meta = content.index('class="answer-meta"')
+                line = content.index(self.FIRST)
+                self.assertLess(meta, line)
+                self.assertLess(line, content.index(GUEST_LINE))
+                self.assertNotIn("答到一半離開", content)
+                self.assertNotIn("data-draft-line", content)
+                self.assertNotIn("照平常的感覺", content)

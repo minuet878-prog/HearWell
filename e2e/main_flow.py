@@ -61,6 +61,8 @@ from screening.tests.helpers import (
     LINE_AUTHORIZE,
     LINE_CHANNEL_ID,
     LINE_ENDPOINTS,
+    FakeGoogle,
+    FakeLine,
     consented_user,
     fake_definition,
     google_on,
@@ -15836,3 +15838,791 @@ class FeedbackBatchTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 )
                 if double:
                     self.assert_fits_a_phone_at_double_text_size("account after a download", width)
+
+
+class AudiogramReadingTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#617 (spec #611 K1, the #613 mockup's B): the large reading over the chart while marking.
+    The finger is on the chart, so whatever the reading says the chart never moves."""
+
+    TABLE = "用數值輸入（鍵盤或螢幕閱讀器）"
+    # The chart's top on the page, not on the screen: picking in the table may scroll.
+    PAGE_TOP = "el => el.getBoundingClientRect().top + window.scrollY"
+
+    def setUp(self):
+        self.sign_in(consented_user(username="audiogram_reading_e2e"))
+
+    def open_step(self, step, width=390):
+        self.open("/audiograms/new", size=(width, 844))
+        for _ in range(step - 1):
+            self.main().get_by_role("button", name=AUDIOGRAM_FORWARD).click()
+
+    def chart(self):
+        return self.main().get_by_role("img", name=re.compile("聽力圖"))
+
+    def reading(self):
+        # The one over the chart, not the one in #618's demo.
+        return self.main().locator(".audiogram-app > .audiogram-reading")
+
+    def said(self):
+        return self.main().locator(".audiogram-app [role=status]")
+
+    def chart_top(self):
+        return self.chart().evaluate(self.PAGE_TOP)
+
+    def at(self, frequency, db):
+        """Where frequency and db are on the screen (AudiogramChart's 320 x 380 units)."""
+        box = self.chart().bounding_box()
+        scale = box["width"] / 320
+        return (
+            box["x"] + (36 + log2(frequency / 250) / 5 * 268) * scale,
+            box["y"] + (30 + (db + 10) / 130 * 312) * scale,
+        )
+
+    def pick(self, name, value, masked=False):
+        self.main().get_by_label(name, exact=True).select_option(value)
+        if masked:
+            self.main().get_by_label(f"{name} 遮蔽", exact=True).check()
+
+    # Acceptance 31, 32, 34 and 38: the hint, the point under the finger while dragging (not yet
+    # said), the point once released (said once), and the chart not moving a pixel at 390px.
+    def test_reading_follows_the_finger_and_the_chart_stays_put(self):
+        self.open_step(2)
+        with self.saving_artifacts():
+            expect(self.reading()).to_have_text("點一下圖來標記")
+            self.chart().scroll_into_view_if_needed()
+            top = self.chart_top()
+            reading_box = self.reading().bounding_box()
+            self.assertLessEqual(
+                reading_box["y"] + reading_box["height"], self.chart().bounding_box()["y"]
+            )
+            self.page.mouse.move(*self.at(1000, 45))
+            self.page.mouse.down()
+            expect(self.reading().locator("span")).to_have_text(["右耳氣導", "1000 Hz　45 dB"])
+            self.assertEqual(self.chart_top(), top)
+            self.page.mouse.move(*self.at(1000, 60))
+            expect(self.reading().locator("span")).to_have_text(["右耳氣導", "1000 Hz　60 dB"])
+            expect(self.said()).to_have_text("")
+            self.assertEqual(self.chart_top(), top)
+            self.page.mouse.move(*self.at(1000, 45))
+            self.page.mouse.up()
+            expect(self.said()).to_have_text("右耳氣導　1000 Hz　45 dB")
+            expect(self.reading().locator("span")).to_have_text(["右耳氣導", "1000 Hz　45 dB"])
+            self.assertEqual(self.chart_top(), top)
+            # Acceptance 41: the clear button still names the point.
+            expect(
+                self.main().get_by_role("button", name="清除 右耳氣導 1000 Hz", exact=True)
+            ).to_be_enabled()
+            self.main().get_by_text(self.TABLE).click()
+            for name, value, masked, rows in (
+                ("右耳骨導 4000 Hz", "nr", True, ["右耳骨導", "4000 Hz　無反應　遮蔽"]),
+                ("右耳氣導 8000 Hz", "120", True, ["右耳氣導", "8000 Hz　120 dB　遮蔽"]),
+                ("右耳氣導 250 Hz", "-10", False, ["右耳氣導", "250 Hz　-10 dB"]),
+            ):
+                with self.subTest(reading=rows[1]):
+                    self.pick(name, value, masked)
+                    expect(self.reading().locator("span")).to_have_text(rows)
+                    self.assertEqual(self.chart_top(), top)
+            self.main().get_by_role("button", name=re.compile("^清除 ")).click()
+            expect(self.reading()).to_have_text("點一下圖來標記")
+            self.assertEqual(self.chart_top(), top)
+
+    # Acceptance 39: the longest readings neither scroll sideways nor get cut at 320 and 390px,
+    # at the usual and at 200% text; and from the hint to them the chart still stays put.
+    def test_longest_reading_fits_a_phone_at_double_text_size(self):
+        longest = (
+            ("左耳骨導 4000 Hz", "nr", ["左耳骨導", "4000 Hz　無反應　遮蔽"]),
+            ("左耳氣導 8000 Hz", "120", ["左耳氣導", "8000 Hz　120 dB　遮蔽"]),
+        )
+        for width in (320, 390):
+            for double in (False, True):
+                with self.subTest(width=width, double_text=double):
+                    self.open_step(3, width)
+                    if double:
+                        self.double_text()
+                    self.main().get_by_text(self.TABLE).click()
+                    expect(self.reading()).to_have_text("點一下圖來標記")
+                    top = self.chart_top()
+                    for name, value, rows in longest:
+                        self.pick(name, value, masked=True)
+                        expect(self.reading().locator("span")).to_have_text(rows)
+                        self.assertLessEqual(
+                            self.page.evaluate("document.documentElement.scrollWidth"), width
+                        )
+                        box = self.reading().bounding_box()
+                        self.assertGreaterEqual(box["x"], 0)
+                        self.assertLessEqual(box["x"] + box["width"], width)
+                        widths = self.reading().evaluate("el => [el.scrollWidth, el.clientWidth]")
+                        self.assertLessEqual(widths[0], widths[1])
+                        for row in self.reading().locator("span").all():
+                            part = row.bounding_box()
+                            self.assertGreaterEqual(part["x"], box["x"])
+                            self.assertLessEqual(part["x"] + part["width"], box["x"] + box["width"])
+                        # A number never parts from its unit.
+                        lines = [text for text, _ in self.lines(self.reading())]
+                        self.assertFalse(any(re.search(r"^(Hz|dB)", line) for line in lines))
+                        self.assertEqual(self.chart_top(), top)
+
+    # Acceptance 40: the confirm step's read-only chart has no reading.
+    def test_confirm_step_has_no_reading(self):
+        self.open_step(4)
+        with self.saving_artifacts():
+            expect(self.chart()).to_be_visible()
+            expect(self.reading()).to_have_count(0)
+
+
+class AudiogramDemoTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#618 (spec #611 K2, the #613 mockup's part five): 看示範 under 怎麼標記 in a real browser.
+    How it is timed frame by frame is AudiogramDemo.test.jsx's; this is that it plays once on the
+    page and stops, on a chart of its own, and fits a phone."""
+
+    # The same steps, chart and reading over it as #617's.
+    open_step = AudiogramReadingTest.open_step
+    chart = AudiogramReadingTest.chart
+    reading = AudiogramReadingTest.reading
+    at = AudiogramReadingTest.at
+
+    def setUp(self):
+        self.sign_in(consented_user(username="audiogram_demo_e2e"))
+
+    def demo(self):
+        return self.main().locator(".audiogram-demo")
+
+    def demo_button(self, name="看示範"):
+        return self.main().get_by_role("button", name=name, exact=True)
+
+    def finger(self):
+        return self.demo().locator(".audiogram-demo-finger").get_attribute("transform")
+
+    # Acceptance 43, 44 and 46: it plays on a tap and stops on its last frame, offers 再看一次 and
+    # plays again; the user's point, count and reading over the chart stay as they were.
+    def test_plays_once_on_its_own_chart(self):
+        self.open_step(2)
+        with self.saving_artifacts():
+            self.chart().scroll_into_view_if_needed()
+            self.page.mouse.click(*self.at(2000, 60))
+            expect(self.reading().locator("span")).to_have_text(["右耳氣導", "2000 Hz　60 dB"])
+            count = self.main().locator(".audiogram-count")
+            expect(count).to_have_text("右耳已標：氣導 1 個、骨導 0 個")
+            # Acceptance 45: nothing moves before the tap.
+            start = self.finger()
+            self.page.wait_for_timeout(2500)
+            self.assertEqual(self.finger(), start)
+            expect(self.demo().locator(".audiogram-demo-mark")).to_have_count(0)
+
+            self.demo_button().click()
+            expect(self.demo().locator(".audiogram-reading span")).to_have_text(
+                ["右耳氣導", "1000 Hz　45 dB"]
+            )
+            expect(self.demo_button("再看一次")).to_be_visible()
+            end = self.finger()
+            self.assertNotEqual(end, start)
+            # Not looping: still where it stopped a while later.
+            self.page.wait_for_timeout(2500)
+            self.assertEqual(self.finger(), end)
+            expect(self.demo().locator(".audiogram-demo-mark")).to_have_count(1)
+
+            expect(self.chart().locator("[data-point]")).to_have_count(1)
+            expect(self.chart().locator('[data-point="right-air-2000"]')).to_have_count(1)
+            expect(count).to_have_text("右耳已標：氣導 1 個、骨導 0 個")
+            expect(self.reading().locator("span")).to_have_text(["右耳氣導", "2000 Hz　60 dB"])
+
+            self.demo_button("再看一次").click()
+            expect(self.demo().locator(".audiogram-reading")).to_have_text("點一下圖來標記")
+            expect(self.demo().locator(".audiogram-reading span")).to_have_text(
+                ["右耳氣導", "1000 Hz　45 dB"]
+            )
+            expect(self.demo().locator(".audiogram-demo-finger")).to_have_attribute(
+                "transform", end
+            )
+
+    # Acceptance 42 and 48: folded under 怎麼標記 on the second ear, there once opened; the demo
+    # is hidden from screen readers, the button is heard as 看示範.
+    def test_folded_on_the_second_ear(self):
+        self.open_step(3)
+        with self.saving_artifacts():
+            expect(self.demo_button()).to_be_hidden()
+            self.main().get_by_text("怎麼標記", exact=True).click()
+            expect(self.demo_button()).to_be_visible()
+            expect(self.demo()).to_have_attribute("aria-hidden", "true")
+            self.demo_button().click()
+            expect(self.demo().locator(".audiogram-reading span")).to_have_text(
+                ["左耳氣導", "1000 Hz　45 dB"]
+            )
+
+    # Acceptance 47.
+    def test_reduced_motion_has_no_button(self):
+        self.open_step(2)
+        with self.saving_artifacts():
+            self.page.emulate_media(reduced_motion="reduce")
+            self.page.reload()
+            self.main().get_by_role("button", name=AUDIOGRAM_FORWARD).click()
+            expect(self.main().get_by_text("選下面的符號")).to_be_visible()
+            expect(self.demo_button()).to_have_count(0)
+            expect(self.demo()).to_have_count(0)
+
+    # Acceptance 49: at 390px, at the usual and at 200% text, nothing scrolls sideways and the
+    # button is at least 44 x 44px.
+    def test_fits_a_phone_at_double_text_size(self):
+        for double in (False, True):
+            with self.subTest(double_text=double):
+                self.open_step(2)
+                if double:
+                    self.double_text()
+                self.assertLessEqual(
+                    self.page.evaluate("document.documentElement.scrollWidth"), 390
+                )
+                for part in (self.demo(), self.demo_button()):
+                    box = part.bounding_box()
+                    self.assertGreaterEqual(box["x"], 0)
+                    self.assertLessEqual(box["x"] + box["width"], 390)
+                box = self.demo_button().bounding_box()
+                self.assertGreaterEqual(box["height"], 44)
+                self.assertGreaterEqual(box["width"], 44)
+                self.assertGreaterEqual(self.font_size(self.demo_button()), self.rem())
+
+
+class AudiogramMissedMarksTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#619 (spec #611 R1, the #613 mockup's 6A): on 確認存檔, which air frequencies one ear has
+    and the other has not, in a tip box under the counts and over 存檔. Every combination of the
+    rule is audiogram.test.js's; this is the page in a real browser: saving goes ahead, marks
+    added on the way back change it, and it fits a phone."""
+
+    open_step = AudiogramReadingTest.open_step
+    TABLE = AudiogramReadingTest.TABLE
+    SIX = (250, 500, 1000, 2000, 4000, 8000)
+    LAST = "報告上本來就沒有的話，直接存檔就好。"
+
+    def setUp(self):
+        self.sign_in(consented_user(username="audiogram_missed_e2e"))
+
+    def tip(self):
+        return self.main().locator(".audiogram-missed")
+
+    def mark(self, symbol, frequencies):
+        """In the value table, which the confirm step and each ear step have."""
+        for frequency in frequencies:
+            self.main().get_by_label(f"{symbol} {frequency} Hz", exact=True).select_option("40")
+
+    def confirm_with(self, right, left, width=390):
+        self.open_step(4, width)
+        self.main().get_by_text(self.TABLE).click()
+        self.mark("右耳氣導", right)
+        self.mark("左耳氣導", left)
+
+    # Acceptance 50, 57, 58 and 59.
+    def test_says_what_one_ear_is_missing_and_saves_as_usual(self):
+        self.open("/audiograms/new")
+        with self.saving_artifacts():
+            for name, value in (("民國年", "115"), ("月", "1"), ("日", "10")):
+                self.main().get_by_label(name, exact=True).fill(value)
+            for _ in range(2):
+                self.main().get_by_role("button", name=AUDIOGRAM_FORWARD).click()
+            # Acceptance 59: the same kind of box as 遮蔽's tip on the ear step.
+            mask_tip = self.main().locator(".tip-box").filter(has_text="遮蔽是檢查時")
+            other_tip = self.style(mask_tip, "backgroundColor")
+            self.main().get_by_role("button", name=AUDIOGRAM_FORWARD).click()
+            self.main().get_by_text(self.TABLE).click()
+            self.mark("右耳氣導", self.SIX)
+            self.mark("左耳氣導", (250, 500, 1000))
+            expect(self.tip().locator("p")).to_have_text(
+                ["左耳沒有標 2000、4000、8000 Hz。", self.LAST]
+            )
+            self.assertEqual(self.style(self.tip(), "backgroundColor"), other_tip)
+            expect(self.main().get_by_role("alert")).to_have_count(0)
+            # Under the two ears' counts, over 存檔.
+            left_count = self.main().get_by_text("左耳：氣導 3 個、骨導 0 個")
+            save = self.main().get_by_role("button", name="存檔", exact=True)
+            tip = self.tip().bounding_box()
+            count_box = left_count.bounding_box()
+            self.assertGreaterEqual(tip["y"], count_box["y"] + count_box["height"])
+            self.assertLessEqual(tip["y"] + tip["height"], save.bounding_box()["y"])
+
+            # Acceptance 58: back to the left ear for 2000, then on to confirm again.
+            self.main().get_by_role("button", name="改左耳").click()
+            self.main().get_by_text(self.TABLE).click()
+            self.mark("左耳氣導", (2000,))
+            self.main().get_by_role("button", name=AUDIOGRAM_FORWARD).click()
+            expect(self.tip().locator("p")).to_have_text(["左耳沒有標 4000、8000 Hz。", self.LAST])
+
+            # Acceptance 57: one press saves, nothing else asked.
+            save.click()
+            expect(self.page).to_have_url(re.compile(r"/audiograms/\d+$"))
+            audiogram = self.user.audiograms.get()
+            self.assertEqual(audiogram.points.count(), 10)
+
+    # Acceptance 52, 53 and 54 on the page: a sentence each ear, nothing when they match or one
+    # ear has nothing marked.
+    def test_both_ears_matching_and_one_ear_empty(self):
+        self.confirm_with(right=(250, 500, 1000, 2000, 4000, 6000), left=(250, 500, 1000, 8000))
+        with self.saving_artifacts():
+            expect(self.tip().locator("p")).to_have_text(
+                ["右耳沒有標 8000 Hz。", "左耳沒有標 2000、4000、6000 Hz。", self.LAST]
+            )
+            self.mark("右耳氣導", (8000,))
+            self.mark("左耳氣導", (2000, 4000, 6000))
+            expect(self.tip()).to_have_count(0)
+        self.confirm_with(right=self.SIX, left=())
+        with self.saving_artifacts():
+            expect(self.main().get_by_text("左耳：還沒有標任何點")).to_be_visible()
+            expect(self.tip()).to_have_count(0)
+
+    # Acceptance 60: at 320 and 390px, at the usual and at 200% text, nothing scrolls sideways.
+    def test_fits_a_phone_at_double_text_size(self):
+        for width in (320, 390):
+            for double in (False, True):
+                with self.subTest(width=width, double_text=double):
+                    self.confirm_with(
+                        right=(250, 500, 1000, 2000, 4000, 6000), left=(250, 8000), width=width
+                    )
+                    if double:
+                        self.double_text()
+                    expect(self.tip().locator("p")).to_have_count(3)
+                    self.assertLessEqual(
+                        self.page.evaluate("document.documentElement.scrollWidth"), width
+                    )
+                    box = self.tip().bounding_box()
+                    self.assertGreaterEqual(box["x"], 0)
+                    self.assertLessEqual(box["x"] + box["width"], width)
+                    widths = self.tip().evaluate("el => [el.scrollWidth, el.clientWidth]")
+                    self.assertLessEqual(widths[0], widths[1])
+
+
+class EmailTypoHintTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """Spec #611 J2 (ticket #614): an email that looks mistyped is asked about under the field on
+    註冊 and 忘記密碼 (用 LINE 取名稱 is the same script and place: test_email_hint). Which
+    emails are asked about is in email-hint.test.js."""
+
+    TYPO = "wang@gmial.com"
+    QUESTION = "您是不是要打 wang@gmail.com？"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def open(self, path, width=390, javascript=True):
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": 800}, java_script_enabled=javascript
+        )
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.goto(f"{self.live_server_url}{path}")
+        self.page.wait_for_load_state("load")
+
+    def email(self):
+        return self.main().get_by_label("電子郵件")
+
+    def hint(self):
+        return self.page.locator("#id_email_hint")
+
+    def leave(self, value):
+        self.email().fill(value)
+        self.email().press("Tab")
+
+    # Acceptance 1, 2, 9, 10.
+    def test_asks_after_the_field_is_left_and_puts_it_right(self):
+        for path in ("/register", "/forgot_password"):
+            with self.subTest(path=path):
+                self.open(path)
+                # Sent empty: no room taken.
+                expect(self.hint()).to_be_empty()
+                self.assertEqual(self.hint().bounding_box()["height"], 0)
+                requests = []
+                self.page.on("request", lambda request, seen=requests: seen.append(request))
+                self.email().fill(self.TYPO)
+                # Not while typing.
+                expect(self.hint()).to_be_empty()
+                self.email().press("Tab")
+                status = self.main().get_by_role("status").filter(has_text=self.QUESTION)
+                expect(status).to_be_visible()
+                expect(status.locator("b")).to_have_text("wang@gmail.com")
+                fix = status.get_by_role("button", name="按這裡改")
+                fix.click()
+                expect(self.email()).to_have_value("wang@gmail.com")
+                expect(self.email()).to_be_focused()
+                expect(fix).to_have_count(0)
+                # For screen readers only: the place takes no room again.
+                expect(self.hint()).to_have_text("已改成 wang@gmail.com")
+                self.assertEqual(self.hint().bounding_box()["height"], 0)
+                # Compared in the browser: nothing sent but the bold face for the email's words.
+                sent = [r.url for r in requests if r.resource_type != "font"]
+                self.assertEqual(sent, [])
+
+    # Acceptance 5: only asked; the server gets the email as typed.
+    def test_ignored_the_typo_is_sent_as_typed(self):
+        self.open("/register")
+        with self.saving_artifacts():
+            self.main().get_by_label("使用者名稱").fill("typo_e2e")
+            self.leave(self.TYPO)
+            expect(self.main().get_by_role("status").filter(has_text=self.QUESTION)).to_be_visible()
+            self.page.get_by_label("密碼", exact=True).fill("Fake-pass-2468")
+            self.page.get_by_label("密碼確認", exact=True).fill("Fake-pass-2468")
+            self.main().get_by_role("button", name="註冊", exact=True).click()
+            expect(self.page).to_have_url(re.compile(r"/consent"))
+            self.assertEqual(User.objects.get(username="typo_e2e").email, self.TYPO)
+
+    # Acceptance 11: a long email at 320 and 390px, at the usual and at 200% text.
+    def test_fits_a_phone_at_double_text_size(self):
+        long_typo = "chen.meihua.family1950@yaho.com.tw"
+        for width in (320, 390):
+            for double in (False, True):
+                with self.subTest(width=width, double_text=double):
+                    self.open("/register", width=width)
+                    if double:
+                        self.double_text()
+                    self.leave(long_typo)
+                    status = (
+                        self.main()
+                        .get_by_role("status")
+                        .filter(has_text="chen.meihua.family1950@yahoo.com.tw")
+                    )
+                    expect(status).to_be_visible()
+                    self.assertLessEqual(
+                        self.page.evaluate("document.documentElement.scrollWidth"), width
+                    )
+                    box = status.bounding_box()
+                    self.assertGreaterEqual(box["x"], 0)
+                    self.assertLessEqual(box["x"] + box["width"], width)
+                    fix = status.get_by_role("button", name="按這裡改").bounding_box()
+                    self.assertGreaterEqual(fix["width"], 44)
+                    self.assertGreaterEqual(fix["height"], 44)
+                    self.assertLessEqual(fix["x"] + fix["width"], width)
+
+    # Acceptance 12: without JavaScript, no question, no empty box or button; the form still
+    # sends, and comes back with no question either.
+    def test_without_javascript_nothing_shows_and_the_form_sends(self):
+        self.open("/forgot_password", javascript=False)
+        with self.saving_artifacts():
+            self.leave(self.TYPO)
+            expect(self.hint()).to_be_empty()
+            self.assertEqual(self.hint().bounding_box()["height"], 0)
+            expect(self.main().get_by_role("button", name="按這裡改")).to_have_count(0)
+            self.main().get_by_role("button", name="寄重設密碼信").click()
+            expect(self.main().get_by_text("這個信箱沒有註冊，請檢查有沒有打錯")).to_be_visible()
+            expect(self.email()).to_have_value(self.TYPO)
+            expect(self.hint()).to_be_empty()
+            self.assertEqual(self.hint().bounding_box()["height"], 0)
+
+
+@google_on
+@line_on
+class BirthAgeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """Spec #611 J4 (ticket #615; mockup-613-filling.html 二 A): with 出生年's green tick,
+    今年滿 76 歲 on its own line right under the 民國 ... 年 row, on 註冊, 用 LINE 取名稱 and 用
+    Google 取名稱. Which years get it is in register-checks.test.js; the pages as sent are in
+    test_birth_age."""
+
+    GREEN = "rgb(20, 87, 60)"  # --color-normal, the tick's green
+    PASSWORD = "Fake-pass-2468"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def open(self, path, width=390):
+        """path: /register, or line or google for that provider's name page, reached as a new
+        LINE or Google account is (the provider played by FakeLine, FakeGoogle)."""
+        self.context = self.browser.new_context(viewport={"width": width, "height": 800})
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        if path in ("line", "google"):
+            client = Client()
+            if path == "line":
+                provider = FakeLine(client)
+                provider.start()
+                provider.come_back(sub="line-age-e2e")
+            else:
+                provider = FakeGoogle(client)
+                provider.start()
+                provider.come_back(sub="google-age-e2e", email="age_e2e@example.com")
+            self.context.add_cookies(
+                [
+                    {
+                        "name": settings.SESSION_COOKIE_NAME,
+                        "value": client.cookies[settings.SESSION_COOKIE_NAME].value,
+                        "url": self.live_server_url,
+                    }
+                ]
+            )
+            path = f"/login/{path}/name"
+        self.page.goto(f"{self.live_server_url}{path}")
+        self.page.wait_for_load_state("load")
+
+    def year(self):
+        return self.main().get_by_label("出生年（選填）", exact=True)
+
+    def age(self):
+        return self.page.locator("#id_roc_birth_year_age")
+
+    @staticmethod
+    def words(roc):
+        """This year (民國) less the birth year, as User.age counts it."""
+        return f"今年滿 {date.today().year - 1911 - roc} 歲"
+
+    def row(self):
+        """The 民國 ... 年 row's three pieces and the age line, measured in one go, from the
+        page's top: typing scrolls the field into view."""
+        return self.page.evaluate(
+            """() => {
+                const year = document.getElementById("id_roc_birth_year");
+                const age = document.getElementById("id_roc_birth_year_age");
+                const pieces = [...year.closest(".input-group").children, age];
+                return pieces.map((el) => {
+                    const r = el.getBoundingClientRect();
+                    const [top, bottom] = [r.top + scrollY, r.bottom + scrollY];
+                    return { left: r.left, right: r.right, top, bottom };
+                });
+            }"""
+        )
+
+    # Acceptance 13, 14, 15, 17, 19.
+    def test_the_age_comes_with_the_tick_on_the_three_pages(self):
+        for path in ("/register", "line", "google"):
+            with self.subTest(page=path):
+                self.open(path)
+                # Sent empty: no room taken, nothing said.
+                expect(self.age()).to_be_hidden()
+                self.year().fill("39")
+                expect(self.year()).to_have_class(re.compile(r"\bis-right\b"))
+                expect(self.age()).to_have_text(self.words(39))
+                expect(self.age()).to_have_css("color", self.GREEN)
+                expect(self.age()).to_have_css("font-weight", "700")
+                # Said once by the status area; the line itself is not read again.
+                said = self.main().get_by_role("status").filter(has_text=self.words(39))
+                expect(said).to_have_count(1)
+                expect(said).to_have_text(f"格式正確，{self.words(39)}")
+                expect(self.age()).to_have_attribute("aria-hidden", "true")
+                # Right under the row.
+                *pieces, line = self.row()
+                self.assertGreaterEqual(line["top"], max(piece["bottom"] for piece in pieces))
+                self.year().fill("40")
+                expect(self.age()).to_have_text(self.words(40))
+                for wrong in ("195", "0", ""):
+                    self.year().fill(wrong)
+                    expect(self.age()).to_be_hidden()
+                    expect(self.year()).not_to_have_class(re.compile(r"\bis-right\b"))
+
+    # Acceptance 21: at 390px and 200% text, no sideways scroll and the 民國 ... 年 row stays one
+    # row, the age on the line under it.
+    def test_fits_a_phone_at_double_text_size(self):
+        for path in ("/register", "line", "google"):
+            with self.subTest(page=path):
+                self.open(path)
+                self.double_text()
+                before = self.row()[:3]
+                self.year().fill("39")
+                expect(self.age()).to_have_text(self.words(39))
+                self.assertLessEqual(
+                    self.page.evaluate("document.documentElement.scrollWidth"), 390
+                )
+                *pieces, line = self.row()
+                # The row as it was before the age came: not moved, not squeezed.
+                self.assertEqual(pieces, before)
+                self.assertEqual({piece["top"] for piece in pieces}, {pieces[0]["top"]})
+                for left, right in pairwise(pieces):
+                    self.assertLessEqual(left["right"], right["left"] + 2)
+                self.assertGreaterEqual(line["top"], pieces[0]["bottom"])
+                self.assertGreaterEqual(line["left"], 0)
+                self.assertLessEqual(line["right"], 390)
+                expect(self.year()).to_have_value("39")
+
+    # Acceptance 18, 20: a right year sent back with another mistake shows its age on arrival,
+    # and the account made then has that age.
+    def test_the_age_shown_is_the_accounts(self):
+        self.open("/register")
+        with self.saving_artifacts():
+            self.main().get_by_label("使用者名稱").fill("age_e2e")
+            self.main().get_by_label("電子郵件").fill("age_e2e@example.com")
+            self.page.get_by_label("密碼", exact=True).fill(self.PASSWORD)
+            self.page.get_by_label("密碼確認", exact=True).fill("Fake-pass-246")
+            self.year().fill("39")
+            self.main().get_by_role("button", name="註冊", exact=True).click()
+            self.page.wait_for_load_state("load")
+            expect(self.page.locator("#id_password2_error")).to_be_visible()
+            expect(self.age()).to_have_text(self.words(39))
+            shown = int(re.fullmatch(r"今年滿 (\d+) 歲", self.age().inner_text()).group(1))
+            self.page.get_by_label("密碼", exact=True).fill(self.PASSWORD)
+            self.page.get_by_label("密碼確認", exact=True).fill(self.PASSWORD)
+            self.main().get_by_role("button", name="註冊", exact=True).click()
+            expect(self.page).to_have_url(re.compile(r"/consent"))
+            self.assertEqual(User.objects.get(username="age_e2e").age, shown)
+
+
+class EnterNextFieldTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Spec #611 N3 (ticket #616): in a form with several text fields, Enter (the phone
+    keyboard's 下一個) moves to the next one without sending; the last one sends. Each form's
+    fields and the Enter that picks a character are in enter-next.test.js; which pages load the
+    script in test_enter_next."""
+
+    PASSWORD = "Fake-pass-2468"
+
+    def posts(self):
+        """Every form sent from now on."""
+        sent = []
+        self.page.on("request", lambda r: sent.append(r.url) if r.method == "POST" else None)
+        return sent
+
+    # Acceptance 22-24, 26.
+    def test_register_goes_field_by_field_and_the_last_sends(self):
+        self.open("/register", signed_in=False)
+        with self.saving_artifacts():
+            fields = [
+                self.main().get_by_label("使用者名稱"),
+                self.main().get_by_label("電子郵件"),
+                self.page.get_by_label("密碼", exact=True),
+                self.page.get_by_label("密碼確認", exact=True),
+                self.main().get_by_label("出生年"),
+            ]
+            for field in fields[:-1]:
+                expect(field).to_have_attribute("enterkeyhint", "next")
+            self.assertIsNone(fields[-1].get_attribute("enterkeyhint"))
+            sent = self.posts()
+            values = ["enter_e2e", "enter_e2e@example.com", self.PASSWORD, self.PASSWORD]
+            for field, value, following in zip(fields[:-1], values, fields[1:], strict=True):
+                field.fill(value)
+                field.press("Enter")
+                # 密碼 goes to 密碼確認, past the 顯示 button between them.
+                expect(following).to_be_focused()
+            self.assertEqual(sent, [])
+            fields[-1].press("Enter")
+            expect(self.page).to_have_url(re.compile(r"/consent"))
+            self.assertEqual(sent, [f"{self.live_server_url}/register"])
+
+    # Acceptance 30: without JavaScript nothing says 下一個 and Enter sends, as before.
+    def test_without_javascript_enter_sends_as_before(self):
+        self.open("/register", signed_in=False, java_script_enabled=False)
+        with self.saving_artifacts():
+            expect(self.page.locator("[enterkeyhint]")).to_have_count(0)
+            sent = self.posts()
+            username = self.main().get_by_label("使用者名稱")
+            username.fill("enter_e2e")
+            self.main().get_by_label("電子郵件").fill("enter_e2e@example.com")
+            self.page.get_by_label("密碼", exact=True).fill(self.PASSWORD)
+            self.page.get_by_label("密碼確認", exact=True).fill(self.PASSWORD)
+            # Enter in the first field sends the whole form.
+            username.press("Enter")
+            expect(self.page).to_have_url(re.compile(r"/consent"))
+            self.assertEqual(sent, [f"{self.live_server_url}/register"])
+
+    # Acceptance 28: 年 → 月 → 日; 日 is the last and Enter there still does nothing.
+    def test_audiogram_date_goes_year_month_day(self):
+        self.sign_in(consented_user(username="enter_next_e2e"))
+        self.open("/audiograms/new")
+        with self.saving_artifacts():
+            year, month, day = (
+                self.main().get_by_label(name, exact=True) for name in ("民國年", "月", "日")
+            )
+            expect(year).to_have_attribute("enterkeyhint", "next")
+            expect(month).to_have_attribute("enterkeyhint", "next")
+            self.assertIsNone(day.get_attribute("enterkeyhint"))
+            year.fill("115")
+            year.press("Enter")
+            expect(month).to_be_focused()
+            month.fill("10")
+            month.press("Enter")
+            expect(day).to_be_focused()
+            day.fill("1")
+            day.press("Enter")
+            expect(day).to_be_focused()
+            expect(self.main().get_by_text("第 1 步／共 4 步：檢查日期")).to_be_visible()
+
+
+class AnswerReassuranceTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Spec #611 Q2 (the #613 mockup's A): under the count on the answer page's first screen, in
+    its grey; both sentences when signed in, the first only for a guest; gone past the first
+    screen; the first question and 下一題 still on a 390 phone's first screen (acceptance 67)."""
+
+    fixtures = ("questions_fixture.json",)
+    FIRST = "這不是考試，沒有對錯。"
+    SECOND = "答到一半離開，答案會留在這支手機，7 天內回來可以接著答。"
+    # SADL and IOI-HA start on question 1, whose answers already took 下一題 under a 390 x 844
+    # first screen before the line was added (about 950px down); their question stays in it.
+    NEXT_BELOW_ALREADY = ("sadl", "ioi-ha")
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+
+    def answer_page(self, code):
+        return f"/questionnaire/{Questionnaire.objects.get(code=code).pk}"
+
+    def reassure(self):
+        return self.main().locator("#answer-head .answer-reassure")
+
+    def wait_for_questions(self):
+        expect(self.page.locator("html.answer-loading")).to_have_count(0)
+        expect(self.main().locator(".answer-app legend")).to_be_visible()
+
+    def assert_first_screen_holds_the_question(self, where, with_next=True):
+        app = self.main().locator(".answer-app")
+        parts = [app.locator("legend")]
+        if with_next:
+            parts.append(app.get_by_role("button", name="下一題"))
+        for part in parts:
+            box = part.bounding_box()
+            self.assertLessEqual(box["y"] + box["height"], self.PHONE[1], where)
+
+    def test_signed_in_every_questionnaire_says_both_sentences_then_folds_them(self):
+        self.sign_in(consented_user(username="reassurance_e2e", birth_year=1950))
+        with self.saving_artifacts():
+            for code in ("hhie-s", "hhia-s", "thi", "ssq12-tw", "sadl", "ioi-ha"):
+                with self.subTest(code=code):
+                    self.open(self.answer_page(code))
+                    self.wait_for_questions()
+                    line = self.reassure()
+                    expect(line).to_be_visible()
+                    expect(line).to_have_text(self.FIRST + self.SECOND)
+                    meta = self.main().locator(".answer-meta")
+                    self.assertGreaterEqual(
+                        line.bounding_box()["y"],
+                        meta.bounding_box()["y"] + meta.bounding_box()["height"],
+                    )
+                    # The count's grey and size.
+                    for prop in ("color", "fontSize"):
+                        self.assertEqual(self.style(line, prop), self.style(meta, prop))
+                    self.assert_first_screen_holds_the_question(
+                        code, with_next=code not in self.NEXT_BELOW_ALREADY
+                    )
+                    self.main().locator(".answer-app").get_by_role("radio").first.check()
+                    self.next()
+                    expect(self.main().locator(".answer-app .question-progress")).to_be_visible()
+                    expect(line).to_be_hidden()
+
+    def test_a_guest_says_the_first_sentence_above_the_guest_line(self):
+        with self.saving_artifacts():
+            self.open(self.answer_page("hhie-s"), signed_in=False)
+            self.wait_for_questions()
+            line = self.reassure()
+            expect(line).to_have_text(self.FIRST)
+            guest = self.main().locator(".answer-guest-line")
+            expect(guest).to_be_visible()
+            self.assertLess(line.bounding_box()["y"], guest.bounding_box()["y"])
+            self.assert_first_screen_holds_the_question("guest")
+
+    def test_fits_a_phone_at_double_text_size(self):
+        self.sign_in(consented_user(username="reassurance_200_e2e", birth_year=1950))
+        with self.saving_artifacts():
+            for signed_in in (True, False):
+                for width in (320, 390):
+                    where = f"{'signed in' if signed_in else 'guest'} at {width}px"
+                    with self.subTest(where=where):
+                        self.open(self.answer_page("hhie-s"), (width, 844), signed_in=signed_in)
+                        self.wait_for_questions()
+                        expect(self.reassure()).to_be_visible()
+                        self.assert_fits_a_phone_at_double_text_size(where, width)

@@ -1,7 +1,9 @@
 import re
+from io import StringIO
 from pathlib import Path
 from unittest import mock
 
+from django.core.management import call_command
 from django.db import DatabaseError, IntegrityError
 from django.template.loader import render_to_string
 from django.test import Client, TestCase
@@ -905,3 +907,59 @@ class ErrorSummaryTests(TestCase):
         content, summary = self._summary(data)
         self.assertIn("表單資料有誤", summary)
         self.assertNotRegex(content, r"<p[^>]*>\s*<ul")
+
+
+class ReassuranceLineTests(TestCase):
+    """Spec #611 Q2 (acceptance 61, 63, 66): under the count on the answer page's first screen.
+    The second sentence is drawn hidden; React shows it once it takes over and keeps a draft
+    (answer-main.test.jsx), so the full-page form says the first sentence only."""
+
+    fixtures = ("questions_fixture.json",)  # HHIE-S, IOI-HA
+    FIRST = "這不是考試，沒有對錯。"
+    SECOND = "答到一半離開，答案會留在這支手機，7 天內回來可以接著答。"
+    CODES = ("hhie-s", "hhia-s", "thi", "ssq12-tw", "sadl", "ioi-ha")
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_questionnaires", stdout=StringIO())  # HHIA-S, THI, SSQ12-TW, SADL
+        cls.user = consented_user(username="reassurance_line", birth_year=1950)
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def head(self, content):
+        return re.search(r'<div id="answer-head">(.*?)</div>', content, re.S).group(1)
+
+    def test_every_questionnaire_says_it_under_the_count(self):
+        for code in self.CODES:
+            with self.subTest(code=code):
+                pk = Questionnaire.objects.get(code=code).pk
+                head = self.head(self.client.get(reverse("screening", args=[pk])).content.decode())
+                self.assertLess(head.index('class="answer-meta"'), head.index(self.FIRST))
+                line = re.search(r'<p class="answer-reassure">(.*?)</p>', head, re.S).group(1)
+                self.assertEqual(
+                    line, f"{self.FIRST}<span data-draft-line hidden>{self.SECOND}</span>"
+                )
+                self.assertNotIn("照平常的感覺", head)
+
+    def test_the_form_sent_back_with_errors_says_the_first_sentence_only(self):
+        # The form keeps no draft, and React does not take over there.
+        questionnaire = Questionnaire.objects.get(code="hhie-s")
+        url = reverse("screening", args=[questionnaire.pk])
+        key = WebDoubleSubmitTests.KEY.search(self.client.get(url).content.decode()).group(1)
+        questions = questionnaire.questions.order_by("question_number")
+        data = {
+            "form-TOTAL_FORMS": len(questions),
+            "form-INITIAL_FORMS": len(questions),
+            "idempotency_key": key,
+        }
+        # Question 1 left out, the rest answered.
+        for i, question in enumerate(questions):
+            data[f"form-{i}-question_id"] = str(question.id)
+            if i:
+                data[f"form-{i}-score"] = "0"
+        content = self.client.post(url, data).content.decode()
+        self.assertIn('id="error-summary"', content)
+        head = self.head(content)
+        self.assertIn(self.FIRST, head)
+        self.assertNotIn(self.SECOND, head)

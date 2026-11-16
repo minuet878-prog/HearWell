@@ -1,6 +1,13 @@
 {% extends "screening/layout.html" %}
+{% load static %}
 
 {% block title %}幫帳號取個名字｜聽伴{% endblock %}
+
+{% block extra_head %}
+<script defer src="{% static 'screening/register-checks.js' %}"></script>
+<script defer src="{% static 'screening/email-hint.js' %}"></script>
+<script defer src="{% static 'screening/enter-next.js' %}"></script>
+{% endblock %}
 
 {% block body %}
 {# Spec #506 acceptance 5-8 (the #539 mockup 4, W4-W6): Google's name page without the email row; LINE gives no email, so an optional email field under the birth year. No account until 下一步. #}
@@ -25,6 +32,10 @@
                     {{ form.roc_birth_year }}
                     <span class="input-group-text">年</span>
                 </div>
+                {# Spec #611 J4 (#615, mockup-613-filling.html 二 A): register-checks.js writes 今年滿 76 歲 here with the tick. #}
+                <p class="birth-age" id="id_roc_birth_year_age" aria-hidden="true"></p>
+                {# #332 (spec #326 D6), here since #615: register-checks.js says here what the green tick shows. #}
+                <p class="visually-hidden" role="status"></p>
                 {% include "screening/field_messages.html" with field=form.roc_birth_year help_class="field-help" %}
             </div>
             <div class="mb-4 auth-field">
@@ -33,6 +44,8 @@
                     {% include "screening/auth_field_icon.html" with icon="mail" %}
                     {{ form.email }}
                 </div>
+                {# Spec #611 J2 (#614): email-hint.js asks here when the email looks mistyped. #}
+                <div id="id_email_hint" class="email-hint" role="status"></div>
                 {% include "screening/field_messages.html" with field=form.email help_class="field-help" %}
             </div>
             <p>下一步請您閱讀並同意<a class="inline-link" href="{% url 'privacy' %}">隱私權說明</a>。</p>

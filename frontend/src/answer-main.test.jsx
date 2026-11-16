@@ -4,6 +4,8 @@ import { resolve } from "node:path";
 import { act, cleanup, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { saveDraft } from "./draft.js";
+
 // Spec docs/specs/phase-05/phase5_answer_flash.md: the page hides the Django form before it is drawn,
 // and the React entry hands the page back to the form when it cannot take over.
 
@@ -30,12 +32,18 @@ const status = () => document.getElementById("answer-loading");
 const form = () => document.getElementById("answer-form");
 const app = () => document.getElementById("answer-app");
 const intro = () => document.getElementById("answer-intro");
+// Spec #611 Q2: the reassurance under the count, and its second sentence, drawn hidden.
+const FIRST = "這不是考試，沒有對錯。";
+const SECOND = "答到一半離開，答案會留在這支手機，7 天內回來可以接著答。";
+const reassure = () => document.querySelector("#answer-head .answer-reassure");
+const secondSentence = () => reassure().querySelector("[data-draft-line]");
 
 function page() {
   document.body.innerHTML = `
     <div id="answer-head">
       <h1>聽力對生活的影響</h1>
       <p class="answer-meta">HHIE-S・共 10 題・大約 3 分鐘</p>
+      <p class="answer-reassure">${FIRST}<span data-draft-line hidden>${SECOND}</span></p>
       <p class="answer-guest-line">沒註冊時只計算、不儲存。<a href="/privacy">隱私權說明</a></p>
     </div>
     <div id="answer-intro"><p>本問卷的目的在幫助您了解自己的聽力。</p></div>
@@ -187,6 +195,64 @@ describe("React entry", () => {
     expect([screenReaderOnly("h1"), screenReaderOnly(".answer-meta"), part(".answer-guest-line").hidden]).toEqual([true, true, true]);
   });
 
+  it("says both sentences once React takes over and keeps a draft (#611 Q2, acceptance 61)", async () => {
+    runInline();
+    respondWith(ok);
+    await startReact();
+    await waitFor(() => expect(app().textContent).toContain("這次填答時，您有沒有戴助聽器？"));
+    expect(reassure().hidden).toBe(false);
+    expect(secondSentence().hidden).toBe(false);
+    expect(reassure().textContent).toBe(FIRST + SECOND);
+  });
+
+  it("keeps to the first sentence when the form comes back (#611 Q2, acceptance 63)", async () => {
+    runInline();
+    respondWith({ ok: false, status: 500, json: () => Promise.resolve({}) });
+    await startReact();
+    await waitFor(() => expect(form().hidden).toBe(false));
+    expect(reassure().hidden).toBe(false);
+    expect(secondSentence().hidden).toBe(true);
+  });
+
+  it("keeps to the first sentence when React is too late (#611 Q2, acceptance 63)", async () => {
+    vi.useFakeTimers();
+    runInline();
+    vi.advanceTimersByTime(5000);
+    vi.useRealTimers();
+    let arrive;
+    globalThis.fetch = vi.fn(() => new Promise((resolve) => (arrive = resolve)));
+    await startReact();
+    await act(async () => arrive(ok));
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(form().hidden).toBe(false);
+    expect(secondSentence().hidden).toBe(true);
+  });
+
+  it("takes the reassurance away, for screen readers too, past the first screen (#611 Q2, acceptance 64)", async () => {
+    runInline();
+    respondWith(ok);
+    await startReact();
+    await waitFor(() => expect(app().textContent).toContain("這次填答時，您有沒有戴助聽器？"));
+    act(() => app().querySelector("input[type=radio]").click());
+    act(() => [...app().querySelectorAll("button")].find((b) => b.textContent.includes("下一題")).click());
+    await waitFor(() => expect(app().textContent).toContain("第1題的完整題目文字"));
+    // hidden, not visually-hidden: nothing left to read out again on each question.
+    expect(reassure().hidden).toBe(true);
+  });
+
+  it("says it with the question whether to carry on, then folds it (#611 Q2, acceptance 65)", async () => {
+    saveDraft({ userId: 7, questionnaireId: 1, key: crypto.randomUUID(), wearing: false, answers: {}, step: 1, savedAt: Date.now() });
+    runInline();
+    respondWith(ok);
+    await startReact();
+    await waitFor(() => expect(app().textContent).toContain("您上次答到第 1 題，要接著答嗎？"));
+    expect(reassure().hidden).toBe(false);
+    expect(secondSentence().hidden).toBe(false);
+    act(() => [...app().querySelectorAll("button")].find((b) => b.textContent === "接著答").click());
+    await waitFor(() => expect(app().textContent).toContain("第1題的完整題目文字"));
+    expect(reassure().hidden).toBe(true);
+  });
+
   it("brings the form back at once when loading fails (acceptance 3)", async () => {
     runInline();
     respondWith({ ok: false, status: 500, json: () => Promise.resolve({}) });
@@ -236,6 +302,12 @@ describe("guest", () => {
   // As screening.html draws it for a guest (test_guest.GuestFallbackTests checks the template).
   beforeEach(() => {
     document.body.innerHTML = `
+      <div id="answer-head">
+        <h1>聽力對生活的影響</h1>
+        <p class="answer-meta">HHIE-S・共 10 題・大約 3 分鐘</p>
+        <p class="answer-reassure">${FIRST}</p>
+        <p class="answer-guest-line">沒註冊時只計算、不儲存。<a href="/privacy">隱私權說明</a></p>
+      </div>
       <div id="answer-intro"><p>本問卷的目的在幫助您了解自己的聽力。</p></div>
       <p id="answer-loading" role="status"></p>
       <div id="answer-guest-fallback" role="alert" hidden>
@@ -278,6 +350,17 @@ describe("guest", () => {
     await waitFor(() => expect(app().textContent).toContain("這次填答時，您有沒有戴助聽器？"));
     expect(note().hidden).toBe(true);
     expect(form().hidden).toBe(true);
+  });
+
+  // #611 Q2 (acceptance 62): a guest keeps no draft, so React adds nothing to the first sentence.
+  it("keeps a guest's reassurance to the first sentence, above the guest line", async () => {
+    runInline();
+    respondWith(ok);
+    await startReact();
+    await waitFor(() => expect(app().textContent).toContain("這次填答時，您有沒有戴助聽器？"));
+    expect(reassure().hidden).toBe(false);
+    expect(reassure().textContent).toBe(FIRST);
+    expect(reassure().nextElementSibling.className).toBe("answer-guest-line");
   });
 
   // I4: the page's register link goes to React for a browser that cannot keep the result.

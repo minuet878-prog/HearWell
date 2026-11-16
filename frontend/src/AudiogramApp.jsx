@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 
 import AudiogramChart from "./AudiogramChart.jsx";
+import AudiogramDemo from "./AudiogramDemo.jsx";
+import AudiogramReading, { readingText } from "./AudiogramReading.jsx";
 import FoldSummary from "./FoldSummary.jsx";
-import { DB_MAX, DB_MIN, SYMBOLS, frequenciesFor, place, pointKey } from "./audiogram.js";
+import { DB_MAX, DB_MIN, SYMBOLS, frequenciesFor, missedAir, place, pointKey } from "./audiogram.js";
 import { newReceiptKey } from "./receipt-key.js";
 
 const FAILED = "存檔失敗，請再按一次存檔";
@@ -40,6 +42,13 @@ const isoDate = ({ year, month, day }) => {
   const date = new Date(Date.UTC(y, m - 1, d));
   if (date.getUTCFullYear() !== y || date.getUTCMonth() !== m - 1 || date.getUTCDate() !== d) return null;
   return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+};
+// Spec #611 N3 (ticket #616): Enter on 年 or 月 (the phone keyboard's 下一個) moves to the next
+// box; the Enter that picks a character in 注音 or another input method only picks it.
+const nextOnEnter = (e) => {
+  if (e.key !== "Enter" || e.nativeEvent.isComposing || e.keyCode === 229) return;
+  e.preventDefault();
+  e.currentTarget.closest(".date-part").nextElementSibling.querySelector("input").focus();
 };
 
 // "氣導 n 個、骨導 n 個" for one ear, with no total: a report rarely tests every frequency.
@@ -122,6 +131,10 @@ export default function AudiogramApp({
     Object.fromEntries(initialPoints.map((p) => [pointKey(p.ear, p.conduction, p.frequency), p])),
   );
   const [last, setLast] = useState(null);
+  // #617 (K1): the point under a marking finger, and the words in the status area for a screen
+  // reader, which hears a point once, on release or when picked in the table, never during a drag.
+  const [dragged, setDragged] = useState(null);
+  const [screenReaderText, setScreenReaderText] = useState("");
   const [date, setDate] = useState(() => dateParts(initialTestedOn));
   const testedOn = isoDate(date);
   const thisYear = Number(today.slice(0, 4));
@@ -151,6 +164,7 @@ export default function AudiogramApp({
     moved.current = true;
     setErrors([]);
     setLast(null);
+    setScreenReaderText("");
     if (STEP_EAR[next]) setSymbolKey(`${STEP_EAR[next]}-air`);
     setMasked(false);
     setStep(next);
@@ -162,6 +176,7 @@ export default function AudiogramApp({
     setPoints(next);
     if (next[changed]) setLast(changed);
     else if (last === changed) setLast(null);
+    setScreenReaderText(next[changed] ? readingText(next[changed]) : "");
   };
 
   const setFromTable = (target, frequency, value) => {
@@ -170,6 +185,7 @@ export default function AudiogramApp({
       const { [changed]: _removed, ...others } = points;
       setPoints(others);
       if (last === changed) setLast(null);
+      setScreenReaderText("");
       return;
     }
     // A select only fires on a new value, so place() never takes this as "same point, delete".
@@ -186,6 +202,7 @@ export default function AudiogramApp({
     const { [last]: _removed, ...others } = points;
     setPoints(others);
     setLast(null);
+    setScreenReaderText("");
   };
 
   async function save() {
@@ -252,7 +269,20 @@ export default function AudiogramApp({
         ))}
       </ol>
       <p className="mb-0">報告上符號下面有箭頭（無反應），就往下拖出圖外。</p>
+      {/* #618 (K2): keyed by the ear, so the other ear's step starts it over. */}
+      <AudiogramDemo key={ear} ear={ear} />
     </>
+  );
+
+  // #619 (R1, the #613 mockup's 6A): a tip, not a check; saving goes ahead with it shown.
+  const missed = missedAir(Object.values(points));
+  const missedTip = missed.length > 0 && (
+    <div className="tip-box audiogram-missed">
+      {missed.map(({ ear, frequencies }) => (
+        <p key={ear} className="mb-0">{`${EAR_LABEL[ear]}沒有標 ${frequencies.join("、")} Hz。`}</p>
+      ))}
+      <p>報告上本來就沒有的話，直接存檔就好。</p>
+    </div>
   );
 
   const errorList = errors.length > 0 && (
@@ -293,6 +323,9 @@ export default function AudiogramApp({
                   aria-label={name}
                   className={`form-control form-control-lg date-part-${part}`}
                   inputMode="numeric"
+                  // 日 is the last: that step sends nothing, so its key is left to the phone.
+                  enterKeyHint={part === "day" ? undefined : "next"}
+                  onKeyDown={part === "day" ? undefined : nextOnEnter}
                   maxLength={length}
                   value={date[part]}
                   onChange={(e) => setDate({ ...date, [part]: e.target.value.trim() })}
@@ -373,9 +406,12 @@ export default function AudiogramApp({
             </table>
             <p>遮蔽是檢查時在另一耳放雜音，不讓另一耳幫忙聽，結果比較準。</p>
           </div>
+          {/* #617 (K1): right over the chart, the point being dragged or else this step's last. */}
+          <p className="visually-hidden" role="status">{screenReaderText}</p>
+          <AudiogramReading point={dragged ?? lastPoint} />
           {/* The dashed frame keeps masking in sight while the eyes are on the chart. */}
           <div className={`audiogram-chart${masked ? " masking" : ""}`}>
-            <AudiogramChart points={Object.values(points)} symbol={symbol} masked={masked} onCommit={(f, level) => commit(symbol, f, level)} />
+            <AudiogramChart points={Object.values(points)} symbol={symbol} masked={masked} onCommit={(f, level) => commit(symbol, f, level)} onPreview={setDragged} />
           </div>
           <p className="audiogram-count font-bold mb-2">
             {EAR_LABEL[ear]}已標：{earCount(points, ear)}
@@ -403,6 +439,7 @@ export default function AudiogramApp({
               <button type="button" className="btn btn-link" onClick={() => goTo(EAR_STEP[side])}>{`改${EAR_LABEL[side]}`}</button>
             </p>
           ))}
+          {missedTip}
           {errorList}
           <button type="button" className={`btn btn-primary btn-lg w-full mb-2${saved ? " is-sent" : ""}`} disabled={sending} onClick={save}>
             {saved ? (

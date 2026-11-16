@@ -8,8 +8,12 @@ const TODAY = "2026-10-16";
 let navigate;
 
 // jsdom has no layout: make one screen pixel equal one chart unit, and scrolling a no-op.
+// Nor media queries: motion is not reduced unless a test says so (#618's 看示範).
+let reduceMotion;
 beforeEach(() => {
   navigate = vi.fn();
+  reduceMotion = false;
+  window.matchMedia = (query) => ({ matches: query === "(prefers-reduced-motion: reduce)" && reduceMotion });
   Element.prototype.scrollIntoView = vi.fn();
   SVGElement.prototype.getBoundingClientRect = () => ({
     left: 0,
@@ -819,6 +823,114 @@ describe("edit", () => {
   });
 });
 
+// #617 (spec #611 K1): the last point of this step, large, right over the chart.
+describe("reading over the chart (#617)", () => {
+  // The one over the chart, not the one in #618's demo.
+  const reading = () => document.querySelector(".audiogram-app > .audiogram-reading");
+  const shown = () => [...reading().children].map((row) => row.textContent);
+  const said = () => screen.getByRole("status").textContent;
+  const HINT = ["點一下圖來標記"];
+
+  it("says where to tap on both ear steps, right over the chart, and not on the confirm step (acceptance 31, 40)", () => {
+    renderRight();
+    expect(shown()).toEqual(HINT);
+    expect(reading().nextElementSibling.classList.contains("audiogram-chart")).toBe(true);
+    expect(said()).toBe("");
+    forward();
+    expect(shown()).toEqual(HINT);
+    forward();
+    expect(progress()).toBe("第 4 步／共 4 步：確認存檔");
+    expect(reading()).toBeNull();
+  });
+
+  it("writes the point once released, masked and no response too (acceptance 32, 33)", () => {
+    renderRight();
+    drag(1000, 45, 45);
+    expect(shown()).toEqual(["右耳氣導", "1000 Hz　45 dB"]);
+    expect(said()).toBe("右耳氣導　1000 Hz　45 dB");
+    fireEvent.click(maskToggle());
+    drag(2000, 60, 60);
+    expect(shown()).toEqual(["右耳氣導", "2000 Hz　60 dB　遮蔽"]);
+    forward();
+    pickSymbol("左耳骨導");
+    drag(4000, 60, 95);
+    expect(shown()).toEqual(["左耳骨導", "4000 Hz　無反應"]);
+    expect(said()).toBe("左耳骨導　4000 Hz　無反應");
+  });
+
+  it("follows the finger while dragging, and the status area is written only on release (acceptance 34)", () => {
+    renderRight();
+    drag(500, 30, 30);
+    expect(said()).toBe("右耳氣導　500 Hz　30 dB");
+    press(2000, 40);
+    expect(shown()).toEqual(["右耳氣導", "2000 Hz　40 dB"]);
+    move(2000, 55);
+    expect(shown()).toEqual(["右耳氣導", "2000 Hz　55 dB"]);
+    move(2000, 135);
+    expect(shown()).toEqual(["右耳氣導", "2000 Hz　無反應"]);
+    expect(said()).toBe("右耳氣導　500 Hz　30 dB");
+    release(2000, 70);
+    expect(shown()).toEqual(["右耳氣導", "2000 Hz　70 dB"]);
+    expect(said()).toBe("右耳氣導　2000 Hz　70 dB");
+  });
+
+  it("goes back to the last point when a drag is called off", () => {
+    renderRight();
+    drag(500, 30, 30);
+    press(2000, 40);
+    fireEvent.pointerCancel(chart(), at(2000, 40));
+    expect(shown()).toEqual(["右耳氣導", "500 Hz　30 dB"]);
+    expect(said()).toBe("右耳氣導　500 Hz　30 dB");
+  });
+
+  it("goes back to the hint when the point is deleted, three ways (acceptance 35)", () => {
+    for (const remove of [
+      () => drag(1000, 45, 45),
+      () => fireEvent.click(screen.getByRole("button", { name: "清除 右耳氣導 1000 Hz" })),
+      () => fireEvent.change(select("右耳氣導 1000 Hz"), { target: { value: "" } }),
+    ]) {
+      cleanup();
+      renderRight();
+      drag(1000, 45, 45);
+      remove();
+      expect(point("right-air-1000")).toBeNull();
+      expect(shown()).toEqual(HINT);
+      expect(said()).toBe("");
+    }
+  });
+
+  it("starts over on the other ear's step (acceptance 36)", () => {
+    renderRight();
+    drag(1000, 45, 45);
+    forward();
+    expect(shown()).toEqual(HINT);
+    expect(said()).toBe("");
+    back();
+    expect(shown()).toEqual(HINT);
+  });
+
+  it("writes a value picked in the table, and says it (acceptance 37)", () => {
+    renderRight();
+    fireEvent.change(select("右耳骨導 2000 Hz"), { target: { value: "35" } });
+    expect(shown()).toEqual(["右耳骨導", "2000 Hz　35 dB"]);
+    expect(said()).toBe("右耳骨導　2000 Hz　35 dB");
+    fireEvent.click(maskBox("右耳骨導 2000 Hz"));
+    expect(shown()).toEqual(["右耳骨導", "2000 Hz　35 dB　遮蔽"]);
+    fireEvent.change(select("右耳氣導 8000 Hz"), { target: { value: "nr" } });
+    expect(shown()).toEqual(["右耳氣導", "8000 Hz　無反應"]);
+  });
+
+  it("keeps the magnifier, the clear button and the count as they were (acceptance 41)", () => {
+    renderRight();
+    press(1000, 40);
+    expect(magnifier().textContent).toBe("1000 Hz 40 dB");
+    release(1000, 40);
+    expect(magnifier()).toBeNull();
+    expect(screen.getByRole("button", { name: "清除 右耳氣導 1000 Hz" })).toBeTruthy();
+    expect(document.querySelector(".audiogram-count").textContent).toBe("右耳已標：氣導 1 個、骨導 0 個");
+  });
+});
+
 describe("field names (#354)", () => {
   it("no label or legend ends in a colon, on any step", () => {
     renderApp();
@@ -881,5 +993,190 @@ describe("layout (#465)", () => {
     const table = document.querySelector("details.audiogram-table");
     expect(table.classList.contains("result-details")).toBe(true);
     expect(table.querySelector("summary .link-card-title").textContent).toBe("用數值輸入（鍵盤或螢幕閱讀器）");
+  });
+});
+
+// #618 (spec #611 K2): 看示範 under 怎麼標記 plays on a small chart of its own.
+describe("demo under 怎麼標記 (#618)", () => {
+  const howto = () => document.querySelector(".audiogram-howto").parentElement;
+  const demoButton = () => [...howto().querySelectorAll("button")].find((b) => /看示範|再看一次/.test(b.textContent));
+  const renderEdit = () =>
+    render(<AudiogramApp today={TODAY} csrfToken="csrf-token" navigate={navigate} audiogramId={7} initialTestedOn="2026-01-10" />);
+
+  it("is in how to mark on both ear steps, open or folded, new or editing (acceptance 42)", () => {
+    renderRight();
+    expect(demoButton().textContent).toBe("▶ 看示範");
+    expect(howto().querySelector(".audiogram-demo")).not.toBeNull();
+    forward();
+    expect(howto().closest("details")).not.toBeNull();
+    expect(demoButton().textContent).toBe("▶ 看示範");
+    cleanup();
+    renderEdit();
+    forward();
+    expect(demoButton()).toBeDefined();
+    forward();
+    expect(demoButton()).toBeDefined();
+    forward();
+    expect(document.querySelector(".audiogram-demo")).toBeNull();
+  });
+
+  it("leaves the user's points, the count and the reading over the chart as they were (acceptance 46)", () => {
+    vi.useFakeTimers();
+    renderRight();
+    drag(2000, 60, 60);
+    const userReading = () => [...document.querySelector(".audiogram-app > .audiogram-reading").children].map((row) => row.textContent);
+    fireEvent.click(demoButton());
+    act(() => vi.advanceTimersByTime(2100));
+    expect(demoButton().textContent).toBe("↺ 再看一次");
+    expect(chart().querySelectorAll("[data-point]")).toHaveLength(1);
+    expect(point("right-air-2000").dataset.db).toBe("60");
+    expect(document.querySelector(".audiogram-count").textContent).toBe("右耳已標：氣導 1 個、骨導 0 個");
+    expect(userReading()).toEqual(["右耳氣導", "2000 Hz　60 dB"]);
+    expect(screen.getByRole("status").textContent).toBe("右耳氣導　2000 Hz　60 dB");
+    expect(screen.getByRole("button", { name: "清除 右耳氣導 2000 Hz" })).toBeTruthy();
+  });
+
+  it("starts again on the other ear's step, with that ear's symbol", () => {
+    vi.useFakeTimers();
+    renderEdit();
+    forward();
+    fireEvent.click(demoButton());
+    act(() => vi.advanceTimersByTime(2100));
+    forward();
+    expect(demoButton().textContent).toBe("▶ 看示範");
+    expect(document.querySelector(".audiogram-demo-mark")).toBeNull();
+  });
+
+  it("has no button with reduced motion, the words as they were (acceptance 47)", () => {
+    reduceMotion = true;
+    renderRight();
+    expect(demoButton()).toBeUndefined();
+    expect(document.querySelector(".audiogram-demo")).toBeNull();
+    expect([...document.querySelectorAll(".audiogram-howto .step-list-body")].map((li) => li.textContent)).toEqual([
+      "選下面的符號",
+      "在圖上按住，上下拖到報告上的位置",
+      "放開就標好了；標錯就在那個點上點一下，可以刪除",
+    ]);
+    expect(screen.getByText("報告上符號下面有箭頭（無反應），就往下拖出圖外。")).toBeTruthy();
+  });
+});
+
+// #619 (spec #611 R1, the #613 mockup's 6A): on the confirm step, which air frequencies one ear
+// has and the other has not; only a tip, never in the way of saving.
+describe("missed marks on the confirm step (#619)", () => {
+  const air = (ear, frequencies) =>
+    frequencies.map((frequency) => ({ ear, conduction: "air", frequency, db: 40, no_response: false, masked: false }));
+  const renderConfirm = (initialPoints) => {
+    render(
+      <AudiogramApp
+        today={TODAY}
+        csrfToken="csrf-token"
+        navigate={navigate}
+        audiogramId={7}
+        initialPoints={initialPoints}
+        initialTestedOn="2026-01-10"
+      />,
+    );
+    forward();
+    forward();
+    forward();
+  };
+  const tip = () => document.querySelector(".audiogram-missed");
+  const sentences = () => [...tip().querySelectorAll("p")].map((p) => p.textContent);
+  const SIX = [250, 500, 1000, 2000, 4000, 8000];
+  const LAST = "報告上本來就沒有的話，直接存檔就好。";
+
+  it("says what the left ear is missing under the counts, over 存檔, as a tip box (acceptance 50, 59)", () => {
+    renderConfirm([...air("right", SIX), ...air("left", [250, 500, 1000])]);
+    expect(sentences()).toEqual(["左耳沒有標 2000、4000、8000 Hz。", LAST]);
+    expect(tip().classList.contains("tip-box")).toBe(true);
+    expect(tip().classList.contains("alert")).toBe(false);
+    expect(tip().closest("[role=alert]")).toBeNull();
+    expect(tip().querySelector("[role]")).toBeNull();
+    expect(tip().querySelector("svg")).toBeNull();
+    const leftCount = screen.getByText("左耳：氣導 3 個、骨導 0 個").closest("p");
+    const saveButton = screen.getByRole("button", { name: "存檔" });
+    expect(leftCount.compareDocumentPosition(tip()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(tip().compareDocumentPosition(saveButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("each ear missing different frequencies is a sentence each, the last one once (acceptance 52)", () => {
+    renderConfirm([...air("right", [250, 500, 1000, 2000, 4000, 6000]), ...air("left", [250, 500, 1000, 8000])]);
+    expect(sentences()).toEqual(["右耳沒有標 8000 Hz。", "左耳沒有標 2000、4000、6000 Hz。", LAST]);
+  });
+
+  it("no tip when the air frequencies match, or an ear has nothing marked (acceptance 53, 54)", () => {
+    renderConfirm([...air("right", SIX), ...air("left", SIX)]);
+    expect(tip()).toBeNull();
+    cleanup();
+    renderConfirm(air("right", SIX));
+    expect(tip()).toBeNull();
+    expect(screen.getByText("左耳：還沒有標任何點")).toBeTruthy();
+  });
+
+  it("is above the error list, and saves as usual with it shown (acceptance 57)", async () => {
+    renderConfirm([...air("right", SIX), ...air("left", [250, 500, 1000])]);
+    globalThis.fetch = vi.fn(() => Promise.resolve({ ok: false, status: 500 }));
+    save();
+    const error = await screen.findByRole("alert");
+    expect(tip().compareDocumentPosition(error) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(error.textContent).not.toContain("沒有標");
+    expect(fetch).toHaveBeenCalledTimes(1);
+    globalThis.fetch = vi.fn(() => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ id: 7 }) }));
+    save();
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/audiograms/7"));
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("follows marks added on the way back, and goes once they match (acceptance 58)", () => {
+    renderConfirm([...air("right", SIX), ...air("left", [250, 500, 1000])]);
+    fireEvent.click(screen.getByRole("button", { name: "改左耳" }));
+    pickSymbol("左耳氣導");
+    drag(2000, 40, 40);
+    forward();
+    expect(sentences()).toEqual(["左耳沒有標 4000、8000 Hz。", LAST]);
+    fireEvent.click(screen.getByRole("button", { name: "改左耳" }));
+    pickSymbol("左耳氣導");
+    drag(4000, 40, 40);
+    drag(8000, 40, 40);
+    forward();
+    expect(tip()).toBeNull();
+  });
+});
+
+// Spec #611 N3 (acceptance 28), ticket #616: 年 and 月 say 下一個 on the phone keyboard and
+// Enter there moves on; 日 is the last, and with no sending on that step Enter still does nothing.
+describe("Enter in the date (#616)", () => {
+  const part = (name) => screen.getByLabelText(name);
+  // fireEvent returns false when the app stopped what Enter would do.
+  const enter = (name, init = {}) => {
+    part(name).focus();
+    return fireEvent.keyDown(part(name), { key: "Enter", ...init });
+  };
+
+  it("says 下一個 on 年 and 月, not on 日", () => {
+    renderApp();
+    expect(part("民國年").getAttribute("enterkeyhint")).toBe("next");
+    expect(part("月").getAttribute("enterkeyhint")).toBe("next");
+    expect(part("日").hasAttribute("enterkeyhint")).toBe(false);
+  });
+
+  it("goes 年 to 月 to 日, and 日 stays as it was", () => {
+    renderApp();
+    expect(enter("民國年")).toBe(false);
+    expect(document.activeElement).toBe(part("月"));
+    expect(enter("月")).toBe(false);
+    expect(document.activeElement).toBe(part("日"));
+    expect(enter("日")).toBe(true);
+    expect(document.activeElement).toBe(part("日"));
+    expect(progress()).toBe("第 1 步／共 4 步：檢查日期");
+  });
+
+  it("leaves the Enter that picks a character alone", () => {
+    renderApp();
+    expect(enter("民國年", { isComposing: true })).toBe(true);
+    expect(document.activeElement).toBe(part("民國年"));
+    expect(enter("月", { keyCode: 229 })).toBe(true);
+    expect(document.activeElement).toBe(part("月"));
   });
 });

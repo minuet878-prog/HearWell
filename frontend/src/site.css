@@ -1511,6 +1511,15 @@
     background-position: right 0.75rem center;
     background-size: 1.25rem 1.25rem;
   }
+  /* Spec #611 J4 (#615, mockup-613-filling.html 二 A): with 出生年's tick, 今年滿 76 歲 on its own
+     line right under the 民國／年 row, so the row is never squeezed; the tick's green, bold. Sent
+     empty, it takes no room. */
+  .birth-age {
+    margin: 0.25rem 0 0;
+    color: var(--color-normal);
+    font-weight: 700;
+  }
+  .birth-age:empty { display: none; }
   .auth-alt {
     margin-top: 1.25rem;
     padding-top: 1.25rem;
@@ -1834,6 +1843,24 @@
   .field-help {
     color: var(--color-muted);
     font-size: 1rem;
+  }
+
+  /* Spec #611 J2 (#614, mockup-613-filling.html 一 A): under an email that looks mistyped, the
+     question in plain words and a framed 按這裡改 beside it, or under it when there is no room.
+     Sent empty, it takes no room; the email in the question breaks anywhere at 200% text. */
+  .email-hint {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.75rem;
+    color: var(--color-heading);
+    overflow-wrap: anywhere;
+  }
+  .email-hint:has(.email-hint-fix) { margin-top: 0.5rem; }
+  .email-hint > span { min-width: 0; }
+  .email-hint-fix {
+    flex: none;
+    min-height: var(--spacing-touch);
   }
 
   /* Readability batch 3 (the owner's C1 B): under a new password, how many characters are in
@@ -3371,6 +3398,124 @@
   .audiogram-magnifier[data-place="beside"][data-side="left"] {
     transform: translate(calc(-100% - 1.5rem), -50%);
   }
+
+  /* #617 (spec #611 K1, the #613 mockup's B): the reading over the chart, the symbol's name small
+     and grey over the frequency and level. The finger is on the chart, so the box never changes
+     height: under the value row sit, unseen, the two longest values (無反應 or 120 dB, at 8000 Hz,
+     masked), and the row is as tall as they wrap at this width and text size. The hint fills both
+     rows. Breaks only at the full-width spaces, so a number never parts from its unit. */
+  .audiogram-reading {
+    display: grid;
+    grid-template-rows: minmax(1.4rem, auto) auto;
+    align-items: center;
+    justify-items: center;
+    max-width: 32rem;
+    margin: 0 auto 0.5rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-brand-soft);
+    color: var(--color-heading);
+    text-align: center;
+    font-weight: 700;
+    line-height: 1.4;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+
+  .audiogram-reading::before,
+  .audiogram-reading::after {
+    grid-area: 2 / 1;
+    visibility: hidden;
+    font-size: 1.5rem;
+  }
+
+  .audiogram-reading::before {
+    content: "8000 Hz\3000無反應\3000遮蔽";
+  }
+
+  .audiogram-reading::after {
+    content: "8000 Hz\3000 120 dB\3000遮蔽";
+  }
+
+  .audiogram-reading-name {
+    grid-area: 1 / 1;
+    color: var(--color-muted);
+    font-size: 1rem;
+  }
+
+  .audiogram-reading-value {
+    grid-area: 2 / 1;
+    font-size: 1.5rem;
+  }
+
+  .audiogram-reading-hint {
+    grid-area: 1 / 1 / 3 / 2;
+    color: var(--color-muted);
+    font-size: 1.25rem;
+    font-weight: 500;
+  }
+
+  /* #618 (spec #611 K2, the #613 mockup's part five): 看示範's small chart under 怎麼標記, the top of
+     an audiogram in a thin frame with its own reading over it, a size down from the one over the
+     user's chart. In rem, so at 200% text it takes the width it is given and no more. */
+  .audiogram-demo {
+    max-width: 16rem;
+    margin: 0.75rem 0 0.5rem;
+  }
+
+  .audiogram-demo .audiogram-reading {
+    margin: 0 0 0.35rem;
+  }
+
+  .audiogram-demo .audiogram-reading::before,
+  .audiogram-demo .audiogram-reading::after,
+  .audiogram-demo .audiogram-reading-value {
+    font-size: 1.2rem;
+  }
+
+  .audiogram-demo .audiogram-reading-hint {
+    font-size: 1rem;
+  }
+
+  .audiogram-demo-chart {
+    padding: 0.4rem 0.3rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-small);
+    background-color: #fff;
+    overflow: hidden;
+  }
+
+  .audiogram-demo-chart svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .audiogram-demo-mark {
+    fill: #fff;
+    stroke-width: 2;
+  }
+
+  .audiogram-demo-mark.ear-right { stroke: var(--color-ear-right); }
+  .audiogram-demo-mark.ear-left { stroke: var(--color-ear-left); stroke-width: 2.2; }
+
+  .audiogram-demo-ring {
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 1.6;
+    stroke-dasharray: 3 3;
+  }
+
+  .audiogram-demo-finger {
+    fill: var(--color-pull);
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .audiogram-demo-nail { fill: #fff; stroke-width: 1.4; }
+  .audiogram-demo-knuckle { fill: none; stroke-width: 1.4; }
 
   /* Masking switch (#333): 遮蔽, a track and knob, then 開／關. The track is grey off and orange on
      (the white knob is 4.69:1 and 4.83:1 on them), with a matching chart frame; rem, so it grows
@@ -6567,8 +6712,10 @@
     margin-bottom: 2rem;
   }
 
-  /* The answer page's line under its title: the code, count and minutes in the muted grey. */
-  .answer-meta {
+  /* The answer page's line under its title: the code, count and minutes in the muted grey; the
+     reassurance under it the same (spec #611 Q2, the #613 mockup's A). */
+  .answer-meta,
+  .answer-reassure {
     color: var(--color-muted);
   }
 

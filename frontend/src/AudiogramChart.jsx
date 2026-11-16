@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 
-import { AIR_FREQUENCIES, CHART, DB_MIN, levelAt, nearestFrequency, pointKey, x, y } from "./audiogram.js";
+import { AIR_FREQUENCIES, CHART, levelAt, nearestFrequency, pointKey, x, y } from "./audiogram.js";
+import AudiogramGrid from "./AudiogramGrid.jsx";
 
 const COLORS = { right: "#c0392b", left: "#1f4e8c" };
 // The older audiogram on the compare page: the same ear's colour, lighter (spec phase5_audiogram_2.md 4.2).
 const OLD_COLORS = { right: "#e8a59d", left: "#9db5d6" };
-const GRID_DBS = Array.from({ length: 14 }, (_, i) => DB_MIN + i * 10);
-const freqLabel = (f) => (f >= 1000 ? `${f / 1000}k` : String(f));
 // Above this level there is no room over the point, so the magnifier goes beside it.
 const MAGNIFIER_ABOVE_FROM = 10;
 const percent = (value, total) => `${(value / total) * 100}%`;
@@ -102,7 +101,8 @@ function Layer({ points, old = false }) {
 // `label` replaces the read-only text alternative; `behind` goes under the frame and the marks.
 // `onTap` gets a click's place in chart units. Only a click: a finger that swipes stays the browser's, to scroll.
 // `normalBand` is the green normal range down to 25 dB.
-export default function AudiogramChart({ points, oldPoints, symbol, masked = false, onCommit, label = "聽力圖", behind, onTap, normalBand = true }) {
+// `onPreview` gets the point under a marking finger each time it moves, and null when the drag ends (#617).
+export default function AudiogramChart({ points, oldPoints, symbol, masked = false, onCommit, onPreview, label = "聽力圖", behind, onTap, normalBand = true }) {
   const svg = useRef(null);
   const dragging = useRef(null);
   const [preview, setPreview] = useState(null);
@@ -129,10 +129,16 @@ export default function AudiogramChart({ points, oldPoints, symbol, masked = fal
       py: ((event.clientY - box.top) * CHART.height) / box.height,
     };
   };
+  // The point under the finger, as a marked point is shaped.
+  const draftOf = ({ frequency, level }) => ({ ear: symbol.ear, conduction: symbol.conduction, frequency, db: level.db, no_response: level.noResponse, masked });
+  const updatePreview = (next) => {
+    setPreview(next);
+    onPreview?.(next && draftOf(next));
+  };
   const track = (event, frequency) => {
     const next = { frequency, level: levelAt(toChart(event).py, symbol.conduction) };
     dragging.current = next;
-    setPreview(next);
+    updatePreview(next);
     return next;
   };
 
@@ -141,7 +147,7 @@ export default function AudiogramChart({ points, oldPoints, symbol, masked = fal
 
   const finish = ({ frequency, level }) => {
     dragging.current = null;
-    setPreview(null);
+    updatePreview(null);
     onCommit(frequency, level);
   };
 
@@ -150,7 +156,7 @@ export default function AudiogramChart({ points, oldPoints, symbol, masked = fal
       // A second finger means zooming, not marking: the mark under way is dropped.
       if (dragging.current) {
         dragging.current = null;
-        setPreview(null);
+        updatePreview(null);
         return;
       }
       event.preventDefault();
@@ -171,15 +177,14 @@ export default function AudiogramChart({ points, oldPoints, symbol, masked = fal
     },
     onPointerCancel() {
       dragging.current = null;
-      setPreview(null);
+      updatePreview(null);
     },
   };
 
   let shown = points;
   if (preview) {
     const key = pointKey(symbol.ear, symbol.conduction, preview.frequency);
-    const draft = { ear: symbol.ear, conduction: symbol.conduction, frequency: preview.frequency, db: preview.level.db, no_response: preview.level.noResponse, masked };
-    shown = [...points.filter((p) => pointKey(p.ear, p.conduction, p.frequency) !== key), draft];
+    shown = [...points.filter((p) => pointKey(p.ear, p.conduction, p.frequency) !== key), draftOf(preview)];
   }
 
   return (
@@ -194,23 +199,7 @@ export default function AudiogramChart({ points, oldPoints, symbol, masked = fal
         onClick={onTap && ((event) => onTap(toChart(event)))}
         {...handlers}
       >
-        {normalBand && <rect x={CHART.left} y={y(DB_MIN)} width={CHART.right - CHART.left} height={y(25) - y(DB_MIN)} fill="#e9f5ec" />}
-        {GRID_DBS.map((db) => (
-          <g key={db}>
-            <line x1={CHART.left} x2={CHART.right} y1={y(db)} y2={y(db)} stroke={db === 0 ? "#555" : "#c9d1dc"} strokeWidth={db === 0 ? 1.5 : 1} />
-            <text x={CHART.left - 5} y={y(db) + 5} textAnchor="end" fontSize="14" fill="#333">
-              {db}
-            </text>
-          </g>
-        ))}
-        {AIR_FREQUENCIES.map((f) => (
-          <g key={f}>
-            <line x1={x(f)} x2={x(f)} y1={CHART.top} y2={CHART.bottom} stroke="#c9d1dc" strokeDasharray={f === 3000 || f === 6000 ? "3 3" : undefined} />
-            <text x={x(f)} y={CHART.top - 9} textAnchor="middle" fontSize="14" fill="#333">
-              {freqLabel(f)}
-            </text>
-          </g>
-        ))}
+        <AudiogramGrid normalBand={normalBand} />
         {behind}
         <rect className="audiogram-frame" x={CHART.left} y={CHART.top} width={CHART.right - CHART.left} height={CHART.bottom - CHART.top} fill="none" stroke="#555" />
         {oldPoints && <Layer points={oldPoints} old />}
