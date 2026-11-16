@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 
+import AudiogramGrid from "./AudiogramGrid.jsx";
 import AudiogramReading from "./AudiogramReading.jsx";
-import { AIR_FREQUENCIES, CHART, DB_MIN, x, y } from "./audiogram.js";
+import { CHART, x, y } from "./audiogram.js";
 
 // #618 (spec #611 K2, the #613 mockup's part five; ADR 0060's three rules): under 怎麼標記, a small
 // chart of its own where 看示範 plays a finger tapping 1000 Hz 45 dB, the step's ear's symbol
@@ -13,8 +14,6 @@ const POINT = { conduction: "air", frequency: 1000, db: 45, no_response: false, 
 const [PX, PY] = [x(POINT.frequency), y(POINT.db)];
 // Only the top of an audiogram, down to 70 dB.
 const BOTTOM = y(70) + 10;
-const GRID_DBS = Array.from({ length: 9 }, (_, i) => DB_MIN + i * 10);
-const freqLabel = (f) => (f >= 1000 ? `${f / 1000}k` : String(f));
 
 // The mockup's table of moves, in ms. The finger is [right, down, clockwise degrees] of its tip.
 const DURATION = 2000;
@@ -85,23 +84,7 @@ export default function AudiogramDemo({ ear }) {
         <AudiogramReading point={tapped ? { ...POINT, ear } : null} />
         <div className="audiogram-demo-chart">
           <svg viewBox={`0 0 ${CHART.width} ${BOTTOM}`} focusable="false">
-            <rect x={CHART.left} y={y(DB_MIN)} width={CHART.right - CHART.left} height={y(25) - y(DB_MIN)} fill="#e9f5ec" />
-            {GRID_DBS.map((db) => (
-              <g key={db}>
-                <line x1={CHART.left} x2={CHART.right} y1={y(db)} y2={y(db)} stroke={db === 0 ? "#555" : "#c9d1dc"} strokeWidth={db === 0 ? 1.5 : 1} />
-                <text x={CHART.left - 5} y={y(db) + 5} textAnchor="end" fontSize="14" fill="#333">
-                  {db}
-                </text>
-              </g>
-            ))}
-            {AIR_FREQUENCIES.map((f) => (
-              <g key={f}>
-                <line x1={x(f)} x2={x(f)} y1={CHART.top} y2={BOTTOM} stroke="#c9d1dc" strokeDasharray={f === 3000 || f === 6000 ? "3 3" : undefined} />
-                <text x={x(f)} y={CHART.top - 9} textAnchor="middle" fontSize="14" fill="#333">
-                  {freqLabel(f)}
-                </text>
-              </g>
-            ))}
+            <AudiogramGrid downTo={70} bottom={BOTTOM} />
             <rect x={CHART.left} y={CHART.top} width={CHART.right - CHART.left} height={CHART.bottom - CHART.top} fill="none" stroke="#555" />
             {tapped && <Mark ear={ear} />}
             {ring > 0 && <circle className="audiogram-demo-ring" cx={PX + 3} cy={PY + 3} r="14" opacity={round(ring)} />}
