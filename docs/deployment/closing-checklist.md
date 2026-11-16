@@ -8,7 +8,7 @@
 
 | 代稱 | 是什麼 | 真的值去哪裡查 |
 |---|---|---|
-| `tingpal-vps` | 在 Mac 的 `~/.ssh/config` 設的 VPS 代稱（第 1 段第 1 步設） | 設好之後 `ssh -G tingpal-vps \| grep -E '^(hostname\|user) '` |
+| `hearwell-vps` | 在 Mac 的 `~/.ssh/config` 設的 VPS 代稱（第 1 段第 1 步設） | 設好之後 `ssh -G hearwell-vps \| grep -E '^(hostname\|user) '` |
 | `<VPS 位址>`、`<VPS 使用者>` | VPS 的 IP 與登入帳號 | `vpsdeploy.md` 開頭的連線方式 |
 
 | 段 | 內容 | 先做完 | 票 |
@@ -26,12 +26,20 @@
 
 做好之後：Mac 每次登入、每天 12:00（睡著就醒來時補）把 VPS 的備份拉回 `~/backups/hearwell-vps`。拉成功、而且最新一份在 2 天內，才刪超過 8 天的 `hearwell-db-日期.dump`；拉不到或都是舊的就跳桌面通知，一份都不刪（[拷問決定](../planning/found-by-family/closing-grill-decisions.md) Q1–Q3）。
 
-### 1-1 設 VPS 代稱
+### 1-1 確認 FileVault、設 VPS 代稱
+
+隱私權說明寫備份是「加密的」：Mac 上靠 FileVault（整顆硬碟加密）。先確認它開著：
+
+```bash
+fdesetup status
+```
+
+做對了會看到：`FileVault is On.`。不是的話先停下來，到系統設定 → 隱私權與安全性 → FileVault 打開，再往下做。
 
 打開 Mac 的 `~/.ssh/config`（`open -e ~/.ssh/config`），在檔案**最上面**（`Host *` 之前）加三行，`<VPS 位址>`、`<VPS 使用者>` 換成真的值：
 
 ```
-Host tingpal-vps
+Host hearwell-vps
   HostName <VPS 位址>
   User <VPS 使用者>
 ```
@@ -39,7 +47,7 @@ Host tingpal-vps
 確認：
 
 ```bash
-ssh -o BatchMode=yes tingpal-vps 'ls ~/backups'
+ssh -o BatchMode=yes hearwell-vps 'ls ~/backups'
 ```
 
 做對了會看到：VPS 上的備份檔清單，**沒有問密碼**。`BatchMode=yes` 表示「需要輸入東西就直接失敗」，排程半夜跑時也是這樣；如果這裡失敗，排程也會失敗。
@@ -56,7 +64,7 @@ mkdir -p ~/bin && cat > ~/bin/hearwell-pull-backups.sh <<'EOF'
 set -u
 
 # 平常不用設環境變數；HEARWELL_BACKUP_* 只在測試時把來源、目的地指到別的地方。
-source_dir="${HEARWELL_BACKUP_SOURCE:-tingpal-vps:backups/}"
+source_dir="${HEARWELL_BACKUP_SOURCE:-hearwell-vps:backups/}"
 backup_dir="${HEARWELL_BACKUP_DIR:-$HOME/backups/hearwell-vps}"
 log_file="${HEARWELL_BACKUP_LOG:-$HOME/Library/Logs/hearwell-backup-pull.log}"
 retry_seconds="${HEARWELL_BACKUP_RETRY_SECONDS:-60}"
@@ -92,8 +100,9 @@ for attempt in $(/usr/bin/seq "$attempts"); do
     /bin/sleep "$retry_seconds"
   fi
 done
-# rsync -a 會把來源資料夾的權限帶過來，拉完一律改回只有自己能進。
+# rsync -a 會把 VPS 那邊的權限帶過來，拉完一律改回只有自己能讀寫。
 /bin/chmod 700 "$backup_dir"
+/usr/bin/find "$backup_dir" -maxdepth 1 -name '*.dump' -type f -exec /bin/chmod 600 {} +
 
 if [ "$pulled" != true ]; then
   notify "失敗：連不上 VPS，備份沒有拉回來，舊備份一份都沒刪。"
@@ -101,15 +110,16 @@ if [ "$pulled" != true ]; then
 fi
 
 # 拉得到但都是舊的，代表 VPS 那邊的每日備份可能停了：這時也不刪。
-fresh=$(/usr/bin/find "$backup_dir" -name 'hearwell-db-*.dump' -type f -mtime "-${fresh_days}d")
+fresh=$(/usr/bin/find "$backup_dir" -maxdepth 1 -name 'hearwell-db-*.dump' -type f \
+  -mtime "-${fresh_days}d")
 if [ -z "$fresh" ]; then
   notify "失敗：最新的備份超過 ${fresh_days} 天了，VPS 的每日備份可能停了，舊備份一份都沒刪。"
   exit 1
 fi
 
 # 只刪檔名是 hearwell-db-日期.dump、超過 8 天的；手動備份和其他檔案不動。
-deleted=$(/usr/bin/find "$backup_dir" -name 'hearwell-db-*.dump' -type f -mtime "+${keep_days}d" \
-  -print -delete | /usr/bin/wc -l | /usr/bin/tr -d ' ')
+deleted=$(/usr/bin/find "$backup_dir" -maxdepth 1 -name 'hearwell-db-*.dump' -type f \
+  -mtime "+${keep_days}d" -print -delete | /usr/bin/wc -l | /usr/bin/tr -d ' ')
 newest=$(/bin/ls -t "$backup_dir"/hearwell-db-*.dump | /usr/bin/head -1)
 log "成功：最新一份是 $(/usr/bin/basename "$newest")，刪了 ${deleted} 份超過 ${keep_days} 天的。"
 EOF
@@ -118,11 +128,12 @@ chmod 700 ~/bin/hearwell-pull-backups.sh
 
 - `<<'EOF'` 的單引號讓裡面的 `$HOME`、`$1` 原封不動寫進檔案，等腳本執行時才讀。
 - 腳本裡的指令都寫完整路徑（`/usr/bin/rsync`）：launchd 執行時的 `PATH` 很短，找不到 Homebrew 裝的東西。
-- 這是 Mac 內建的 rsync（openrsync），2026-11-16 代理在暫存資料夾測過四種情況，結果見 [驗證紀錄](../verification/issue-563-564.md)。
+- 這是 Mac 內建的 rsync（openrsync），2026-11-16 代理在暫存資料夾測過四種情況與 8 天的邊界，結果見 [驗證紀錄](../verification/issue-563-564.md)。
 
 ### 1-3 用假的舊檔試一次
 
 ```bash
+mkdir -p ~/backups/hearwell-vps
 echo test > ~/backups/hearwell-vps/hearwell-db-20200101-0300.dump
 touch -t 202001010300 ~/backups/hearwell-vps/hearwell-db-20200101-0300.dump
 bash ~/bin/hearwell-pull-backups.sh; echo "exit=$?"
@@ -189,6 +200,7 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/hearwell.backup-pull.pli
 - `StartCalendarInterval`：每天 12:00。Mac 在睡眠的話，醒來時補跑（`man launchd.plist`：launchd 跟 cron 不同，會在醒來時補）；關機的那幾天由登入那一次補。
 - `StandardErrorPath`：rsync、ssh 的錯誤訊息寫在這裡，失敗時查原因用。
 - macOS 可能跳「已加入背景項目」的通知，是正常的。
+- 出現 `Bootstrap failed: 5: Input/output error`：排程已經載入過了。要重來（例如改了設定檔）就先 `launchctl bootout gui/$(id -u)/hearwell.backup-pull`，再跑一次 `bootstrap` 那一行。
 
 確認（等 10 秒左右再看）：
 
@@ -226,19 +238,19 @@ ls -lt ~/backups/hearwell-vps | head -3
 ### 2-1 VPS
 
 ```bash
-ssh tingpal-vps 'ls -l ~/backups | grep -v "hearwell-db-.*\.dump$"'
+ssh hearwell-vps 'ls -l ~/backups | grep -v "hearwell-db-.*\.dump$"'
 ```
 
 會看到：要刪的手動備份（第一行 `total` 不用管）。每一個照下面刪，`<檔名>` 換成清單上的名字：
 
 ```bash
-ssh tingpal-vps 'rm ~/backups/<檔名>'
+ssh hearwell-vps 'rm ~/backups/<檔名>'
 ```
 
 再列一次：
 
 ```bash
-ssh tingpal-vps 'ls ~/backups'
+ssh hearwell-vps 'ls ~/backups'
 ```
 
 做對了會看到：只剩 `hearwell-db-日期.dump`。

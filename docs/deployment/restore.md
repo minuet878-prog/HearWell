@@ -15,9 +15,9 @@
 
 | 代稱 | 是什麼 | 真的值去哪裡查 |
 |---|---|---|
-| `tingpal-vps` | Mac 的 `~/.ssh/config` 裡的 VPS 代稱 | [收尾清單](closing-checklist.md) 1-1；`ssh -G tingpal-vps \| grep -E '^(hostname\|user) '` |
+| `hearwell-vps` | Mac 的 `~/.ssh/config` 裡的 VPS 代稱 | [收尾清單](closing-checklist.md)開頭的代稱表與 1-1 |
 | `<網站資料夾>` | VPS 上的程式碼資料夾 | `vpsdeploy.md`「Gunicorn 與 systemd」的 `WorkingDirectory` |
-| `<正式資料庫名稱>`、`<正式資料庫使用者>` | VPS 上 PostgreSQL 的資料庫與使用者 | `ssh tingpal-vps 'cut -d: -f3,4 ~/.pgpass'`，印出「名稱:使用者」（不印密碼） |
+| `<正式資料庫名稱>`、`<正式資料庫使用者>` | VPS 上 PostgreSQL 的資料庫與使用者 | `ssh hearwell-vps 'cut -d: -f3,4 ~/.pgpass'`，印出「名稱:使用者」（不印密碼） |
 | `<容器名稱>` | Mac 上跑 PostgreSQL 的 Docker 容器 | `docker ps --format '{{.Names}}  {{.Image}}'`，IMAGE 是 `postgres:…` 的那一個 |
 | `<本機資料庫使用者>` | 容器裡的資料庫使用者 | `docker exec <容器名稱> printenv POSTGRES_USER`（只印這一個，不用 `env`，免得印出密碼） |
 | `<本機 DATABASE_URL>` | 本機網站平常連的資料庫網址 | repo 主資料夾 `.env` 的 `DATABASE_URL=` 那一行 |
@@ -37,7 +37,7 @@
 
    ```bash
    git fetch origin && git log -1 --format='%h %s' origin/main
-   ssh tingpal-vps 'git -C <網站資料夾> log -1 --format="%h %s"'
+   ssh hearwell-vps 'git -C <網站資料夾> log -1 --format="%h %s"'
    ```
 
    做對了會看到：兩行的 commit 編號（前 7 碼）一樣。不一樣的話，先照平常的方式把正式站部署到最新 `main`，或等下次部署後再演練。
@@ -53,7 +53,7 @@ ls -lt ~/backups/hearwell-vps | head -3
 
 做對了會看到：最上面是 `hearwell-db-日期-時間.dump`，日期是今天或昨天。
 
-記下它的檔名，和檔名裡的時間（台灣時間），例如 `hearwell-db-20261117-0300.dump` → `2026-11-17 03:00`。下面的 `<備份檔>`、`<備份時間>` 換成這兩個。
+記下它的檔名，和檔名裡的時間，例如 `hearwell-db-20261117-0300.dump` → `2026-11-17 03:00`。下面的 `<備份檔>`、`<備份時間>` 換成這兩個。檔名裡的時間是台灣時間：VPS 的備份腳本用 `TZ=Asia/Taipei` 產生檔名，整台主機仍是 UTC（`vpsdeploy.md`「備份腳本」的「檔名用台灣時間」）。
 
 ### 2. 建測試資料庫
 
@@ -95,7 +95,7 @@ EOF
 
 ```bash
 docker exec -i <容器名稱> psql -U <本機資料庫使用者> -d hearwell_restore_test -At < /tmp/hearwell-compare.sql
-ssh tingpal-vps psql -h localhost -U <正式資料庫使用者> -d <正式資料庫名稱> -At < /tmp/hearwell-compare.sql
+ssh hearwell-vps psql -h localhost -U <正式資料庫使用者> -d <正式資料庫名稱> -At < /tmp/hearwell-compare.sql
 ```
 
 做對了會看到：兩行一模一樣，格式是 `問卷數|最新 migration|使用者數|作答筆數`，例如 `6|0035_signinmethod_line|…|…`。
@@ -132,13 +132,13 @@ DATABASE_URL=postgres://…/hearwell_restore_test py313/bin/python manage.py run
 docker exec <容器名稱> dropdb -U <本機資料庫使用者> hearwell_restore_test
 docker exec <容器名稱> psql -U <本機資料庫使用者> -l
 rm /tmp/hearwell-compare.sql
-grep DATABASE_URL .env
+grep -c hearwell_restore_test .env
 ```
 
 做對了會看到：
 
 - 清單裡沒有 `hearwell_restore_test` 了，開發資料庫還在。
-- `.env` 的 `DATABASE_URL` 跟平常一樣，最後一段不是 `hearwell_restore_test`。
+- 最後一行是 `0`：`.env` 裡沒有 `hearwell_restore_test`，平常的設定沒被改（這樣查不會把資料庫密碼印在畫面上）。
 
 `dropdb` 不會再問、刪了救不回來，按 Enter 前再看一次名稱是 `hearwell_restore_test`。出現 `is being accessed by other users`：第 5 步的網站還沒關。
 
@@ -156,7 +156,7 @@ grep DATABASE_URL .env
 
 | 順序 | 做什麼 | 細節在哪裡 |
 |---|---|---|
-| 1 | 確認是整台壞了：Vultr 後台看主機狀態，試 `ssh tingpal-vps` | — |
+| 1 | 確認是整台壞了：Vultr 後台看主機狀態，試 `ssh hearwell-vps` | — |
 | 2 | 在 Vultr 開一台新主機（同樣東京機房，隱私權說明寫的是日本東京） | `vpsdeploy.md`「總覽」 |
 | 3 | 照部署筆記重做：SSH 金鑰、主機安全、PostgreSQL（建同名的資料庫與使用者）、程式碼與 Python、Gunicorn 與 systemd、Nginx | `vpsdeploy.md` 同名各段 |
 | 4 | 重建 `.env`：`.env` 沒有備份，金鑰到各家後台重新取得（Google、LINE、Resend、Sentry）；`SECRET_KEY` 換新的，所有人要重新登入 | `docs/deployment/README.md`、`vpsdeploy.md`「密鑰輪替」 |
