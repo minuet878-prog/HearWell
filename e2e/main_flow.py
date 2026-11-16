@@ -16138,3 +16138,128 @@ class AudiogramMissedMarksTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
                     self.assertLessEqual(box["x"] + box["width"], width)
                     widths = self.tip().evaluate("el => [el.scrollWidth, el.clientWidth]")
                     self.assertLessEqual(widths[0], widths[1])
+
+
+class EmailTypoHintTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """Spec #611 J2 (ticket #614): an email that looks mistyped is asked about under the field on
+    註冊 and 忘記密碼 (用 LINE 取名稱 is the same script and place: test_email_hint). Which
+    emails are asked about is in email-hint.test.js."""
+
+    TYPO = "wang@gmial.com"
+    QUESTION = "您是不是要打 wang@gmail.com？"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def open(self, path, width=390, javascript=True):
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": 800}, java_script_enabled=javascript
+        )
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.goto(f"{self.live_server_url}{path}")
+        self.page.wait_for_load_state("load")
+
+    def email(self):
+        return self.main().get_by_label("電子郵件")
+
+    def hint(self):
+        return self.page.locator("#id_email_hint")
+
+    def leave(self, value):
+        self.email().fill(value)
+        self.email().press("Tab")
+
+    # Acceptance 1, 2, 9, 10.
+    def test_asks_after_the_field_is_left_and_puts_it_right(self):
+        for path in ("/register", "/forgot_password"):
+            with self.subTest(path=path):
+                self.open(path)
+                # Sent empty: no room taken.
+                expect(self.hint()).to_be_empty()
+                self.assertEqual(self.hint().bounding_box()["height"], 0)
+                requests = []
+                self.page.on("request", lambda request, seen=requests: seen.append(request))
+                self.email().fill(self.TYPO)
+                # Not while typing.
+                expect(self.hint()).to_be_empty()
+                self.email().press("Tab")
+                status = self.main().get_by_role("status").filter(has_text=self.QUESTION)
+                expect(status).to_be_visible()
+                expect(status.locator("b")).to_have_text("wang@gmail.com")
+                fix = status.get_by_role("button", name="按這裡改")
+                fix.click()
+                expect(self.email()).to_have_value("wang@gmail.com")
+                expect(self.email()).to_be_focused()
+                expect(fix).to_have_count(0)
+                # For screen readers only: the place takes no room again.
+                expect(self.hint()).to_have_text("已改成 wang@gmail.com")
+                self.assertEqual(self.hint().bounding_box()["height"], 0)
+                # Compared in the browser: nothing sent but the bold face for the email's words.
+                sent = [r.url for r in requests if r.resource_type != "font"]
+                self.assertEqual(sent, [])
+
+    # Acceptance 5: only asked; the server gets the email as typed.
+    def test_ignored_the_typo_is_sent_as_typed(self):
+        self.open("/register")
+        with self.saving_artifacts():
+            self.main().get_by_label("使用者名稱").fill("typo_e2e")
+            self.leave(self.TYPO)
+            expect(self.main().get_by_role("status").filter(has_text=self.QUESTION)).to_be_visible()
+            self.page.get_by_label("密碼", exact=True).fill("Fake-pass-2468")
+            self.page.get_by_label("密碼確認", exact=True).fill("Fake-pass-2468")
+            self.main().get_by_role("button", name="註冊", exact=True).click()
+            expect(self.page).to_have_url(re.compile(r"/consent"))
+            self.assertEqual(User.objects.get(username="typo_e2e").email, self.TYPO)
+
+    # Acceptance 11: a long email at 320 and 390px, at the usual and at 200% text.
+    def test_fits_a_phone_at_double_text_size(self):
+        long_typo = "chen.meihua.family1950@yaho.com.tw"
+        for width in (320, 390):
+            for double in (False, True):
+                with self.subTest(width=width, double_text=double):
+                    self.open("/register", width=width)
+                    if double:
+                        self.double_text()
+                    self.leave(long_typo)
+                    status = (
+                        self.main()
+                        .get_by_role("status")
+                        .filter(has_text="chen.meihua.family1950@yahoo.com.tw")
+                    )
+                    expect(status).to_be_visible()
+                    self.assertLessEqual(
+                        self.page.evaluate("document.documentElement.scrollWidth"), width
+                    )
+                    box = status.bounding_box()
+                    self.assertGreaterEqual(box["x"], 0)
+                    self.assertLessEqual(box["x"] + box["width"], width)
+                    fix = status.get_by_role("button", name="按這裡改").bounding_box()
+                    self.assertGreaterEqual(fix["width"], 44)
+                    self.assertGreaterEqual(fix["height"], 44)
+                    self.assertLessEqual(fix["x"] + fix["width"], width)
+
+    # Acceptance 12: without JavaScript, no question, no empty box or button; the form still
+    # sends, and comes back with no question either.
+    def test_without_javascript_nothing_shows_and_the_form_sends(self):
+        self.open("/forgot_password", javascript=False)
+        with self.saving_artifacts():
+            self.leave(self.TYPO)
+            expect(self.hint()).to_be_empty()
+            self.assertEqual(self.hint().bounding_box()["height"], 0)
+            expect(self.main().get_by_role("button", name="按這裡改")).to_have_count(0)
+            self.main().get_by_role("button", name="寄重設密碼信").click()
+            expect(self.main().get_by_text("這個信箱沒有註冊，請檢查有沒有打錯")).to_be_visible()
+            expect(self.email()).to_have_value(self.TYPO)
+            expect(self.hint()).to_be_empty()
+            self.assertEqual(self.hint().bounding_box()["height"], 0)

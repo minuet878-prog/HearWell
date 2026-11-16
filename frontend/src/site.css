@@ -1836,6 +1836,24 @@
     font-size: 1rem;
   }
 
+  /* Spec #611 J2 (#614, mockup-613-filling.html 一 A): under an email that looks mistyped, the
+     question in plain words and a framed 按這裡改 beside it, or under it when there is no room.
+     Sent empty, it takes no room; the email in the question breaks anywhere at 200% text. */
+  .email-hint {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.75rem;
+    color: var(--color-heading);
+    overflow-wrap: anywhere;
+  }
+  .email-hint:has(.email-hint-fix) { margin-top: 0.5rem; }
+  .email-hint > span { min-width: 0; }
+  .email-hint-fix {
+    flex: none;
+    min-height: var(--spacing-touch);
+  }
+
   /* Readability batch 3 (the owner's C1 B): under a new password, how many characters are in
      (password-count.js), on the register page and the 設新密碼 page; the success green
      (--color-normal, ADR 0007) with its tick once there are enough. */

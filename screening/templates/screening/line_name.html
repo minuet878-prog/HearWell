@@ -1,6 +1,11 @@
 {% extends "screening/layout.html" %}
+{% load static %}
 
 {% block title %}幫帳號取個名字｜聽伴{% endblock %}
+
+{% block extra_head %}
+<script defer src="{% static 'screening/email-hint.js' %}"></script>
+{% endblock %}
 
 {% block body %}
 {# Spec #506 acceptance 5-8 (the #539 mockup 4, W4-W6): Google's name page without the email row; LINE gives no email, so an optional email field under the birth year. No account until 下一步. #}
@@ -33,6 +38,8 @@
                     {% include "screening/auth_field_icon.html" with icon="mail" %}
                     {{ form.email }}
                 </div>
+                {# Spec #611 J2 (#614): email-hint.js asks here when the email looks mistyped. #}
+                <div id="id_email_hint" class="email-hint" role="status"></div>
                 {% include "screening/field_messages.html" with field=form.email help_class="field-help" %}
             </div>
             <p>下一步請您閱讀並同意<a class="inline-link" href="{% url 'privacy' %}">隱私權說明</a>。</p>

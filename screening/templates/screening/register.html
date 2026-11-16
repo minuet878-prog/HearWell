@@ -7,6 +7,7 @@
 <script defer src="{% static 'screening/password-toggle.js' %}"></script>
 <script defer src="{% static 'screening/register-checks.js' %}"></script>
 <script defer src="{% static 'screening/password-count.js' %}"></script>
+<script defer src="{% static 'screening/email-hint.js' %}"></script>
 {% endblock %}
 
 {% block body %}
@@ -50,6 +51,8 @@
                 </div>
                 {# #332 (spec #326 D6): register-checks.js says here what the green tick shows. #}
                 {% if field.name == "password2" %}<p class="visually-hidden" role="status"></p>{% endif %}
+                {# Spec #611 J2 (#614): email-hint.js asks here when the email looks mistyped. #}
+                {% if field.name == "email" %}<div id="id_email_hint" class="email-hint" role="status"></div>{% endif %}
                 {# Pages tidy-up: help in the body grey under its field; the password rules in a tip box. #}
                 {% if field.name == "password1" %}
                 {% include "screening/password_count.html" %}
