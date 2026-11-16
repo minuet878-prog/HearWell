@@ -236,12 +236,23 @@ class JourneyHomeTests(HomeJourneyTestCase):
         self.assertEqual(self.text(tile.group(3)), "上次結果 4 分 無／極輕微影響")
         self.assertIn('<span class="journey-tile-arrow" aria-hidden="true">', tile.group(3))
 
-    def test_the_next_screening_tile_says_the_day_big_and_the_days_left_small(self):
-        # Spec #453 acceptance 17.
+    def test_the_next_screening_tile_says_the_days_left_big_and_the_day_small(self):
+        # Spec #453 acceptance 17, turned round in readability batch 1 (the owner's B): 離下次篩檢,
+        # the days left big as 上次結果's score, the day small under them.
         self.answer(on=date(2026, 9, 26))
         tiles = self.tiles(self.main())
-        self.assertIn('<span class="journey-tile-date">2027/03/26</span>', tiles)
-        self.assertIn('<span class="journey-tile-small">還有 134 天</span>', tiles)
+        tile = tiles.split('<div class="journey-tile journey-tile-info">')[-1]
+        self.assertEqual(self.text(tile), "離下次篩檢 134 天 2027/03/26")
+        self.assertIn('<span class="journey-tile-score">134 <small>天</small></span>', tile)
+        self.assertIn('<span class="journey-tile-small">2027/03/26</span>', tile)
+
+    def test_without_a_day_to_count_to_the_tile_keeps_its_plain_label(self):
+        # Readability batch 1: 離 only where there are days to count; 還沒排 and 已到期 as before.
+        self.answer(on=date(2026, 5, 12))
+        self.make(PTA_55, PTA_55)
+        tiles = self.tiles(self.main())
+        self.assertIn('<span class="journey-tile-label">下次篩檢</span>', tiles)
+        self.assertNotIn("離下次篩檢", tiles)
 
     def test_a_retest_due_before_step_5_says_due_with_a_text_link(self):
         # Spec #453 acceptance 16: step 3 stays the 現在這一步, the one solid button its.

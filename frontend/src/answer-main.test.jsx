@@ -33,6 +33,7 @@ const intro = () => document.getElementById("answer-intro");
 
 function page() {
   document.body.innerHTML = `
+    <div id="answer-head"><h1>聽力對生活的影響</h1></div>
     <div id="answer-intro"><p>本問卷的目的在幫助您了解自己的聽力。</p></div>
     <p id="answer-loading" role="status"></p>
     <div id="answer-app" data-questionnaire-id="1" data-user-id="7" data-minutes="3"></div>
@@ -163,6 +164,22 @@ describe("React entry", () => {
     expect(fold.textContent).toBe("本量表適合已配戴助聽器的人。");
     // The page's own copy keeps its norm section, for the fold from item 2 on.
     expect(intro().querySelector("[data-intro-norm]")).not.toBeNull();
+  });
+
+  // Back to the first screen is AnswerApp.test.jsx's and e2e's: 上一題 goes through the history,
+  // and this file's earlier pages are never unmounted, so their apps would hear it too.
+  it("folds the page head away past the first screen (readability batch 1)", async () => {
+    runInline();
+    respondWith(ok);
+    await startReact();
+    const head = () => document.getElementById("answer-head");
+    const button = (name) => [...app().querySelectorAll("button")].find((b) => b.textContent.includes(name));
+    await waitFor(() => expect(app().textContent).toContain("這次填答時，您有沒有戴助聽器？"));
+    expect(head().classList.contains("is-past-first")).toBe(false);
+    act(() => app().querySelector("input[type=radio]").click());
+    act(() => button("下一題").click());
+    await waitFor(() => expect(app().textContent).toContain("第1題的完整題目文字"));
+    expect(head().classList.contains("is-past-first")).toBe(true);
   });
 
   it("brings the form back at once when loading fails (acceptance 3)", async () => {

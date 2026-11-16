@@ -1191,36 +1191,56 @@
     font-weight: 700;
   }
 
-  /* Centred like the rest of the footer. Phones: one link per row; from 48em the links share one row with even
-     gaps, each as wide as its words, so a long and a short link look evenly spaced. */
+  /* Centred like the rest of the footer, the links in one row (readability batch 1, the owner's
+     A). Phones: equal columns, each icon over its words; a column is never narrower than its
+     words, so at large text sizes the row wraps rather than breaking a name. From 48em each link
+     is as wide as its words, its icon beside them, with even gaps between. */
   .site-footer-links {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    margin: 0 0 1.25rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.25rem;
+    margin: 0 0 1rem;
     padding: 0;
     list-style: none;
   }
 
-  @media (min-width: 48em) {
-    .site-footer-links {
-      flex-direction: row;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 0.5rem 1rem;
-    }
+  .site-footer-links li {
+    flex: 1 1 0;
+    min-width: max-content;
   }
 
   .site-footer-links a {
-    display: inline-flex;
-    gap: 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
     align-items: center;
+    justify-content: center;
     min-height: 3.25rem;
-    padding: 0.5rem 0.75rem;
+    padding: 0.4rem 0.25rem;
     border-radius: var(--radius-medium);
     font-weight: 500;
+    white-space: nowrap;
     text-decoration-line: none;
+  }
+
+  @media (min-width: 48em) {
+    .site-footer-links {
+      gap: 0.5rem 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .site-footer-links li {
+      flex: none;
+      min-width: 0;
+    }
+
+    .site-footer-links a {
+      display: inline-flex;
+      flex-direction: row;
+      gap: 0.6rem;
+      padding: 0.5rem 0.75rem;
+    }
   }
 
   .site-footer-links a:hover {
@@ -6314,6 +6334,25 @@
   /* The answer page's line under its title: the code, count and minutes in the muted grey. */
   .answer-meta {
     color: var(--color-muted);
+  }
+
+  /* Readability batch 1 (the owner's A): past the first screen the head folds away, so each
+     question has only the progress above it. The title and count stay for screen readers, so the
+     page keeps its heading; the guest line goes, its link with it. */
+  .answer-head.is-past-first > :is(h1, .answer-meta) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .answer-head.is-past-first > .answer-guest-line {
+    display: none;
   }
 
   /* IOI-HA's norm basis on item 1: a 提示框 (P3), the question straight after it (#362). */

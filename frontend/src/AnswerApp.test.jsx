@@ -421,6 +421,49 @@ describe("catching up an unaided record (#154)", () => {
   });
 });
 
+describe("the page head on the first screen only (readability batch 1)", () => {
+  // The owner's A: the page's title, count and guest line above the first screen only; after it,
+  // each question has just the progress above it. The app says which, the page does the hiding.
+  it("is on the first screen at the hearing aid question, past it from question 1, on it again back there", async () => {
+    const onPastFirst = vi.fn();
+    await renderApp({ onPastFirst });
+    expect(onPastFirst).toHaveBeenLastCalledWith(false);
+    choose("沒戴");
+    next();
+    expect(onPastFirst).toHaveBeenLastCalledWith(true);
+    choose("常常");
+    next();
+    expect(onPastFirst).toHaveBeenLastCalledWith(true);
+    // 上一題 goes back through the browser's history, so the step changes a moment later.
+    fireEvent.click(screen.getByRole("button", { name: "上一題" }));
+    await waitFor(() => expect(legend()).toMatch(/^第 1 題/));
+    expect(onPastFirst).toHaveBeenLastCalledWith(true);
+    fireEvent.click(screen.getByRole("button", { name: "上一題" }));
+    await waitFor(() => expect(legend()).toContain("有沒有戴助聽器"));
+    expect(onPastFirst).toHaveBeenLastCalledWith(false);
+  });
+
+  it("counts question 1 as the first screen when there is no hearing aid question (IOI-HA)", async () => {
+    const onPastFirst = vi.fn();
+    await renderApp({ onPastFirst, skipWearing: true });
+    expect(legend()).toContain("第 1 題");
+    expect(onPastFirst).toHaveBeenLastCalledWith(false);
+    choose("常常");
+    next();
+    expect(onPastFirst).toHaveBeenLastCalledWith(true);
+  });
+
+  it("keeps the head while asking whether to carry on, and leaves it once carried on past the start", async () => {
+    saveDraft({ userId: USER_ID, questionnaireId: 1, key: crypto.randomUUID(), wearing: false, answers: { 11: 4 }, step: 2, savedAt: Date.now() });
+    const onPastFirst = vi.fn();
+    await renderApp({ onPastFirst });
+    expect(screen.getByRole("button", { name: "接著答" })).toBeTruthy();
+    expect(onPastFirst).not.toHaveBeenCalledWith(true);
+    fireEvent.click(screen.getByRole("button", { name: "接著答" }));
+    expect(onPastFirst).toHaveBeenLastCalledWith(true);
+  });
+});
+
 describe("next and previous", () => {
   it("without a choice, 下一題 stays on the question, asks for one and puts focus back on it (#326 C5)", async () => {
     await renderApp();

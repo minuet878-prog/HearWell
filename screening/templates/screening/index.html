@@ -37,18 +37,21 @@
     {% endif %}
     {% endwith %}
     <div class="journey-tile journey-tile-info">
-        <span class="journey-tile-label">下次篩檢</span>
         {% with screening=journey.next_screening %}
         {% if screening is None %}
+        <span class="journey-tile-label">下次篩檢</span>
         <span class="journey-tile-date">還沒排</span>
         <span class="journey-tile-small">做完問卷後算出</span>
         {% elif screening.due %}
+        <span class="journey-tile-label">下次篩檢</span>
         <span class="journey-tile-date">已到期</span>
         {# #458 D4: at step 5 the card's button is the same thing, so no second way here. #}
         {% if journey.current != 5 %}<a class="journey-tile-link" href="{{ screening.href }}">再做一次</a>{% endif %}
         {% else %}
-        <span class="journey-tile-date">{{ screening.on|date:"Y/m/d" }}</span>
-        <span class="journey-tile-small">還有 {{ screening.days_left }} 天</span>
+        {# Readability batch 1 (the owner's B): the days left big, as 上次結果's score; 離 so it reads as a count, not how long screening takes. #}
+        <span class="journey-tile-label">離下次篩檢</span>
+        <span class="journey-tile-score">{{ screening.days_left }} <small>天</small></span>
+        <span class="journey-tile-small">{{ screening.on|date:"Y/m/d" }}</span>
         {% endif %}
         {% endwith %}
     </div>
