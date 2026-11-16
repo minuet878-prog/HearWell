@@ -80,6 +80,27 @@ describe("items marked data-hide-in-app", () => {
   });
 });
 
+// The server reads it when a LINE trip starts (screening/oidc.py HOME_SCREEN_APP).
+describe("the home_screen_app cookie", () => {
+  afterEach(() => {
+    document.cookie = "home_screen_app=; path=/; max-age=0";
+  });
+
+  it("is left in the iPhone home-screen app", () => {
+    setUpPwaNav(fakeWindow({ iphone: true }));
+    expect(document.cookie).toContain("home_screen_app=1");
+  });
+
+  // An Android home-screen app shares Chrome's cookies, so LINE's auto login comes back to it.
+  it.each([
+    ["the Android home-screen app", { iphone: false, android: true }],
+    ["a browser tab", { iphone: false }],
+  ])("is not left in %s", (_, options) => {
+    setUpPwaNav(fakeWindow(options));
+    expect(document.cookie).not.toContain("home_screen_app");
+  });
+});
+
 describe("back button", () => {
   afterEach(() => vi.useRealTimers());
 

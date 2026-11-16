@@ -106,6 +106,14 @@ class StartTests(TestCase):
         for name in ("state", "nonce", "code_challenge"):
             self.assertGreaterEqual(len(query[name]), 32, name)
 
+    def test_the_iphone_home_screen_app_changes_nothing_for_google(self):
+        # Google opens no app of its own; disable_auto_login is LINE's.
+        self.google.start()
+        in_a_browser = set(self.google.authorize)
+        self.client.cookies[oidc.HOME_SCREEN_APP] = "1"
+        self.google.start()
+        self.assertEqual(set(self.google.authorize), in_a_browser)
+
     def test_each_trip_has_its_own_state_nonce_and_pkce(self):
         self.google.start()
         first = self.google.authorize
