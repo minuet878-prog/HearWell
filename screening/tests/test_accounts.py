@@ -10,7 +10,7 @@ from django.urls import reverse
 
 from screening.forms import RegisterForm
 from screening.models import Questionnaire, Submission, User
-from screening.tests.helpers import consented_user, step_bar
+from screening.tests.helpers import consented_user, minimum_password_length, step_bar
 
 
 def page_top(content):
@@ -468,9 +468,12 @@ class RegisterFormTests(TestCase):
         for name in ("roc_birth_year", "password2"):
             with self.subTest(field=name):
                 self.assertRegex(by_name[name], r'<p class="visually-hidden" role="status"></p>')
-        for name in ("username", "email", "password1"):
+        for name in ("username", "email"):
             with self.subTest(field=name):
                 self.assertNotIn('role="status"', by_name[name])
+        # 密碼 has no tick's status, only its character count's (readability batch 3).
+        self.assertNotIn('<p class="visually-hidden" role="status"></p>', by_name["password1"])
+        self.assertIn('class="visually-hidden password-count-status"', by_name["password1"])
 
     def test_password_mismatch_keeps_input(self):
         response = self._post(password2="Different#123", roc_birth_year="44")
@@ -704,6 +707,19 @@ class RegisterPageGuidanceTests(TestCase):
                 self.assertIn('type="button"', button)
                 self.assertIn(f'aria-controls="id_{field}"', button)
                 self.assertRegex(button, r"\shidden[\s>]")
+
+    def test_the_password_count_waits_for_javascript(self):
+        # Readability batch 3 (C1 B): the count under 密碼, its minimum the server's; the
+        # counting itself is in password-count.test.js and end to end.
+        content = self.client.get(self.url).content.decode()
+        self.assertIn("screening/password-count.js", content)
+        lines = re.findall(r'<p class="password-count[^"]*"[^>]*>', content)
+        self.assertEqual(len(lines), 1)
+        self.assertIn('data-for="id_password1"', lines[0])
+        self.assertIn(f'data-min="{minimum_password_length()}"', lines[0])
+        self.assertRegex(lines[0], r"\shidden[\s>]")
+        statuses = re.findall(r'class="[^"]*password-count-status[^"]*" role="status"', content)
+        self.assertEqual(len(statuses), 1)
 
     def test_each_password_rule_is_still_checked(self):
         # The help text changed, the validators did not: each rule still blocks the account.

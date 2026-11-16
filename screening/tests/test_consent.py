@@ -17,16 +17,41 @@ from screening.tests.helpers import consented_user, fake_definition, register, s
 
 PASSWORD = "Xk9#mPq2vLw"
 TEMPLATES = Path(__file__).resolve().parents[1] / "templates" / "screening"
-HIGHLIGHTS = (
-    "只用來算分數、給建議、保存您的紀錄，不拿去賣或做廣告。",
-    "照顧旅程的待辦打勾也會保存，跟其他紀錄一樣可以下載或刪除。",  # version 5 (spec #478)
-    "忘記密碼時，才會寄重設密碼信到您的信箱；寄信服務 Resend 在美國，信保存 30 天。",  # 6 (#526)
-    "用 LINE 登入時，只拿 LINE 給您的代號，不拿名稱、大頭貼、email 和好友名單。",  # 8 (#506)
-    "用 Google 登入時，只拿 Google 給您的代號和 email，不拿名稱、大頭貼。",  # 7 (#505)
-    "資料存在網站主機和資料庫；網站出錯時送去錯誤監控的內容，不包含您的名稱、作答或分數。",
-    "您可以隨時要求查詢、更正或刪除您的資料。",
-    "結果只是參考，不是醫療診斷。",
+# Readability batch 3 (the owner's C2 A, 2026-11-16): the eight highlights in three groups,
+# each word as it was; only their order moved to fit the groups. Not a new consent version
+# (ADR 0061): what people are told did not change.
+HIGHLIGHT_GROUPS = (
+    (
+        "用來做什麼",
+        (
+            "只用來算分數、給建議、保存您的紀錄，不拿去賣或做廣告。",
+            "照顧旅程的待辦打勾也會保存，跟其他紀錄一樣可以下載或刪除。",  # version 5 (spec #478)
+            "結果只是參考，不是醫療診斷。",
+        ),
+    ),
+    (
+        "登入和寄信時",
+        (
+            "忘記密碼時，才會寄重設密碼信到您的信箱；寄信服務 Resend 在美國，信保存 30 天。",  # 6
+            "用 LINE 登入時，只拿 LINE 給您的代號，不拿名稱、大頭貼、email 和好友名單。",  # 8
+            "用 Google 登入時，只拿 Google 給您的代號和 email，不拿名稱、大頭貼。",  # 7 (#505)
+        ),
+    ),
+    (
+        "存在哪裡、您的權利",
+        (
+            "資料存在網站主機和資料庫；網站出錯時送去錯誤監控的內容，不包含您的名稱、作答或分數。",
+            "您可以隨時要求查詢、更正或刪除您的資料。",
+        ),
+    ),
 )
+HIGHLIGHTS = tuple(line for _title, lines in HIGHLIGHT_GROUPS for line in lines)
+
+
+def highlight(start):
+    """The one highlight that starts with these words."""
+    (line,) = (line for line in HIGHLIGHTS if line.startswith(start))
+    return line
 
 
 def _consent_url(next_url):
@@ -126,11 +151,34 @@ class PrivacyHighlightsTests(TestCase):
         summary = consent[consent.index("重點") : consent.index("閱讀完整的隱私權說明")]
         self.assertEqual(self._list_items(summary), list(HIGHLIGHTS))
 
+    def test_highlights_come_in_three_titled_groups_on_both_pages(self):
+        # Readability batch 3 (C2 A): a title over each group, under the section's own title.
+        main = self._privacy_main()
+        pages = {"privacy": main[main.index("先看重點") : main.index("誰在蒐集")]}
+        self.client.force_login(User.objects.create_user(username="grouped_highlights"))
+        consent = self.client.get(reverse("consent")).content.decode()
+        start, end = consent.index('id="highlights-title"'), consent.index("閱讀完整的隱私權說明")
+        pages["consent"] = consent[start:end]
+        for page, html in pages.items():
+            with self.subTest(page=page):
+                groups = re.findall(r"<h3[^>]*>(.*?)</h3>\s*<ul[^>]*>(.*?)</ul>", html, re.S)
+                self.assertEqual(
+                    [(title, tuple(self._list_items(items))) for title, items in groups],
+                    list(HIGHLIGHT_GROUPS),
+                )
+                # All in sight: none of them behind a dropdown in the highlights' section.
+                self.assertNotIn("<details", html[: html.index("</section>")])
+
+    def test_grouping_the_highlights_is_not_a_new_version(self):
+        # ADR 0061: only the order and the titles changed, so who agreed to version 8 is not
+        # asked again. A later version for new words updates this number.
+        self.assertEqual(models.CONSENT_VERSION, 8)
+
     def test_highlights_are_written_in_one_place(self):
         files = [
             path.name
             for path in TEMPLATES.rglob("*.html")
-            if HIGHLIGHTS[3] in path.read_text(encoding="utf-8")
+            if highlight("用 LINE 登入時") in path.read_text(encoding="utf-8")
         ]
         self.assertEqual(files, ["consent_highlights.html"])
 
@@ -622,7 +670,7 @@ class VpsPrivacyTests(TestCase):
 
 
 # The highlight naming the 重設密碼信 (#526), on the privacy notice's top and the consent page.
-RESET_HIGHLIGHT = HIGHLIGHTS[2]
+RESET_HIGHLIGHT = highlight("忘記密碼時")
 # Its line under 會交給誰, word for word as the owner approved it on 2026-11-13, with 不會 in
 # <strong> as Sentry's.
 RESEND_RECIPIENT = (

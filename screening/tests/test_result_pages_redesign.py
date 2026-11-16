@@ -19,6 +19,11 @@ from screening.tests.helpers import consented_user, submission_with_answers
 TAIPEI = timezone.get_fixed_timezone(8 * 60)
 SOLID = re.compile(r'class="btn btn-primary\b')
 BANNER = re.compile(r'<div class="result-banner result-banner-([a-z_]+)">(.*?)</div>\s*<p', re.S)
+# The score bar, to its ends' row and its own closing tag (score_bar.html).
+SCORE_BAR = re.compile(
+    r'<div class="score-bar" aria-hidden="true">.*?<div class="score-bar-ends">.*?</div>\s*</div>',
+    re.S,
+)
 DETAILS = re.compile(
     r'<details class="result-details"([^>]*)>(.*?)</details>\s*(?=<a|</div>)', re.S
 )
@@ -73,8 +78,10 @@ class GradedResultPageTests(TestCase):
         main = self.main(latest)
         colour, banner = BANNER.search(main).groups()
         self.assertEqual(colour, "mild_to_moderate")
+        # Read as a screen reader reads it: without the score bar, aria-hidden, that sits in the
+        # block since readability batch 3.
         self.assertEqual(
-            text(banner),
+            text(SCORE_BAR.sub("", banner)),
             "總分 14 分（滿分 40） 輕度到中度影響 上次 2026/03/26 是 18 分，這次少 4 分",
         )
         for verdict in ("進步", "退步", "改善", "變好", "變差"):
@@ -122,13 +129,13 @@ class GradedResultPageTests(TestCase):
         self.assertEqual(positions, sorted(positions))
 
     def test_the_full_explanation_is_folded_with_every_word_kept(self):
-        # R1: the score bar, steps 2-3, the full advice, the subscores and the answers.
+        # R1: steps 2-3, the full advice, the subscores and the answers; the score bar left
+        # for the result box in readability batch 3.
         main = self.main(self.hhie_s([4, 4, 2, 2, 0, 0, 0, 0, 0, 0], (2026, 11, 12)))
         fold = details(main)
         self.assertNotIn("open", fold[: fold.index(">")])
         steps = hhie_s.NEXT_STEPS["mild_to_moderate"]
         for piece in (
-            '<div class="score-bar"',
             steps[1]["text"],
             steps[2]["text"],
             "看助聽器選配與補助",
@@ -139,6 +146,7 @@ class GradedResultPageTests(TestCase):
             with self.subTest(piece=piece):
                 self.assertIn(piece, fold)
         self.assertNotIn(steps[0]["text"], fold)
+        self.assertNotIn('<div class="score-bar"', fold)
         self.assertEqual(main.count('<div class="score-bar"'), 1)
 
     def test_step_one_keeps_its_link(self):

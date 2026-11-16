@@ -4,6 +4,7 @@ import re
 from unittest.mock import patch
 from urllib.parse import parse_qsl, urlsplit
 
+from django.contrib.auth import password_validation
 from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -12,6 +13,16 @@ from screening import models, questionnaires
 from screening.questionnaires import hhie_s
 from screening.questionnaires.definition import Definition
 from screening.questionnaires.results import GradedResult
+
+
+def minimum_password_length():
+    """The server's minimum (MinimumLengthValidator), which the page's count works to."""
+    (validator,) = (
+        v
+        for v in password_validation.get_default_password_validators()
+        if isinstance(v, password_validation.MinimumLengthValidator)
+    )
+    return validator.min_length
 
 
 def consented_user(**kwargs):

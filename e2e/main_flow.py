@@ -1246,6 +1246,50 @@ class CopyPasswordRegisterFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLi
                 if size:
                     self.assert_fits_a_phone_at_double_text_size("register with ticks", width)
 
+    COUNT_GREY = "rgb(74, 84, 96)"  # --color-muted
+    COUNT_GREEN = "rgb(20, 87, 60)"  # --color-normal, the success green
+
+    # Readability batch 3 (the owner's C1 B): how many characters 密碼 has, and how many are
+    # still missing, under it; green with a tick from 8. The 設新密碼 page uses the same include
+    # and script (test_password_reset); its counting rules are in password-count.test.js.
+    def test_register_counts_the_passwords_characters(self):
+        for width, size in ((390, None), (320, "225%")):
+            with self.subTest(width=width, text_size=size):
+                self.open(width=width, height=640)
+                count = self.page.locator(".password-count")
+                self.page.goto(f"{self.live_server_url}/register")
+                self.page.wait_for_load_state("load")
+                if size:
+                    self.page.locator("html").evaluate(
+                        f"html => html.style.setProperty('font-size', '{size}', 'important')"
+                    )
+                password = self.page.get_by_label("密碼", exact=True)
+                expect(count).to_be_hidden()
+                password.fill("Fake-")
+                expect(count).to_have_text("已經輸入 5 個字，還差 3 個")
+                colour = count.evaluate("el => getComputedStyle(el).color")
+                self.assertEqual(colour, self.COUNT_GREY)
+                # Right under the field, over the rules. Measured in one go: typing scrolls the
+                # field into view, smoothly once the fonts are in, and boxes taken one by one
+                # can each catch the page at a different point of that scroll.
+                field, line, rules = self.page.evaluate(
+                    """() => ["#id_password1", ".password-count", "#id_password1_helptext"]
+                        .map((s) => document.querySelector(s).getBoundingClientRect())
+                        .map((r) => ({ top: r.top, bottom: r.bottom }))"""
+                )
+                self.assertGreaterEqual(line["top"], field["bottom"])
+                self.assertLessEqual(line["bottom"], rules["top"])
+                password.fill("Fake-pas")
+                expect(count).to_have_text("✓ 已經輸入 8 個字")
+                colour = count.evaluate("el => getComputedStyle(el).color")
+                self.assertEqual(colour, self.COUNT_GREEN)
+                # Screen readers hear it once typing pauses.
+                expect(self.page.locator(".password-count-status")).to_have_text(
+                    "✓ 已經輸入 8 個字"
+                )
+                if size:
+                    self.assert_fits_a_phone_at_double_text_size("register with a count", width)
+
     RED_BG = "rgb(254, 236, 231)"  # --color-severe-bg, the wrong field's fill
 
     # Owner's call (2026-10-24, #326 self-review): the tick takes the server's red frame and
@@ -1516,6 +1560,9 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         )
         folded = self.main().locator(".result-details-body")
         expect(folded).to_be_hidden()
+        # Readability batch 3 (B6 A): the bar in sight in the result box, not behind the fold.
+        expect(self.main().locator(".result-banner .score-bar")).to_be_visible()
+        expect(folded.locator(".score-bar")).to_have_count(0)
         self.main().locator(".result-details > summary").click()
         expect(folded).to_contain_text("建議前往醫院耳鼻喉科進行聽力相關檢查")
         expect(folded.get_by_role("link", name="看助聽器選配與補助")).to_be_visible()
@@ -1531,13 +1578,8 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         mild = self.page.locator(".score-bar-segment-mild_to_moderate").bounding_box()
         centre = marker["x"] + marker["width"] / 2
         self.assertTrue(mild["x"] < centre < mild["x"] + mild["width"])
-        # Text-heavy pages tidy-up: only this score's level, in bold under the marker, and the
-        # two ends, 0 and 40.
-        current = self.page.locator(".score-bar-current span")
-        expect(current).to_have_text("輕度到中度影響")
-        self.assertEqual(current.evaluate("el => getComputedStyle(el).fontWeight"), "700")
-        label = current.bounding_box()
-        self.assertTrue(label["x"] < centre < label["x"] + label["width"])
+        # Readability batch 3: only the two ends, 0 and 40; the level is in large type over it.
+        expect(self.page.locator(".score-bar-current")).to_have_count(0)
         expect(self.page.locator(".score-bar-ends > span")).to_have_text(["0", "40"])
 
     def step5_home_shows_the_next_date(self):
@@ -6591,7 +6633,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.open(width=390)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
-            # #461: the bar and the dropdowns are behind 看完整說明, itself a dropdown.
+            # #461: the dropdowns are behind 看完整說明, itself a dropdown (the bar left it for the
+            # result box in readability batch 3).
             self.page.locator(".result-details > summary").click()
             segments = self.page.locator(".score-bar-segment").all()
             self.assertEqual([self.style(s, "backgroundColor") for s in segments], fills)
@@ -9759,11 +9802,10 @@ class GuideMeterFillTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiv
                 self.assertNotIn("paused", {a["state"] for a in found}, meter)
 
     # #338 acceptance 21: the result page's score position bar stays still, scrolled to or not
-    # (#461: SSQ12-TW's position bar went, and the score bar is behind 看完整說明).
+    # (#461: SSQ12-TW's position bar went; readability batch 3: the bar is in the result box).
     def test_result_position_bars_stay_still(self):
         self.open(f"/submission/{self.submission.pk}")
         with self.saving_artifacts():
-            self.main().locator(".result-details > summary").click()
             found = self.page.locator(".score-bar")
             expect(found).to_be_visible()
             self.page.evaluate("window.scrollTo({top: 99999, behavior: 'instant'})")
@@ -10535,15 +10577,16 @@ class TypeSizesT357Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerT
         self.answered_chapter()
         return "/guide"
 
-    # Acceptance 2: the score bar's level and both ends, IOI-HA's scale ends and the guide's
-    # meter label are 1rem; on a narrow phone the bar's level stays whole inside the bar.
+    # Acceptance 2: the score bar's ends, IOI-HA's scale ends and the guide's meter label are
+    # 1rem; on a narrow phone both ends stay whole under the bar (its level line went in
+    # readability batch 3).
     def test_labels_needed_to_read_a_chart_are_1rem(self):
         cases = (
             (
                 "result's score bar",
                 True,
                 lambda test: test.result("hhie-s", 4),
-                (".score-bar-current span", ".score-bar-ends > span"),
+                (".score-bar-ends > span",),
             ),
             ("IOI-HA result", True, lambda test: test.ioi_ha_result(), (".ioi-scale-ends > span",)),
             ("guide's meter", True, lambda test: test.guide_with_records(), (".meter-scale",)),
@@ -10551,21 +10594,15 @@ class TypeSizesT357Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerT
         for name, signed_in, path, selectors in cases:
             with self.subTest(page=name):
                 self.visit(signed_in, path, width=320)
-                if "result" in name:  # #461: behind 看完整說明
+                if name == "IOI-HA result":  # #461: behind 看完整說明
                     self.main().locator(".result-details > summary").click()
                 for selector in selectors:
                     labels = self.main().locator(selector)
                     expect(labels.first).to_be_visible()
                     for label in labels.all():
                         self.assertEqual(self.font_size(label), self.REM, selector)
-                if ".score-bar-current span" in selectors:
-                    bar = self.main().locator(".score-bar").bounding_box()
-                    row = self.main().locator(".score-bar-current").bounding_box()
-                    level = self.main().locator(".score-bar-current span").bounding_box()
-                    self.assertGreaterEqual(level["x"], bar["x"])
-                    self.assertLessEqual(level["x"] + level["width"], bar["x"] + bar["width"])
-                    self.assertGreaterEqual(level["y"], row["y"])
-                    self.assertLessEqual(level["y"] + level["height"], row["y"] + row["height"])
+                if ".score-bar-ends > span" in selectors:
+                    bar = self.main().locator(".score-bar-segments").bounding_box()
                     # Both ends, 0 and 40, whole on the screen and under the bar's own ends.
                     ends = self.main().locator(".score-bar-ends > span")
                     expect(ends).to_have_text(["0", "40"])
@@ -13787,12 +13824,16 @@ class ResultPagesT461Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             # On the first screen of a 390 x 844 phone, above the floating tab bar.
             tab_bar = self.page.get_by_role("navigation", name="主要導覽").bounding_box()
             self.assertLessEqual(box["y"] + box["height"], tab_bar["y"])
-            # Folded: the score bar waits behind 看完整說明 until it is opened.
-            expect(self.page.locator(".score-bar")).not_to_be_visible()
+            # Readability batch 3 (B6 A): the score bar in sight in the block, on the first
+            # screen with the button above, and not behind 看完整說明 as well.
+            bar = banner.locator(".score-bar")
+            expect(bar).to_be_visible()
+            self.assertEqual(self.style(bar, "backgroundColor"), "rgb(255, 255, 255)")
+            self.assertLessEqual(bar.bounding_box()["y"], box["y"])
             summary = self.main().locator(".result-details > summary")
             self.assertGreaterEqual(summary.bounding_box()["height"], 44)
             summary.click()
-            expect(self.page.locator(".score-bar")).to_be_visible()
+            expect(self.page.locator(".score-bar")).to_have_count(1)
 
     def test_every_result_page_fits_a_phone_at_double_text_size(self):
         basis = None

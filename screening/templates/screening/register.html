@@ -6,6 +6,7 @@
 {% block extra_head %}
 <script defer src="{% static 'screening/password-toggle.js' %}"></script>
 <script defer src="{% static 'screening/register-checks.js' %}"></script>
+<script defer src="{% static 'screening/password-count.js' %}"></script>
 {% endblock %}
 
 {% block body %}
@@ -51,6 +52,7 @@
                 {% if field.name == "password2" %}<p class="visually-hidden" role="status"></p>{% endif %}
                 {# Pages tidy-up: help in the body grey under its field; the password rules in a tip box. #}
                 {% if field.name == "password1" %}
+                {% include "screening/password_count.html" %}
                 {% include "screening/field_messages.html" with help_class="tip-box" %}
                 {% else %}
                 {% include "screening/field_messages.html" with help_class="field-help" %}
