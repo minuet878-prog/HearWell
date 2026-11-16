@@ -1606,7 +1606,8 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         expect(since_last).to_contain_text(f"上一次（{self.old_date}）：40 分")
         expect(since_last).to_contain_text(f"最近一次（{today}，沒戴助聽器）")
         # 40 then 20 points, both 沒戴.
-        expect(since_last).to_contain_text("比上一次少 20 分（分數越低越好）")
+        expect(since_last.locator(".change-label")).to_have_text("比上次少 20 分")
+        expect(since_last).to_contain_text(f"上一次（{self.old_date}）：40 分（分數越低越好）")
 
 
 class ContinueNoticeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
@@ -2171,8 +2172,8 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                 self.assert_fits_a_phone_at_double_text_size("IOI-HA result")
             with self.subTest(page="SSQ12-TW result"):
                 self.page.goto(f"{self.live_server_url}/submission/{ssq_latest.pk}")
-                # #461: SSQ12-TW is not graded, so no 比上一次; its items are folded.
-                expect(self.main()).not_to_contain_text("比上一次")
+                # #461: SSQ12-TW is not graded, so no 比上次 (#646); its items are folded.
+                expect(self.main()).not_to_contain_text("比上次")
                 self.main().locator(".result-details > summary").click()
                 expect(self.main().get_by_role("heading", name="分數最低的 3 題")).to_be_visible()
                 self.main().get_by_text("看全部 12 題的回答", exact=True).click()
@@ -8942,8 +8943,8 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 "- paragraph: /最近一次（\\d{4}/\\d\\d/\\d\\d \\d\\d:\\d\\d，沒戴助聽器）/\n"
                 "- paragraph: 40 分\n"
                 "- paragraph: 顯著影響\n"
-                "- paragraph: 比上一次多 20 分（分數越低越好）\n"
-                "- paragraph: /上一次（\\d{4}/\\d\\d/\\d\\d \\d\\d:\\d\\d）：20 分/"
+                "- paragraph: 比上次多 20 分\n"
+                "- paragraph: /上一次（\\d{4}/\\d\\d/\\d\\d \\d\\d:\\d\\d）：20 分（分數越低越好）/"
             )
             number = float(self.style(block.locator(".result-number"), "fontSize")[:-2])
             first = float(self.style(block.locator("p").first, "fontSize")[:-2])
@@ -11046,7 +11047,7 @@ class MyRecordsT364Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerT
         with self.saving_artifacts():
             self.visit(True, lambda test: test.hhia_s_records(), width=390)
             block = self.main().locator(".records-score")
-            expect(block.locator("#since-last")).to_contain_text("比上一次多 20 分")
+            expect(block.locator("#since-last .change-label")).to_have_text("比上次多 20 分")
             self.assertNotEqual(self.style(block, "backgroundColor"), WhiteCardRuleTest.WHITE)
             self.assertEqual(self.style(block, "borderLeftWidth"), "0px")
             self.visit(True, "/my_hearing?questionnaire=hhia-s", width=320)
@@ -14014,13 +14015,14 @@ class ResultPagesT461Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
         with self.saving_artifacts():
             banner = self.main().locator(".result-banner")
             expect(banner).to_contain_text("輕度到中度影響")
-            expect(banner.locator(".result-since-last")).to_have_text(
-                "上次 2026/03/26 是 18 分，這次少 4 分"
+            # #646: the label, then the sentence without the difference.
+            expect(banner.locator(".result-since-last p")).to_have_text(
+                ["比上次少 4 分", "上次 2026/03/26 是 18 分"]
             )
             # 48px for the number (2.6667rem), at least the body size for every other word.
             self.assertAlmostEqual(self.font_size(banner.locator(".result-number")), 48, delta=0.1)
             for words in (
-                banner.locator(".result-since-last p"),
+                *banner.locator(".result-since-last p").all(),
                 self.main().locator(".result-one-line"),
             ):
                 self.assertGreaterEqual(self.font_size(words), self.rem())
@@ -16626,3 +16628,77 @@ class AnswerReassuranceTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
                         self.wait_for_questions()
                         expect(self.reassure()).to_be_visible()
                         self.assert_fits_a_phone_at_double_text_size(where, width)
+
+
+class ChangeLabelT646Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#646 (spec #644 H2, the #645 mockup's A): the label on top of 跟上次比 in the result box
+    and in 我的紀錄's 最近一次, neutral dark words on white, read out whole and never cut."""
+
+    fixtures = ("questions_fixture.json",)
+    TAIPEI = ResultPagesT461Test.TAIPEI
+    record = ResultPagesT461Test.record
+    lowest_contrast = staticmethod(StyleInBrowserTest.lowest_contrast)
+    CUT_OFF = WhiteCardRuleTest.CUT_OFF
+    WHITE = "rgb(255, 255, 255)"
+    HEADING = "rgb(33, 37, 41)"  # --color-heading
+    MUTED = "rgb(74, 84, 96)"  # --color-muted
+    RECORDS = "/my_hearing?questionnaire=hhie-s"
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+        self.sign_in(consented_user(username="change_label_t646"))
+        self.record("hhie-s", [4, 4, 4, 4, 2] + [0] * 5, (2026, 3, 26), wearing_hearing_aid=False)
+        # 14, today: 比上次少 4 分.
+        self.latest = self.record("hhie-s", [4, 4, 4, 2] + [0] * 6, wearing_hearing_aid=False)
+
+    def label_box(self):
+        return self.main().locator(".result-since-last")
+
+    def assert_neutral(self, label):
+        # Acceptance 7: the heading colour on white in a thin muted frame, in every level's box.
+        self.assertEqual(self.style(label, "color"), self.HEADING)
+        self.assertEqual(self.style(label, "backgroundColor"), self.WHITE)
+        for side in ("Top", "Right", "Bottom", "Left"):
+            self.assertEqual(self.style(label, f"border{side}Color"), self.MUTED, side)
+            self.assertEqual(self.style(label, f"border{side}Width"), "2px", side)
+        self.assertEqual(self.style(label, "fontWeight"), "700")
+        self.assertGreaterEqual(self.lowest_contrast(self.HEADING, self.WHITE), 4.5)
+        expect(label.locator("svg, img")).to_have_count(0)
+
+    def test_the_result_box_reads_the_label_then_the_sentence(self):
+        # Acceptance 1, 2, 7 and 9: a screen reader hears the whole label, then the sentence.
+        with self.saving_artifacts():
+            self.open(f"/submission/{self.latest.pk}")
+            expect(self.label_box()).to_match_aria_snapshot(
+                "- paragraph: 比上次少 4 分\n- paragraph: 上次 2026/03/26 是 18 分"
+            )
+            self.assert_neutral(self.label_box().locator(".change-label"))
+
+    def test_the_latest_record_reads_the_label_then_the_last_time(self):
+        # Acceptance 5, 7 and 9 on 我的紀錄.
+        with self.saving_artifacts():
+            self.open(self.RECORDS)
+            expect(self.page.locator(".recharts-wrapper")).to_be_visible()
+            expect(self.main().locator("#since-last")).to_match_aria_snapshot(
+                "- paragraph: 比上次少 4 分\n"
+                "- paragraph: 上一次（2026/03/26）：18 分（分數越低越好）"
+            )
+            self.assert_neutral(self.main().locator("#since-last .change-label"))
+
+    def test_fits_a_phone_at_double_text_size(self):
+        # Acceptance 10: no sideways scrolling, the label inside its box, nothing cut.
+        with self.saving_artifacts():
+            for path in (f"/submission/{self.latest.pk}", self.RECORDS):
+                for width in (320, 390):
+                    with self.subTest(path=path, width=width):
+                        self.open(path, (width, 844))
+                        if path == self.RECORDS:
+                            expect(self.page.locator(".recharts-wrapper")).to_be_visible()
+                        self.assert_fits_a_phone_at_double_text_size(path, width)
+                        self.assertEqual(self.page.evaluate(self.CUT_OFF), [], path)
+                        label = self.label_box().locator(".change-label")
+                        box = self.label_box().bounding_box()
+                        tag = label.bounding_box()
+                        self.assertLessEqual(tag["x"] + tag["width"], box["x"] + box["width"] + 0.5)
+                        width_now, room = label.evaluate("e => [e.scrollWidth, e.clientWidth]")
+                        self.assertLessEqual(width_now, room, path)

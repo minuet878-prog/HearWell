@@ -32,7 +32,7 @@ class Result:
     norm_group = None  # the norm group's name
     norm_summary = None  # the record against its norm group, for the report
     not_applicable_choice = None  # the download's choice for an answer without a score
-    # The result page's 與上次比較 (#461): {"text", "level_change"}; graded only.
+    # The result page's 與上次比較 (#461): {"label", "text", "level_change"}; graded only.
     since_last = None
 
     # The record's row of 我的紀錄 (#409) and its result page; page_context() is the page's data
@@ -128,7 +128,12 @@ class GradedResult(Result):
         # hearing aid status, no comparison. None also for the first, or when either cannot be
         # graded.
         from screening.models import Submission
-        from screening.scoring import UNKNOWN, level_change_text, result_since_last_text
+        from screening.scoring import (
+            UNKNOWN,
+            change_label_text,
+            level_change_text,
+            result_since_last_text,
+        )
 
         submission = self.submission
         # A guest's result has no account, so nothing to compare with (#494).
@@ -156,8 +161,10 @@ class GradedResult(Result):
         day = timezone.localdate(previous.created_at)
         previous_total = previous.result.total
         changed = level["level"] != previous_level["level"]
+        difference = self.total - previous_total
         return {
-            "text": result_since_last_text(day, previous_total, self.total - previous_total),
+            "label": change_label_text(difference),
+            "text": result_since_last_text(day, previous_total, difference),
             "level_change": (
                 level_change_text(previous_level["text"], level["text"]) if changed else None
             ),

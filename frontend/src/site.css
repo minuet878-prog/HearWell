@@ -4645,6 +4645,21 @@
     margin: 0;
   }
 
+  /* #646 (spec #644 H2, the #645 mockup's A): 比上次多／少 N 分 as a small name tag on white,
+     a thin dark grey frame and bold heading-colour words; never a level's colour, no arrow
+     (ADR 0007, ADR 0017). It wraps inside the box rather than run out of it. */
+  .result-since-last > .change-label {
+    display: inline-block;
+    max-width: 100%;
+    margin-bottom: 0.35rem;
+    padding: 0.15rem 0.6rem;
+    border: 2px solid var(--color-muted);
+    border-radius: var(--radius-small);
+    background-color: #fff;
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
   /* Readability batch 3 (the owner's B6 A): the score bar in the result box, on white so its
      pale segments show against the level's pale colour. */
   .result-banner .score-bar {

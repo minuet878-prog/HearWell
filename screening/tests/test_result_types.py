@@ -488,8 +488,8 @@ class SummaryTemplateTests(ResultTestCase):
                 f"<p>最近一次（{date}，{status}）</p>"
                 f'<p class="result-score"><span class="result-number">{score}</span> 分</p>'
                 f'<p class="result-block-level">{level}</p>'
-                f'<div class="result-since-last" id="since-last"><p>{text}</p>'
-                f"<p>上一次（{previous_date}）：{previous_score} 分</p></div></div>"
+                f'<div class="result-since-last" id="since-last"><p class="change-label">{text}</p>'
+                f"<p>上一次（{previous_date}）：{previous_score} 分（分數越低越好）</p></div></div>"
             )
 
         def badge(level, text):
@@ -514,7 +514,7 @@ class SummaryTemplateTests(ResultTestCase):
                 since_last(
                     ("2026/03/01", 20),
                     ("2026/04/01", 40, "沒戴助聽器", "severe", "顯著影響"),
-                    "比上一次多 20 分（分數越低越好）",
+                    "比上次多 20 分",
                 ),
             ),
             (
@@ -535,7 +535,7 @@ class SummaryTemplateTests(ResultTestCase):
                 since_last(
                     ("2026/03/02", 50),
                     ("2026/04/02", 100, "助聽器未記錄", "severe", "極重度障礙"),
-                    "比上一次多 50 分（分數越低越好）",
+                    "比上次多 50 分",
                 ),
             ),
             (

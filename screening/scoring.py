@@ -22,27 +22,21 @@ def retest_next_text(day):
     return f"下次建議 {day:%Y/%m/%d} 再做"
 
 
-LOWER_IS_BETTER = "分數越低越好"
-
-
-def since_last_text(difference):
-    # 「和上一次比」 on 我的紀錄's life-impact tabs (ticket #162): numbers and direction only, no
-    # verdict (ADR 0010, ADR 0013).
+def change_label_text(difference):
+    # The label on top of 跟上次比 on a graded result page and 我的紀錄's 最近一次 alike (#646,
+    # spec #644 H2): numbers and direction only, no verdict (ADR 0010, ADR 0013, ADR 0017).
     if difference == 0:
-        return "和上一次一樣"
-    if difference < 0:
-        return f"比上一次少 {-difference} 分（{LOWER_IS_BETTER}）"
-    return f"比上一次多 {difference} 分（{LOWER_IS_BETTER}）"
+        return "跟上次一樣"
+    change = "少" if difference < 0 else "多"
+    return f"比上次{change} {abs(difference)} 分"
 
 
 def result_since_last_text(day, previous_total, difference):
-    # A graded result page's line against the record before it (#461, spec #453 acceptance 23):
-    # that record's Taipei day and total and the difference, never better or worse (ADR 0017).
-    # The same total is the #460 mockup's draft.
+    # A graded result page's line against the record before it (#461, spec #453 acceptance 23),
+    # under the label: that record's Taipei day and total; the label says the difference (#646).
     if difference == 0:
-        return f"上次 {day:%Y/%m/%d} 也是 {previous_total} 分，這次一樣"
-    change = "少" if difference < 0 else "多"
-    return f"上次 {day:%Y/%m/%d} 是 {previous_total} 分，這次{change} {abs(difference)} 分"
+        return f"上次 {day:%Y/%m/%d} 也是 {previous_total} 分"
+    return f"上次 {day:%Y/%m/%d} 是 {previous_total} 分"
 
 
 def level_change_text(previous_level, level):

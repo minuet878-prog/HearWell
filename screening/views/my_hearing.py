@@ -12,8 +12,8 @@ from screening.scoring import (
     IOI_HA_NORMS,
     NORM_COMPARISON_TEXT,
     TREND_STATUS_TEXT,
+    change_label_text,
     compare_to_norm,
-    since_last_text,
 )
 from screening.views.common import RECENT_SHOWN, health_data_page, older_fold
 
@@ -165,7 +165,7 @@ def my_hearing(request):
             since_last = {
                 "latest": latest,
                 "previous": previous,
-                "text": since_last_text(latest.total_answer_score - previous.total_answer_score),
+                "label": change_label_text(latest.total_answer_score - previous.total_answer_score),
                 "wearing_change": WEARING_CHANGE_TEXT.get(
                     (previous.wearing_hearing_aid, latest.wearing_hearing_aid)
                 ),

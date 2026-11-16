@@ -537,24 +537,22 @@ class HistoryTabsTests(TestCase):
                 f"最近一次（{self._date(latest)}，有戴助聽器）",
                 "10 分",
                 "輕度到中度影響",
-                "比上一次少 4 分（分數越低越好）",
-                f"上一次（{self._date(aided)}）：14 分",
+                "比上次少 4 分",
+                f"上一次（{self._date(aided)}）：14 分（分數越低越好）",
             ],
         )
         self.assertIn('<span class="result-number">10</span> 分', main)
         since_last = self._since_last_text(main)
-        self.assertIn(f"上一次（{self._date(aided)}）：14 分", since_last)
-        self.assertIn("比上一次少 4 分（分數越低越好）", since_last)
+        self.assertIn(f"上一次（{self._date(aided)}）：14 分（分數越低越好）", since_last)
+        self.assertIn("比上次少 4 分", since_last)
 
     def test_trend_summary_has_no_comparison_line_down_to_0(self):
         self._hhie_s(12, False, days_ago=10)
         self._hhie_s(18, False, days_ago=5)
-        self.assertEqual(self._summary()[3], "比上一次多 6 分（分數越低越好）")
+        self.assertEqual(self._summary()[3], "比上次多 6 分")
         self._hhie_s(0, False, days_ago=1)
         summary = self._summary()
-        self.assertEqual(
-            summary[1:4], ["0 分", "無／極輕微影響", "比上一次少 18 分（分數越低越好）"]
-        )
+        self.assertEqual(summary[1:4], ["0 分", "無／極輕微影響", "比上次少 18 分"])
 
     def test_since_last_finds_the_previous_status_before_the_charts_five_days(self):
         # Acceptance 17: the chart draws five days, the comparison looks further back.
@@ -565,8 +563,8 @@ class HistoryTabsTests(TestCase):
         since_last = self._since_last_text(
             self._main_html(self.client.get(self._tab_url("hhie-s")))
         )
-        self.assertIn(f"上一次（{self._date(aided)}）：8 分", since_last)
-        self.assertIn("比上一次多 4 分（分數越低越好）", since_last)
+        self.assertIn(f"上一次（{self._date(aided)}）：8 分（分數越低越好）", since_last)
+        self.assertIn("比上次多 4 分", since_last)
 
     def test_trend_summary_with_one_record_and_a_score_of_0(self):
         latest = self._hhie_s(0, False, days_ago=1)
@@ -808,8 +806,8 @@ class HistoryRetestTests(TestCase):
             self._since_last_lines(main),
             [
                 "最近一次（2026/10/12，沒戴助聽器）",
-                "比上一次少 4 分（分數越低越好）",
-                "上一次（2026/09/12）：16 分",
+                "比上次少 4 分",
+                "上一次（2026/09/12）：16 分（分數越低越好）",
             ],
         )
         # Above the trend chart.
@@ -825,20 +823,21 @@ class HistoryRetestTests(TestCase):
     def test_since_last_says_the_same(self):
         self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=40)  # 12
         self._submit("hhie-s", [2] * 6 + [0] * 4, days_ago=10)  # 12, answered differently
-        self.assertEqual(self._since_last_lines(self._fetch_main_html())[1], "和上一次一樣")
+        self.assertEqual(self._since_last_lines(self._fetch_main_html())[1], "跟上次一樣")
 
     def test_since_last_says_how_many_points_more(self):
         self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=40)  # 12
         self._submit("hhie-s", [4, 4, 4, 4, 4, 2] + [0] * 4, days_ago=10)  # 22
-        self.assertEqual(
-            self._since_last_lines(self._fetch_main_html())[1], "比上一次多 10 分（分數越低越好）"
-        )
+        self.assertEqual(self._since_last_lines(self._fetch_main_html())[1], "比上次多 10 分")
 
     def test_no_since_last_with_one_record(self):
         self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=10)
         main = self._fetch_main_html()
         self.assertIsNone(self._since_last_lines(main))
         self.assertNotIn("和上一次比", main)
+        # #646 acceptance 6: no label, the chart's line as it was.
+        self.assertNotIn("change-label", main)
+        self.assertIn("再做一次篩檢，就能看到分數的變化。", main)
 
     def test_no_verdict_words_on_the_page(self):
         for name, newest in (
@@ -863,7 +862,7 @@ class HistoryRetestTests(TestCase):
         self._submit("hhia-s", [4, 4, 4, 2] + [0] * 6, days_ago=10)  # 14
         main = self._fetch_main_html()
         self.assertNotIn('id="trend-chart"', main)
-        self.assertEqual(self._since_last_lines(main)[1], "比上一次少 6 分（分數越低越好）")
+        self.assertEqual(self._since_last_lines(main)[1], "比上次少 6 分")
         self.assertLess(main.index('id="since-last"'), main.index('class="link-card"'))
 
     def test_other_questionnaires_do_not_compare(self):
@@ -882,12 +881,12 @@ class HistoryRetestTests(TestCase):
             self._since_last_lines(main),
             [
                 "最近一次（2026/10/12，沒戴助聽器）",
-                "比上一次少 4 分（分數越低越好）",
-                "上一次（2026/09/12）：16 分",
+                "比上次少 4 分",
+                "上一次（2026/09/12）：16 分（分數越低越好）",
             ],
         )
         # One block says it, so it is said once.
-        self.assertEqual(main.count("比上一次少 4 分"), 1)
+        self.assertEqual(main.count("比上次少 4 分"), 1)
         self.assertNotIn("上一次沒戴助聽器", main)
 
     def test_no_since_last_when_the_newest_status_is_unrecorded(self):
@@ -896,6 +895,7 @@ class HistoryRetestTests(TestCase):
         self._submit("hhie-s", [4, 4] + [0] * 8, days_ago=10, wearing_hearing_aid=None)  # 8
         main = self._fetch_main_html()
         self.assertIsNone(self._since_last_lines(main))
+        self.assertNotIn("change-label", main)
         # The trend summary still explains why there is no comparison.
         self.assertIn("這筆沒有記錄助聽器，不和其他紀錄比較。", main)
 
@@ -904,6 +904,7 @@ class HistoryRetestTests(TestCase):
         self._submit("hhie-s", [4, 4] + [0] * 8, days_ago=10, wearing_hearing_aid=True)  # 8
         main = self._fetch_main_html()
         self.assertIsNone(self._since_last_lines(main))
+        self.assertNotIn("change-label", main)
         self.assertIn("這是第一筆有戴助聽器的紀錄。", main)
 
     def test_only_the_logged_in_user_s_records_count(self):
@@ -919,8 +920,8 @@ class HistoryRetestTests(TestCase):
             self._since_last_lines(main),
             [
                 "最近一次（2026/04/22，沒戴助聽器）",
-                "比上一次少 4 分（分數越低越好）",
-                "上一次（2026/03/23）：16 分",
+                "比上次少 4 分",
+                "上一次（2026/03/23）：16 分（分數越低越好）",
             ],
         )
         # And the other way round: their one record, none of this user's.
@@ -1068,7 +1069,7 @@ class MyRecordsTidyT364Tests(TestCase):
                 main = self._main(code)
                 self.assertEqual(main.count("records-score"), 1)
                 block = main[main.index("records-score") :]
-                self.assertIn("比上一次少 6 分（分數越低越好）", block[: block.index("</div>")])
+                self.assertIn("比上次少 6 分", block[: block.index("</div>")])
 
     def test_ioi_ha_frame_holds_only_the_chart_and_its_legend(self):
         # Acceptance 5 (ADR 0022, like the trend chart): the title, the latest record, the norm
