@@ -1,15 +1,31 @@
 import re
 from datetime import date, datetime, timedelta
+from io import StringIO
+from typing import ClassVar
 from unittest.mock import patch
 
+from django.core.management import call_command
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
-from screening.models import Answer, Category, Question, Questionnaire, Submission
-from screening.tests.helpers import consented_user, fake_definition, register
+from screening.models import (
+    AidAndSubsidy,
+    Answer,
+    Category,
+    NormGroup,
+    Question,
+    Questionnaire,
+    Submission,
+)
+from screening.tests.helpers import (
+    consented_user,
+    fake_definition,
+    register,
+    submission_with_answers,
+)
 
 
 class TrendChartPageTests(TestCase):
@@ -1096,3 +1112,115 @@ class MyRecordsTidyT364Tests(TestCase):
             re.findall(r'^        <(\w+)(?: class="([^"]*)")?', frame, re.M),
             [("ul", "ioi-columns"), ("ul", "trend-legend")],
         )
+
+
+class FittingDayT650Tests(TestCase):
+    """#650 (spec #644 R2, acceptance 39-46): the current pair's fitting day on the trend chart,
+    and a sentence under it the server writes, so screen readers and pages without JavaScript
+    have it too. Whether the line fits between the chart's points is the chart's call."""
+
+    fixtures = ("questions_fixture.json",)
+    NOON = timezone.make_aware(datetime(2026, 9, 1, 12))
+    SENTENCE = "2026/05/01 開始戴助聽器。"
+    # A valid score for every item of each questionnaire.
+    SCORES: ClassVar = {"hhie-s": 2, "hhia-s": 2, "thi": 2, "ssq12-tw": 6, "ioi-ha": 3, "sadl": 4}
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_questionnaires", stdout=StringIO())
+        cls.user = consented_user(username="fitting_day_user")
+        for code, score in cls.SCORES.items():
+            aided = code in ("ioi-ha", "sadl")
+            norm_group = NormGroup.UNGROUPED if code == "ioi-ha" else ""
+            # 2026/03/01 without and 2026/09/01 with: the fitting day falls between them.
+            for when, wearing in ((cls.NOON - timedelta(days=184), aided), (cls.NOON, True)):
+                questionnaire = Questionnaire.objects.get(code=code)
+                record = submission_with_answers(
+                    cls.user,
+                    code,
+                    [score] * questionnaire.questions.count(),
+                    wearing_hearing_aid=wearing,
+                    norm_group=norm_group,
+                )
+                Submission.objects.filter(pk=record.pk).update(created_at=when)
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def _fitted(self, day):
+        # As the hearing aid form saves it, so a later day counts as a new pair.
+        aids = AidAndSubsidy.for_user(self.user) or AidAndSubsidy(user=self.user)
+        aids.fitted_on = day
+        aids.save()
+
+    def _main(self, code):
+        response = self.client.get(f"{reverse('my_hearing')}?questionnaire={code}")
+        html = response.content.decode()
+        return html[html.index("<main") : html.index("</main>")]
+
+    def _plot(self, main):
+        return re.search(r'<div id="trend-plot"([^>]*)>', main).group(1)
+
+    def test_hhie_s_and_thi_send_the_day_to_the_chart_and_say_it_under_it(self):
+        # Acceptance 39-41: the chart gets the day; the sentence is outside the chart's frame,
+        # which pages without JavaScript hide, and not hidden from screen readers.
+        self._fitted(date(2026, 5, 1))
+        for code in ("hhie-s", "thi"):
+            with self.subTest(code):
+                main = self._main(code)
+                self.assertIn('data-fitted-on="2026/05/01"', self._plot(main))
+                trend = re.search(r'<div id="trend-chart">(.*?)</section>', main, re.S).group(1)
+                sentence = re.search(rf"<p([^>]*)>{self.SENTENCE}</p>", trend)
+                self.assertIsNotNone(sentence)
+                self.assertNotIn("aria-hidden", sentence.group(1))
+                # After the frame (the legends are its last part), not inside it.
+                self.assertRegex(
+                    trend, rf'</ul>\s*</div>\s*<p class="trend-fitted">{self.SENTENCE}</p>'
+                )
+
+    def test_a_day_outside_the_records_is_still_said(self):
+        # Acceptance 42: the chart draws no line then, but the sentence is the same.
+        for day in (date(2025, 1, 1), date(2026, 10, 1)):
+            self._fitted(day)
+            with self.subTest(day=day):
+                main = self._main("hhie-s")
+                self.assertIn(f"{day:%Y/%m/%d} 開始戴助聽器。", main)
+                self.assertIn(f'data-fitted-on="{day:%Y/%m/%d}"', self._plot(main))
+
+    def test_no_day_no_line_and_no_sentence(self):
+        # Acceptance 43: no hearing aid answers at all, then answers without a fitting day.
+        for row in (False, True):
+            if row:
+                AidAndSubsidy.objects.create(user=self.user, ear="both")
+            with self.subTest(row=row):
+                for code in ("hhie-s", "thi"):
+                    main = self._main(code)
+                    self.assertIn('id="trend-plot"', main)
+                    self.assertNotIn("data-fitted-on", main)
+                    self.assertNotIn("開始戴", main)
+
+    def test_the_current_pair_s_day(self):
+        # Acceptance 44: a new pair moves the day later; the chart and the sentence follow it.
+        self._fitted(date(2026, 5, 1))
+        self._fitted(date(2026, 8, 1))
+        self.assertEqual(AidAndSubsidy.objects.get(user=self.user).pair_number, 2)
+        main = self._main("hhie-s")
+        self.assertIn('data-fitted-on="2026/08/01"', self._plot(main))
+        self.assertIn("2026/08/01 開始戴助聽器。", main)
+        self.assertNotIn("2026/05/01", main)
+
+    def test_only_the_day(self):
+        # Acceptance 45: the sentence is the day alone, no comparison or verdict.
+        self._fitted(date(2026, 5, 1))
+        main = self._main("hhie-s")
+        sentence = re.search(r'<p class="trend-fitted">(.*?)</p>', main, re.S).group(1)
+        self.assertEqual(sentence, self.SENTENCE)
+
+    def test_other_tabs_have_neither(self):
+        # Acceptance 46: only HHIE-S and THI have a trend chart.
+        self._fitted(date(2026, 5, 1))
+        for code in ("hhia-s", "ssq12-tw", "sadl", "ioi-ha"):
+            with self.subTest(code):
+                main = self._main(code)
+                self.assertNotIn("data-fitted-on", main)
+                self.assertNotIn("開始戴助聽器。", main)

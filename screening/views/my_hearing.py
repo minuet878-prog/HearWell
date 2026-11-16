@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from screening.care_journey import life_impact_url
 from screening.main_flow import get_user_state
-from screening.models import Answer, NormGroup, shared_days
+from screening.models import AidAndSubsidy, Answer, NormGroup, shared_days
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.questionnaires.results import GradedResult
 from screening.scoring import (
@@ -67,9 +67,9 @@ TREND_LEGEND = (
 )
 
 
-def _trend_chart(records, since_last):
+def _trend_chart(records, since_last, fitted_on):
     # records: one tab's records (HHIE-S, THI), newest first; since_last: the page's
-    # 「和上一次比」 or None.
+    # 「和上一次比」 or None; fitted_on: the current pair's fitting day or None (#650).
     # React draws only the chart itself, so the text around it is on the page from the start
     # and nothing below moves when it arrives. The wording is fixed by spec
     # phase9_ui_refresh_2_data.md 4.2.
@@ -89,6 +89,9 @@ def _trend_chart(records, since_last):
     statuses = {r.wearing_hearing_aid for r in records}
     return {
         "change": change,
+        # #650 (spec #644 R2): the chart marks it between its first and last day; the sentence
+        # under the chart says it whatever the day.
+        "fitted_on": fitted_on,
         "legend": [
             {"shape": shape, "text": text}
             for value, shape, text in TREND_LEGEND
@@ -174,7 +177,11 @@ def my_hearing(request):
                     (previous.wearing_hearing_aid, latest.wearing_hearing_aid)
                 ),
             }
-    trend_chart = _trend_chart(records, since_last) if current.definition.trend_chart else None
+    trend_chart = None
+    if current.definition.trend_chart:
+        # #650: only the current pair's day is kept (spec #644, owner 2026-11-16).
+        aids = AidAndSubsidy.for_user(request.user)
+        trend_chart = _trend_chart(records, since_last, aids.fitted_on if aids else None)
     return render(
         request,
         "screening/my_hearing.html",

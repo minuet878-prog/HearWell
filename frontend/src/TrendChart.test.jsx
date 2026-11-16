@@ -498,6 +498,89 @@ describe("TrendChart", () => {
     });
   });
 
+  // #650 (spec #644 R2, the #645 mockup's A): the current pair's fitting day, from the page.
+  describe("the day hearing aids were first worn", () => {
+    // 2026/03/01 without, 2026/09/01 and 2026/10/14 with a hearing aid.
+    const records = () =>
+      mockApi({
+        results: [
+          submission(3, "2026-10-14", 12, "輕度到中度影響", undefined, true),
+          submission(2, "2026-09-01", 14, "輕度到中度影響", undefined, true),
+          submission(1, "2026-03-01", 20),
+        ],
+      });
+    const plotTop = (container) => Number(container.querySelector(".recharts-wrapper clipPath rect").getAttribute("y"));
+    const marker = (container) => container.querySelector(".trend-fitting");
+    const lineX = (container) => Number(marker(container).querySelector(".trend-fitting-line").getAttribute("x1"));
+    const columns = (container) => [...new Set(dots(container).map((d) => Number(d.dataset.cx)))];
+
+    it("draws a dashed line between the records around it, 開始戴 above the plot (acceptance 39)", async () => {
+      records();
+      const { container } = render(<TrendChart code="hhie-s" fittedOn="2026/05/01" />);
+      await chartDrawn(container);
+      const [march, september] = columns(container);
+      expect(lineX(container)).toBe((march + september) / 2);
+      const line = marker(container).querySelector(".trend-fitting-line");
+      expect(line.getAttribute("x2")).toBe(line.getAttribute("x1"));
+      expect(line.getAttribute("stroke-dasharray")).toBeTruthy();
+      // Acceptance 45: the words alone, in a small box above the plot, clear of every point.
+      expect(marker(container).textContent).toBe("開始戴");
+      const box = marker(container).querySelector(".trend-fitting-box");
+      const boxBottom = Number(box.getAttribute("y")) + Number(box.getAttribute("height"));
+      expect(boxBottom).toBeLessThan(plotTop(container));
+      // From the box down to the bottom of the plot.
+      expect(Number(line.getAttribute("y1"))).toBe(boxBottom);
+      expect(Number(line.getAttribute("y2"))).toBe(plotBottom(container));
+      for (const dot of dots(container)) {
+        expect(Number(dot.dataset.cy) - Number(dot.dataset.size)).toBeGreaterThan(boxBottom);
+      }
+      // Hidden from screen readers with the rest of the chart; the page says the day in text.
+      expect(marker(container).closest('[aria-hidden="true"]')).not.toBeNull();
+    });
+
+    it("draws it on a record's own day, the first and the last too", async () => {
+      for (const [day, column] of [
+        ["2026/09/01", 1],
+        ["2026/03/01", 0],
+        ["2026/10/14", 2],
+      ]) {
+        records();
+        const { container, unmount } = render(<TrendChart code="hhie-s" fittedOn={day} />);
+        await chartDrawn(container);
+        expect(lineX(container)).toBe(columns(container)[column]);
+        unmount();
+      }
+    });
+
+    it("draws nothing for a day before the first or after the last record (acceptance 42)", async () => {
+      for (const day of ["2026/02/28", "2026/10/15"]) {
+        records();
+        const { container, unmount } = render(<TrendChart code="hhie-s" fittedOn={day} />);
+        await chartDrawn(container);
+        expect(marker(container)).toBeNull();
+        expect(container.querySelector(".recharts-wrapper").textContent).not.toContain("開始戴");
+        unmount();
+      }
+    });
+
+    it("counts only the days the chart shows (its latest five)", async () => {
+      mockApi({
+        results: [7, 6, 5, 4, 3, 2, 1].map((day) => submission(day, `2026-10-0${day}`, day * 2)),
+      });
+      const { container } = render(<TrendChart code="hhie-s" fittedOn="2026/10/02" />);
+      await chartDrawn(container);
+      expect(marker(container)).toBeNull();
+    });
+
+    it("draws nothing without a day (acceptance 43)", async () => {
+      records();
+      const { container } = render(<TrendChart code="hhie-s" />);
+      await chartDrawn(container);
+      expect(marker(container)).toBeNull();
+      expect(container.querySelector(".recharts-wrapper").textContent).not.toContain("開始戴");
+    });
+  });
+
   // Recharts measures each date once and keeps the width: measured in the fallback font, the
   // first date sticks out of the chart once Noto Sans TC arrives.
   it("waits for the web font before drawing the dates", async () => {

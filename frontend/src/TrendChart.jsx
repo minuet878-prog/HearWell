@@ -1,16 +1,21 @@
 import { useEffect, useState } from "react";
 import {
+  DefaultZIndexes,
   LabelList,
   Line,
   LineChart,
   ReferenceArea,
   ResponsiveContainer,
   Tooltip,
+  useChartWidth,
+  usePlotArea,
+  useXAxisScale,
   XAxis,
   YAxis,
+  ZIndexLayer,
 } from "recharts";
 
-import { chartDays, selectPoints } from "./trend.js";
+import { chartDays, fittingDays, selectPoints } from "./trend.js";
 
 const LOADING_TEXT = "趨勢圖載入中…"; // the same text is on the page before this script runs
 const ERROR_TEXT = "趨勢圖暫時無法顯示，下方的紀錄不受影響。";
@@ -62,6 +67,55 @@ function Shape({ shape, x, y, size, status }) {
   return <polygon {...common} points={points} fill="#fff" />;
 }
 
+// #650 (spec #644 R2, the #645 mockup's A): 開始戴 in a small white box above the plot, in rem so
+// it grows with the text: three characters and 0.5rem each side, a gap that clears the biggest
+// point at the top score. The plot starts lower to make room only when the line is drawn: the
+// box, the gap and 0.25rem above the box.
+const FITTING_BOX = { width: 4, height: 1.75, gap: 0.75 };
+const FITTING_TOP = FITTING_BOX.height + FITTING_BOX.gap + 0.25;
+
+// The line on the fitting day: midway between the records around it, as the axis has one column
+// per record day, not a time scale. Neutral colours in site.css (.trend-fitting-*), never a
+// level's; under the score lines and points.
+function FittingLine({ between, rem }) {
+  const xScale = useXAxisScale();
+  const plot = usePlotArea();
+  const chartWidth = useChartWidth();
+  if (!xScale || !plot) return null;
+  const x = (xScale(between[0]) + xScale(between[1])) / 2;
+  // Narrower only on a chart too narrow for it (a 320px phone at 200% text): 開始戴 still fits.
+  // 1px clear of each edge, so the frame's stroke is not cut off.
+  const width = Math.min(FITTING_BOX.width * rem, chartWidth - 2);
+  const height = FITTING_BOX.height * rem;
+  // Centred over the line, kept inside the chart near its edges.
+  const boxX = Math.min(Math.max(x - width / 2, 1), chartWidth - width - 1);
+  const boxY = plot.y - FITTING_BOX.gap * rem - height;
+  return (
+    <ZIndexLayer zIndex={DefaultZIndexes.line - 1}>
+      <g className="trend-fitting">
+        <line
+          className="trend-fitting-line"
+          x1={x}
+          x2={x}
+          y1={boxY + height}
+          y2={plot.y + plot.height}
+          strokeDasharray="6 4"
+        />
+        <rect className="trend-fitting-box" x={boxX} y={boxY} width={width} height={height} rx={4} />
+        <text
+          className="trend-fitting-text"
+          x={boxX + width / 2}
+          y={boxY + height / 2}
+          textAnchor="middle"
+          dominantBaseline="central"
+        >
+          開始戴
+        </text>
+      </g>
+    </ZIndexLayer>
+  );
+}
+
 // Recharts measures each date once and keeps the width, so measure in Noto Sans TC (layout.html):
 // with the fallback font's width the first date sticks out of the chart. At most 3 s, then draw.
 function fontsReady() {
@@ -74,7 +128,7 @@ async function getJson(url) {
   return response.json();
 }
 
-export default function TrendChart({ code }) {
+export default function TrendChart({ code, fittedOn }) {
   const [state, setState] = useState({ status: "loading" });
 
   useEffect(() => {
@@ -103,6 +157,9 @@ export default function TrendChart({ code }) {
   const days = chartDays(points);
   const latestIndex = days.length - 1;
   const latestWearing = points.at(-1).wearing;
+  const fitting = fittingDays(days, fittedOn);
+  // The root font size: the box's rem, read as the chart draws.
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 18;
 
   // The latest point is only bigger: filled vs hollow already means the hearing aid status.
   // Each series calls this for every day; only days with a record of its status get a shape.
@@ -146,7 +203,11 @@ export default function TrendChart({ code }) {
   return (
     <div className="h-full" aria-hidden="true">
       <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 600, height: 320 }}>
-        <LineChart data={days} margin={{ top: 24, right: 16, bottom: 8, left: 16 }} accessibilityLayer={false}>
+        <LineChart
+          data={days}
+          margin={{ top: fitting ? FITTING_TOP * rem : 24, right: 16, bottom: 8, left: 16 }}
+          accessibilityLayer={false}
+        >
           {levels.map((level, i) => (
             <ReferenceArea
               key={level.code}
@@ -159,6 +220,7 @@ export default function TrendChart({ code }) {
               strokeWidth={2}
             />
           ))}
+          {fitting && <FittingLine between={fitting} rem={rem} />}
           <XAxis
             // One column per day (spec 4.1), so the date is unique and is the label itself.
             dataKey="date"

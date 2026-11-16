@@ -2951,6 +2951,30 @@
     background-color: var(--color-severe-bg-deep);
   }
 
+  /* #650 (spec #644 R2, the #645 mockup's A): the fitting day on the trend chart, a neutral dark
+     grey dashed line and 開始戴 in a small white box with a thin frame; never a level's colour. */
+  .trend-fitting-line {
+    stroke: var(--color-muted);
+    stroke-width: 2;
+  }
+
+  .trend-fitting-box {
+    fill: #fff;
+    stroke: var(--color-muted);
+    stroke-width: 1;
+  }
+
+  .trend-fitting-text {
+    fill: var(--color-heading);
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  /* The sentence under the chart's frame that says the same day in words. */
+  .trend-fitted {
+    margin: 0.75rem 0 0;
+  }
+
   /* #332 (spec #326 B3): the copy button says ✓ 已複製 in success green (ADR 0007) for 2
      seconds, whether pressed, hovered or not.
      #330 (B1): the same green for ✓ 已送出 and ✓ 已存檔, held 0.6 seconds while the button

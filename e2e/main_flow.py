@@ -16923,3 +16923,89 @@ class LastResultT649Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
                     for tag in self.main().locator(".inline-block", has_text="上次").all():
                         words_end, box_end = tag.evaluate(self.WORDS_END)
                         self.assertLessEqual(words_end, box_end, tag.text_content())
+
+
+class FittingDayT650Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#650 (spec #644 R2, acceptance 39, 40, 45 and 47; the #645 mockup's A): the trend chart's
+    line on the day hearing aids were first worn, 開始戴 in a white box clear of every date,
+    point and score, and the sentence under the chart, on a phone at 200% text."""
+
+    fixtures = ("questions_fixture.json",)
+    TAIPEI = ResultPagesT461Test.TAIPEI
+    record = ResultPagesT461Test.record
+    DOUBLE_FROM_THE_START = ChangeLabelT646Test.DOUBLE_FROM_THE_START
+    WHITE = ChangeLabelT646Test.WHITE
+    MUTED = ChangeLabelT646Test.MUTED
+    HEADING = ChangeLabelT646Test.HEADING
+    # Each questionnaire's top score on one day, so a point sits right under the box.
+    ITEMS: ClassVar = {"hhie-s": 10, "thi": 25}
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+        self.sign_in(consented_user(username="fitting_day_t650"))
+        for code, items in self.ITEMS.items():
+            self.record(code, [2] * items, (2026, 3, 1), wearing_hearing_aid=False)
+            self.record(code, [4] * items, (2026, 9, 1), wearing_hearing_aid=True)
+            self.record(code, [0] * items, (2026, 10, 14), wearing_hearing_aid=True)
+        AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1))
+
+    @staticmethod
+    def overlap(a, b):
+        return not (
+            a["x"] + a["width"] <= b["x"]
+            or b["x"] + b["width"] <= a["x"]
+            or a["y"] + a["height"] <= b["y"]
+            or b["y"] + b["height"] <= a["y"]
+        )
+
+    def test_the_line_and_its_box_stay_clear_on_a_phone(self):
+        with self.saving_artifacts():
+            for code in self.ITEMS:
+                for width in (320, 390):
+                    for double in (False, True):
+                        where = f"{code} at {width}px{' and 200%' if double else ''}"
+                        with self.subTest(where=where):
+                            script = self.DOUBLE_FROM_THE_START if double else ""
+                            self.open(
+                                f"/my_hearing?questionnaire={code}", (width, 844), script=script
+                            )
+                            self.assert_clear(where, width)
+
+    def assert_clear(self, where, width):
+        expect(self.page.locator(".recharts-wrapper")).to_be_visible()
+        marker = self.main().locator(".trend-fitting")
+        expect(marker).to_have_text("開始戴")
+        line, box, words = (
+            marker.locator(f".trend-fitting-{part}") for part in ("line", "box", "text")
+        )
+        # Acceptance 45: neutral dark grey, the words in the heading colour on white.
+        self.assertEqual(self.style(line, "stroke"), self.MUTED, where)
+        self.assertEqual(self.style(box, "stroke"), self.MUTED, where)
+        self.assertEqual(self.style(box, "fill"), self.WHITE, where)
+        self.assertEqual(self.style(words, "fill"), self.HEADING, where)
+        # Acceptance 47: the words inside their box, the box inside the chart, clear of the
+        # dates, the points and the scores.
+        frame, inner = box.bounding_box(), words.bounding_box()
+        self.assertGreaterEqual(inner["x"], frame["x"], where)
+        self.assertLessEqual(inner["x"] + inner["width"], frame["x"] + frame["width"], where)
+        self.assertGreaterEqual(inner["y"], frame["y"], where)
+        self.assertLessEqual(inner["y"] + inner["height"], frame["y"] + frame["height"], where)
+        chart = self.page.locator(".recharts-wrapper").bounding_box()
+        self.assertGreaterEqual(frame["x"], chart["x"], where)
+        self.assertLessEqual(frame["x"] + frame["width"], chart["x"] + chart["width"], where)
+        others = self.page.locator(
+            ".recharts-xAxis-tick-labels text, .recharts-line-dots .trend-dot, .trend-score"
+        ).all()
+        self.assertGreater(len(others), 0, where)
+        for other in others:
+            self.assertFalse(self.overlap(frame, other.bounding_box()), where)
+        # Acceptance 41: the sentence under the chart, never scrolled sideways.
+        sentence = self.main().locator(".trend-fitted")
+        expect(sentence).to_have_text("2026/05/01 開始戴助聽器。")
+        scroll_width, client_width = sentence.evaluate("e => [e.scrollWidth, e.clientWidth]")
+        self.assertLessEqual(scroll_width, client_width, where)
+        # The chart's section and the sentence end inside the phone. Not the whole page: at 320px
+        # and 200% the questionnaire tabs above already run past it (found in #650, not its own).
+        for part in (self.main().locator("#trend-chart"), sentence):
+            edge = part.bounding_box()
+            self.assertLessEqual(edge["x"] + edge["width"], width, where)
