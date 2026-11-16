@@ -2,7 +2,7 @@
 
 日期：2026-11-16。基準：`95d80b73`（origin/main，#603 合併後）；分支：`fix/line-login-home-screen-app`；commit：`1860c4a2`（重現測試與修正）、`f469be40`（自審修正）；PR #609。
 
-狀態：本機自動測試、自審（Standards／Spec）和 CI 都通過。這次碰到登入，照規則要交叉審查，**本人 2026-11-16 決定跳過**。iPhone 實機驗收還沒做：LINE 的回呼網址只登記了正式站和本機，主畫面 app 連不到本機，只能在合併、部署後驗。未操作真實資料，沒有啟動開發伺服器，不需 migration。
+狀態：本機自動測試、自審（Standards／Spec）和 CI 都通過。這次碰到登入，照規則要交叉審查，**本人 2026-11-16 決定跳過**。LINE 的回呼網址只登記了正式站和本機，主畫面 app 連不到本機，所以 iPhone 實機驗收在合併、部署後才做：**本人 2026-11-16 在正式站驗收通過**（見最下面）。未操作真實資料，沒有啟動開發伺服器，不需 migration。
 
 ## 問題與根本原因
 
@@ -32,15 +32,15 @@
 | 4 Google 的授權網址不變 | ✅ 自動 | `screening/tests/test_google_sign_in.py:109` |
 | 5 只有 iPhone 主畫面 app 留 cookie | ✅ 自動 | `frontend/src/pwa-nav.test.js:89`、`:98`；修正前 `:91` 失敗（`expected '' to contain 'home_screen_app=1'`） |
 | 6 state、nonce、PKCE、回呼只用一次不放寬 | ✅ 自動 | `finish()` 沒有改動；既有的 LINE、Google 測試照過 |
-| 7 iPhone 主畫面的聽伴用 LINE 登入：不跳去 LINE app 和 Safari，回到聽伴且已登入 | ⬜ 本人 | 合併部署後實機操作。`disable_auto_login` 在主畫面 app 是否真的不跳走，目前只有 LINE 文件的依據 |
-| 8 同一支 iPhone 的 Safari 用 LINE 登入，照舊自動登入成功 | ⬜ 本人 | 合併部署後實機操作 |
+| 7 iPhone 主畫面的聽伴用 LINE 登入：不跳去 LINE app 和 Safari，回到聽伴且已登入 | ✅ 本人 | 2026-11-16 正式站實機：出現 LINE 的網頁登入，輸入 LINE 的 email 和密碼後回到聽伴、已登入 |
+| 8 同一支 iPhone 的 Safari 用 LINE 登入，照舊自動登入成功 | ✅ 本人 | 2026-11-16 正式站實機：正常 |
 
 ## 測試結果
 
 - 單元測試：`Ran 2638 tests … OK`
 - 前端：`Test Files 38 passed`、`Tests 587 passed`
 - Ruff：`ruff check`、`ruff format --check` 都通過
-- CI（PR #609）：3 項檢查通過
+- CI（PR #609）：3 項檢查通過；合併後 `main`（`79bbc18e`）的 CI 也通過
 - 沒有跑 e2e：畫面沒有變動
 
 ## 自審
@@ -49,3 +49,12 @@
 
 - Standards：沒有硬性違規。四項判斷題（`in_home_screen_app` 的命名、新欄位只有 LINE 用、cookie 寫在 `pwa-nav.js`、`navigator.standalone` 判斷出現兩次）都照現有寫法，沒有改；`oidc.py` 的註解照建議寫清楚了。
 - Spec：確認本人、新增登入方式沒有自己的斷言，已補（`f469be40`）；和 2026-11-14 決定的衝突已請本人確認並補記。沒有範圍蔓延。
+
+## 本人驗收
+
+2026-11-16，正式站（`https://tingpal.tw`），PR #609 合併、部署後。部署確認：線上的 `pwa-nav.js` 已有 `home_screen_app`。
+
+- [x] 7 iPhone 主畫面的聽伴按「使用 LINE 帳號登入」：不跳去 LINE app 和 Safari，在 LINE 的網頁輸入 email 和密碼後回到聽伴、已登入
+- [x] 8 同一支 iPhone 的 Safari 用 LINE 登入：正常
+
+已知代價（實機確認）：主畫面 app 裡第一次用 LINE 要輸入 LINE 的 email 和密碼。長輩記不得 LINE 密碼時，可以改用 Safari 開聽伴登入；要不要在登入頁加這句提示還沒決定。
