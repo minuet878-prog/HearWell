@@ -688,6 +688,7 @@ describe("askToSaveGuestResults (the save page's question)", () => {
   // 要 saves the one still as shown; the one done again since is not saved, and is asked about
   // again from the home page.
   it("要 with two shown, one done again in another tab since, saves only the one unchanged", async () => {
+    const freshPage = document.body.innerHTML; // the save page as the server draws it
     saveGuestResult(guestResult());
     saveGuestResult(HHIA_S);
     const fetchSave = created();
@@ -700,6 +701,17 @@ describe("askToSaveGuestResults (the save page's question)", () => {
     expect(fetchSave.mock.calls[0][1].headers["Idempotency-Key"]).toBe(HHIA_S.key);
     expect(loadGuestResult("hhia-s", NOW + DAY)).toBeNull();
     expect(loadGuestResult("hhie-s", NOW + DAY)).toEqual(newerResult());
+    // Codex cross review of #492, second re-check: then the home page it went to takes them to the
+    // question again (layout.html's guest-ask.js), which now shows only the one done again.
+    const fromHome = vi.fn();
+    askAboutGuestResults({ askUrl: "/guest/save", now: NOW + DAY, navigate: fromHome });
+    expect(fromHome).toHaveBeenCalledWith("/guest/save");
+    document.body.innerHTML = freshPage;
+    const asked = document.getElementById("guest-save");
+    askToSaveGuestResults({ root: asked, now: NOW + DAY, fetchSave: created(), navigate: vi.fn() });
+    const shown = [...asked.querySelectorAll("[data-guest-ask-list] > *")];
+    expect(shown).toHaveLength(1);
+    expect(shown[0].textContent).toBe("2026/11/13・聽力對生活的影響30 分輕度到中度影響");
   });
 
   it("不要 clears only the results shown, keeping a newer one made in another tab since", () => {
