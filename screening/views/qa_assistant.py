@@ -53,6 +53,11 @@ def _listed_topic(faq):
     return None if faq.code == content.URGENT_CODE else faq.topic
 
 
+def topic_faqs(topic):
+    # The questions a topic's page lists; a topic listing none is no 公開頁面 (ADR 0062).
+    return [faq for faq in content.FAQS if _listed_topic(faq) == topic]
+
+
 def qa_home(request):
     # Spec #396: open without logging in, the same for everyone; it reads no records (ADR 0032),
     # so it is not a 健康資料頁面.
@@ -75,8 +80,7 @@ def qa_topic(request, topic):
     name = TOPIC_NAMES.get(topic)
     if name is None:
         raise Http404
-    faqs = [faq for faq in content.FAQS if _listed_topic(faq) == topic]
-    return render(request, "screening/qa/topic.html", {"name": name, "faqs": faqs})
+    return render(request, "screening/qa/topic.html", {"name": name, "faqs": topic_faqs(topic)})
 
 
 def qa_answer(request, code):

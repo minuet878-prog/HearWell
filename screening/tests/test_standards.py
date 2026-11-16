@@ -9,12 +9,13 @@ from pathlib import Path
 from django.conf import settings
 from django.core.management import call_command
 from django.forms import BaseForm, Form
+from django.http import HttpResponse
 from django.test import Client, SimpleTestCase, TestCase
 from django.urls import reverse
 from django.urls.converters import IntConverter
 
 from screening import forms as screening_forms
-from screening import questionnaires
+from screening import public_pages, questionnaires
 from screening import urls as screening_urls
 from screening.models import Questionnaire
 from screening.views.common import health_data_page
@@ -440,17 +441,23 @@ NO_HEALTH_DATA = {
 }
 
 
-def logged_in_views():
-    """(URL name, view) for each page in screening's URLs that sends a logged-out visitor to log
-    in, whatever form the login requirement takes (decorator, mixin, other module)."""
-    client = Client()
-    login = reverse("login")
+def page_urls():
+    """(URL pattern, an address of it) for each of screening's URLs, a made-up value filling each
+    part that varies."""
     for pattern in screening_urls.urlpatterns:
         kwargs = {
             name: 1 if isinstance(converter, IntConverter) else "x"
             for name, converter in pattern.pattern.converters.items()
         }
-        url = reverse(pattern.name, kwargs=kwargs)
+        yield pattern, reverse(pattern.name, kwargs=kwargs)
+
+
+def logged_in_views():
+    """(URL name, view) for each page in screening's URLs that sends a logged-out visitor to log
+    in, whatever form the login requirement takes (decorator, mixin, other module)."""
+    client = Client()
+    login = reverse("login")
+    for pattern, url in page_urls():
         if any(
             client.generic(method, url).get("Location", "").startswith(login)
             for method in ("GET", "POST")
@@ -518,6 +525,37 @@ class OpenHealthDataPageTests(TestCase):
                 self.assertEqual(response.status_code, 200)  # open without an account
                 self.assertIn("no-store", response.get("Cache-Control", ""))
                 self.assertEqual(unmarked([(name, views[name])], {}), [])
+
+
+def indexable(answers):
+    """Names of the (name, response) pairs a search engine may index: no noindex on them."""
+    return [name for name, response in answers if "noindex" not in response.get("X-Robots-Tag", "")]
+
+
+class NotIndexedTests(TestCase):
+    """ADR 0062 (spec #583 acceptance 2): every address of screening's URLs outside the 公開頁面
+    list tells search engines to keep it out, whatever it answers a logged-out visitor with."""
+
+    def test_only_public_pages_may_be_indexed(self):
+        client = Client()
+        public = set(public_pages.public_urls())
+        answers = [
+            (f"{method} {pattern.name}", client.generic(method, url))
+            for pattern, url in page_urls()
+            if url not in public
+            for method in ("GET", "POST")
+        ]
+        # The scan meets pages open without logging in, and those sending to log in.
+        self.assertIn("GET questionnaire_list", dict(answers))
+        self.assertIn("GET my_hearing", dict(answers))
+        self.assertEqual(
+            indexable(answers), [], "add the page to screening/public_pages.py if it is one"
+        )
+
+    def test_a_page_without_noindex_is_caught(self):
+        kept_out = HttpResponse(headers={"X-Robots-Tag": "noindex, nofollow"})
+        answers = [("open", HttpResponse()), ("kept_out", kept_out)]
+        self.assertEqual(indexable(answers), ["open"])
 
 
 class MigrationsUpToDateTests(TestCase):
