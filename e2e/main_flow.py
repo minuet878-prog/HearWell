@@ -15791,3 +15791,132 @@ class FeedbackBatchTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 )
                 if double:
                     self.assert_fits_a_phone_at_double_text_size("account after a download", width)
+
+
+class AudiogramReadingTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#617 (spec #611 K1, the #613 mockup's B): the large reading over the chart while marking.
+    The finger is on the chart, so whatever the reading says the chart never moves."""
+
+    TABLE = "用數值輸入（鍵盤或螢幕閱讀器）"
+    # The chart's top on the page, not on the screen: picking in the table may scroll.
+    PAGE_TOP = "el => el.getBoundingClientRect().top + window.scrollY"
+
+    def setUp(self):
+        self.sign_in(consented_user(username="audiogram_reading_e2e"))
+
+    def open_step(self, step, width=390):
+        self.open("/audiograms/new", size=(width, 844))
+        for _ in range(step - 1):
+            self.main().get_by_role("button", name=AUDIOGRAM_FORWARD).click()
+
+    def chart(self):
+        return self.main().get_by_role("img", name=re.compile("聽力圖"))
+
+    def reading(self):
+        return self.main().locator(".audiogram-reading")
+
+    def said(self):
+        return self.main().locator(".audiogram-app [role=status]")
+
+    def chart_top(self):
+        return self.chart().evaluate(self.PAGE_TOP)
+
+    def at(self, frequency, db):
+        """Where frequency and db are on the screen (AudiogramChart's 320 x 380 units)."""
+        box = self.chart().bounding_box()
+        scale = box["width"] / 320
+        return (
+            box["x"] + (36 + log2(frequency / 250) / 5 * 268) * scale,
+            box["y"] + (30 + (db + 10) / 130 * 312) * scale,
+        )
+
+    def pick(self, name, value, masked=False):
+        self.main().get_by_label(name, exact=True).select_option(value)
+        if masked:
+            self.main().get_by_label(f"{name} 遮蔽", exact=True).check()
+
+    # Acceptance 31, 32, 34 and 38: the hint, the point under the finger while dragging (not yet
+    # said), the point once released (said once), and the chart not moving a pixel at 390px.
+    def test_reading_follows_the_finger_and_the_chart_stays_put(self):
+        self.open_step(2)
+        with self.saving_artifacts():
+            expect(self.reading()).to_have_text("點一下圖來標記")
+            self.chart().scroll_into_view_if_needed()
+            top = self.chart_top()
+            reading_box = self.reading().bounding_box()
+            self.assertLessEqual(
+                reading_box["y"] + reading_box["height"], self.chart().bounding_box()["y"]
+            )
+            self.page.mouse.move(*self.at(1000, 45))
+            self.page.mouse.down()
+            expect(self.reading().locator("span")).to_have_text(["右耳氣導", "1000 Hz　45 dB"])
+            self.assertEqual(self.chart_top(), top)
+            self.page.mouse.move(*self.at(1000, 60))
+            expect(self.reading().locator("span")).to_have_text(["右耳氣導", "1000 Hz　60 dB"])
+            expect(self.said()).to_have_text("")
+            self.assertEqual(self.chart_top(), top)
+            self.page.mouse.move(*self.at(1000, 45))
+            self.page.mouse.up()
+            expect(self.said()).to_have_text("右耳氣導　1000 Hz　45 dB")
+            expect(self.reading().locator("span")).to_have_text(["右耳氣導", "1000 Hz　45 dB"])
+            self.assertEqual(self.chart_top(), top)
+            # Acceptance 41: the clear button still names the point.
+            expect(
+                self.main().get_by_role("button", name="清除 右耳氣導 1000 Hz", exact=True)
+            ).to_be_enabled()
+            self.main().get_by_text(self.TABLE).click()
+            for name, value, masked, rows in (
+                ("右耳骨導 4000 Hz", "nr", True, ["右耳骨導", "4000 Hz　無反應　遮蔽"]),
+                ("右耳氣導 8000 Hz", "120", True, ["右耳氣導", "8000 Hz　120 dB　遮蔽"]),
+                ("右耳氣導 250 Hz", "-10", False, ["右耳氣導", "250 Hz　-10 dB"]),
+            ):
+                with self.subTest(reading=rows[1]):
+                    self.pick(name, value, masked)
+                    expect(self.reading().locator("span")).to_have_text(rows)
+                    self.assertEqual(self.chart_top(), top)
+            self.main().get_by_role("button", name=re.compile("^清除 ")).click()
+            expect(self.reading()).to_have_text("點一下圖來標記")
+            self.assertEqual(self.chart_top(), top)
+
+    # Acceptance 39: the longest readings neither scroll sideways nor get cut at 320 and 390px,
+    # at the usual and at 200% text; and from the hint to them the chart still stays put.
+    def test_longest_reading_fits_a_phone_at_double_text_size(self):
+        longest = (
+            ("左耳骨導 4000 Hz", "nr", ["左耳骨導", "4000 Hz　無反應　遮蔽"]),
+            ("左耳氣導 8000 Hz", "120", ["左耳氣導", "8000 Hz　120 dB　遮蔽"]),
+        )
+        for width in (320, 390):
+            for double in (False, True):
+                with self.subTest(width=width, double_text=double):
+                    self.open_step(3, width)
+                    if double:
+                        self.double_text()
+                    self.main().get_by_text(self.TABLE).click()
+                    expect(self.reading()).to_have_text("點一下圖來標記")
+                    top = self.chart_top()
+                    for name, value, rows in longest:
+                        self.pick(name, value, masked=True)
+                        expect(self.reading().locator("span")).to_have_text(rows)
+                        self.assertLessEqual(
+                            self.page.evaluate("document.documentElement.scrollWidth"), width
+                        )
+                        box = self.reading().bounding_box()
+                        self.assertGreaterEqual(box["x"], 0)
+                        self.assertLessEqual(box["x"] + box["width"], width)
+                        widths = self.reading().evaluate("el => [el.scrollWidth, el.clientWidth]")
+                        self.assertLessEqual(widths[0], widths[1])
+                        for row in self.reading().locator("span").all():
+                            part = row.bounding_box()
+                            self.assertGreaterEqual(part["x"], box["x"])
+                            self.assertLessEqual(part["x"] + part["width"], box["x"] + box["width"])
+                        # A number never parts from its unit.
+                        lines = [text for text, _ in self.lines(self.reading())]
+                        self.assertFalse(any(re.search(r"^(Hz|dB)", line) for line in lines))
+                        self.assertEqual(self.chart_top(), top)
+
+    # Acceptance 40: the confirm step's read-only chart has no reading.
+    def test_confirm_step_has_no_reading(self):
+        self.open_step(4)
+        with self.saving_artifacts():
+            expect(self.chart()).to_be_visible()
+            expect(self.reading()).to_have_count(0)

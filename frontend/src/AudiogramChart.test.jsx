@@ -1,8 +1,8 @@
-import { cleanup, render } from "@testing-library/react";
-import { afterEach, expect, it } from "vitest";
+import { cleanup, fireEvent, render } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
 
 import AudiogramChart from "./AudiogramChart.jsx";
-import { x, y } from "./audiogram.js";
+import { CHART, x, y } from "./audiogram.js";
 
 afterEach(cleanup);
 
@@ -64,6 +64,26 @@ it("draws the green normal range down to 25 dB, under everything else", () => {
   expect(Number(band.getAttribute("y"))).toBe(y(-10));
   expect(Number(band.getAttribute("height"))).toBe(y(25) - y(-10));
   expect(container.querySelector("svg").firstElementChild).toBe(band);
+});
+
+// #617 (spec #611 K1): the point under a marking finger goes out as it moves, null on release.
+it("passes the point under the finger to onPreview while dragging", () => {
+  SVGElement.prototype.getBoundingClientRect = () => ({ left: 0, top: 0, width: CHART.width, height: CHART.height });
+  const symbol = { ear: "left", conduction: "air" };
+  const onPreview = vi.fn();
+  const onCommit = vi.fn();
+  const { container } = render(<AudiogramChart points={[]} symbol={symbol} masked onCommit={onCommit} onPreview={onPreview} />);
+  const at = (db) => ({ clientX: x(1000), clientY: y(db), pointerId: 1 });
+  const svg = container.querySelector("svg");
+  fireEvent.pointerDown(svg, at(40));
+  fireEvent.pointerMove(svg, at(50));
+  expect(onPreview.mock.calls).toEqual([
+    [{ ear: "left", conduction: "air", frequency: 1000, db: 40, no_response: false, masked: true }],
+    [{ ear: "left", conduction: "air", frequency: 1000, db: 50, no_response: false, masked: true }],
+  ]);
+  fireEvent.pointerUp(svg, at(50));
+  expect(onPreview).toHaveBeenLastCalledWith(null);
+  expect(onCommit).toHaveBeenCalledWith(1000, { db: 50, noResponse: false });
 });
 
 it("without oldPoints nothing extra is drawn", () => {

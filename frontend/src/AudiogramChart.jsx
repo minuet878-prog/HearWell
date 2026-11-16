@@ -102,7 +102,8 @@ function Layer({ points, old = false }) {
 // `label` replaces the read-only text alternative; `behind` goes under the frame and the marks.
 // `onTap` gets a click's place in chart units. Only a click: a finger that swipes stays the browser's, to scroll.
 // `normalBand` is the green normal range down to 25 dB.
-export default function AudiogramChart({ points, oldPoints, symbol, masked = false, onCommit, label = "聽力圖", behind, onTap, normalBand = true }) {
+// `onPreview` gets the point under a marking finger each time it moves, and null when the drag ends (#617).
+export default function AudiogramChart({ points, oldPoints, symbol, masked = false, onCommit, onPreview, label = "聽力圖", behind, onTap, normalBand = true }) {
   const svg = useRef(null);
   const dragging = useRef(null);
   const [preview, setPreview] = useState(null);
@@ -129,10 +130,16 @@ export default function AudiogramChart({ points, oldPoints, symbol, masked = fal
       py: ((event.clientY - box.top) * CHART.height) / box.height,
     };
   };
+  // The point under the finger, as a marked point is shaped.
+  const draftOf = ({ frequency, level }) => ({ ear: symbol.ear, conduction: symbol.conduction, frequency, db: level.db, no_response: level.noResponse, masked });
+  const show = (next) => {
+    setPreview(next);
+    onPreview?.(next && draftOf(next));
+  };
   const track = (event, frequency) => {
     const next = { frequency, level: levelAt(toChart(event).py, symbol.conduction) };
     dragging.current = next;
-    setPreview(next);
+    show(next);
     return next;
   };
 
@@ -141,7 +148,7 @@ export default function AudiogramChart({ points, oldPoints, symbol, masked = fal
 
   const finish = ({ frequency, level }) => {
     dragging.current = null;
-    setPreview(null);
+    show(null);
     onCommit(frequency, level);
   };
 
@@ -150,7 +157,7 @@ export default function AudiogramChart({ points, oldPoints, symbol, masked = fal
       // A second finger means zooming, not marking: the mark under way is dropped.
       if (dragging.current) {
         dragging.current = null;
-        setPreview(null);
+        show(null);
         return;
       }
       event.preventDefault();
@@ -171,15 +178,14 @@ export default function AudiogramChart({ points, oldPoints, symbol, masked = fal
     },
     onPointerCancel() {
       dragging.current = null;
-      setPreview(null);
+      show(null);
     },
   };
 
   let shown = points;
   if (preview) {
     const key = pointKey(symbol.ear, symbol.conduction, preview.frequency);
-    const draft = { ear: symbol.ear, conduction: symbol.conduction, frequency: preview.frequency, db: preview.level.db, no_response: preview.level.noResponse, masked };
-    shown = [...points.filter((p) => pointKey(p.ear, p.conduction, p.frequency) !== key), draft];
+    shown = [...points.filter((p) => pointKey(p.ear, p.conduction, p.frequency) !== key), draftOf(preview)];
   }
 
   return (
