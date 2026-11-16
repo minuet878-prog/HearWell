@@ -16643,6 +16643,13 @@ class ChangeLabelT646Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
     HEADING = "rgb(33, 37, 41)"  # --color-heading
     MUTED = "rgb(74, 84, 96)"  # --color-muted
     RECORDS = "/my_hearing?questionnaire=hhie-s"
+    # 200% text before the page's scripts run, as PlayInViewTest's double does: the trend
+    # chart's ResponsiveContainer redraws only some time after the text size changes, so set it
+    # first, as for someone whose text is already large, and the chart is drawn at it once.
+    DOUBLE_FROM_THE_START = f"""document.addEventListener("readystatechange", () => {{
+        document.documentElement.style.setProperty(
+            "font-size", "{OnAPhone.DOUBLE_TEXT_SIZE}", "important");
+    }}, {{ once: true }});"""
 
     def setUp(self):
         call_command("seed_questionnaires", verbosity=0)
@@ -16691,7 +16698,7 @@ class ChangeLabelT646Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             for path in (f"/submission/{self.latest.pk}", self.RECORDS):
                 for width in (320, 390):
                     with self.subTest(path=path, width=width):
-                        self.open(path, (width, 844))
+                        self.open(path, (width, 844), script=self.DOUBLE_FROM_THE_START)
                         if path == self.RECORDS:
                             expect(self.page.locator(".recharts-wrapper")).to_be_visible()
                         self.assert_fits_a_phone_at_double_text_size(path, width)
