@@ -1253,10 +1253,10 @@ class CopyPasswordRegisterFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLi
     # still missing, under it; green with a tick from 8. The 設新密碼 page uses the same include
     # and script (test_password_reset); its counting rules are in password-count.test.js.
     def test_register_counts_the_passwords_characters(self):
-        count = self.page.locator(".password-count")
         for width, size in ((390, None), (320, "225%")):
             with self.subTest(width=width, text_size=size):
                 self.open(width=width, height=640)
+                count = self.page.locator(".password-count")
                 self.page.goto(f"{self.live_server_url}/register")
                 self.page.wait_for_load_state("load")
                 if size:
@@ -13820,12 +13820,15 @@ class ResultPagesT461Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             # On the first screen of a 390 x 844 phone, above the floating tab bar.
             tab_bar = self.page.get_by_role("navigation", name="主要導覽").bounding_box()
             self.assertLessEqual(box["y"] + box["height"], tab_bar["y"])
-            # Folded: the score bar waits behind 看完整說明 until it is opened.
-            expect(self.page.locator(".score-bar")).not_to_be_visible()
+            # Readability batch 3 (B6 A): the score bar in sight in the block, on the first
+            # screen with the button above, and not behind 看完整說明 as well.
+            bar = banner.locator(".score-bar")
+            expect(bar).to_be_visible()
+            self.assertLessEqual(bar.bounding_box()["y"], box["y"])
             summary = self.main().locator(".result-details > summary")
             self.assertGreaterEqual(summary.bounding_box()["height"], 44)
             summary.click()
-            expect(self.page.locator(".score-bar")).to_be_visible()
+            expect(self.page.locator(".score-bar")).to_have_count(1)
 
     def test_every_result_page_fits_a_phone_at_double_text_size(self):
         basis = None

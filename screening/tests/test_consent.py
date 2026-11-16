@@ -48,6 +48,12 @@ HIGHLIGHT_GROUPS = (
 HIGHLIGHTS = tuple(line for _title, lines in HIGHLIGHT_GROUPS for line in lines)
 
 
+def highlight(start):
+    """The one highlight that starts with these words."""
+    (line,) = (line for line in HIGHLIGHTS if line.startswith(start))
+    return line
+
+
 def _consent_url(next_url):
     # Same "?next=" format Django uses for the login redirect.
     return redirect_to_login(next_url, reverse("consent")).url
@@ -170,7 +176,7 @@ class PrivacyHighlightsTests(TestCase):
         files = [
             path.name
             for path in TEMPLATES.rglob("*.html")
-            if HIGHLIGHT_GROUPS[1][1][1] in path.read_text(encoding="utf-8")
+            if highlight("用 LINE 登入時") in path.read_text(encoding="utf-8")
         ]
         self.assertEqual(files, ["consent_highlights.html"])
 
@@ -662,7 +668,7 @@ class VpsPrivacyTests(TestCase):
 
 
 # The highlight naming the 重設密碼信 (#526), on the privacy notice's top and the consent page.
-RESET_HIGHLIGHT = HIGHLIGHT_GROUPS[1][1][0]
+RESET_HIGHLIGHT = highlight("忘記密碼時")
 # Its line under 會交給誰, word for word as the owner approved it on 2026-11-13, with 不會 in
 # <strong> as Sentry's.
 RESEND_RECIPIENT = (
