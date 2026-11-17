@@ -44,6 +44,17 @@ class CardAddressTests(TestCase):
                 response = self.client.get(card)
                 self.assertRedirects(response, landing, fetch_redirect_response=False)
 
+    def test_a_signed_in_user_who_agreed_sees_what_the_screening_tab_shows(self):
+        # Acceptance 2 (cross review): followed through, the elder card shows a signed-in user
+        # the page the 篩檢 tab opens (the wizard until they have a record, ADR 0030).
+        self.client.force_login(consented_user(username="pat", password="x"))
+        response = self.client.get(ELDER_CARD, follow=True)
+        self.assertEqual(response.redirect_chain, [("/questionnaire_list?via=clinic-elder", 302)])
+        heading = re.compile(r"<h1[^>]*>([^<]+)</h1>")
+        from_the_tab = self.client.get("/questionnaire_list").content.decode()
+        self.assertEqual(heading.findall(response.content.decode()), heading.findall(from_the_tab))
+        self.assertEqual(len(heading.findall(from_the_tab)), 1)
+
     def test_anything_added_to_the_address_is_dropped(self):
         # Acceptance 3: only the fixed landing, whatever comes after the address.
         for card, landing in (
@@ -225,6 +236,14 @@ class QrCodeTests(TestCase):
             response = self.client.get(PRINT_PAGE)
         self.assertEqual(len(self.drawings(response)), 10)
 
+    @override_settings(SITE_URL="https://staging.example.test")
+    def test_the_codes_follow_the_live_sites_address_set(self):
+        # Acceptance 16 (cross review): the address comes from SITE_URL, not a fixed one.
+        address = "https://staging.example.test/c/f"
+        response = self.client.get(PRINT_PAGE, {"card": "family"})
+        self.assertEqual(self.drawings(response), [qr_drawing(address)] * 10)
+        self.assertContains(response, f"<title>QR code：{address}</title>", count=10)
+
     @override_settings(SITE_URL="")
     def test_without_the_live_sites_address_it_says_so_and_draws_none(self):
         response = self.client.get(PRINT_PAGE)
@@ -254,16 +273,20 @@ class PrintPageReachTests(TestCase):
         self.client.force_login(User.objects.create_superuser(username="owner", password="pw"))
         self.assertContains(self.client.get("/admin/"), f'href="{PRINT_PAGE}"')
 
-    def test_a_card_has_the_logo_and_the_address_but_no_name_or_workplace(self):
-        page = self.client.get(PRINT_PAGE).content.decode()
-        card = page[page.index('<div class="clinic-card"') :]
-        card = card[: card.index('<div class="clinic-card"', 1)]
-        self.assertIn('class="clinic-card-logo"', card)
-        self.assertIn("聽<span", card)
-        self.assertIn('<p class="clinic-card-address">tingpal.tw</p>', card)
-        for kept_off in ("執業聽力師", "審定", "醫院", "診所"):
-            with self.subTest(kept_off=kept_off):
-                self.assertNotIn(kept_off, card)
+    def test_every_card_has_the_logo_and_the_address_but_no_name_or_workplace(self):
+        # Acceptance 15 (cross review): all 10 of both kinds, the whole 聽伴 on each.
+        wordmark = '<span>聽<span class="clinic-card-brand-tint">伴</span></span>'
+        for kind in ("elder", "family"):
+            page = self.client.get(PRINT_PAGE, {"card": kind}).content.decode()
+            cards = page.split('<div class="clinic-card" data-card=')[1:]
+            self.assertEqual(len(cards), 10)
+            for number, card in enumerate(cards, start=1):
+                with self.subTest(card=kind, number=number):
+                    self.assertIn('class="clinic-card-logo"', card)
+                    self.assertIn(wordmark, card)
+                    self.assertIn('<p class="clinic-card-address">tingpal.tw</p>', card)
+                    for kept_off in ("執業聽力師", "審定", "醫院", "診所", "醫師"):
+                        self.assertNotIn(kept_off, card)
 
 
 # Spec #677 acceptance 25: the owner's words from #679, as written, line breaks and all.

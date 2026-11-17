@@ -17191,9 +17191,10 @@ class ClinicCardArrivalTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
     its card's page with a clean address, and that card's column of the 訪客月計數 goes up by one,
     once: reloading the page counts nothing more."""
 
+    # Each card, its landing, its column, and what that page shows (acceptance 1).
     CARDS = (
-        ("/c/e", "/questionnaire_list", "clinic_elder"),
-        ("/c/f", "/family", "clinic_family"),
+        ("/c/e", "/questionnaire_list", "clinic_elder", "您目前的實際年齡？"),
+        ("/c/f", "/family", "clinic_family", "家人專區"),
     )
 
     def counted(self, column):
@@ -17210,10 +17211,11 @@ class ClinicCardArrivalTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
 
     def test_each_card_lands_clean_and_counts_once(self):
         with self.saving_artifacts():
-            for card, landing, column in self.CARDS:
+            for card, landing, column, shown in self.CARDS:
                 with self.subTest(card=card):
                     self.open(card, signed_in=False)
                     expect(self.page).to_have_url(f"{self.live_server_url}{landing}")
+                    expect(self.main()).to_contain_text(shown)
                     self.wait_until_counted(column, 1)
                     self.page.reload()
                     self.page.wait_for_load_state("load")
@@ -17263,18 +17265,26 @@ class ClinicCardPrintTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
                     self.assertEqual(self.style(first, f"border{side}Style"), "solid")
                     self.assertGreater(float(self.style(first, f"border{side}Width")[:-2]), 0)
                     self.assertEqual(self.style(first, f"border{side}Color"), "rgb(187, 187, 187)")
-            for qr in self.page.locator(".clinic-card-qr svg").all():
-                self.assertGreaterEqual(qr.bounding_box()["width"] / self.MM, 25)
+            codes = self.page.locator(".clinic-card-qr svg")
+            expect(codes).to_have_count(10)
+            for qr in codes.all():
+                box = qr.bounding_box()
+                self.assertGreaterEqual(box["width"] / self.MM, 25)
+                self.assertGreaterEqual(box["height"] / self.MM, 25)
             # Acceptance 23: white, no colour behind the words, each at least 4.5:1 on it.
             self.assertEqual(self.style(first, "backgroundColor"), "rgba(0, 0, 0, 0)")
             self.assertEqual(self.style(first, "backgroundImage"), "none")
             sheet_colour = self.style(self.page.locator(".clinic-cards-sheet"), "backgroundColor")
             self.assertEqual(sheet_colour, "rgb(255, 255, 255)")
-            for part in ("brand", "title", "free", "sees", "camera", "address"):
+            parts = ("brand", "brand-tint", "title", "free", "sees", "camera", "address")
+            for part in parts:
                 with self.subTest(part=part):
                     colour = self.style(first.locator(f".clinic-card-{part}"), "color")
                     ratio = StyleInBrowserTest.lowest_contrast(colour, sheet_colour)
                     self.assertGreaterEqual(ratio, 4.5)
+            # The QR code's dark squares, black on the white page.
+            squares = self.style(first.locator(".clinic-card-qr .qrline"), "stroke")
+            self.assertGreaterEqual(StyleInBrowserTest.lowest_contrast(squares, sheet_colour), 4.5)
             # The browser's own print: exactly one A4 page.
             pdf = self.page.pdf(prefer_css_page_size=True)
             self.assertEqual(len(re.findall(rb"/Type\s*/Page\b", pdf)), 1)
