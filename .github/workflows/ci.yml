@@ -80,9 +80,10 @@ jobs:
       - name: ruff format
         if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
         run: ruff format --check .
+      # The runner's 4 cores share out the test classes, each process with its own test database.
       - name: Django tests
         if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
-        run: python manage.py test --settings=config.test_settings
+        run: python manage.py test --settings=config.test_settings --parallel 4
       # The steps above install the dev list, which includes the production one, so a package
       # missing from requirements.txt would go unnoticed until Render. A fresh environment with
       # the production list only runs build.sh's check, then loads the app the way Render's
