@@ -63,39 +63,57 @@ class Command(BaseCommand):
         self.stdout.write(f"Sent {sent} retest reminder(s).")
 
 
-def _due(today):
-    """A Due for each account to send to today."""
-    reminders = (
+def _sendable():
+    """The reminders that may be sent: on, with an email, of an active account."""
+    return (
         # Not the admins: create_superuser makes staff too.
         RetestReminder.objects.filter(enabled=True, user__is_active=True, user__is_staff=False)
         .exclude(user__email="")
         .select_related("user")
     )
-    for reminder in reminders:
-        state = get_user_state(reminder.user, today)
-        if state.life_impact is None:
+
+
+def _due(today):
+    """A Due for each account to send to today."""
+    for reminder in _sendable():
+        due = _due_for(reminder, today)
+        if due is None:
             continue
-        due_on = retest_due_on(state.life_impact)  # the home page's 下次篩檢
-        # Already due when it was turned on: not this time (Q6).
-        if not reminder.enabled_on <= due_on <= today:
-            continue
-        record = RetestReminderSent.objects.filter(user=reminder.user, due_on=due_on).first()
+        record = RetestReminderSent.objects.filter(user=reminder.user, due_on=due.due_on).first()
         if record is None or record.to_try_on(today):
-            yield Due(reminder, due_on, state.retest_questionnaire)
+            yield due
+
+
+def _due_for(reminder, today):
+    """Its Due when it has fallen due by today, None when not."""
+    state = get_user_state(reminder.user, today)
+    if state.life_impact is None:
+        return None
+    due_on = retest_due_on(state.life_impact)  # the home page's 下次篩檢
+    # Already due when it was turned on: not this time (Q6).
+    if not reminder.enabled_on <= due_on <= today:
+        return None
+    return Due(reminder, due_on, state.retest_questionnaire)
 
 
 def _send(due, today):
     """1 when it went, 0 when it did not. The row stays locked while sending, so a run at the same
     moment waits, then finds it sent."""
     with transaction.atomic():
+        # Looked at again just before it goes (cross review, Codex 2): the list was made before
+        # the first one went, and since then it may have been turned off, done again and so on.
+        reminder = _sendable().select_for_update(of=("self",)).filter(pk=due.reminder.pk).first()
+        now = None if reminder is None else _due_for(reminder, today)
+        if now is None or now.due_on != due.due_on:
+            return 0
         record, _ = RetestReminderSent.objects.select_for_update().get_or_create(
-            user=due.reminder.user, due_on=due.due_on
+            user=reminder.user, due_on=now.due_on
         )
         if not record.to_try_on(today):
             return 0
         record.attempts += 1
         try:
-            _message(due.reminder, due.questionnaire).send()
+            _message(now.reminder, now.questionnaire).send()
         except AnymailAPIError as error:
             # Raised out of the transaction, so the row is as it was.
             if _quota_used_up(error):

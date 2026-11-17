@@ -227,6 +227,33 @@ class WhenItIsSentTests(ReminderMailTestCase):
         # Nothing for the others either: one without an email is not counted as sent.
         self.assertEqual([record[0] for record in self.records()], ["gets_it"])
 
+    def test_not_when_it_changes_while_the_run_is_sending_the_others(self):
+        # Cross review (Codex 2): the run looks again at each one just before it goes, so one
+        # turned off, done again and so on after the run found it gets nothing.
+        changes = {
+            "turned_off": lambda user: RetestReminder.objects.filter(user=user).update(
+                enabled=False, enabled_on=None
+            ),
+            "email_gone": lambda user: User.objects.filter(pk=user.pk).update(email=""),
+            "deactivated": lambda user: User.objects.filter(pk=user.pk).update(is_active=False),
+            "made_staff": lambda user: User.objects.filter(pk=user.pk).update(is_staff=True),
+            "done_again": lambda user: self.answer(user, DUE_ON, hour=8),
+        }
+        for name, change in changes.items():
+            with self.subTest(change=name):
+                self.person(f"first_{name}", answered_on=date(2026, 5, 15))
+                changed = self.person(f"changed_{name}")
+                # In the pause before the second mail: the first has gone, the second not yet.
+                with patch(
+                    f"{COMMAND_LOGGER}.sleep",
+                    side_effect=lambda _seconds, change=change, user=changed: change(user),
+                ):
+                    mail.outbox.clear()
+                    with at(DUE_ON):
+                        call_command("send_retest_reminders", stdout=StringIO())
+                self.assertEqual([m.to[0] for m in mail.outbox], [f"first_{name}@example.com"])
+                self.assertFalse(RetestReminderSent.objects.filter(user=changed).exists())
+
     def test_not_for_another_questionnaire_s_record(self):
         # IOI-HA is not a life-impact questionnaire: it never falls due (ADR 0016).
         user = self.person("ioi_only", answered_on=None)
