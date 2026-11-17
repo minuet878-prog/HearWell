@@ -1,4 +1,6 @@
 import logging
+from dataclasses import dataclass
+from datetime import date
 from time import sleep
 from urllib.parse import quote, urlsplit
 
@@ -13,7 +15,7 @@ from django.utils import timezone
 
 from screening.forms import HELP_ADDRESS
 from screening.main_flow import get_user_state, retest_due_on
-from screening.models import RetestReminder, RetestReminderSent, count_guest
+from screening.models import Questionnaire, RetestReminder, RetestReminderSent, count_guest
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,15 @@ SEND_INTERVAL = 0.5  # seconds
 # Resend's 429 for the quota used up, the day's (free plan) or the month's; its other 429 is the
 # rate, rate_limit_exceeded (resend.com/docs/api-reference/errors).
 QUOTA_USED_UP = ("daily_quota_exceeded", "monthly_quota_exceeded")
+
+
+@dataclass(frozen=True)
+class Due:
+    """An account to send to today (spec #656 誰會收到)."""
+
+    reminder: RetestReminder
+    due_on: date
+    questionnaire: Questionnaire  # the home page's 再做一次 opens the same one
 
 
 class QuotaUsedUp(Exception):
@@ -37,23 +48,20 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         today = timezone.localdate()
-        due = sorted(_due(today), key=lambda each: (each[1], each[0].pk))
+        due = sorted(_due(today), key=lambda each: (each.due_on, each.reminder.pk))
         sent = 0
-        for number, (reminder, due_on, questionnaire) in enumerate(
-            due[: settings.RETEST_REMINDER_DAILY_LIMIT]
-        ):
+        for number, each in enumerate(due[: settings.RETEST_REMINDER_DAILY_LIMIT]):
             if number:
                 sleep(SEND_INTERVAL)
             try:
-                sent += _send(reminder, due_on, questionnaire, today)
+                sent += _send(each, today)
             except QuotaUsedUp:
                 break
         self.stdout.write(f"Sent {sent} retest reminder(s).")
 
 
 def _due(today):
-    """(reminder, due day, the questionnaire to do again) of each account to send to today (spec
-    #656 誰會收到)."""
+    """A Due for each account to send to today."""
     reminders = (
         # Not the admins: create_superuser makes staff too.
         RetestReminder.objects.filter(enabled=True, user__is_active=True, user__is_staff=False)
@@ -70,22 +78,21 @@ def _due(today):
             continue
         record = RetestReminderSent.objects.filter(user=reminder.user, due_on=due_on).first()
         if record is None or record.to_try_on(today):
-            # The home page's 再做一次 opens the same one.
-            yield reminder, due_on, state.retest_questionnaire
+            yield Due(reminder, due_on, state.retest_questionnaire)
 
 
-def _send(reminder, due_on, questionnaire, today):
+def _send(due, today):
     """1 when it went, 0 when it did not. The row stays locked while sending, so a run at the same
     moment waits, then finds it sent."""
     with transaction.atomic():
         record, _ = RetestReminderSent.objects.select_for_update().get_or_create(
-            user=reminder.user, due_on=due_on
+            user=due.reminder.user, due_on=due.due_on
         )
         if not record.to_try_on(today):
             return 0
         record.attempts += 1
         try:
-            _message(reminder, questionnaire).send()
+            _message(due.reminder, due.questionnaire).send()
         except Exception as error:
             # Raised out of the transaction, so the row is as it was.
             if isinstance(error, AnymailAPIError) and _quota_used_up(error):
