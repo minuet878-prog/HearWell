@@ -266,6 +266,16 @@ class WhenItIsSentTests(ReminderMailTestCase):
         self.assertEqual(self.run_on(DUE_ON), ["due_15th@example.com", "due_16th@example.com"])
         self.assertEqual(self.run_on(DUE_ON + timedelta(days=1)), ["due_17th@example.com"])
 
+    @override_settings(RETEST_REMINDER_DAILY_LIMIT=2)
+    def test_a_second_run_the_same_day_stays_within_the_limit(self):
+        # Cross review (Codex 1): the day's limit counts what the day's earlier runs sent.
+        self.person("due_15th", answered_on=date(2026, 5, 15))
+        self.person("due_16th", answered_on=date(2026, 5, 16))
+        self.person("due_17th")
+        self.assertEqual(self.run_on(DUE_ON), ["due_15th@example.com", "due_16th@example.com"])
+        self.assertEqual(self.run_on(DUE_ON, hour=15), [])
+        self.assertEqual(self.run_on(DUE_ON + timedelta(days=1)), ["due_17th@example.com"])
+
     # 26
     def test_a_pause_between_each_one_within_resend_s_rate(self):
         self.person("due_15th", answered_on=date(2026, 5, 15))

@@ -49,8 +49,11 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         today = timezone.localdate()
         due = sorted(_due(today), key=lambda each: (each.due_on, each.reminder.pk))
+        # What the day's earlier runs sent counts too: one run again by hand, or after a restart.
+        sent_today = RetestReminderSent.objects.filter(sent_at__date=today).count()
+        left = max(settings.RETEST_REMINDER_DAILY_LIMIT - sent_today, 0)
         sent = 0
-        for number, each in enumerate(due[: settings.RETEST_REMINDER_DAILY_LIMIT]):
+        for number, each in enumerate(due[:left]):
             if number:
                 sleep(SEND_INTERVAL)
             try:
