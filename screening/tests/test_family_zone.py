@@ -614,7 +614,8 @@ class ReviewedPagesTests(SimpleTestCase):
                 "<li>寄信服務：Resend",
                 "<li>為了防止有人大量試信箱",
                 "<li>您忘記密碼時，寄重設密碼信給您",
-                "<li>重設密碼信會傳到美國",
+                # #664 (spec #656) added the 重測提醒信 to this line.
+                "<li>重設密碼信和重測提醒信會傳到美國",
                 "<li>Resend（寄信服務",
                 # Spec #505's 用 Google 登入時 (consent version 7); the owner reviews it at
                 # acceptance. Its row's tags (details, summary's body, ul) are in the digest.
@@ -651,12 +652,24 @@ class ReviewedPagesTests(SimpleTestCase):
                 "<p>有新的意見回饋時",
                 "<li>看大家在意見回饋寫了什麼",
                 "<li>意見回饋保存 90 天",
+                # #664 (spec #656)'s email 重測提醒 and its line under 為什麼蒐集 (the version
+                # stays 8, ADR 0065); the owner settles the agent's draft. Its row's tags are in
+                # the digest.
+                "{# Spec #656 (#664, ADR 0065)",
+                '<summary><h2 id="retest-reminder-title"',
+                "<p>您在「帳號設定」或結果頁打開",
+                "<li>預設不寄",
+                "<li>信裡有您的使用者名稱",
+                "<li>可以隨時取消",
+                "<li>帳號沒有 email 的",
+                "<li>寄信服務和重設密碼信一樣",
+                "<li>您打開 email 重測提醒時",
             ),
             # #471 (the #470 mockup B) folded each part into a row and dropped the 這一頁的段落
             # list; the visible words are the same as main's apart from that list's title.
-            # #526 and spec #505, #506, #633 added the tags of the 忘記密碼時, 用 Google 登入時,
-            # 用 LINE 登入時 and 意見回饋 rows.
-            "63be57d6ad6094f22ca8991920a75c9d09d6749e9ec41cce561177e9126e037a",
+            # #526 and spec #505, #506, #633, #656 added the tags of the 忘記密碼時,
+            # 用 Google 登入時, 用 LINE 登入時, 意見回饋 and email 重測提醒 rows.
+            "22d555d10a8c4270216661e5de8f34a03c868ddc0bcbbe90c2e0747b5e355995",
         ),
     )
 

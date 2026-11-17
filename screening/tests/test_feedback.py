@@ -451,7 +451,9 @@ class FeedbackPrivacyTests(TestCase):
 
     def test_the_forgot_password_part_still_holds(self):
         part = test_layout._text(self.part("password-reset-title", "question-log-title"))
-        self.assertIn("只有您自己申請時才寄，網站不寄其他信。", part)
+        # #664 (spec #656) replaced 「網站不寄其他信」 with the email 重測提醒
+        # (test_reminder_privacy).
+        self.assertIn("只有您自己申請時才寄。", part)
 
     def test_the_date_moved_and_the_version_stays_8(self):
         self.assertEqual(models.CONSENT_VERSION, 8)
