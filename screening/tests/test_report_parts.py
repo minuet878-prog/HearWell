@@ -13,7 +13,7 @@ from django.test import TestCase
 
 from screening.models import Answer, NormGroup, Question, Questionnaire, Submission
 from screening.questionnaires import sadl
-from screening.questionnaires.definition import LIFE_IMPACT_LIMITS as HHIA_S_EXPLANATION
+from screening.questionnaires.definition import LIFE_IMPACT_LIMITS
 from screening.tests import test_report
 from screening.tests.helpers import consented_user, register
 
@@ -369,5 +369,5 @@ class ReportPartsTests(TestCase):
 
     def test_hhia_s_note_appears_once(self):
         self.record(self.hhia, wearing=False)
-        self.assertContains(self.client.get("/report"), HHIA_S_EXPLANATION, count=1)
-        self.assertContains(self.family_report(), HHIA_S_EXPLANATION, count=1)
+        self.assertContains(self.client.get("/report"), LIFE_IMPACT_LIMITS, count=1)
+        self.assertContains(self.family_report(), LIFE_IMPACT_LIMITS, count=1)
