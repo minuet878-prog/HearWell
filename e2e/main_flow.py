@@ -17285,6 +17285,36 @@ class ClinicCardPrintTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             self.assertAlmostEqual(width, 595.3, delta=1)
             self.assertAlmostEqual(height, 841.9, delta=1.5)
 
+    def test_printed_the_owners_words_keep_their_lines_inside_the_card(self):
+        # Acceptance 25 (#682): each line the owner wrote stays one line, nothing cut or outside.
+        lines = {
+            "elder": {
+                "title": ["花3分鐘，看看", "聽力對生活的影響"],
+                "sees": ["回答10題，", "馬上看到結果和建議"],
+            },
+            "family": {
+                "title": ["陪家人一起", "面對聽力問題"],
+                "sees": ["怎麼跟他說話、陪他看診、", "助聽器怎麼照顧"],
+            },
+        }
+        with self.saving_artifacts():
+            for card, parts in lines.items():
+                self.open(f"/clinic-cards?card={card}", self.DESKTOP, signed_in=False)
+                self.page.emulate_media(media="print")
+                first = self.page.locator(".clinic-card").first
+                edge = first.bounding_box()
+                for part, expected in parts.items():
+                    with self.subTest(card=card, part=part):
+                        words = first.locator(f".clinic-card-{part}")
+                        self.assertEqual([text for text, _ in self.lines(words)], expected)
+                for part in ("brand", "title", "free", "sees", "qr", "camera", "address"):
+                    with self.subTest(card=card, inside=part):
+                        box = first.locator(f".clinic-card-{part}").bounding_box()
+                        self.assertGreaterEqual(box["x"], edge["x"])
+                        self.assertGreaterEqual(box["y"], edge["y"])
+                        self.assertLessEqual(box["x"] + box["width"], edge["x"] + edge["width"])
+                        self.assertLessEqual(box["y"] + box["height"], edge["y"] + edge["height"])
+
     def test_it_fits_a_phone_at_double_text_size(self):
         with self.saving_artifacts():
             for width in (320, 390):

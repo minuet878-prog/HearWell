@@ -7351,10 +7351,6 @@
     font-weight: 700;
   }
 
-  .clinic-card-free:empty {
-    display: none;
-  }
-
   .clinic-card-scan {
     display: flex;
     flex: none;

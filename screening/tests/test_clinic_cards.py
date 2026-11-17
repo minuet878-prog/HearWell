@@ -264,3 +264,31 @@ class PrintPageReachTests(TestCase):
         for kept_off in ("執業聽力師", "審定", "醫院", "診所"):
             with self.subTest(kept_off=kept_off):
                 self.assertNotIn(kept_off, card)
+
+
+# Spec #677 acceptance 25: the owner's words from #679, as written, line breaks and all.
+OWNERS_WORDS = {
+    "elder": {
+        "title": "花 3 分鐘，看看<br>聽力對生活的影響",
+        "free": "不用註冊・免費",
+        "sees": "回答 10 題，<br>馬上看到結果和建議",
+        "camera": "用手機相機掃",
+    },
+    "family": {
+        "title": "陪家人一起<br>面對聽力問題",
+        "free": "不用註冊・免費",
+        "sees": "怎麼跟他說話、陪他看診、<br>助聽器怎麼照顧",
+        "camera": "用手機相機掃",
+    },
+}
+
+
+class CardWordsTests(TestCase):
+    """Spec #677 acceptance 25: each card says the owner's words."""
+
+    def test_each_card_says_the_owners_words(self):
+        for card, words in OWNERS_WORDS.items():
+            page = self.client.get(PRINT_PAGE, {"card": card}).content.decode()
+            for part, text in words.items():
+                with self.subTest(card=card, part=part):
+                    self.assertEqual(page.count(f'<p class="clinic-card-{part}">{text}</p>'), 10)
