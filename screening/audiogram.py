@@ -177,6 +177,12 @@ def _mild_advice(life_impact):
     return FittingAdvice.RECOMMEND
 
 
+def over_mild(ptas):
+    """Either ear's PTA over 40 dB HL (中度 on), alone enough for 建議評估選配's 建議; an ear
+    without a PTA is not."""
+    return any(p is not None and p > MILD_LIMIT for p in ptas)
+
+
 def fitting_advice(points, life_impact):
     """Whether to suggest an audiologist's hearing-aid assessment (ADR 0067, spec #693): either
     ear's PTA over 40 dB HL (中度 on), or the worse ear 輕度 and the latest life-impact record
@@ -184,7 +190,7 @@ def fitting_advice(points, life_impact):
     hearing aids is not judged by it; that is the caller's to leave out."""
     ptas = [r["pta"] for r in interpret(points).values()]
     known = [p for p in ptas if p is not None]
-    if any(p > MILD_LIMIT for p in known):
+    if over_mild(known):
         return FittingAdvice.RECOMMEND
     mild = any(p > NORMAL_LIMIT for p in known)
     advice = _mild_advice(life_impact) if mild else FittingAdvice.NORMAL

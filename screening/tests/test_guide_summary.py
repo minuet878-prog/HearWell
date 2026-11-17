@@ -1,5 +1,7 @@
 from datetime import date, datetime
+from pathlib import Path
 
+from django.conf import settings
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
@@ -549,3 +551,25 @@ class FittingAdviceGuideTests(TestCase):
                 for wording in (TRACK, MILD_WITH_IMPACT, WITHIN_NORMAL):
                     self.assertNotIn(wording, text)
                 self.assertContains(response, HERE)  # 配戴之後, as before
+
+
+class SelfReview693AdviceWordsTests(TestCase):
+    """The self review on #693 (CODING_STANDARDS 9): 要不要找聽力師評估's five sentences come
+    from scoring.py, so my guide's template writes none of them."""
+
+    def test_the_template_holds_none_of_the_sentences(self):
+        source = (
+            Path(settings.BASE_DIR) / "screening/templates/screening/guide/index.html"
+        ).read_text()
+        for words in (
+            RECOMMENDS,
+            MILD_WITH_IMPACT,
+            "您的聽力圖是輕度聽力損失，目前對生活的影響不大",
+            QUESTIONNAIRE_FIRST,
+            WITHIN_NORMAL,
+            BEFORE_YOU_GO,
+            DO_QUESTIONNAIRE,
+        ):
+            with self.subTest(words=words):
+                self.assertNotIn(words, source)
+        self.assertNotIn("advice ==", source)
