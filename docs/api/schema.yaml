@@ -105,8 +105,9 @@ paths:
     post:
       operationId: guest_counts_create
       description: |-
-        Adds one to this month's column of the 訪客月計數 that a page names (spec #677): a
-        clinic card's landing page, once it has opened in a browser. Anyone, signed in or not,
+        Adds one to this month's column of the 訪客月計數 that a page names: a clinic card's
+        landing page, once it has opened in a browser (spec #677); a door pressed on the signed-out
+        home, or the address 傳給他 sent, opened in a browser (spec #655). Anyone, signed in or not,
         and nothing about them is kept: no session is read (so no CSRF), and no limit (the
         grill's Q15: a flood only makes the number wrong).
       tags:
@@ -465,7 +466,7 @@ components:
       - questionnaire
     GuestCount:
       type: object
-      description: 'Which column of the 訪客月計數 a page adds one to (spec #677).'
+      description: 'Which column of the 訪客月計數 a page adds one to (specs #677, #655).'
       properties:
         kind:
           $ref: '#/components/schemas/KindEnum'
@@ -522,10 +523,16 @@ components:
       enum:
       - clinic_elder
       - clinic_family
+      - door_self
+      - door_family
+      - send_opened
       type: string
       description: |-
         * `clinic_elder` - clinic_elder
         * `clinic_family` - clinic_family
+        * `door_self` - door_self
+        * `door_family` - door_family
+        * `send_opened` - send_opened
     Level:
       type: object
       properties:

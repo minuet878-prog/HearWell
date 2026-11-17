@@ -166,6 +166,7 @@ class QuestionLogMonthAdmin(ViewOnlyAdmin):
 class GuestMonthAdmin(ViewOnlyAdmin):
     # Spec #492 (#500): the owner reads whether going without an account brings more people in.
     # The two clinic cards' columns (spec #677): how many scans reached their landing page.
+    # The two doors and 傳給他 (spec #655): which door was pressed more, and opens of what was sent.
     list_display = (
         "month_label",
         "completed",
@@ -174,6 +175,9 @@ class GuestMonthAdmin(ViewOnlyAdmin):
         "saved_line",
         "clinic_elder",
         "clinic_family",
+        "door_self",
+        "door_family",
+        "send_opened",
     )
     ordering = ("-month",)
 

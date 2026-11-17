@@ -28,7 +28,7 @@ from screening.scoring import get_advice
 
 
 class GuestCountSerializer(serializers.Serializer):
-    """Which column of the 訪客月計數 a page adds one to (spec #677)."""
+    """Which column of the 訪客月計數 a page adds one to (specs #677, #655)."""
 
     kind = serializers.ChoiceField(choices=PAGE_COUNT_COLUMNS)
 
