@@ -34,9 +34,16 @@ class RetestReminder(models.Model):
             self.save()
 
     def turn_off(self):
-        """From the account settings or an email's cancel link: one already off stays the same."""
+        """From the account settings: one already off stays the same."""
         self.enabled, self.enabled_on = False, None
         self.save(update_fields=("enabled", "enabled_on"))
+
+    @classmethod
+    def cancel(cls, token):
+        """From an email's cancel link: off, if the code is still this reminder's. One write that
+        looks at the code as it is then, so one turned on again meanwhile, with a new code, stays
+        on (cross review, Codex 8). False when no reminder has the code; one already off, True."""
+        return cls.objects.filter(cancel_token=token).update(enabled=False, enabled_on=None) == 1
 
 
 class RetestReminderSent(models.Model):

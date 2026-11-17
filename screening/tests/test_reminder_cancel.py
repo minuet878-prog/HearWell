@@ -3,6 +3,7 @@ signing in (the #657 mockup's cancel page B), RFC 8058's one-click included."""
 
 from datetime import date
 
+from django.db import connection
 from django.test import Client, TestCase
 from django.urls import reverse
 
@@ -114,6 +115,27 @@ class ReminderCancelTests(TestCase):
         self.assertTrue(self._reminder().enabled)
         new = self._url(self._reminder().cancel_token)
         self.assertEqual(self.client.get(new).status_code, 200)
+
+    # 37: pressed at the very moment the owner turns it on again (cross review, Codex 8).
+    def test_an_old_link_pressed_while_turned_on_again_leaves_the_new_one_on(self):
+        old = self.reminder.cancel_token
+        self.reminder.turn_off()
+        on_again = []
+
+        def turn_on_again(execute, sql, params, many, context):
+            # Just after the cancel's first look at the old code, the owner turns it on again.
+            result = execute(sql, params, many, context)
+            if not on_again and old in (params or ()):
+                on_again.append(True)
+                self._reminder().turn_on(date(2026, 11, 17))
+            return result
+
+        with connection.execute_wrapper(turn_on_again):
+            self.client.post(self._url(old))
+        self.assertEqual(on_again, [True])
+        reminder = self._reminder()
+        self.assertTrue(reminder.enabled)
+        self.assertNotEqual(reminder.cancel_token, old)
 
     # 38
     def test_cancelling_one_account_leaves_the_other_on_the_same_address(self):
