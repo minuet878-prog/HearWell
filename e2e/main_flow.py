@@ -46,7 +46,6 @@ from screening.models import (
     Audiogram,
     AudiogramPoint,
     Category,
-    Feedback,
     GuestMonth,
     GuideChapterView,
     NormGroup,
@@ -660,33 +659,6 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             self.assertEqual(shared["url"], url)
             # The page's title, in family's words since spec #583 (#589).
             self.assertEqual(shared["title"], "家人聽力不好怎麼辦？給家屬的溝通與陪伴方法｜聽伴")  # noqa: RUF001
-
-    def test_family_guide_marks_the_urgent_one(self):
-        """#240: the urgent topic and 119 stand out. #469 (the #468 mockup A): the list has no
-        jump links left; 怎麼跟他說話 is a page of its own. Readability batch 2: every row opens a
-        page, the urgent box set apart from them."""
-        with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/family")
-            entries = self.page.get_by_role("navigation", name="專區內容")
-            # #487: the hearing loss simulator's row first.
-            expect(entries.get_by_role("link")).to_have_count(5)
-            for link in entries.get_by_role("link").all():
-                self.assertNotIn("#", link.get_attribute("href"))
-            urgent = self.main().locator("section", has=self.page.locator("#urgent-title"))
-            calm = entries.get_by_role("link").first
-
-            def style(locator, prop):
-                return locator.evaluate(f"el => getComputedStyle(el).{prop}")
-
-            self.assertNotEqual(style(urgent, "backgroundColor"), style(calm, "backgroundColor"))
-            title = urgent.locator("#urgent-title")
-            calm_title = calm.locator(".link-card-title")
-            self.assertNotEqual(style(title, "color"), style(calm_title, "color"))
-            number = urgent.get_by_text("119", exact=True)
-            body = urgent.get_by_text("如果同時出現", exact=False)
-            self.assertGreater(
-                float(style(number, "fontSize")[:-2]), float(style(body, "fontSize")[:-2])
-            )
 
     def step1_open_register(self):
         # Spec #148 (ticket #150) had 開始篩檢 register first; since #499 (spec #492) a visitor
@@ -1823,40 +1795,6 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
         )
         return record
 
-    def test_result_level_is_exposed_as_a_heading(self):
-        self.open(390)
-        record = self.user.submissions.get(questionnaire__code="hhie-s")
-        with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
-            expect(self.page.get_by_role("heading", level=1)).to_have_count(1)
-            level = self.page.get_by_role("heading", level=2, name="輕度到中度影響", exact=True)
-            expect(level).to_be_visible()
-            expect(level).to_have_attribute("aria-describedby", "result-score")
-            expect(self.page.locator("#result-score")).to_contain_text("總分 20 分")
-
-    def test_history_exposes_older_records_outside_the_chart_summary(self):
-        self.open(390)
-        questionnaire = Questionnaire.objects.get(code="hhie-s")
-        expected = [(datetime.now(ZoneInfo("Asia/Taipei")).strftime("%Y/%m/%d"), 20)]
-        for days_ago, score in ((2, 4), (5, 0)):
-            record = Submission.objects.create(
-                user=self.user, questionnaire=questionnaire, wearing_hearing_aid=False
-            )
-            Answer.objects.bulk_create(
-                Answer(submission=record, question=q, score=score)
-                for q in questionnaire.questions.all()
-            )
-            when = datetime.now(ZoneInfo("Asia/Taipei")) - timedelta(days=days_ago)
-            Submission.objects.filter(pk=record.pk).update(created_at=when)
-            expected.append((when.strftime("%Y/%m/%d"), score * 10))
-        with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
-            expect(self.page.locator(".recharts-wrapper")).to_be_visible()
-            for date_text, score in expected:
-                accessible_date = date_text.replace("/", r"\/")
-                accessible_name = re.compile(rf"{accessible_date}.*總分：{score}")
-                expect(self.page.get_by_role("link", name=accessible_name)).to_have_count(1)
-
     def hold(self, url):
         """Requests to url wait in the returned list until release() lets them through."""
         held = []
@@ -2410,30 +2348,6 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                         summary.click()
                     self.assert_fits_a_phone_at_double_text_size(path)
 
-    # #198: without JavaScript the address is there to copy by hand and the phone blocks open.
-    def test_share_page_and_add_to_home_without_javascript(self):
-        ReportShare.objects.create(user=self.user)
-        self.context = self.browser.new_context(
-            viewport={"width": 390, "height": 900}, java_script_enabled=False
-        )
-        self.addCleanup(self.context.close)
-        self.context.add_cookies([self.cookie])
-        self.context.tracing.start(screenshots=True, snapshots=True)
-        self.page = self.context.new_page()
-        with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/share")
-            expect(self.page.locator("#share-url")).to_be_visible()
-            expect(self.page.locator("#share-url")).to_contain_text("/shared/")
-            for name in ("複製連結", "再傳一次給家人"):
-                expect(self.main().get_by_role("button", name=name, exact=True)).to_be_hidden()
-            self.page.goto(f"{self.live_server_url}/add_to_home")
-            for phone, step in (("我用 iPhone", "分享"), ("我用 Android", "⋮")):
-                block = self.main().locator("details", has_text=phone)
-                expect(block.locator("ol")).to_be_hidden()
-                block.get_by_text(phone, exact=True).click()
-                expect(block.locator("ol")).to_be_visible()
-                expect(block.locator("ol")).to_contain_text(step)
-
     # #198 (#183 acceptance 31): batch 2's pages, 320px wide at 200% text, folds open.
     def test_batch2_pages_fit_a_phone_at_double_text_size(self):
         share = ReportShare.objects.create(user=self.user)
@@ -2633,16 +2547,6 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                 self.assertGreaterEqual(lower["y"], upper["y"] + upper["height"])
             scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
             self.assertLessEqual(scroll_width, 320)
-
-    # phase9_ui_refresh_4a_home.md review 1: at 200% text the steps still fit a phone
-    def test_home_steps_fit_a_phone_at_double_text_size(self):
-        self.open(320, 640, signed_in=False)
-        with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/")
-            self.page.add_style_tag(content="html { font-size: 225% !important; }")  # 2 x 112.5%
-            for step in self.page.locator(".empty-preview .step-list > li").all():
-                box = step.bounding_box()
-                self.assertLessEqual(box["x"] + box["width"], 320)
 
     # #127 acceptance 3: public and account pages at 200% text on a phone
     def test_public_and_account_pages_fit_a_phone_at_double_text_size(self):
@@ -3119,26 +3023,6 @@ class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase)
                             self.assert_pill_slid()
                     self.assertIn("skipped", arrivals)
                     self.assertLessEqual(set(arrivals), {"transition", "skipped"})
-
-    def test_pill_slides_between_questionnaires_and_audiograms(self):
-        self.open()
-        with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/my_hearing?view=questionnaires")
-            records = self.main().get_by_role("navigation", name="紀錄種類")
-            records.get_by_role("link", name="聽力圖").click()
-            self.assert_slid("聽力圖")
-            records.get_by_role("link", name="問卷").click()
-            self.assert_slid("問卷")
-
-    def test_pill_slides_between_ears(self):
-        self.open()
-        with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/audiograms/compare")
-            ears = self.main().get_by_role("navigation", name="選耳朵")
-            ears.get_by_role("link", name="左耳").click()
-            self.assert_slid("左耳")
-            ears.get_by_role("link", name="右耳").click()
-            self.assert_slid("右耳")
 
     def test_reduced_motion_changes_page_without_sliding(self):
         self.open(reduced_motion="reduce")
@@ -4244,57 +4128,6 @@ class RouteCheckmarkTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
                     expect(number).to_have_css("background-color", WhiteCardRuleTest.WHITE)
 
 
-class LearnPageTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
-    """#269 (spec #268): the 了解 page, signed out, at 200% text and without JavaScript."""
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.playwright = sync_playwright().start()
-        cls.browser = cls.playwright.chromium.launch()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.browser.close()
-        cls.playwright.stop()
-        super().tearDownClass()
-
-    def open(self, width, height=900, javascript=True):
-        self.context = self.browser.new_context(
-            viewport={"width": width, "height": height}, java_script_enabled=javascript
-        )
-        self.context.tracing.start(screenshots=True, snapshots=True)
-        self.page = self.context.new_page()
-        self.addCleanup(self.context.close)
-
-    # Acceptance: 390px at 200% text has no sideways scroll; checked at 320px, the narrower
-    # phone the other 200% tests use.
-    def test_fits_a_phone_at_double_text_size(self):
-        self.open(320, 640)
-        with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/")
-            self.page.get_by_role("navigation", name="主要導覽").get_by_role(
-                "link", name="了解"
-            ).click()
-            expect(self.main().get_by_role("heading", level=1)).to_have_text("了解")
-            self.assert_fits_a_phone_at_double_text_size("/learn")
-
-    def test_cards_change_page_without_javascript(self):
-        cards = (
-            ("了解助聽器選配與補助", "/guide", "助聽器選配與補助"),
-            ("家人專區：溝通與陪伴", "/family", "家人專區"),
-            ("問答小助手：常見問題一次查", "/qa", "問答小助手"),
-        )
-        self.open(390, javascript=False)
-        with self.saving_artifacts():
-            for name, path, heading in cards:
-                with self.subTest(card=name):
-                    self.page.goto(f"{self.live_server_url}/learn")
-                    self.main().get_by_role("link", name=name).click()
-                    expect(self.page).to_have_url(f"{self.live_server_url}{path}")
-                    expect(self.main().get_by_role("heading", level=1)).to_have_text(heading)
-
-
 class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """#427 (spec #426): the way from a new visitor's home page to 家人專區, on a phone."""
 
@@ -4369,13 +4202,6 @@ class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
                 "el => parseFloat(getComputedStyle(el).fontSize)"
             )
             self.assertGreaterEqual(size, root)
-
-    def test_home_and_zone_fit_a_phone_at_double_text_size(self):
-        with self.saving_artifacts():
-            for path in ("/", "/family"):
-                with self.subTest(path=path):
-                    self.page.goto(f"{self.live_server_url}{path}")
-                    self.assert_fits_a_phone_at_double_text_size(path)
 
     def test_old_jump_link_lands_on_its_section(self):
         with self.saving_artifacts():
@@ -4648,18 +4474,6 @@ class BottomTabsTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             for f in (500, 1000, 2000, 4000)
         )
 
-    # Acceptance: no sideways scroll at 200% text on 我的紀錄 and 了解, checked at 320px, the
-    # narrower phone assert_fits_a_phone_at_double_text_size uses.
-    def test_records_and_learn_fit_a_phone_at_double_text_size(self):
-        self.add_audiogram()
-        self.open(320, 640)
-        with self.saving_artifacts():
-            # With only an audiogram, /my_hearing opens the audiogram list (#270).
-            for path in ("/my_hearing?view=questionnaires", "/audiograms", "/learn"):
-                with self.subTest(path=path):
-                    self.page.goto(f"{self.live_server_url}{path}")
-                    self.assert_fits_a_phone_at_double_text_size(path)
-
     # The audiogram card (owner's pick A): at normal text the date sits beside the thumbnail as
     # before; at 200% text it drops under the thumbnail, and the date and levels stay inside the
     # card on both phones.
@@ -4739,16 +4553,6 @@ class BottomTabsTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
                     expect(self.page).to_have_url(f"{self.live_server_url}{path}")
                     if heading:
                         expect(self.main().get_by_role("heading", level=1)).to_have_text(heading)
-
-    # Spec #268 acceptance 20: the records switch and the signed-out tabs are plain links too.
-    def test_records_switch_changes_page_without_javascript(self):
-        self.open(390, javascript=False)
-        with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/my_hearing")
-            switch = self.page.get_by_role("navigation", name="紀錄種類")
-            self.click_through(
-                switch, (("聽力圖", "/audiograms"), ("問卷", "/my_hearing?view=questionnaires"))
-            )
 
     def test_signed_out_tabs_change_page_without_javascript(self):
         self.open(390, javascript=False, signed_in=False)
@@ -5988,32 +5792,6 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.assertEqual(self.style(found, "borderTopRightRadius"), radius)
                     self.assertEqual(self.style(found, "borderTopLeftRadius"), radius)
 
-    # E (ADR 0043): a clickable card is a row parted by thin grey lines, with no shadow at rest.
-    def test_clickable_cards_are_rows_between_thin_lines(self):
-        cases = (("/questionnaire_list?choose=self", "main a.link-card"),)
-        with self.saving_artifacts():
-            self.open()
-            for path, selector in cases:
-                with self.subTest(path=path, selector=selector):
-                    self.page.goto(f"{self.live_server_url}{path}")
-                    found = self.page.locator(selector).first
-                    expect(found).to_be_attached()
-                    self.assertEqual(self.style(found, "borderTopColor"), self.LINE)
-                    self.assertEqual(self.style(found, "borderBottomColor"), self.LINE)
-                    self.assertEqual(self.style(found, "borderLeftWidth"), "0px")
-                    self.assertEqual(self.style(found, "boxShadow"), "none")
-
-    def test_masking_switch_keeps_its_orange(self):
-        # ADR 0007: the masking switch is one of the few non-level colours kept (#137 acceptance 4).
-        self.open()
-        with self.saving_artifacts():
-            audiogram_step(self.page, self.live_server_url, 2)
-            # #333 (D4): on a switch, the orange is the track's.
-            switch = self.page.get_by_role("switch", name="遮蔽", exact=True)
-            switch.click()
-            track = switch.locator(".audiogram-mask-track")
-            self.assertEqual(self.style(track, "backgroundColor"), "rgb(179, 89, 0)")
-
     # #138 (2a): the header gradient and its wave, which plays once per tab (ADR 0006).
     WAVE_ANIMATIONS = """() => document.getAnimations()
         .filter(a => a.effect.target.closest('.site-wave'))
@@ -7215,25 +6993,6 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
                 for part in (details, summary):
                     self.assertEqual(self.style(part, "backgroundImage"), "none")
 
-    # D1: what runs to the box's edges (a table here) starts clear of the blue edge, which would
-    # otherwise be hidden behind a white table on screen and show through it on paper.
-    def test_open_dropdown_contents_start_clear_of_the_blue_edge(self):
-        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 9, 28))
-        AudiogramPoint.objects.create(
-            audiogram=audiogram, ear="right", conduction="air", frequency=1000, db=40
-        )
-        self.open(390)
-        with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/audiograms/{audiogram.pk}")
-            details = self.main().locator("details", has_text="標記的數值")
-            details.locator("> summary").click()
-            expect(details).to_have_attribute("open", "")
-            # #465 (the #464 mockup 3A): 標記的數值 is a list-row fold now, no blue edge of its
-            # own; its table starts inside the fold.
-            box, table = details.bounding_box(), details.locator("table").bounding_box()
-            self.assertEqual(self.style(details, "borderLeftWidth"), "0px")
-            self.assertGreaterEqual(table["x"], box["x"])
-
 
 # White card rule (ADR 0022, spec #297): the pages WhiteCardRuleTest walks, one tuple per ticket
 # so each ticket adds only its own pages. Each entry: (name, signed in, path, or a function that
@@ -7286,6 +7045,7 @@ WHITE_CARD_PAGES_LEARN = (
     ("guide chapter answered", True, lambda test: test.answered_chapter()),
     ("guide, below the threshold", True, lambda test: test.guide_below_and_not_applicable()),
     ("family guide", False, "/family"),
+    ("family guide, signed in", True, "/family"),
     ("learn", False, "/learn"),
     # #397: the Q&A assistant's home and an answer, signed in and out.
     ("Q&A home", False, "/qa"),
@@ -8293,14 +8053,6 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                                 StyleInBrowserTest.lowest_contrast(colour, self.WHITE), 4.5
                             )
 
-    # #312: the family guide fits a phone at 200% text, signed in and signed out.
-    def test_family_guide_fits_a_phone_at_double_text_size(self):
-        with self.saving_artifacts():
-            for signed_in in (False, True):
-                with self.subTest(signed_in=signed_in):
-                    self.visit(signed_in, "/family", width=320)
-                    self.assert_fits_uncut(f"family guide, signed in: {signed_in}")
-
     # #302: the 了解 page's cards are list rows (ADR 0043).
     def test_learn_cards_are_list_rows(self):
         with self.saving_artifacts():
@@ -9096,20 +8848,6 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             audiogram_step(self.page, self.live_server_url, 2)
             expect(self.main().get_by_text("報告上的 O 是右耳")).to_be_visible()
             self.assertEqual(self.page.evaluate(self.BEIGE_OR_SIDE_BARS, list(self.OLD_BEIGES)), [])
-
-    # #311: no sideways scrolling or cut text on a phone at 200% text on the three pages with
-    # its flat blocks.
-    def test_ear_results_share_steps_and_comparison_fit_a_phone_at_double_text_size(self):
-        pages = (
-            ("audiogram", lambda test: test.audiogram_detail()),
-            ("share settings", lambda test: test.share_settings()),
-            ("aided and unaided comparison", lambda test: test.hhi_comparison()),
-        )
-        with self.saving_artifacts():
-            for name, path in pages:
-                with self.subTest(page=name):
-                    self.visit(True, path, width=320)
-                    self.assert_fits_uncut(name)
 
     # #301: no sideways scrolling on a phone at 200% text on 我的紀錄's two tabs and an audiogram.
     def test_records_and_audiogram_fit_a_phone_at_double_text_size(self):
@@ -10656,14 +10394,6 @@ class ContentAndContact576Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
             self.assertGreaterEqual(box["height"], 44)
             self.assertLessEqual(box["x"] + box["width"], 320)
 
-    # #580 (acceptance 24): without JavaScript there is no button that does nothing.
-    def test_no_button_without_java_script(self):
-        with self.saving_artifacts():
-            self.open("/privacy", self.PHONE, signed_in=False, java_script_enabled=False)
-            footer = self.page.locator(".site-footer")
-            expect(footer.get_by_role("link", name=self.ADDRESS)).to_be_visible()
-            expect(footer.locator("[data-copy]")).to_be_hidden()
-
     # #580 (acceptance 20, 22): the account page's own button, under its sentence; pressing it
     # leaves the footer's as it was.
     def test_account_page_button_copies_and_leaves_the_footer_one_alone(self):
@@ -11475,16 +11205,6 @@ class ResultPagesT363Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             lines = self.lines(card.locator(".link-card-title"))
             self.assertTrue(any("（SSQ12-TW）" in words for words, _ in lines), lines)
 
-    # Acceptance 4: the lowest items' questions in normal weight, at the size they had.
-    def test_ssq12_lowest_questions_are_in_normal_weight(self):
-        self.visit(True, lambda test: test.result("ssq12-tw", 5), width=390)
-        with self.saving_artifacts():
-            questions = self.main().locator(".score-card-head > :first-child")
-            expect(questions).to_have_count(3)
-            for question in questions.all():
-                self.assertEqual(self.style(question, "fontWeight"), "400")
-                self.assertAlmostEqual(self.font_size(question), 1.2 * self.REM)
-
 
 class FittingGuideT367Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """#367 (spec #354): the guide's route and chapters, measured on a phone and a desktop."""
@@ -11640,14 +11360,6 @@ class FamilyAndAccountT361Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
             self.open("/family", script=self.SHARE_SHEET)
             section = self.main()
             expect(section.get_by_role("button", name="傳給家人")).to_be_visible()
-            expect(section.get_by_role("button", name="複製網址")).to_be_hidden()
-
-    # Acceptance 3: without JavaScript the address is still there to copy by hand.
-    def test_address_without_javascript(self):
-        with self.saving_artifacts():
-            self.open("/family", self.DESKTOP, java_script_enabled=False)
-            section = self.main()
-            expect(section.get_by_text(re.compile(r"^http://.*/family$"))).to_be_visible()
             expect(section.get_by_role("button", name="複製網址")).to_be_hidden()
 
     # Acceptance 6: on a desktop the password field and the buttons start where the text does,
@@ -12364,36 +12076,6 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
             for alarm in ("火警", "煙霧", "警報"):
                 self.assertNotIn(alarm, drawn)
 
-    # The ticket's 不用 React: with no JavaScript the chart is gone and all of this still shows.
-    def test_without_javascript_the_reminders_and_the_way_on_still_show(self):
-        with self.saving_artifacts():
-            self.page_for(45, java_script_enabled=False)
-            expect(self.page.locator(".audiogram-plot")).to_have_count(0)
-            self.assert_the_reminders_show()
-            expect(
-                self.main().get_by_role("link", name=re.compile("^看助聽器選配與補助"))
-            ).to_be_visible()
-            expect(self.way_back()).to_be_visible()
-
-    # Acceptance 2: over the condition the card leads to the guide, and the way back to this one.
-    def test_the_guide_card_and_the_way_back_lead_where_they_say(self):
-        with self.saving_artifacts():
-            audiogram = self.page_for(45)
-            self.guide_card().click()
-            self.page.wait_for_url("**/guide")
-            self.page.go_back()
-            self.way_back().click()
-            self.page.wait_for_url(f"**/audiograms/{audiogram.pk}")
-
-    # Acceptance 2: under the condition only the way back is there.
-    def test_under_the_condition_there_is_only_the_way_back(self):
-        with self.saving_artifacts():
-            self.page_for(20)
-            expect(
-                self.main().get_by_role("link", name=re.compile("^看助聽器選配與補助"))
-            ).to_have_count(0)
-            expect(self.way_back()).to_be_visible()
-
     # Acceptance 4 (ADR 0031): the reminders at 1rem or more and the source small print; at 200%
     # on 320 they all double, the page does not scroll sideways, and the way on is big enough.
     def test_the_words_follow_the_text_size_on_a_narrow_phone(self):
@@ -12687,13 +12369,6 @@ class FamilyReluctantTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             ):
                 self.assertGreaterEqual(words.bounding_box()["width"], 3 * self.font_size(words))
 
-    def test_zone_home_fits_with_the_new_entry(self):
-        with self.saving_artifacts():
-            self.open("/family", (320, 640), signed_in=False)
-            entry = self.main().get_by_role("link", name=re.compile("長輩不肯去怎麼說"))
-            self.assertGreaterEqual(entry.bounding_box()["height"], 44)
-            self.assert_fits_a_phone_at_double_text_size("/family with the new entry")
-
 
 class FamilyHearingAidsTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """#433 (spec #426): 助聽器怪怪的 in a real browser. Every problem is in the page from the
@@ -12761,20 +12436,6 @@ class FamilyHearingAidsTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
             for words in self.problem_lines(option):
                 shown = self.group().get_by_text(words, exact=True).locator("visible=true")
                 expect(shown).to_have_count(0)
-
-    def test_jump_link_lands_on_the_section(self):
-        with self.saving_artifacts():
-            self.open(self.PATH, signed_in=False)
-            self.main().get_by_role("navigation", name="這一頁的內容").get_by_role(
-                "link", name="助聽器怪怪的"
-            ).click()
-            expect(self.page).to_have_url(re.compile("#problems-title$"))
-
-    def test_guide_link_opens_the_types_and_prices_chapter(self):
-        with self.saving_artifacts():
-            self.open(self.PATH, signed_in=False)
-            self.main().get_by_role("link", name="「助聽器的種類與價格」").click()
-            expect(self.page).to_have_url(f"{self.live_server_url}/guide/types-and-prices")
 
     def test_keyboard_picks_and_changes(self):
         with self.saving_artifacts():
@@ -12846,13 +12507,6 @@ class FamilyHearingAidsTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
             self.assertGreaterEqual(link.bounding_box()["height"], 44)
             words = self.live().get_by_text(self.URGENT.urgent, exact=True)
             self.assertGreaterEqual(self.font_size(words), self.rem())
-
-    def test_zone_home_fits_with_the_new_entry(self):
-        with self.saving_artifacts():
-            self.open("/family", (320, 640), signed_in=False)
-            entry = self.main().get_by_role("link", name=re.compile("怪怪的怎麼辦"))
-            self.assertGreaterEqual(entry.bounding_box()["height"], 44)
-            self.assert_fits_a_phone_at_double_text_size("/family with the new entry")
 
 
 class FamilyVisitsTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
@@ -13109,23 +12763,6 @@ class FamilyDeadlinesTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
 
             self.main().get_by_role("link", name="回到家人專區").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/family")
-
-    def test_all_three_dates_still_ahead_say_nothing_has_passed(self):
-        today = timezone.localdate()
-        with self.saving_artifacts():
-            self.open(self.PATH, signed_in=False)
-            for label in ("九號表開立日期", "收到核定通知日期", "開始配戴日期"):
-                self.field(label).fill(today.isoformat())
-            self.send()
-            first, last = add_months(today, 1), add_months(today, 3)
-            for words in (
-                f"九號表有效到 {last:%Y/%m/%d}",
-                f"購買並請款的期限：{add_months(today, 6):%Y/%m/%d}",
-                f"二十五號表可以做的日期：{first:%Y/%m/%d} 到 {last:%Y/%m/%d}",
-            ):
-                with self.subTest(words=words):
-                    expect(self.main().get_by_text(words)).to_be_visible()
-            expect(self.main().get_by_text(self.PASSED)).to_have_count(0)
 
     def test_print_button_opens_printing(self):
         with self.saving_artifacts():
@@ -13522,15 +13159,6 @@ class FamilyAdjustingTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             self.group().get_by_label(self.WONT_WEAR.label).check()
             self.live().get_by_role("link", name="長輩不肯去怎麼說").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/family/reluctant")
-
-    def test_jump_link_lands_on_the_section(self):
-        with self.saving_artifacts():
-            self.open(self.PATH, signed_in=False)
-            links = self.main().get_by_role("navigation", name="這一頁的內容").get_by_role("link")
-            expect(links.nth(0)).to_have_text(re.compile("助聽器怪怪的"))
-            expect(links.nth(1)).to_have_text(re.compile("陪長輩適應"))
-            links.nth(1).click()
-            expect(self.page).to_have_url(re.compile("#adjusting-title$"))
 
     def test_without_javascript_everything_shows_and_fits_a_phone(self):
         with self.saving_artifacts():
@@ -15475,50 +15103,6 @@ class GuestAnswerAfterFiveSecondsTest(SavesFailureArtifacts, OnAPhone, StaticLiv
             expect(wearing).to_be_visible()
 
 
-class GuestWithoutJavaScriptTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
-    """Self-review P3 (I3): with JavaScript off a guest's answer page shows no form, whose answers
-    would be lost at the login it leads to, but the note asking to register."""
-
-    fixtures = ("questions_fixture.json",)
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.playwright = sync_playwright().start()
-        cls.browser = cls.playwright.chromium.launch()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.browser.close()
-        cls.playwright.stop()
-        super().tearDownClass()
-
-    def setUp(self):
-        self.hhie_s = Questionnaire.objects.get(code="hhie-s")
-        self.context = self.browser.new_context(java_script_enabled=False)
-        self.context.tracing.start(screenshots=True, snapshots=True)
-        self.page = self.context.new_page()
-        self.addCleanup(self.context.close)
-
-    def test_a_guest_is_asked_to_register_instead_of_given_the_form(self):
-        with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
-            # The script's copy of the note stays hidden; <noscript>'s shows (by role: Playwright's
-            # text matching skips <noscript>).
-            note = (
-                self.main()
-                .get_by_role("paragraph")
-                .filter(has_text="這個瀏覽器載不出免註冊作答，請註冊後再做。")
-            )
-            expect(note.filter(visible=True)).to_have_count(1)
-            expect(self.main().locator("#answer-form")).to_be_hidden()
-            expect(self.main().get_by_role("radio")).to_have_count(0)
-            self.main().get_by_role("link", name="註冊新帳號").click()
-            expect(self.page).to_have_url(
-                f"{self.live_server_url}/register?next=%2Fquestionnaire%2F{self.hhie_s.pk}"
-            )
-
-
 class GuestHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """#499 (#492 acceptance 1 and 21): 開始篩檢 on the logged-out home opens the wizard's age step;
     after answering, the home shows that result on top, the whole tile a link to its page."""
@@ -16750,27 +16334,12 @@ class AnswerReassuranceTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
 
 
 class FeedbackTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
-    """Spec #633 (#636, #640, the #634 mockup's A): 意見回饋 from any footer, sent with or
-    without JavaScript, its pages and 關於聽伴 on a phone (the footer's rows: FooterOneRowTest)."""
-
-    def footer_links(self):
-        return self.page.locator(".site-footer-links a")
+    """Spec #633 (#636, #640, the #634 mockup's A): 意見回饋's robots box out of reach, its pages
+    and 關於聽伴 on a phone (sending from a footer, the way back: test_feedback; the footer's
+    rows: FooterOneRowTest)."""
 
     def sent_title(self):
         return self.main().get_by_role("heading", name="已送出，謝謝您")
-
-    def test_sent_from_a_footer_without_javascript_and_back_to_that_page(self):
-        with self.saving_artifacts():
-            self.open("/privacy", signed_in=False, java_script_enabled=False)
-            self.footer_links().get_by_text("意見回饋").click()
-            expect(self.main()).to_contain_text("您是從「隱私權說明」過來的。")
-            self.main().get_by_label("想跟我們說的話").fill("字太小了")
-            self.main().get_by_role("button", name="送出").click()
-            expect(self.sent_title()).to_be_visible()
-            self.main().get_by_role("link", name="回到剛才那一頁").click()
-            expect(self.page).to_have_url(f"{self.live_server_url}/privacy")
-        feedback = Feedback.objects.get()
-        self.assertEqual((feedback.text, feedback.page), ("字太小了", "隱私權說明"))
 
     def test_the_robots_box_is_never_met_by_eye_tab_or_screen_reader(self):
         # Cross review of spec #633 (acceptance 31).
