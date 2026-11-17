@@ -11,17 +11,18 @@
     {# Here, after site.css: this page's A4 sheet fills the paper, over the 1.5cm margin every other printed page keeps. #}
     <style>@page { size: A4; margin: 0; }</style>
 </head>
-<body class="clinic-cards-page">
-<main class="clinic-cards-screen">
+<body class="m-0 bg-white text-heading">
+{# 16px sides, not rem: the card keeps its size at 200% text, so wider sides would push it off a phone. #}
+<main class="max-w-[54rem] mx-auto px-[16px] pt-4 pb-8 print:max-w-none print:p-0">
 {# On screen only: what to choose and how to print (the #678 mockup's P). #}
-<div class="clinic-cards-intro">
+<div class="print:hidden">
 <h1 class="h3">列印診間小卡</h1>
 {# A link each, so choosing works without JavaScript. #}
 <nav aria-label="卡種" class="clinic-cards-choices">{% for key, label in choices %}<a class="clinic-cards-choice" href="{% url 'clinic_cards' %}?card={{ key }}"{% if key == card %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}</nav>
-{% if not qr_code %}<p class="clinic-cards-warning" role="alert">沒有設定正式網址，印出來的 QR code 不能用。</p>{% endif %}
-<div class="clinic-cards-how">
+{% if not qr_code %}<p class="mb-4 px-4 py-3 border-l-[0.375rem] border-severe bg-severe-bg text-severe font-bold" role="alert">沒有設定正式網址，印出來的 QR code 不能用。</p>{% endif %}
+<div class="mb-4 px-4 py-3 rounded-medium bg-surface">
 <p class="mb-0"><strong>列印要點</strong></p>
-<ol>
+<ol class="mt-1 mb-0 pl-6 list-decimal">
 <li>紙張選 A4。</li>
 <li>比例選「實際大小」或 100%，不要選「符合頁面大小」。</li>
 <li>印完沿著灰線裁，一張 A4 裁成 10 張。</li>
@@ -30,7 +31,7 @@
 <p class="clinic-cards-phone-note">手機上只顯示一張卡的樣子；要印整張請用電腦。</p>
 </div>
 {# The logo's gradient and mask, once: an SVG fill prints, a CSS background (the header's logo) does not by default. #}
-<svg class="clinic-cards-defs" width="0" height="0" aria-hidden="true" focusable="false"><defs>
+<svg class="absolute" width="0" height="0" aria-hidden="true" focusable="false"><defs>
 <linearGradient id="clinic-card-brand" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color: var(--color-gradient-start)"/><stop offset="1" style="stop-color: var(--color-gradient-end)"/></linearGradient>
 <mask id="clinic-card-bird"><path fill="#fff" fill-rule="evenodd" d="M12 50c1-3 3-6 5-9 0-14 9-24 21-24a11 11 0 0 1 11 9l7 4-7 3c-2 11-10 17-21 17zM40 25a2.8 2.8 0 1 0 .01 0z"/><path fill="none" stroke="#000" stroke-width="3.9" stroke-linecap="round" stroke-linejoin="round" transform="translate(28 33.5) scale(.9) translate(-28.5 -35)" d="M22 33a6.5 6.5 0 0 1 13 0c0 4-4 5-4 8.5a3.3 3.3 0 0 1-6 2"/></mask>
 </defs></svg>

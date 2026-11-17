@@ -83,7 +83,8 @@ OWNER_KEPT = {
     # the finger and the symbol (owner's pick 2026-11-16, the #613 mockup's part five).
     ".audiogram-demo-chart text": "the audiogram demo's axis numbers (#611 K2)",
     # Printed on a 9 x 5.5 cm card in pt, the sizes the owner saw and picked on the #678 mockup
-    # (C, 2026-11-17); paper does not follow a browser's text size (spec #677).
+    # (C, 2026-11-17); paper does not follow a browser's text size (spec #677). The print page
+    # previews them at that size too (the owner's call after the cross review, 2026-11-17).
     ".clinic-card": "a clinic card's words, 11pt on paper (#678 C)",
     ".clinic-card-brand": "a clinic card's 聽伴 beside its logo, 12pt on paper (#678 C)",
     ".clinic-card-camera": "a clinic card's line under its QR code, 10pt on paper (#678 C)",

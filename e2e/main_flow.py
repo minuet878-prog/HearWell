@@ -17239,7 +17239,10 @@ class ClinicCardPrintTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
         with self.saving_artifacts():
             self.open("/clinic-cards", self.DESKTOP, signed_in=False)
             self.page.emulate_media(media="print")
-            expect(self.page.locator(".clinic-cards-intro")).to_be_hidden()
+            # The heading, the two choices and the printing tips stay on screen.
+            expect(self.page.get_by_role("heading", name="列印診間小卡")).to_be_hidden()
+            expect(self.page.get_by_role("navigation", name="卡種")).to_be_hidden()
+            expect(self.page.get_by_text("列印要點")).to_be_hidden()
             sheet = self.page.locator(".clinic-cards-sheet").bounding_box()
             self.assertAlmostEqual(sheet["width"] / self.MM, 210, delta=0.3)
             self.assertAlmostEqual(sheet["height"] / self.MM, 297, delta=0.3)
