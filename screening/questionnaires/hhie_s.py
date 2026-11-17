@@ -1,7 +1,8 @@
 from screening.questionnaires.comparison import TotalComparison
 from screening.questionnaires.definition import (
-    GUIDE_ACTION,
+    HEARING_CHECK,
     LIFE_IMPACT,
+    LIFE_IMPACT_LIMITS,
     RETEST_STEP,
     SAVE_REASONS,
     Definition,
@@ -23,7 +24,10 @@ THRESHOLDS = (
     (40, "顯著影響", "severe"),
 )
 
-ADVICE = {
+# Spec #693: a severe score sends one to a hearing check, in the advice and the first next step.
+_SEVERE_CHECK = "並做聽力檢查；有 AirPods Pro 的話，也可以先用 iPhone 做聽力自我測試。"
+
+_LEVEL_ADVICE = {
     "normal": (
         "您的聽覺自覺障礙程度為無或是僅有輕微障礙，聽力的部分並未明顯影響"
         "您的情緒以及社交活動，然而高齡族群的聽力退化往往是較無自覺的，"
@@ -39,11 +43,14 @@ ADVICE = {
     "severe": (
         "聽力問題已經嚴重影響到您的生活了，許多人常常會忽視這一塊，聽不到這件事"
         "情往往已經十分嚴重了才會發現，若您尚未採取任何行動建議立即前往醫院耳鼻"
-        "喉科尋求專業建議，並且考慮配戴助聽器。聽力喪失影響的並不只是聽不聽得到，"
+        f"喉科尋求專業建議，{_SEVERE_CHECK}"
+        "聽力喪失影響的並不只是聽不聽得到，"
         "無形中也會增加社交活動的壓力（例如因為聽不清楚常會在聊天的過程中退縮、"
         "裝作聽得懂等），這些壓力以及情緒的低落會增加長者的認知負擔。"
     ),
 }
+# Spec #693: what the score cannot tell, as HHIA-S says it.
+ADVICE = {level: f"{text} {LIFE_IMPACT_LIMITS}" for level, text in _LEVEL_ADVICE.items()}
 
 # Draft reviewed and finalized by the audiologist, issue #156.
 NEXT_STEPS = {
@@ -61,7 +68,7 @@ NEXT_STEPS = {
             ),
             "action_label": "記錄聽力圖",
             "action_url": "audiogram_new",
-            **GUIDE_ACTION,
+            **HEARING_CHECK,
         },
         RETEST_STEP,
     ),
@@ -77,7 +84,7 @@ NEXT_STEPS = {
                 "這次篩檢能讓您體認到聽力對生活的影響，建議前往醫院耳鼻喉科進行聽力相關檢查，"
                 "並詢問專業意見。"
             ),
-            **GUIDE_ACTION,
+            **HEARING_CHECK,
         },
         RETEST_STEP,
     ),
@@ -85,9 +92,9 @@ NEXT_STEPS = {
         {
             "text": (
                 "聽力問題已經嚴重影響到您的生活了，若您尚未採取任何行動，"
-                "建議立即前往醫院耳鼻喉科尋求專業建議，並考慮配戴助聽器。"
+                f"建議立即前往醫院耳鼻喉科尋求專業建議，{_SEVERE_CHECK}"
             ),
-            **GUIDE_ACTION,
+            **HEARING_CHECK,
         },
         {
             "text": (
@@ -116,6 +123,8 @@ DEFINITION = Definition(
     thresholds=THRESHOLDS,
     advice=ADVICE,
     next_steps=NEXT_STEPS,
+    # Under the next steps, as HHIA-S's: the full advice is folded away.
+    result_note=LIFE_IMPACT_LIMITS,
     trend_chart=True,
     records_tab_age="65 歲以上",
     # The report anchor it had before other questionnaires could be compared.

@@ -15,17 +15,21 @@ UNSURE = "unsure"  # an answer alone, no definition's concern: recommended as LI
 # next step of every life-impact questionnaire, the one step not traced to its advice.
 RETEST_MONTHS = 6
 RETEST_STEP = {"text": "半年後再做一次，時間到了首頁會提醒您。"}
-# The hearing-aid guide link (#220 E4) after the button of the life-impact step that recommends
-# a hearing check or assessment (spec #218, ticket #229).
-GUIDE_ACTION = {"second_label": "看助聽器選配與補助", "second_url": "guide"}
+# Marks the life-impact step that recommends a hearing check or assessment: a guest's result
+# shows it outside the fold, with the way to where to have the hearing checked (#694 mockup A).
+# No hearing-aid guide link any more (spec #693): only the audiogram tells about fitting.
+HEARING_CHECK = {"hearing_check": True}
+# What HHIE-S and HHIA-S cannot tell, after their advice and under their result (spec #693).
+LIFE_IMPACT_LIMITS = (
+    "這份問卷反映您感受到的生活影響，不能判定聽損程度，也不能單憑分數決定是否需要助聽器。"
+)
 # The guest result's save card (spec #492): what saving brings at each level of HHIE-S and HHIA-S,
-# which share their levels; the #493 mockup's rows 6-8, as the owner reviewed them. #598 (spec
-# #593, the owner's wording on #595): the fitting only, as a questionnaire cannot tell who can
-# have the subsidy.
+# which share their levels; the #493 mockup's rows 6-8, as the owner reviewed them. Spec #693:
+# the next step by the audiogram, no fitting promised by a questionnaire.
 SAVE_REASONS = {
     "normal": "註冊保存後，半年後會提醒您再做一次，跟這次的結果比一比。",
-    "mild_to_moderate": "註冊保存後，看完醫師可以接著記下聽力圖，網站會一步步帶您走助聽器選配。",
-    "severe": "註冊保存後，就醫拿到聽力圖可以記下來，網站會一步步帶您走助聽器選配。",
+    "mild_to_moderate": "註冊保存後，看完醫師可以接著記下聽力圖，網站會依聽力圖幫您整理下一步。",
+    "severe": "註冊保存後，就醫拿到聽力圖可以記下來，網站會依聽力圖幫您整理下一步。",
 }
 
 
@@ -67,8 +71,8 @@ class Definition:
     advice: dict = field(default_factory=dict)  # Graded only: level -> advice text
     # Graded only: level -> numbered "接下來建議您" steps (ADR 0010). Each step is a dict with
     # "text" and, where it links to a next action, "action_label" and "action_url" (a URL name
-    # that takes no arguments), and where a second link follows it, "second_label" and
-    # "second_url" likewise. Every clause but the retest reminder traces back to `advice`.
+    # that takes no arguments), and "hearing_check" where it recommends a hearing check
+    # (HEARING_CHECK). Every clause but the retest reminder traces back to `advice`.
     next_steps: dict = field(default_factory=dict)
     # A life-impact questionnaire (GLOSSARY, ADR 0016): the home page's last result and retest
     # reminder, and 我的紀錄's 「和上一次比」 against the last record worn the same way. Graded

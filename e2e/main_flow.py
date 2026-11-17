@@ -1606,8 +1606,9 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         expect(self.main().locator("#result-score")).to_contain_text("總分 20 分")
         expect(self.main().locator(".result-banner")).to_contain_text("輕度到中度影響")
         # HHIE-S 輕度到中度影響's steps (ticket #157), since #461 step 1 under the level and the
-        # others behind 看完整說明: the guide link, then the retest. The report is left to the
-        # list rows, as this step's words do not mention it (result page tidy-up).
+        # others behind 看完整說明: the check, then the retest. The report is left to the list
+        # rows, as this step's words do not mention it (result page tidy-up); since spec #693
+        # no link to the hearing-aid guide.
         expect(self.main().locator(".result-one-line")).to_contain_text(
             "聽力問題已經慢慢影響您的社交活動與情緒"
         )
@@ -1618,7 +1619,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         expect(folded.locator(".score-bar")).to_have_count(0)
         self.main().locator(".result-details > summary").click()
         expect(folded).to_contain_text("建議前往醫院耳鼻喉科進行聽力相關檢查")
-        expect(folded.get_by_role("link", name="看助聽器選配與補助")).to_be_visible()
+        expect(folded.get_by_role("link", name="看助聽器選配與補助")).to_have_count(0)
         expect(folded.get_by_role("link", name="看／印聽力報告")).to_have_count(0)
         expect(folded).to_contain_text("半年後再做一次，時間到了首頁會提醒您。")
         # Ticket #158: 20 of 40 sits halfway along the bar, inside the 輕度到中度 segment
@@ -6996,7 +6997,9 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
     # A4: a text link's underline thickens under a mouse, and a light blue shows behind its
     # words while it is pressed.
     def test_text_links_thicken_when_hovered_and_tint_when_pressed(self):
-        record = self.submission(self.hhie_s, [2] * 10)
+        # 無／極輕微影響: its folded step links 記錄聽力圖 (spec #693 left the other levels' folds
+        # without a link).
+        record = self.submission(self.hhie_s, [0] * 10)
         self.open()
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
@@ -12315,7 +12318,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
         self.sign_in(consented_user(username="speech_banana_reminder_e2e"))
 
     def page_for(self, db, size=LayoutOnAPhone.PHONE, java_script_enabled=True):
-        """Both ears flat at db, so each ear's PTA is db: over 25 dB is the guide's condition."""
+        """Both ears flat at db, so each ear's PTA is db: over 40 dB is the guide's condition."""
         audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 9, 1))
         AudiogramPoint.objects.bulk_create(
             AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=db)
@@ -12349,7 +12352,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
     # Acceptance 1: under the chart, and the chart itself says nothing of alarms.
     def test_the_reminders_are_under_the_chart_and_no_alarm_is_on_it(self):
         with self.saving_artifacts():
-            self.page_for(40)
+            self.page_for(45)
             plot = self.page.locator(".audiogram-plot")
             plot.locator("svg").wait_for()
             self.assert_the_reminders_show()
@@ -12364,7 +12367,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
     # The ticket's 不用 React: with no JavaScript the chart is gone and all of this still shows.
     def test_without_javascript_the_reminders_and_the_way_on_still_show(self):
         with self.saving_artifacts():
-            self.page_for(40, java_script_enabled=False)
+            self.page_for(45, java_script_enabled=False)
             expect(self.page.locator(".audiogram-plot")).to_have_count(0)
             self.assert_the_reminders_show()
             expect(
@@ -12375,7 +12378,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
     # Acceptance 2: over the condition the card leads to the guide, and the way back to this one.
     def test_the_guide_card_and_the_way_back_lead_where_they_say(self):
         with self.saving_artifacts():
-            audiogram = self.page_for(40)
+            audiogram = self.page_for(45)
             self.guide_card().click()
             self.page.wait_for_url("**/guide")
             self.page.go_back()
@@ -12395,7 +12398,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
     # on 320 they all double, the page does not scroll sideways, and the way on is big enough.
     def test_the_words_follow_the_text_size_on_a_narrow_phone(self):
         with self.saving_artifacts():
-            self.page_for(40, (320, 640))
+            self.page_for(45, (320, 640))
             reminder, alarm, source = (
                 self.words(text) for text in (self.REMINDER, self.ALARM, self.SOURCE)
             )

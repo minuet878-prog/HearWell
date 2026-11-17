@@ -3,7 +3,7 @@ from unittest import mock
 
 from django.test import SimpleTestCase
 
-from screening.audiogram import DB_MAX, assessment_estimate, recommends_fitting_assessment
+from screening.audiogram import DB_MAX, assessment_estimate
 from screening.tests import test_audiogram
 
 # Each ear's four PTA frequencies (500, 1k, 2k, 4k) giving the PTA in the name.
@@ -102,24 +102,3 @@ class AssessmentEstimateTests(SimpleTestCase):
         self.assertEqual(result["status"], "insufficient")
         self.assertIsNone(result["ratio"])
         self.assertEqual(result["right"]["pta"], 55)
-
-
-def recommends(points):
-    return recommends_fitting_assessment([mock.Mock(**point) for point in points])
-
-
-class FittingAssessmentTests(SimpleTestCase):
-    """#226, grill Q3: 「建議找聽力師評估選配」 when either ear's PTA is over 25 dB."""
-
-    def test_one_ear_over_25_is_enough(self):
-        self.assertIs(recommends([*ear("right", (20, 20, 20, 20)), *ear("left", (45,) * 4)]), True)
-
-    def test_both_ears_at_25_are_not(self):
-        self.assertIs(recommends([*ear("right", (25,) * 4), *ear("left", (25,) * 4)]), False)
-
-    def test_one_ear_unknown(self):
-        unknown_left = ear("left", (60,) * 4)[:3]
-        # The other ear over 25 still recommends; at or under 25 leaves too little data.
-        self.assertIs(recommends([*ear("right", (30,) * 4), *unknown_left]), True)
-        self.assertIsNone(recommends([*ear("right", (25,) * 4), *unknown_left]))
-        self.assertIsNone(recommends(unknown_left))

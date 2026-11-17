@@ -217,13 +217,13 @@ class AudiogramDetailTests(Audiograms):
             ],
         )
 
-    def test_the_guide_is_the_solid_button_when_an_ear_is_over_25(self):
+    def test_the_guide_is_the_solid_button_when_an_ear_is_over_40(self):
         main = self.detail(self.make((40, 40, 45, 40), (30, 35, 35, 35)))
         self.assertEqual(solid_buttons(main), ["看助聽器選配與補助"])
         self.assertIn('<span class="link-card-title">看語言香蕉區</span>', main)
 
     def test_the_speech_banana_is_the_solid_button_without_the_guide(self):
-        # Both ears within 25 dB: recommends_fitting_assessment is False, no guide.
+        # Both ears within 25 dB: 建議評估選配 is 正常, no guide (ADR 0067).
         main = self.detail(self.make((20, 20, 20, 20), (15, 15, 15, 15)))
         self.assertEqual(solid_buttons(main), ["看語言香蕉區"])
         self.assertNotIn("看助聽器選配與補助", main)

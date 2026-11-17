@@ -1,7 +1,8 @@
 from screening.questionnaires.comparison import TotalComparison
 from screening.questionnaires.definition import (
-    GUIDE_ACTION,
+    HEARING_CHECK,
     LIFE_IMPACT,
+    LIFE_IMPACT_LIMITS,
     RETEST_STEP,
     SAVE_REASONS,
     Definition,
@@ -38,7 +39,6 @@ THRESHOLDS = (
     (40, "顯著影響", "severe"),
 )
 
-EXPLANATION = "這份問卷反映您感受到的生活影響，不能判定聽損程度，也不能單憑分數決定是否需要助聽器。"
 _LEVEL_ADVICE = {
     "normal": "您這次回報的生活影響較少。若仍有聽不清楚的困擾，建議安排聽力評估。",
     "mild_to_moderate": (
@@ -51,7 +51,7 @@ _LEVEL_ADVICE = {
     ),
 }
 ADVICE = {
-    level: f"{text} {EXPLANATION} 已配戴助聽器者，可帶結果回原聽力照護單位討論。"
+    level: f"{text} {LIFE_IMPACT_LIMITS} 已配戴助聽器者，可帶結果回原聽力照護單位討論。"
     for level, text in _LEVEL_ADVICE.items()
 }
 
@@ -63,7 +63,7 @@ NEXT_STEPS = {
             "text": "如果您仍覺得聽不清楚，建議安排聽力評估。",
             "action_label": "記錄聽力圖",
             "action_url": "audiogram_new",
-            **GUIDE_ACTION,
+            **HEARING_CHECK,
         },
         RETEST_STEP,
     ),
@@ -73,7 +73,7 @@ NEXT_STEPS = {
             "text": "建議安排聽力評估，並帶這份結果與聽力師或耳鼻喉科醫師討論。",
             "action_label": "看／印聽力報告",
             "action_url": "health_report",
-            **GUIDE_ACTION,
+            **HEARING_CHECK,
         },
         RETEST_STEP,
     ),
@@ -81,7 +81,7 @@ NEXT_STEPS = {
         {"text": "您回報的聽力困擾對生活有顯著影響。"},
         {
             "text": "建議儘早安排聽力評估，與聽力師或耳鼻喉科醫師討論適合您的協助方式。",
-            **GUIDE_ACTION,
+            **HEARING_CHECK,
         },
         RETEST_STEP,
     ),
@@ -111,6 +111,6 @@ DEFINITION = Definition(
     advice=ADVICE,
     next_steps=NEXT_STEPS,
     # Under the next steps: the full advice, the only other place it is said, is folded away.
-    result_note=EXPLANATION,
+    result_note=LIFE_IMPACT_LIMITS,
     comparison=TotalComparison(anchor=f"report-comparison-{CODE}"),
 )

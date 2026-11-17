@@ -8,6 +8,7 @@ from datetime import date
 from django.urls import reverse
 from django.utils import timezone
 
+from screening.audiogram import FittingAdvice
 from screening.fitting_route import AUDIOGRAM, add_months, fitting_state
 from screening.journey_todos import step_todos
 from screening.main_flow import get_user_state, life_impact_questionnaire
@@ -27,6 +28,7 @@ from screening.scoring import (
     RETEST_COUNTDOWN_TEXT,
     RETEST_DUE_TEXT,
     TYPES_AND_PRICES_BUTTON,
+    UNKNOWN,
     fitting_countdown_text,
 )
 from screening.views.guide import here_stop
@@ -38,6 +40,9 @@ CURRENT = "current"
 LATER = "later"
 NOT_NEEDED = "not-needed"  # 目前不需要, steps 3 and 4 only
 FITTING_STEPS = (3, 4)
+# 目前不需要 while the route waits on these (ADR 0067); waiting on a questionnaire first, the
+# steps are 之後, as whether they are needed is not known yet (spec #693 acceptance 8).
+NOT_NEEDED_ADVICE = frozenset({FittingAdvice.NORMAL, FittingAdvice.TRACK})
 WEARING_FROM = 3  # someone wearing hearing aids looks for the 現在這一步 from step 3 on
 LAST_STEP = 5
 FITTING_MONTHS = 3  # IOI-HA once hearing aids are worn 3 months (spec #453 Q8)
@@ -129,9 +134,11 @@ def care_journey(user, today):
         else None
     )
     # Each step's day, None while it is not done; step 5 never is, a retest only moves the
-    # next one on.
+    # next one on. A 無法判讀 record leaves step 1 to do again, whatever the hearing, as
+    # fitting_advice counts it as none (the owner, 2026-11-17).
+    readable = life_impact is not None and life_impact.result.level["level"] != UNKNOWN["level"]
     done_on = {
-        1: _day(life_impact) if life_impact else None,
+        1: _day(life_impact) if readable else None,
         2: route.audiogram.tested_on if AUDIOGRAM in route.done else None,
         3: fitted_on,
         4: _day(ioi_ha) if ioi_ha else None,
@@ -140,7 +147,7 @@ def care_journey(user, today):
     done = {number: day is not None for number, day in done_on.items()}
 
     def not_needed(number):
-        return route.waiting and number in FITTING_STEPS
+        return route.waiting and route.advice in NOT_NEEDED_ADVICE and number in FITTING_STEPS
 
     first = WEARING_FROM if route.wearing else 1
     current = next(

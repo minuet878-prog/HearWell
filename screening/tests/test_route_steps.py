@@ -13,7 +13,8 @@ from screening.tests.helpers import consented_user
 
 TODAY = date(2026, 10, 23)
 PTA_55 = test_guide_summary.PTA_55
-OVER_25 = ((30, 30, 30, 30), (20, 20, 20, 20))
+# An ear over 40 dB HL: 建議評估選配 without a questionnaire (spec #693, in place of 25 dB HL).
+OVER_40 = ((45, 45, 45, 45), (20, 20, 20, 20))
 WITHIN_25 = ((25, 25, 25, 25), (10, 10, 10, 10))
 
 
@@ -130,8 +131,8 @@ class HereTests(TestCase):
         self.assertNotIn(AUDIOGRAM, self.state().done)
 
     # 2
-    def test_a_complete_audiogram_over_25_is_done_and_here_moves_to_before_you_go(self):
-        self.make(*OVER_25)
+    def test_a_complete_audiogram_over_40_is_done_and_here_moves_to_before_you_go(self):
+        self.make(*OVER_40)
         self.assertEqual(self.state().done, {AUDIOGRAM})
         self.assertEqual(self.state().stop, "before-you-go")
 
@@ -152,33 +153,27 @@ class HereTests(TestCase):
         self.assertEqual(self.state().done, {AUDIOGRAM})
         self.assertIsNone(self.state().stop)
 
-    def test_both_ears_within_25_after_viewing_any_chapter_follow_the_rule(self):
-        self.make(*WITHIN_25)
-        self.view("types-and-prices")
-        self.assertEqual(self.state().stop, "before-you-go")
-        self.view("before-you-go")
-        self.assertEqual(self.state().stop, "assessment")
-
     def test_both_ears_within_25_after_any_answer_follow_the_rule(self):
         self.make(*WITHIN_25)
         AidAndSubsidy.objects.create(user=self.user, certificate="applying")
         self.assertEqual(self.state().stop, "before-you-go")
 
-    def test_viewing_a_chapter_without_a_stop_of_its_own_also_starts_the_route(self):
+    def test_viewing_a_chapter_without_a_stop_of_its_own_does_not_start_the_route(self):
+        # #695 (spec #693 Q9): viewing is not starting, whichever chapter.
         self.make(*WITHIN_25)
         self.view("form-25")
-        self.assertEqual(self.state().stop, "before-you-go")
+        self.assertIsNone(self.state().stop)
         self.assertEqual(self.state().done, {AUDIOGRAM})
 
     # 5
     def test_viewing_types_and_prices_out_of_order_is_done_and_here_stays_at_the_first(self):
-        self.make(*OVER_25)
+        self.make(*OVER_40)
         self.view("before-you-go", "types-and-prices")
         self.assertEqual(self.state().done, {AUDIOGRAM, "before-you-go", "types-and-prices"})
         self.assertEqual(self.state().stop, "assessment")
 
     def test_only_before_you_go_and_types_and_prices_are_done_by_viewing(self):
-        self.make(*OVER_25)
+        self.make(*OVER_40)
         self.view("before-you-go", "assessment", "form-9", "after-fitting", "form-25")
         self.assertEqual(self.state().done, {AUDIOGRAM, "before-you-go"})
         self.assertEqual(self.state().stop, "assessment")
@@ -212,14 +207,14 @@ class HereTests(TestCase):
 
     # 19
     def test_a_later_record_does_not_undo_a_viewed_stop(self):
-        self.make(*OVER_25)
+        self.make(*OVER_40)
         self.view("before-you-go", "types-and-prices")
         self.make(PTA_55, PTA_55, tested_on=date(2026, 10, 20))
         self.answer(wearing=True, day=21)
         self.assertLessEqual({"before-you-go", "types-and-prices"}, self.state().done)
 
     def test_changing_an_answer_does_not_undo_a_viewed_stop(self):
-        self.make(*OVER_25)
+        self.make(*OVER_40)
         self.view("before-you-go")
         AidAndSubsidy.objects.create(user=self.user, certificate="yes")
         AidAndSubsidy.objects.filter(user=self.user).update(certificate="applying")
@@ -232,7 +227,7 @@ class CertificateStopTests(TestCase):
 
     def setUp(self):
         self.user = consented_user(username="certificate_user")
-        self.make(*OVER_25)
+        self.make(*OVER_40)
         GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
 
     make = test_guide_summary.GuideSummaryTests.make
@@ -299,7 +294,7 @@ class SubsidyStopsFoldTests(TestCase):
 
     def setUp(self):
         self.user = consented_user(username="subsidy_fold_user")
-        self.make(*OVER_25)
+        self.make(*OVER_40)
         GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
 
     make = test_guide_summary.GuideSummaryTests.make
@@ -417,7 +412,7 @@ class Form9AndNoticeStopTests(TestCase):
 
     def setUp(self):
         self.user = consented_user(username="form_9_user")
-        self.make(*OVER_25)
+        self.make(*OVER_40)
         GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
 
     make = test_guide_summary.GuideSummaryTests.make
@@ -484,7 +479,7 @@ class FittingStopTests(TestCase):
 
     def setUp(self):
         self.user = consented_user(username="fitting_stop_user")
-        self.make(*OVER_25)
+        self.make(*OVER_40)
 
     make = test_guide_summary.GuideSummaryTests.make
     answer = test_fitting_route.CurrentStopTests.answer

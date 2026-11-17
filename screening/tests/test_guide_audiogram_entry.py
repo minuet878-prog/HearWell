@@ -32,9 +32,9 @@ class GuideAudiogramEntryTests(TestCase):
         content = self.client.get(reverse("audiogram_detail", args=[audiogram.id])).content.decode()
         return content[content.index("<main") : content.index("</main>")]
 
-    def test_one_ear_over_25_links_to_the_guide_in_what_comes_next(self):
-        # Right 26.25 dB HL, left 10: one side is enough.
-        main = self._main([*ear("right", (25, 25, 25, 30)), *ear("left", (10, 10, 10, 10))])
+    def test_one_ear_over_40_links_to_the_guide_in_what_comes_next(self):
+        # Right 41.25 dB HL, left 10: one side is enough, no questionnaire needed (ADR 0067).
+        main = self._main([*ear("right", (40, 40, 40, 45)), *ear("left", (10, 10, 10, 10))])
         self.assertEqual(main.count(GUIDE_LINK), 1)
         # Right under the chart, before the other ways on.
         self.assertLess(main.index('id="audiogram-chart"'), main.index(GUIDE_LINK))
@@ -51,14 +51,14 @@ class GuideAudiogramEntryTests(TestCase):
         cases = {
             # Neither ear has all four average frequencies.
             "both unknown": [*three, test_audiogram._air("right", 500, 60)],
-            # The unknown left ear could still be over 25.
+            # The unknown left ear could still be over 40.
             "one normal, one unknown": [*ear("right", (10, 10, 10, 10)), *three],
         }
         for name, points in cases.items():
             with self.subTest(name):
                 self.assertNotIn('href="/guide"', self._main(points))
 
-    def test_one_ear_over_25_is_enough_even_if_the_other_is_unknown(self):
+    def test_one_ear_over_40_is_enough_even_if_the_other_is_unknown(self):
         three = [test_audiogram._air("left", f, 10) for f in (500, 1000, 2000)]
-        main = self._main([*ear("right", (40, 40, 40, 40)), *three])
+        main = self._main([*ear("right", (45, 45, 45, 45)), *three])
         self.assertEqual(main.count(GUIDE_LINK), 1)
