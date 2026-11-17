@@ -25,6 +25,7 @@ PRIVACY_SECTIONS = [
     ("line-title", "用 LINE 登入時"),  # spec #506
     ("google-title", "用 Google 登入時"),  # spec #505
     ("password-reset-title", "忘記密碼時"),  # #526
+    ("retest-reminder-title", "email 重測提醒"),  # spec #656
     ("question-log-title", "問答小助手的提問紀錄"),
     ("feedback-title", "意見回饋"),  # spec #633
     ("storage-title", "存放在哪裡、保存多久"),
