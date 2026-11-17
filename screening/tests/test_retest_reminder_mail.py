@@ -81,6 +81,19 @@ def resend_429(name):
     return AnymailAPIError("Resend API response 429", status_code=429, response=response)
 
 
+class PlainTooManyBackend(EmailBackend):
+    """A 429 for plain@example.com without Resend's JSON, as a proxy in between can answer."""
+
+    def send_messages(self, messages):
+        if messages[0].to[0] == "plain@example.com":
+            response = requests.Response()
+            response.status_code = 429
+            response.headers["Content-Type"] = "text/html"
+            response._content = b"<html><body>Too Many Requests</body></html>"
+            raise AnymailAPIError("Resend API response 429", status_code=429, response=response)
+        return super().send_messages(messages)
+
+
 class QuotaBackend(EmailBackend):
     """Resend with `left` emails of the quota: then its 429 named `used_up`."""
 
@@ -514,6 +527,17 @@ class FailedSendTests(ReminderMailTestCase):
             self.assertEqual(self.run_on(DUE_ON), ["goes@example.com"])
         self.assertEqual(
             self.records(), [("goes", DUE_ON, 1, None), ("slow", date(2026, 11, 15), 1, DUE_ON)]
+        )
+
+    @override_settings(EMAIL_BACKEND=f"{__name__}.PlainTooManyBackend")
+    def test_a_429_without_resend_s_words_fails_that_one_and_the_others_go(self):
+        # Cross review (Codex 4): no JSON to name the limit, so not the quota.
+        self.person("plain", email="plain@example.com", answered_on=date(2026, 5, 15))
+        self.person("goes", email="goes@example.com")
+        with self.assertLogs(COMMAND_LOGGER, "ERROR"):
+            self.assertEqual(self.run_on(DUE_ON), ["goes@example.com"])
+        self.assertEqual(
+            self.records(), [("goes", DUE_ON, 1, None), ("plain", date(2026, 11, 15), 1, DUE_ON)]
         )
 
 

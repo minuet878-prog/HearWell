@@ -133,7 +133,13 @@ def _send(due, today):
 
 def _quota_used_up(error):
     # Resend names the limit in its JSON body; anymail keeps the response.
-    return error.status_code == 429 and error.response.json().get("name") in QUOTA_USED_UP
+    if error.status_code != 429:
+        return False
+    try:
+        name = error.response.json().get("name")
+    except ValueError:  # not Resend's JSON (cross review, Codex 4): that one failed, no more
+        return False
+    return name in QUOTA_USED_UP
 
 
 def _failed(record, today):
