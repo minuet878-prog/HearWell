@@ -13976,6 +13976,8 @@ class WearMotionTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
     DOME = 10
     ARROW = 15
     HOOK_ON_ARROW = 14
+    # Any day will do; the page's clock starts here and is paused later on.
+    CLOCK = datetime(2026, 1, 1, 8, 0)
     # Where a piece is on the page, so scrolling to the button does not count as moving.
     WHERE = """el => {
         const box = el.getBoundingClientRect();
@@ -13998,6 +14000,10 @@ class WearMotionTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
     def test_push_in_plays_once_and_stops_on_the_reviewed_drawing(self):
         with self.saving_artifacts():
             self.open(self.PATH, signed_in=False)
+            # The page's own clock, so each press can be read with time held still: the dome
+            # waits at its start for 360 ms, and a busy machine once read it 530 ms late.
+            self.page.clock.install(time=self.CLOCK)
+            self.page.reload()
             self.pick()
             self.assertEqual(self.live().get_by_role("button").count(), len(self.TITLES))
             for title in self.TITLES:
@@ -14018,12 +14024,14 @@ class WearMotionTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
             before.get_by_role("checkbox").focus()
             self.page.keyboard.press("Tab")
             expect(button).to_be_focused()
+            self.page.clock.pause_at(self.CLOCK + timedelta(hours=1))
             self.page.keyboard.press("Enter")
             start = dome.evaluate(self.WHERE)
             self.assertNotEqual(start, drawn)
             # Acceptance 7: the thin tube goes with the dome.
             self.assertNotEqual(tube.bounding_box(), tube_drawn)
             expect(arrow).to_be_hidden()
+            self.page.clock.resume()
             # On its way: neither where it started nor where it is drawn.
             self.page.wait_for_function(
                 """([el, start, drawn]) => {
@@ -14043,6 +14051,7 @@ class WearMotionTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
             expect(button).to_be_focused()
             self.assertNotEqual(self.style(button, "boxShadow"), "none")
 
+            self.page.clock.pause_at(self.CLOCK + timedelta(hours=2))
             self.page.keyboard.press("Space")
             self.assertEqual(dome.evaluate(self.WHERE), start)
             expect(button).to_have_accessible_name("再看一次：推進耳塞")
