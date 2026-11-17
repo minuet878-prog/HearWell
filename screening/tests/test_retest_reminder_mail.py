@@ -4,6 +4,7 @@ send_retest_reminders on the day a life-impact record falls due again."""
 import json
 import re
 import uuid
+from contextlib import redirect_stderr
 from datetime import date, datetime, timedelta
 from io import StringIO
 from unittest.mock import patch
@@ -33,7 +34,7 @@ from screening.models import (
     User,
 )
 from screening.questionnaires import hhia_s, hhie_s, ioi_ha
-from screening.tests import test_monitoring
+from screening.tests import test_monitoring, test_reminder_switch
 from screening.tests.helpers import consented_user, submission_with_answers
 
 TAIPEI = ZoneInfo("Asia/Taipei")
@@ -81,6 +82,19 @@ def resend_429(name):
     return AnymailAPIError("Resend API response 429", status_code=429, response=response)
 
 
+class PlainTooManyBackend(EmailBackend):
+    """A 429 for plain@example.com without Resend's JSON, as a proxy in between can answer."""
+
+    def send_messages(self, messages):
+        if messages[0].to[0] == "plain@example.com":
+            response = requests.Response()
+            response.status_code = 429
+            response.headers["Content-Type"] = "text/html"
+            response._content = b"<html><body>Too Many Requests</body></html>"
+            raise AnymailAPIError("Resend API response 429", status_code=429, response=response)
+        return super().send_messages(messages)
+
+
 class QuotaBackend(EmailBackend):
     """Resend with `left` emails of the quota: then its 429 named `used_up`."""
 
@@ -99,6 +113,15 @@ class RefusingBackend(EmailBackend):
 
     def send_messages(self, messages):
         raise OSError(f"Resend refused {messages[0].to[0]}")
+
+
+class StoppedBackend(EmailBackend):
+    """The mail service takes it, then the run is stopped (the VPS shut down) before it can
+    write anything down."""
+
+    def send_messages(self, messages):
+        super().send_messages(messages)
+        raise KeyboardInterrupt
 
 
 class RateLimitedBackend(EmailBackend):
@@ -164,11 +187,12 @@ class WhenItIsSentTests(ReminderMailTestCase):
         self.assertIsNotNone(record.sent_at)
 
     def test_the_due_day_is_the_taiwan_date_of_the_record(self):
-        # 2026/05/31 23:30 in Taiwan is still the 31st's afternoon in UTC; + 6 months is 11/30.
-        user = self.person("late_night", answered_on=None, on_since=date(2026, 5, 1))
-        self.answer(user, date(2026, 5, 31), hour=23)
-        self.assertEqual(self.run_on(date(2026, 11, 29)), [])
-        self.assertEqual(self.run_on(date(2026, 11, 30)), ["late_night@example.com"])
+        # 07:00 on 2026/06/01 in Taiwan is still 05/31 in UTC (cross review): + 6 months is
+        # 12/01 by Taiwan's date, 11/30 by UTC's.
+        user = self.person("early_morning", answered_on=None, on_since=date(2026, 5, 1))
+        self.answer(user, date(2026, 6, 1), hour=7)
+        self.assertEqual(self.run_on(date(2026, 11, 30)), [])
+        self.assertEqual(self.run_on(date(2026, 12, 1)), ["early_morning@example.com"])
 
     # 17
     def test_not_the_day_before(self):
@@ -183,10 +207,20 @@ class WhenItIsSentTests(ReminderMailTestCase):
         self.assertEqual(self.run_on(DUE_ON, hour=15), [])
         self.assertEqual(RetestReminderSent.objects.count(), 1)
 
+    # 18, 19: the owner's call on the cross review (Codex 3), rather one missed than one twice.
+    def test_a_run_stopped_while_sending_never_sends_it_again(self):
+        self.person("stopped")
+        with override_settings(EMAIL_BACKEND=f"{__name__}.StoppedBackend"):
+            with self.assertRaises(KeyboardInterrupt):
+                self.run_on(DUE_ON)
+        self.assertEqual([message.to[0] for message in mail.outbox], ["stopped@example.com"])
+        self.assertEqual(self.run_on(DUE_ON, hour=15), [])
+        self.assertEqual(self.run_on(DUE_ON + timedelta(days=1)), [])
+
     # 19
     def test_never_again_for_the_same_due_day(self):
         self.person("not_redone")
-        self.run_on(DUE_ON)
+        self.assertEqual(self.run_on(DUE_ON), ["not_redone@example.com"])
         for days in (1, 2, 30):
             with self.subTest(days=days):
                 self.assertEqual(self.run_on(DUE_ON + timedelta(days=days)), [])
@@ -194,7 +228,7 @@ class WhenItIsSentTests(ReminderMailTestCase):
     # 20
     def test_done_again_after_the_reminder_falls_due_again(self):
         user = self.person("redone")
-        self.run_on(DUE_ON)
+        self.assertEqual(self.run_on(DUE_ON), ["redone@example.com"])
         self.answer(user, date(2026, 11, 20))
         self.assertEqual(self.run_on(date(2027, 5, 19)), [])
         self.assertEqual(self.run_on(date(2027, 5, 20)), ["redone@example.com"])
@@ -226,6 +260,33 @@ class WhenItIsSentTests(ReminderMailTestCase):
         self.assertEqual(self.run_on(DUE_ON), ["gets_it@example.com"])
         # Nothing for the others either: one without an email is not counted as sent.
         self.assertEqual([record[0] for record in self.records()], ["gets_it"])
+
+    def test_not_when_it_changes_while_the_run_is_sending_the_others(self):
+        # Cross review (Codex 2): the run looks again at each one just before it goes, so one
+        # turned off, done again and so on after the run found it gets nothing.
+        changes = {
+            "turned_off": lambda user: RetestReminder.objects.filter(user=user).update(
+                enabled=False, enabled_on=None
+            ),
+            "email_gone": lambda user: User.objects.filter(pk=user.pk).update(email=""),
+            "deactivated": lambda user: User.objects.filter(pk=user.pk).update(is_active=False),
+            "made_staff": lambda user: User.objects.filter(pk=user.pk).update(is_staff=True),
+            "done_again": lambda user: self.answer(user, DUE_ON, hour=8),
+        }
+        for name, change in changes.items():
+            with self.subTest(change=name):
+                self.person(f"first_{name}", answered_on=date(2026, 5, 15))
+                changed = self.person(f"changed_{name}")
+                # In the pause before the second mail: the first has gone, the second not yet.
+                with patch(
+                    f"{COMMAND_LOGGER}.sleep",
+                    side_effect=lambda _seconds, change=change, user=changed: change(user),
+                ):
+                    mail.outbox.clear()
+                    with at(DUE_ON):
+                        call_command("send_retest_reminders", stdout=StringIO())
+                self.assertEqual([m.to[0] for m in mail.outbox], [f"first_{name}@example.com"])
+                self.assertFalse(RetestReminderSent.objects.filter(user=changed).exists())
 
     def test_not_for_another_questionnaire_s_record(self):
         # IOI-HA is not a life-impact questionnaire: it never falls due (ADR 0016).
@@ -264,6 +325,16 @@ class WhenItIsSentTests(ReminderMailTestCase):
         self.person("due_15th", answered_on=date(2026, 5, 15))
         self.person("due_16th", answered_on=date(2026, 5, 16))
         self.assertEqual(self.run_on(DUE_ON), ["due_15th@example.com", "due_16th@example.com"])
+        self.assertEqual(self.run_on(DUE_ON + timedelta(days=1)), ["due_17th@example.com"])
+
+    @override_settings(RETEST_REMINDER_DAILY_LIMIT=2)
+    def test_a_second_run_the_same_day_stays_within_the_limit(self):
+        # Cross review (Codex 1): the day's limit counts what the day's earlier runs sent.
+        self.person("due_15th", answered_on=date(2026, 5, 15))
+        self.person("due_16th", answered_on=date(2026, 5, 16))
+        self.person("due_17th")
+        self.assertEqual(self.run_on(DUE_ON), ["due_15th@example.com", "due_16th@example.com"])
+        self.assertEqual(self.run_on(DUE_ON, hour=15), [])
         self.assertEqual(self.run_on(DUE_ON + timedelta(days=1)), ["due_17th@example.com"])
 
     # 26
@@ -391,10 +462,16 @@ class RetestLinkTests(ReminderMailTestCase):
         call_command("seed_questionnaires", stdout=StringIO())  # HHIA-S
 
     def test_signs_in_then_opens_the_home_page_s_one(self):
-        user = self.person("link_user", password="Fake-pass-1357")
         # HHIA-S after HHIE-S: the newer one is the one to do again (ADR 0030).
+        user = self.person("hhia_user", password="Fake-pass-1357")
         self.answer(user, ANSWERED_ON, code=hhia_s.CODE, hour=13)
-        hhia = Questionnaire.objects.get(code=hhia_s.CODE)
+        self.signs_in_then_opens("hhia_user", Questionnaire.objects.get(code=hhia_s.CODE))
+
+    def test_signs_in_then_opens_hhie_s(self):
+        self.person("hhie_user", password="Fake-pass-1357")
+        self.signs_in_then_opens("hhie_user", Questionnaire.objects.get(code=hhie_s.CODE))
+
+    def signs_in_then_opens(self, username, questionnaire):
         self.run_on(DUE_ON)
         (message,) = mail.outbox
         html = message.alternatives[0].content
@@ -407,16 +484,23 @@ class RetestLinkTests(ReminderMailTestCase):
         self.assertEqual(login.path, reverse("login"))
         (after_login,) = parse_qs(login.query)["next"]
         login_page = self.client.post(
-            signed_out["Location"], {"username": "link_user", "password": "Fake-pass-1357"}
+            signed_out["Location"], {"username": username, "password": "Fake-pass-1357"}
         )
         self.assertEqual(login_page["Location"], after_login)
         opened = self.client.get(after_login)
-        self.assertEqual(opened["Location"], reverse("screening", args=[hhia.pk]))
+        answering = reverse("screening", args=[questionnaire.pk])
+        self.assertEqual(opened["Location"], answering)
+        # To the end (cross review): that questionnaire's own form, open to answer.
+        form = self.client.get(answering)
+        self.assertEqual(form.status_code, 200)
+        self.assertContains(form, f'<form id="answer-form" action="{answering}" method="POST">')
+        for question in questionnaire.questions.all():
+            self.assertContains(form, question.question_text)
 
         with at(DUE_ON):
             home = self.client.get(reverse("index")).content.decode()
         (home_retest,) = re.findall(r'class="journey-tile-link" href="([^"]*)">再做一次<', home)
-        self.assertEqual(home_retest, opened["Location"])
+        self.assertEqual(home_retest, answering)
 
 
 class FailedSendTests(ReminderMailTestCase):
@@ -460,6 +544,17 @@ class FailedSendTests(ReminderMailTestCase):
             self.records(), [("goes", DUE_ON, 1, None), ("slow", date(2026, 11, 15), 1, DUE_ON)]
         )
 
+    @override_settings(EMAIL_BACKEND=f"{__name__}.PlainTooManyBackend")
+    def test_a_429_without_resend_s_words_fails_that_one_and_the_others_go(self):
+        # Cross review (Codex 4): no JSON to name the limit, so not the quota.
+        self.person("plain", email="plain@example.com", answered_on=date(2026, 5, 15))
+        self.person("goes", email="goes@example.com")
+        with self.assertLogs(COMMAND_LOGGER, "ERROR"):
+            self.assertEqual(self.run_on(DUE_ON), ["goes@example.com"])
+        self.assertEqual(
+            self.records(), [("goes", DUE_ON, 1, None), ("plain", date(2026, 11, 15), 1, DUE_ON)]
+        )
+
 
 @override_settings(EMAIL_BACKEND=f"{__name__}.QuotaBackend")
 class QuotaUsedUpTests(ReminderMailTestCase):
@@ -488,6 +583,18 @@ class QuotaUsedUpTests(ReminderMailTestCase):
         )
         self.assertEqual(GuestMonth.objects.get().reminders_sent, 3)
 
+    def test_one_tried_before_is_left_as_it_was(self):
+        self.person("failed_once")
+        with override_settings(EMAIL_BACKEND=f"{__name__}.RefusingBackend"):
+            with self.assertLogs(COMMAND_LOGGER, "ERROR"):
+                self.run_on(DUE_ON)
+        QuotaBackend.used_up, QuotaBackend.left = "daily_quota_exceeded", 0
+        self.assertEqual(self.run_on(DUE_ON + timedelta(days=1)), [])
+        self.assertEqual(self.records(), [("failed_once", DUE_ON, 1, DUE_ON)])
+        QuotaBackend.left = 1
+        self.assertEqual(self.run_on(DUE_ON + timedelta(days=2)), ["failed_once@example.com"])
+        self.assertEqual(RetestReminderSent.objects.get().attempts, 2)
+
 
 class FailedSendSentryTests(ReminderMailTestCase):
     """29: what Sentry gets of a mail that could not go holds no address, through the site's own
@@ -510,6 +617,22 @@ class FailedSendSentryTests(ReminderMailTestCase):
         self.assertEqual(event["logentry"]["message"], "A retest reminder could not be sent")
         self.assertEqual(event["exception"]["values"][-1]["type"], "OSError")
         self.assertNotIn(email.split("@")[0], json.dumps(event, default=str))
+
+    @override_settings(EMAIL_BACKEND=f"{__name__}.RefusingBackend")
+    def test_the_local_log_has_the_error_without_the_address(self):
+        # CODING_STANDARDS 4 (cross review): this machine's log, stderr (the VPS's journal),
+        # keeps the fixed message, the error's type and where; Sentry still gets it, stack too.
+        self.person("refused", email="refused-secret@example.com")
+        with redirect_stderr(StringIO()) as local:
+            self.run_on(DUE_ON)
+        self.assertIn("A retest reminder could not be sent", local.getvalue())
+        self.assertIn("Traceback", local.getvalue())
+        self.assertIn("OSError", local.getvalue())
+        self.assertNotIn("refused-secret", local.getvalue())
+        sentry_sdk.flush()
+        (event,) = [env.get_event() for env in self.transport.envelopes if env.get_event()]
+        self.assertEqual(event["logentry"]["message"], "A retest reminder could not be sent")
+        self.assertTrue(event["exception"]["values"][-1]["stacktrace"]["frames"])
 
 
 class MonthCountTests(ReminderMailTestCase):
@@ -549,7 +672,18 @@ class SentAdminTests(ReminderMailTestCase):
         page = self.client.get(changelist).content.decode()
         headers = re.findall(r'<th scope="col" class="[^"]*column-(\w+)', page)
         self.assertEqual(headers, ["user", "due_on", "sent_at", "attempts", "last_failed_on"])
-        self.assertIn("looked_at", page)
+        self.assertEqual(
+            test_reminder_switch.admin_rows(page),
+            [
+                {
+                    "user": "looked_at",
+                    "due_on": "2026年11月17日",
+                    "sent_at": "2026年11月17日 09:00",
+                    "attempts": "1",
+                    "last_failed_on": "-",
+                }
+            ],
+        )
         self.assertNotIn("looked_at@example.com", page)
         change = reverse("admin:screening_retestremindersent_change", args=[record.pk])
         self.assertEqual(self.client.get(change).status_code, 200)

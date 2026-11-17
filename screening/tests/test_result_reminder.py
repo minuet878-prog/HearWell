@@ -13,7 +13,7 @@ from django.urls import reverse
 
 from screening.models import NormGroup, Questionnaire
 from screening.questionnaires import hhia_s, hhie_s, ioi_ha, thi
-from screening.tests import test_guest, test_layout
+from screening.tests import test_guest, test_layout, test_reminder_switch
 from screening.tests.helpers import consented_user, submission_with_answers
 
 # 01:00 on 2026/11/17 in Taiwan, still the 16th in UTC.
@@ -88,7 +88,7 @@ class ResultReminderTests(TestCase):
             with self.subTest(code=code):
                 _page, block = self._block(self._result_url(code))
                 text = test_layout._text(block)
-                self.assertIn("已開啟，到期會寄到 a@example.com", text)
+                self.assertEqual(test_reminder_switch.TICKED_ON.findall(block), ["a@example.com"])
                 self.assertNotIn("<form", block)
                 self.assertNotIn("到期時寄 email 提醒我", text)
 

@@ -49,8 +49,11 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         today = timezone.localdate()
         due = sorted(_due(today), key=lambda each: (each.due_on, each.reminder.pk))
+        # What the day's earlier runs sent counts too: one run again by hand, or after a restart.
+        sent_today = RetestReminderSent.objects.filter(sent_at__date=today).count()
+        left = max(settings.RETEST_REMINDER_DAILY_LIMIT - sent_today, 0)
         sent = 0
-        for number, each in enumerate(due[: settings.RETEST_REMINDER_DAILY_LIMIT]):
+        for number, each in enumerate(due[:left]):
             if number:
                 sleep(SEND_INTERVAL)
             try:
@@ -60,64 +63,102 @@ class Command(BaseCommand):
         self.stdout.write(f"Sent {sent} retest reminder(s).")
 
 
-def _due(today):
-    """A Due for each account to send to today."""
-    reminders = (
+def _sendable():
+    """The reminders that may be sent: on, with an email, of an active account."""
+    return (
         # Not the admins: create_superuser makes staff too.
         RetestReminder.objects.filter(enabled=True, user__is_active=True, user__is_staff=False)
         .exclude(user__email="")
         .select_related("user")
     )
-    for reminder in reminders:
-        state = get_user_state(reminder.user, today)
-        if state.life_impact is None:
+
+
+def _due(today):
+    """A Due for each account to send to today."""
+    for reminder in _sendable():
+        due = _due_for(reminder, today)
+        if due is None:
             continue
-        due_on = retest_due_on(state.life_impact)  # the home page's 下次篩檢
-        # Already due when it was turned on: not this time (Q6).
-        if not reminder.enabled_on <= due_on <= today:
-            continue
-        record = RetestReminderSent.objects.filter(user=reminder.user, due_on=due_on).first()
+        record = RetestReminderSent.objects.filter(user=reminder.user, due_on=due.due_on).first()
         if record is None or record.to_try_on(today):
-            yield Due(reminder, due_on, state.retest_questionnaire)
+            yield due
+
+
+def _due_for(reminder, today):
+    """Its Due when it has fallen due by today, None when not."""
+    state = get_user_state(reminder.user, today)
+    if state.life_impact is None:
+        return None
+    due_on = retest_due_on(state.life_impact)  # the home page's 下次篩檢
+    # Already due when it was turned on: not this time (Q6).
+    if not reminder.enabled_on <= due_on <= today:
+        return None
+    return Due(reminder, due_on, state.retest_questionnaire)
 
 
 def _send(due, today):
-    """1 when it went, 0 when it did not. The row stays locked while sending, so a run at the same
-    moment waits, then finds it sent."""
+    """1 when it went, 0 when it did not. Written down as sent before it goes, the owner's call on
+    the cross review (Codex 3): rather one missed than one twice. A run stopped while sending
+    leaves it sent; the home page still says 再做一次."""
     with transaction.atomic():
-        record, _ = RetestReminderSent.objects.select_for_update().get_or_create(
-            user=due.reminder.user, due_on=due.due_on
+        # Looked at again just before it goes (cross review, Codex 2): the list was made before
+        # the first one went, and since then it may have been turned off, done again and so on.
+        reminder = _sendable().select_for_update(of=("self",)).filter(pk=due.reminder.pk).first()
+        now = None if reminder is None else _due_for(reminder, today)
+        if now is None or now.due_on != due.due_on:
+            return 0
+        # Locked, so a run at the same moment waits, then finds it sent.
+        record, created = RetestReminderSent.objects.select_for_update().get_or_create(
+            user=reminder.user, due_on=now.due_on
         )
         if not record.to_try_on(today):
             return 0
         record.attempts += 1
-        try:
-            _message(due.reminder, due.questionnaire).send()
-        except AnymailAPIError as error:
-            # Raised out of the transaction, so the row is as it was.
-            if _quota_used_up(error):
-                raise QuotaUsedUp from error
-            _failed(record, today)
-            return 0
-        except Exception:
-            _failed(record, today)
-            return 0
         record.sent_at = timezone.now()
         record.save()
-        count_guest("reminders_sent")
-        return 1
+    try:
+        _message(now.reminder, now.questionnaire).send()
+    except AnymailAPIError as error:
+        if _quota_used_up(error):
+            _not_tried(record, created)
+            raise QuotaUsedUp from error
+        _failed(record, today)
+        return 0
+    except Exception:
+        _failed(record, today)
+        return 0
+    count_guest("reminders_sent")
+    return 1
 
 
 def _quota_used_up(error):
     # Resend names the limit in its JSON body; anymail keeps the response.
-    return error.status_code == 429 and error.response.json().get("name") in QUOTA_USED_UP
+    if error.status_code != 429:
+        return False
+    try:
+        name = error.response.json().get("name")
+    except ValueError:  # not Resend's JSON (cross review, Codex 4): that one failed, no more
+        return False
+    return name in QUOTA_USED_UP
 
 
 def _failed(record, today):
-    # A fixed message: the mail service's own words may hold the address (Sentry drops them).
+    # A fixed message: the mail service's own words may hold the address (Sentry and this
+    # machine's log drop them: config.monitoring).
     logger.exception("A retest reminder could not be sent")
+    record.sent_at = None
     record.last_failed_on = today
     record.save()
+
+
+def _not_tried(record, created):
+    # Resend's quota used up: as it was before, for the next day's run, not counted as failed.
+    if created:
+        record.delete()
+    else:
+        record.attempts -= 1
+        record.sent_at = None
+        record.save()
 
 
 def _message(reminder, questionnaire):

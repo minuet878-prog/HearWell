@@ -4,6 +4,8 @@ import os
 import subprocess
 import sys
 import uuid
+from contextlib import redirect_stderr
+from io import StringIO
 from pathlib import Path
 from unittest import mock
 
@@ -20,6 +22,7 @@ from sentry_sdk.transport import Transport
 
 from config import monitoring
 from screening import scoring
+from screening.forms import HELP_ADDRESS
 from screening.models import Question, Questionnaire, User
 from screening.tests.helpers import consented_user
 
@@ -238,6 +241,36 @@ class MonitoringTests(TestCase):
         self._assert_no_personal_data(
             event, sent, "王小明", "A123", "feedback-secret@example.com", "424242", "結果頁"
         )
+
+    # CODING_STANDARDS 4 (spec #656 cross review): the mail service's words name the address, so
+    # this machine's log (stderr: the VPS's journal) keeps the fixed message, the error's type and
+    # where it happened; Sentry still gets the error and its stack.
+    @override_settings(EMAIL_BACKEND="screening.tests.test_password_reset.RefusingBackend")
+    def test_a_failed_reset_email_leaves_no_email_in_the_local_log(self):
+        caches["password_reset"].clear()
+        with redirect_stderr(StringIO()) as local:
+            self._send("post", reverse("password_reset"), {"email": self.user.email})
+        self.assert_local_log(
+            local.getvalue(), "A password reset email could not be sent", "ResetEmailNotSent"
+        )
+        self.assertNotIn(self.user.email, local.getvalue())
+
+    @override_settings(EMAIL_BACKEND="screening.tests.test_password_reset.RefusingBackend")
+    def test_a_failed_feedback_notice_leaves_no_email_in_the_local_log(self):
+        with redirect_stderr(StringIO()) as local:
+            self._send("post", reverse("feedback"), {"text": "報告印不出來"})
+        self.assert_local_log(local.getvalue(), "A feedback notice could not be sent", "OSError")
+        self.assertNotIn(HELP_ADDRESS, local.getvalue())
+
+    def assert_local_log(self, local, message, error):
+        self.assertIn(message, local)
+        self.assertIn(error, local)
+        self.assertIn("Traceback", local)  # and where it happened
+        event, _ = self._only_event()
+        self.assertEqual(event["logentry"], {"message": message})
+        sent = event["exception"]["values"][-1]  # the one raised, after its causes
+        self.assertEqual(sent["type"], error)
+        self.assertTrue(sent["stacktrace"]["frames"])
 
     def test_logged_error_sends_only_the_template(self):
         # Seven digits: longer than the microseconds in a timestamp, so only a leak can match.

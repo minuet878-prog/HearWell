@@ -34,15 +34,25 @@ class RetestReminder(models.Model):
             self.save()
 
     def turn_off(self):
-        """From the account settings or an email's cancel link: one already off stays the same."""
+        """From the account settings: one already off stays the same."""
         self.enabled, self.enabled_on = False, None
         self.save(update_fields=("enabled", "enabled_on"))
+
+    @classmethod
+    def cancel(cls, token):
+        """From an email's cancel link: off, if the code is still this reminder's. One write that
+        looks at the code as it is then, so one turned on again meanwhile, with a new code, stays
+        on (cross review, Codex 8). False when no reminder has the code; one already off, True."""
+        return cls.objects.filter(cancel_token=token).update(enabled=False, enabled_on=None) == 1
 
 
 class RetestReminderSent(models.Model):
     """One 重測提醒信 per account and due day (spec #656): the unique pair is what keeps a schedule
     run again, or two at once, from sending it twice. attempts counts every try, the one that sent
-    it too; a day that failed is tried again the next, at most MAX_ATTEMPTS days."""
+    it too; a day that failed is tried again the next, at most MAX_ATTEMPTS days. sent_at is
+    written just before the mail goes and cleared if it fails (the owner's call on the cross
+    review: rather one missed than one twice), so a run stopped while sending leaves it sent;
+    Resend's own log tells whether that one really went."""
 
     MAX_ATTEMPTS = 3
 

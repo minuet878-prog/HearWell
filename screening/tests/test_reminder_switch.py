@@ -7,7 +7,9 @@ from datetime import UTC, date, datetime
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from screening.models import RetestReminder, Submission, User
@@ -23,6 +25,25 @@ PURPOSE = (
     "打開後，上次做完滿半年的那天早上，我們會寄一封提醒信到您的 email。信裡不會寫分數或結果。"
     "您的 email 只用來寄這個提醒和重設密碼信，隨時可以關掉。"
 )
+
+# Acceptance 2, 13: 「✓ 已開啟，到期會寄到〈信箱〉」, the tick drawn before the words.
+TICKED_ON = re.compile(
+    r'<p class="reminder-on[^"]*"><svg [^>]*aria-hidden="true"[^>]*>'
+    r'<path d="M5 12\.5l4\.5 4\.5L19 7\.5"/></svg>'
+    r"<span[^>]*>已開啟，到期會寄到 ([^<]+)</span></p>"
+)
+
+
+def admin_rows(page):
+    """What each row of an admin list shows, by column; a yes/no icon by its alt text."""
+    rows = re.findall(r"<tr>(.*?)</tr>", page.split("<tbody>")[1].split("</tbody>")[0], re.S)
+    return [
+        {
+            name: test_layout._text(re.sub(r'<img [^>]*alt="(\w+)"[^>]*>', r"\1", cell))
+            for name, cell in re.findall(r'class="field-(\w+)[^"]*">(.*?)</t[dh]>', row, re.S)
+        }
+        for row in rows
+    ]
 
 
 class ReminderSwitchTests(TestCase):
@@ -76,8 +97,8 @@ class ReminderSwitchTests(TestCase):
         reminder = self._reminder()
         self.assertTrue(reminder.enabled)
         self.assertEqual(reminder.enabled_on, date(2026, 11, 17))
+        self.assertEqual(TICKED_ON.findall(self._page()), ["a@example.com"])
         text = self._section()
-        self.assertIn("已開啟，到期會寄到 a@example.com", text)
         self.assertIn("目前 已開啟（2026/11/17 起）", text)
         self.assertIn("關掉提醒", text)
         self.assertNotIn("打開提醒", text.replace("關掉提醒", ""))
@@ -125,6 +146,19 @@ class ReminderSwitchTests(TestCase):
         self.assertIn("上一次是 2026/03/10", text)
         self.assertIn(f'href="{reverse("screening", args=[record.questionnaire.pk])}"', page)
         self.assertNotIn("下次篩檢", text)
+        # Due before the day it was turned on: the schedule does not send this one (23).
+        self.assertIn("這一次不另外寄信", text)
+
+    # 4, 23: due the day it is turned on, so the schedule sends it (cross review, Codex 5).
+    def test_due_the_day_it_is_turned_on_does_not_say_no_mail(self):
+        record = self._hhie_s(date(2026, 5, 17))  # + 6 months: 2026/11/17, today
+        self._turn("1")
+        page = self._page()
+        text = test_layout._text(page)
+        self.assertIn("您現在就可以再做一次", text)
+        self.assertIn("上一次是 2026/05/17", text)
+        self.assertIn(f'href="{reverse("screening", args=[record.questionnaire.pk])}"', page)
+        self.assertNotIn("不另外寄信", text)
 
     def test_off_says_nothing_of_doing_it_now(self):
         self._hhie_s(date(2026, 3, 10))
@@ -226,6 +260,10 @@ class ReminderDataTests(TestCase):
         page = self.client.get(changelist).content.decode()
         headers = re.findall(r'<th scope="col" class="[^"]*column-(\w+)', page)
         self.assertEqual(headers, ["user", "enabled", "enabled_on"])
+        self.assertEqual(
+            admin_rows(page),
+            [{"user": "reminder_data", "enabled": "True", "enabled_on": "2026年11月3日"}],
+        )
         change = reverse("admin:screening_retestreminder_change", args=[self.reminder.pk])
         detail = self.client.get(change)
         self.assertEqual(detail.status_code, 200)
@@ -239,3 +277,16 @@ class ReminderDataTests(TestCase):
         delete = reverse("admin:screening_retestreminder_delete", args=[self.reminder.pk])
         self.assertEqual(self.client.post(delete, {"post": "yes"}).status_code, 403)
         self.assertTrue(RetestReminder.objects.get(pk=self.reminder.pk).enabled)
+
+    def test_the_admin_list_takes_the_same_queries_for_many(self):
+        # CODING_STANDARDS 15 (cross review): a row more for each account that turns it on.
+        self.client.force_login(User.objects.create_superuser(username="owner", password="pw"))
+        changelist = reverse("admin:screening_retestreminder_changelist")
+        self.client.get(changelist)  # the first request also looks up what the admin caches
+        with CaptureQueriesContext(connection) as one:
+            self.assertEqual(self.client.get(changelist).status_code, 200)
+        for number in range(5):
+            user = consented_user(username=f"many_{number}", email=f"m{number}@example.com")
+            RetestReminder.objects.create(user=user, enabled=True, enabled_on=date(2026, 11, 3))
+        with self.assertNumQueries(len(one)):
+            self.assertContains(self.client.get(changelist), "many_4")

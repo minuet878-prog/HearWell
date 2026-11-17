@@ -46,13 +46,19 @@ def _email_link_page(request, template, context=None, status=200):
 def reminder_cancel(request, token):
     """#662 (spec #656 acceptance 32-38): GET only shows the page, since an email scanner opening
     the link must not cancel; POST, its button or a mail program's one-click, turns it off."""
-    reminder = RetestReminder.objects.select_related("user").filter(cancel_token=token).first()
-    if reminder is None:  # wrong, or gone with its account: the same answer for both
-        return _email_link_page(request, "screening/reminder_invalid.html", status=404)
-    if request.method == "POST":
-        reminder.turn_off()  # one already off answers the same
+    if request.method == "GET":
+        reminder = RetestReminder.objects.select_related("user").filter(cancel_token=token).first()
+        if reminder is not None:
+            return _email_link_page(
+                request, "screening/reminder_cancel.html", {"reminder": reminder}
+            )
+    elif RetestReminder.cancel(token):  # one already off answers the same
+        if request.POST.get("List-Unsubscribe") == "One-Click":
+            # RFC 8058: a mail program's one-click is answered here, not sent on.
+            return _email_link_page(request, "screening/reminder_cancelled.html")
         return HttpResponseRedirect(reverse("reminder_cancelled"))
-    return _email_link_page(request, "screening/reminder_cancel.html", {"reminder": reminder})
+    # Wrong, or gone with its account: the same answer for both.
+    return _email_link_page(request, "screening/reminder_invalid.html", status=404)
 
 
 @require_http_methods(["GET"])
