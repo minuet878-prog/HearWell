@@ -4224,6 +4224,22 @@
   }
 
   .care-drawing .soft { fill: var(--color-pull); }
+  .care-drawing .thin { stroke-width: 1.6; }
+  .care-drawing .thick { stroke-width: 4; }
+  .care-drawing .dot { fill: var(--color-primary); stroke: none; }
+  .care-drawing .tube { stroke-width: 8; }
+  .care-drawing .tube-in { stroke: var(--color-pull); stroke-width: 3.6; }
+  .care-drawing .lens { fill: var(--color-pull); fill-opacity: 0.25; }
+  /* 怎麼戴上、拿下 (#504, the #503 drawings): the fingertips white under their lines, the aids'
+     parts deeper blue, and 分左右's marks and words. The fingertips reach past the frame on
+     purpose: keep the drawing's overflow hidden. */
+  .care-drawing .paper { fill: #fff; stroke: none; }
+  .care-drawing .part { fill: var(--color-aid-part); }
+  .care-drawing .mark-right { fill: var(--color-aid-right); stroke: none; }
+  .care-drawing .mark-left { fill: var(--color-primary); stroke: none; }
+  .care-drawing text { fill: var(--color-primary); stroke: none; font-weight: 700; }
+  /* 看動作 (#519, the #520 mockup's B): wear-motion.js puts it under a drawing that moves. */
+  .care-motion-play { margin-bottom: 0.5rem; }
 
   /* #709 (the owner's mockup A, after Age UK East London's NHS App guide): each 從 iPhone 匯入
      step's phone in the site's blue lines, the screen in pale blocks, the place to tap framed
@@ -4242,6 +4258,7 @@
     stroke-width: 2.4;
     stroke-linecap: round;
     stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
   }
 
   .import-drawing .frame,
@@ -4255,22 +4272,6 @@
   .import-drawing text { stroke: none; fill: var(--color-primary); font-family: inherit; }
   .import-drawing .strong { font-weight: 700; }
   .import-drawing .dim { fill: var(--color-muted); }
-  .care-drawing .thin { stroke-width: 1.6; }
-  .care-drawing .thick { stroke-width: 4; }
-  .care-drawing .dot { fill: var(--color-primary); stroke: none; }
-  .care-drawing .tube { stroke-width: 8; }
-  .care-drawing .tube-in { stroke: var(--color-pull); stroke-width: 3.6; }
-  .care-drawing .lens { fill: var(--color-pull); fill-opacity: 0.25; }
-  /* 怎麼戴上、拿下 (#504, the #503 drawings): the fingertips white under their lines, the aids'
-     parts deeper blue, and 分左右's marks and words. The fingertips reach past the frame on
-     purpose: keep the drawing's overflow hidden. */
-  .care-drawing .paper { fill: #fff; stroke: none; }
-  .care-drawing .part { fill: var(--color-aid-part); }
-  .care-drawing .mark-right { fill: var(--color-aid-right); stroke: none; }
-  .care-drawing .mark-left { fill: var(--color-primary); stroke: none; }
-  .care-drawing text { fill: var(--color-primary); stroke: none; font-weight: 700; }
-  /* 看動作 (#519, the #520 mockup's B): wear-motion.js puts it under a drawing that moves. */
-  .care-motion-play { margin-bottom: 0.5rem; }
 
   /* 怎麼戴上、拿下's 戴上 and 拿下 (the #503 mockup A): a title over each group of steps, the
      squeal sentence in a grey box between them, and a link under a step lined up with its words

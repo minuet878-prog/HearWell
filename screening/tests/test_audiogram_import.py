@@ -79,12 +79,16 @@ class AudiogramImportTests(TestCase):
         main = self._main(self.client.get(reverse("audiogram_import")))
         steps = re.findall(r"<li>(.*?)</li>", main.split('class="step-list"')[1], re.S)
         self.assertEqual(len(steps), 6)
-        for number, step in enumerate(steps, 1):
+        # Each step's drawing frames what that step taps.
+        framed = ("「瀏覽」", "「聽力」", "「聽力測試結果」", "「輸出 PDF」", "「儲存到檔案」", "選檔案")
+        for number, (step, tapped) in enumerate(zip(steps, framed, strict=True), 1):
             with self.subTest(step=number):
                 drawing = re.search(r'<svg class="import-drawing"[^>]*>', step)
                 self.assertIsNotNone(drawing)
                 self.assertIn('role="img"', drawing[0])
-                self.assertRegex(drawing[0], r'aria-label="手機畫面示意：[^"]+"')
+                label = re.search(r'aria-label="手機畫面示意：([^"]+)"', drawing[0])[1]
+                self.assertIn(tapped, label)
+                self.assertIn("框起來", label)
                 self.assertLess(step.index("step-list-body"), step.index("<svg"))
 
     def test_reading_shows_what_was_read_and_saves_nothing(self):
