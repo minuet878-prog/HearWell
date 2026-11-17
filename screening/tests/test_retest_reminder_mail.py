@@ -3,6 +3,7 @@ send_retest_reminders on the day a life-impact record falls due again."""
 
 import json
 import re
+import uuid
 from datetime import date, datetime, timedelta
 from io import StringIO
 from unittest.mock import patch
@@ -10,16 +11,18 @@ from urllib.parse import parse_qs, urlsplit
 from zoneinfo import ZoneInfo
 
 import requests
+import sentry_sdk
 from anymail.exceptions import AnymailAPIError
 from django.conf import settings
 from django.core import mail
 from django.core.mail.backends.locmem import EmailBackend
 from django.core.management import call_command
 from django.db import connection
-from django.test import TestCase, override_settings
+from django.test import Client, TestCase, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
+from config import monitoring
 from screening.forms import HELP_ADDRESS
 from screening.models import (
     GuestMonth,
@@ -30,6 +33,7 @@ from screening.models import (
     User,
 )
 from screening.questionnaires import hhia_s, hhie_s, ioi_ha
+from screening.tests import test_monitoring
 from screening.tests.helpers import consented_user, submission_with_answers
 
 TAIPEI = ZoneInfo("Asia/Taipei")
@@ -48,6 +52,8 @@ BODY = (
     "一共 10 題。"
 )
 FOOT = "您在聽伴打開了 email 重測提醒，所以收到這封信。不想再收到："
+# Not the settings' own: shows the mail takes DEFAULT_FROM_EMAIL (its 聽伴 <...> form: test_deploy).
+FROM = "聽伴 <reminders@tingpal.test>"
 
 
 def at(day, hour=9):
@@ -86,6 +92,13 @@ class QuotaBackend(EmailBackend):
             raise resend_429(QuotaBackend.used_up)
         QuotaBackend.left -= 1
         return super().send_messages(messages)
+
+
+class RefusingBackend(EmailBackend):
+    """The mail service refuses every one, naming the address, as Resend's error can."""
+
+    def send_messages(self, messages):
+        raise OSError(f"Resend refused {messages[0].to[0]}")
 
 
 class RateLimitedBackend(EmailBackend):
@@ -275,6 +288,7 @@ class WhenItIsSentTests(ReminderMailTestCase):
         self.assertNotIn("wang_baba", bodies[1])
 
 
+@override_settings(DEFAULT_FROM_EMAIL=FROM)
 class TheMailTests(ReminderMailTestCase):
     def setUp(self):
         self.user = self.person("wang_baba", email="baba@example.com")
@@ -315,8 +329,7 @@ class TheMailTests(ReminderMailTestCase):
         )
 
     def test_from_the_site_replies_to_the_contact_address(self):
-        self.assertEqual(self.message.from_email, settings.DEFAULT_FROM_EMAIL)
-        self.assertTrue(settings.DEFAULT_FROM_EMAIL.startswith("聽伴 <"))
+        self.assertEqual(self.message.from_email, FROM)
         self.assertEqual(self.message.to, ["baba@example.com"])
         self.assertEqual(self.message.reply_to, [HELP_ADDRESS])
 
@@ -331,6 +344,28 @@ class TheMailTests(ReminderMailTestCase):
         path = urlsplit(self.cancel_url).path
         self.client.post(path, {"List-Unsubscribe": "One-Click"})
         self.assertFalse(RetestReminder.objects.get(user=self.user).enabled)
+
+
+class TurnedOnAgainTests(ReminderMailTestCase):
+    # 37: turned off and on again, the next mail carries the new cancel code, not the old one.
+    def test_the_mail_s_cancel_link_and_header_have_the_new_code(self):
+        user = self.person("on_again")
+        old = RetestReminder.objects.get(user=user).cancel_token
+        owner = Client()
+        owner.force_login(user)
+        with at(date(2026, 6, 1)):
+            owner.post(reverse("retest_reminder"), {"enabled": "0"})
+            owner.post(reverse("retest_reminder"), {"enabled": "1"})
+        new = RetestReminder.objects.get(user=user).cancel_token
+        self.assertNotEqual(new, old)
+        self.assertEqual(self.run_on(DUE_ON), ["on_again@example.com"])
+        (message,) = mail.outbox
+        new_url = "https://tingpal.test" + reverse("reminder_cancel", args=[new])
+        self.assertEqual(message.extra_headers["List-Unsubscribe"], f"<{new_url}>")
+        for body in (message.body, message.alternatives[0].content):
+            with self.subTest(body=body[:20]):
+                self.assertIn(new_url, body)
+                self.assertNotIn(old, body)
 
 
 class NoHealthDataTests(ReminderMailTestCase):
@@ -452,6 +487,29 @@ class QuotaUsedUpTests(ReminderMailTestCase):
             ["due_16th@example.com", "due_17th@example.com"],
         )
         self.assertEqual(GuestMonth.objects.get().reminders_sent, 3)
+
+
+class FailedSendSentryTests(ReminderMailTestCase):
+    """29: what Sentry gets of a mail that could not go holds no address, through the site's own
+    scrubbing (config.monitoring)."""
+
+    def setUp(self):
+        self.transport = test_monitoring.CaptureTransport()
+        monitoring.init(test_monitoring.FAKE_DSN, transport=self.transport)
+        self.addCleanup(sentry_sdk.init)  # back to a client that sends nothing
+
+    @override_settings(EMAIL_BACKEND=f"{__name__}.RefusingBackend")
+    def test_sentry_gets_the_error_without_the_address(self):
+        # Made at run time: Sentry also sends the source lines around each frame.
+        email = f"{uuid.uuid4().hex}@example.com"
+        self.person("refused", email=email)
+        with self.assertLogs(COMMAND_LOGGER, "ERROR"):
+            self.run_on(DUE_ON)
+        sentry_sdk.flush()
+        (event,) = [env.get_event() for env in self.transport.envelopes if env.get_event()]
+        self.assertEqual(event["logentry"]["message"], "A retest reminder could not be sent")
+        self.assertEqual(event["exception"]["values"][-1]["type"], "OSError")
+        self.assertNotIn(email.split("@")[0], json.dumps(event, default=str))
 
 
 class MonthCountTests(ReminderMailTestCase):
