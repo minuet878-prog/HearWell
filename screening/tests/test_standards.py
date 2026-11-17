@@ -440,6 +440,7 @@ NO_HEALTH_DATA = {
     "confirm_identity": "the password field or the Google button, and what comes next",
     "google_add": "answers with a redirect, to 確認本人 or to Google",
     "line_add": "answers with a redirect, to 確認本人 or to LINE",
+    "add_email": "the email field, after 確認本人",
     "report_share_create": "POST only, answers with a redirect",
     "report_share_cancel": "POST only, answers with a redirect",
 }

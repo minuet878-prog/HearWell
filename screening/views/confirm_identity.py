@@ -40,6 +40,7 @@ ACTIONS = {
     "remove_google": ("移除 Google 登入", None),
     "add_line": ("新增 LINE 登入", "line_add"),
     "remove_line": ("移除 LINE 登入", None),
+    "add_email": ("補上 email", "add_email"),  # #660 (spec #656 acceptance 7)
 }
 # The provider each removing action removes.
 REMOVES = {"remove_google": "google", "remove_line": "line"}

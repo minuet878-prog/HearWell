@@ -20,17 +20,26 @@
             <dt class="settings-row-note">使用者名稱</dt>
             <dd class="settings-row-title">{{ user.username }}</dd>
         </div>
+        {% if user.email %}
         <div class="settings-row">
             <dt class="settings-row-note">電子郵件</dt>
-            <dd class="settings-row-title">{{ user.email|default:"未填" }}</dd>
+            <dd class="settings-row-title">{{ user.email }}</dd>
         </div>
+        {% else %}
+        {# #660 (the #657 mockup's 二): without one, 補上 on the right of its row, after 確認本人. #}
+        <div class="settings-row grid grid-cols-[1fr_auto] items-center gap-x-3">
+            <dt class="settings-row-note">電子郵件</dt>
+            <dd class="settings-row-title">未填</dd>
+            <dd class="col-start-2 row-span-2 row-start-1"><a class="btn btn-outline-primary" href="{% url 'add_email' %}" aria-label="補上電子郵件">補上</a></dd>
+        </div>
+        {% endif %}
         <div class="settings-row">
             <dt class="settings-row-note">出生年</dt>
             <dd class="settings-row-title">{% if roc_birth_year is not None %}民國 {{ roc_birth_year }} 年（{{ user.birth_year }}）{% else %}未填{% endif %}</dd>
         </div>
     </dl>
-    {# #361: a blank can only be filled in by writing to us (no edit form yet); said once under the details. #}
-    {% if not user.email or roc_birth_year is None %}<p class="mt-2 mb-0 wrap-anywhere">要修改請寫信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></p>
+    {# #361: a blank can only be filled in by writing to us (no edit form yet); said once under the details. #660: but for the email, added above. #}
+    {% if roc_birth_year is None %}<p class="mt-2 mb-0 wrap-anywhere">要修改請寫信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></p>
     <p class="mt-2 mb-0">{% include "screening/copy_address_button.html" %}</p>{% endif %}
 </section>
 
@@ -75,8 +84,7 @@
     <p class="field-help mt-2 mb-0 wrap-anywhere">會寄到 {{ user.email }}</p>
     {% else %}
     <p class="mt-0">您的帳號還沒有 email，要先補上才能收提醒。</p>
-    {# #660 points this at add_email. #}
-    <a class="btn btn-outline-primary w-full" href="{% url 'account_settings' %}">補上 email</a>
+    <a class="btn btn-outline-primary w-full" href="{% url 'add_email' %}">補上 email</a>
     {% endif %}
     {% endif %}
 </section>

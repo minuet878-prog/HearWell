@@ -99,6 +99,7 @@ urlpatterns = [
     path("my_data/download", export.download_my_data, name="download_my_data"),
     path("account", accounts.account_settings, name="account_settings"),
     path("account/delete", accounts.delete_account, name="delete_account"),
+    path("account/email", accounts.add_email, name="add_email"),
     path("reminder", reminders.retest_reminder, name="retest_reminder"),
     path("account/confirm", confirm_identity.confirm_identity, name="confirm_identity"),
     path("account/sign-in-methods/google/add", sign_in_methods.google_add, name="google_add"),

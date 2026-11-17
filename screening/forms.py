@@ -320,6 +320,24 @@ class PasswordConfirmForm(NoLabelSuffix, forms.Form):
         return password
 
 
+class AddEmailForm(NoLabelSuffix, forms.Form):
+    """#660 (spec #656 acceptance 8, 9): the email of an account without one, checked as
+    registering checks it; nothing is sent to confirm it (Q10)."""
+
+    email = forms.EmailField(
+        label="電子郵件",
+        # What the account's email column holds: longer is the form's error, not a database one.
+        max_length=User._meta.get_field("email").max_length,
+        help_text="請再看一次有沒有打錯，網站不會寄信確認。",
+        widget=forms.EmailInput(attrs={"autocomplete": "email", "class": "form-control"}),
+    )
+
+    def save(self, user):
+        """Add the email to the account, only while it still has none: it is added once."""
+        email = User.objects.normalize_email(self.cleaned_data["email"])
+        User.objects.filter(pk=user.pk, email="").update(email=email)
+
+
 class AnswerForm(NoLabelSuffix, forms.Form):
     score = forms.TypedChoiceField(
         coerce=int,
