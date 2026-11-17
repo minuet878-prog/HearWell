@@ -51,6 +51,7 @@ from screening.models import (
     Questionnaire,
     ReportComparison,
     ReportShare,
+    RetestReminder,
     Submission,
     User,
 )
@@ -2405,6 +2406,35 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                     self.page = family.new_page()
                     self.page.goto(f"{self.live_server_url}{path}")
                     self.assert_fits_a_phone_at_double_text_size(path)
+
+    # #659 (spec #656 acceptance 40): the account settings' email 重測提醒 in each of its states,
+    # a long address included, 320px wide at 200% text.
+    def test_account_retest_reminder_fits_a_phone_at_double_text_size(self):
+        self.open(320, 640)
+        section = "#retest-reminder"
+        with self.saving_artifacts():
+            for state, words in (
+                ("no email", "補上 email"),
+                ("off", "打開提醒"),
+                ("on", "關掉提醒"),
+                ("on and due", "您現在就可以再做一次"),
+            ):
+                with self.subTest(state=state):
+                    if state == "off":
+                        User.objects.filter(pk=self.user.pk).update(
+                            email="wang.daughter.reminder.address@example.com"
+                        )
+                    elif state == "on":
+                        RetestReminder.objects.create(
+                            user=self.user, enabled=True, enabled_on=date(2026, 11, 16)
+                        )
+                    elif state == "on and due":
+                        self.user.submissions.update(
+                            created_at=datetime.now(ZoneInfo("Asia/Taipei")) - timedelta(days=200)
+                        )
+                    self.page.goto(f"{self.live_server_url}/account")
+                    expect(self.page.locator(section)).to_contain_text(words)
+                    self.assert_fits_a_phone_at_double_text_size(state)
 
     # #198 (#183 story 121, ADR 0006): the phone blocks change colour when hovered and pressed,
     # and never move. #303: the account's link rows are link cards now, which move like any other.

@@ -10,6 +10,7 @@ from django.db import IntegrityError, transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from rest_framework.throttling import BaseThrottle
 
@@ -27,6 +28,7 @@ from screening.forms import (
     attempts,
     may_reset_password,
 )
+from screening.main_flow import get_user_state
 from screening.models import User
 from screening.views import confirm_identity, sign_in_methods
 from screening.views.common import health_data_page, safe_next, sign_in_choices
@@ -196,6 +198,13 @@ def account_settings(request):
     # #195: the share status reads only request.user's own live link.
     share = user.report_shares.active().first()
     roc_birth_year = None if user.birth_year is None else user.birth_year - ROC_OFFSET
+    # #659: the email 重測提醒; once on, the day it falls due by the home page's own reckoning.
+    reminder = models.RetestReminder.objects.filter(user=user).first()
+    retest = (
+        get_user_state(user, timezone.localdate())
+        if reminder is not None and reminder.enabled
+        else None
+    )
     return render(
         request,
         "screening/account.html",
@@ -204,6 +213,8 @@ def account_settings(request):
             "share": share,
             "roc_birth_year": roc_birth_year,
             "sign_in_methods": sign_in_methods.group(request),
+            "reminder": reminder,
+            "retest": retest,
         },
     )
 
