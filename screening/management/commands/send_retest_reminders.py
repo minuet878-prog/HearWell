@@ -93,10 +93,13 @@ def _send(due, today):
         record.attempts += 1
         try:
             _message(due.reminder, due.questionnaire).send()
-        except Exception as error:
+        except AnymailAPIError as error:
             # Raised out of the transaction, so the row is as it was.
-            if isinstance(error, AnymailAPIError) and _quota_used_up(error):
+            if _quota_used_up(error):
                 raise QuotaUsedUp from error
+            _failed(record, today)
+            return 0
+        except Exception:
             _failed(record, today)
             return 0
         record.sent_at = timezone.now()
