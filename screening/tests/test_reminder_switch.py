@@ -78,7 +78,7 @@ class ReminderSwitchTests(TestCase):
         self.assertEqual(reminder.enabled_on, date(2026, 11, 17))
         text = self._section()
         self.assertIn("已開啟，到期會寄到 a@example.com", text)
-        self.assertIn("目前 已打開（2026/11/17 起）", text)
+        self.assertIn("目前 已開啟（2026/11/17 起）", text)
         self.assertIn("關掉提醒", text)
         self.assertNotIn("打開提醒", text.replace("關掉提醒", ""))
 
