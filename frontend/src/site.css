@@ -1191,10 +1191,10 @@
     font-weight: 700;
   }
 
-  /* Centred like the rest of the footer, the links in one row (readability batch 1, the owner's
-     A). Phones: equal columns, each icon over its words; a column is never narrower than its
-     words, so at large text sizes the row wraps rather than breaking a name. From 48em each link
-     is as wide as its words, its icon beside them, with even gaps between. */
+  /* Centred like the rest of the footer (readability batch 1, the owner's A; at most three a
+     row since spec #633). Phones: equal columns, each icon over its words; a column is never
+     narrower than its words, so at large text sizes the row wraps rather than breaking a name.
+     From 48em each link is as wide as its words, its icon beside them, with even gaps between. */
   .site-footer-links {
     display: flex;
     flex-wrap: wrap;
@@ -1205,8 +1205,12 @@
     list-style: none;
   }
 
+  /* Spec #633 (the #634 mockup's A): at most three a row on a phone, so five sit in two rows
+     of even links, centred. 30%, not a third: a link is never narrower than its words, and
+     隱私權說明 is wider than a third of a 320px phone; four never fit. At large text sizes
+     fewer fit and the row wraps sooner. */
   .site-footer-links li {
-    flex: 1 1 0;
+    flex: 0 1 30%;
     min-width: max-content;
   }
 

@@ -44,6 +44,7 @@ from screening.models import (
     Audiogram,
     AudiogramPoint,
     Category,
+    Feedback,
     GuideChapterView,
     NormGroup,
     Question,
@@ -8209,9 +8210,9 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     def test_learn_cards_are_list_rows(self):
         with self.saving_artifacts():
             self.visit(False, "/learn")
-            # #487: the hearing loss simulator is the fourth.
+            # #487: the hearing loss simulator is the fourth; #640: 關於聽伴 the fifth.
             cards = self.main().get_by_role("link")
-            self.assertEqual(cards.count(), 4)
+            self.assertEqual(cards.count(), 5)
             for card in cards.all():
                 with self.subTest(card=card.inner_text()):
                     self.assert_list_row(card)
@@ -10339,10 +10340,11 @@ class FooterPinButtonRowsT359Test(SavesFailureArtifacts, LayoutOnAPhone, StaticL
 
 class FooterOneRowTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """Readability batch 1 (docs/planning/redesign/mockup-readability-batch1.html, the owner's A):
-    on a phone the footer's links share one row, each icon over its words; a computer keeps the
-    icon beside the words. The links stay at least 44px tall to tap."""
+    on a phone each icon is over its words, at most three links a row since spec #633 (the #634
+    mockup's A); a computer keeps the icon beside the words. The links stay at least 44px tall to
+    tap."""
 
-    LINKS = ("家人專區", "隱私權說明", "帳號設定")
+    LINKS = ("家人專區", "關於聽伴", "意見回饋", "隱私權說明", "帳號設定")
     # The box of a link's words alone, without its icon.
     WORDS = """el => {
         const words = [...el.childNodes].find((n) => n.nodeType === 3 && n.data.trim());
@@ -10370,28 +10372,29 @@ class FooterOneRowTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTe
             )
         return boxes
 
-    def test_a_phone_puts_the_links_in_one_row_icons_over_words(self):
+    def test_a_phone_puts_three_links_a_row_icons_over_words(self):
         with self.saving_artifacts():
             for width in (320, 390):
                 with self.subTest(width=width):
                     self.open("/privacy", (width, 844))
                     boxes = self.boxes()
-                    tops = {round(link["y"]) for link, _, _ in boxes}
-                    self.assertEqual(len(tops), 1, tops)
+                    tops = [round(link["y"]) for link, _, _ in boxes]
+                    self.assertEqual(len(set(tops[:3])), 1, tops)
+                    self.assertGreater(tops[3], tops[2], tops)
                     for (link, icon, words), name in zip(boxes, self.LINKS, strict=True):
                         self.assertGreaterEqual(link["height"], 44, name)
                         self.assertLessEqual(icon["y"] + icon["height"], words["y"] + 1, name)
                         # One line of words, the name not broken.
                         self.assertLess(words["height"], self.rem() * 2, name)
 
-    def test_a_visitor_has_two_links_in_one_row(self):
+    def test_a_visitor_has_three_links_in_one_row(self):
         with self.saving_artifacts():
             self.open("/privacy", (320, 844), signed_in=False)
             footer = self.page.locator(".site-footer")
             expect(footer.get_by_role("link", name="帳號設定")).to_have_count(0)
             boxes = [
                 footer.get_by_role("link", name=name, exact=True).bounding_box()
-                for name in self.LINKS[:2]
+                for name in self.LINKS[:3]
             ]
             self.assertEqual(len({round(box["y"]) for box in boxes}), 1)
             for box in boxes:
@@ -11311,9 +11314,9 @@ class ReportShareLearnT366Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
     def test_learn_card_titles_end_with_more_than_one_character(self):
         self.open("/learn", self.PHONE, signed_in=False)
         with self.saving_artifacts():
-            # #487: the hearing loss simulator is the fourth.
+            # #487: the hearing loss simulator is the fourth; #640: 關於聽伴 the fifth.
             titles = self.main().locator(".link-card-title")
-            expect(titles).to_have_count(4)
+            expect(titles).to_have_count(5)
             for title in titles.all():
                 lines = self.lines(title)
                 with self.subTest(title=lines):
@@ -16631,6 +16634,62 @@ class AnswerReassuranceTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
                         self.wait_for_questions()
                         expect(self.reassure()).to_be_visible()
                         self.assert_fits_a_phone_at_double_text_size(where, width)
+
+
+class FeedbackTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Spec #633 (#636, #640, the #634 mockup's A): 意見回饋 from any footer, sent with or
+    without JavaScript, its pages and 關於聽伴 on a phone (the footer's rows: FooterOneRowTest)."""
+
+    def footer_links(self):
+        return self.page.locator(".site-footer-links a")
+
+    def sent_title(self):
+        return self.main().get_by_role("heading", name="已送出，謝謝您")
+
+    def test_sent_from_a_footer_without_javascript_and_back_to_that_page(self):
+        with self.saving_artifacts():
+            self.open("/privacy", signed_in=False, java_script_enabled=False)
+            self.footer_links().get_by_text("意見回饋").click()
+            expect(self.main()).to_contain_text("您是從「隱私權說明」過來的。")
+            self.main().get_by_label("想跟我們說的話").fill("字太小了")
+            self.main().get_by_role("button", name="送出").click()
+            expect(self.sent_title()).to_be_visible()
+            self.main().get_by_role("link", name="回到剛才那一頁").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/privacy")
+        feedback = Feedback.objects.get()
+        self.assertEqual((feedback.text, feedback.page), ("字太小了", "隱私權說明"))
+
+    def test_the_robots_box_is_never_met_by_eye_tab_or_screen_reader(self):
+        # Cross review of spec #633 (acceptance 31).
+        with self.saving_artifacts():
+            self.open("/feedback", signed_in=False)
+            expect(self.page.locator("#id_website")).to_be_hidden()
+            self.main().get_by_label("想跟我們說的話").focus()
+            self.page.keyboard.press("Tab")
+            expect(self.main().get_by_label("Email（選填）")).to_be_focused()
+            self.page.keyboard.press("Tab")
+            expect(self.main().get_by_role("button", name="送出")).to_be_focused()
+            tree = self.page.locator("main").aria_snapshot()
+            self.assertNotIn("網站", tree)
+
+    def test_the_about_page_fits_a_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            for width in (320, 390):
+                with self.subTest(width=width):
+                    self.open("/about", (width, 844), signed_in=False)
+                    self.assert_fits_a_phone_at_double_text_size("about", width)
+
+    def test_its_pages_fit_a_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            for width in (320, 390):
+                with self.subTest(width=width):
+                    self.open("/feedback?page=result&next=%2F", (width, 844), signed_in=False)
+                    self.assert_fits_a_phone_at_double_text_size("feedback", width)
+                    self.double_text(on=False)
+                    self.main().get_by_label("想跟我們說的話").fill("字太小了")
+                    self.main().get_by_role("button", name="送出").click()
+                    expect(self.sent_title()).to_be_visible()
+                    self.assert_fits_a_phone_at_double_text_size("feedback sent", width)
 
 
 class ChangeLabelT646Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):

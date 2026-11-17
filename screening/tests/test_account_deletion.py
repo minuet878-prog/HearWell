@@ -257,7 +257,7 @@ class DeleteAccountTests(TestCase):
         self.client.logout()
         response = self.client.get(reverse("privacy"))
         self.assertContains(response, "自己刪除帳號")
-        self.assertContains(response, "包括刪除的帳號、超過 90 天的提問紀錄）")
+        self.assertContains(response, "包括刪除的帳號、超過 90 天的提問紀錄和意見回饋）")
         self.assertContains(response, f'href="{self.url}"')
 
     # 16

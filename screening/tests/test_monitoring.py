@@ -217,6 +217,28 @@ class MonitoringTests(TestCase):
         self.assertEqual(event["logentry"], {"message": "A password reset email could not be sent"})
         self.assertNotIn(self.user.email, sent)
 
+    @override_settings(EMAIL_BACKEND="screening.tests.test_password_reset.RefusingBackend")
+    def test_a_failed_feedback_notice_sends_nothing_that_was_sent(self):
+        # Cross review of spec #633 (S3): the notice could not go; Sentry gets the fixed message
+        # only, not the feedback's words, its email, its page or the way back.
+        caches["password_reset"].clear()
+        status, _ = self._send(
+            "post",
+            reverse("feedback"),
+            {
+                "text": "王小明的病歷號碼 A123",
+                "email": "feedback-secret@example.com",
+                "page": "result",
+                "next": "/submission/424242",
+            },
+        )
+        self.assertEqual(status, 302)
+        event, sent = self._only_event()
+        self.assertEqual(event["logentry"], {"message": "A feedback notice could not be sent"})
+        self._assert_no_personal_data(
+            event, sent, "王小明", "A123", "feedback-secret@example.com", "424242", "結果頁"
+        )
+
     def test_logged_error_sends_only_the_template(self):
         # Seven digits: longer than the microseconds in a timestamp, so only a leak can match.
         self.assertEqual(scoring.classify(4242424, "hhie-s"), scoring.UNKNOWN)

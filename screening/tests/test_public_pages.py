@@ -75,6 +75,7 @@ class PublicPageTests(TestCase):
             "/learn",
             "/learn/simulator",
             "/privacy",
+            "/about",
             "/family",
             "/family/talk",
             "/family/reluctant",
