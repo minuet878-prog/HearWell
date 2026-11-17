@@ -29,6 +29,10 @@ class ReminderPrivacyTests(TestCase):
             why,
         )
 
+    def test_what_is_collected_includes_the_reminder_setting_and_sends(self):
+        collected = self.part("collected-title", "line-title")
+        self.assertIn("您有沒有打開 email 重測提醒、哪天打開，以及寄過哪幾次提醒信。", collected)
+
     def test_the_forgot_password_part_no_longer_says_no_other_email(self):
         part = self.part("password-reset-title", "retest-reminder-title")
         self.assertNotIn("網站不寄其他信", part)

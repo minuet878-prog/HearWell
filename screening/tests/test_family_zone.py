@@ -652,9 +652,9 @@ class ReviewedPagesTests(SimpleTestCase):
                 "<p>有新的意見回饋時",
                 "<li>看大家在意見回饋寫了什麼",
                 "<li>意見回饋保存 90 天",
-                # #664 (spec #656)'s email 重測提醒 and its line under 為什麼蒐集 (the version
-                # stays 8, ADR 0065); the owner settles the agent's draft. Its row's tags are in
-                # the digest.
+                # #664 (spec #656)'s email 重測提醒 and its lines under 為什麼蒐集 and 蒐集哪些資料
+                # (the version stays 8, ADR 0065); the owner approved them on 2026-11-17. Its
+                # row's tags are in the digest.
                 "{# Spec #656 (#664, ADR 0065)",
                 '<summary><h2 id="retest-reminder-title"',
                 "<p>您在「帳號設定」或結果頁打開",
@@ -664,6 +664,7 @@ class ReviewedPagesTests(SimpleTestCase):
                 "<li>帳號沒有 email 的",
                 "<li>寄信服務和重設密碼信一樣",
                 "<li>您打開 email 重測提醒時",
+                "<li>您有沒有打開 email 重測提醒",
             ),
             # #471 (the #470 mockup B) folded each part into a row and dropped the 這一頁的段落
             # list; the visible words are the same as main's apart from that list's title.
