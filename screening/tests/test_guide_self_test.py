@@ -1,0 +1,92 @@
+"""Ticket #706 (spec #702 acceptance 15-18, ADR 0068): the 身障鑑定門檻 estimate reads hearing
+exams only; a self test still counts as an audiogram for everything else."""
+
+from datetime import date
+
+from django.test import TestCase
+from django.urls import reverse
+
+from screening.models import Audiogram
+from screening.tests import test_guide, test_guide_summary
+from screening.tests.helpers import consented_user, route_stops
+
+PTA_30 = (30, 30, 30, 30)
+PTA_60 = test_guide_summary.PTA_60
+SELF_TEST_ONLY = "自我測試不能用來估算身障鑑定。想知道有沒有達到鑑定門檻，請到鑑定醫院做聽力檢查。"
+
+
+def _threshold_part(text):
+    """The 身障鑑定門檻 part of the page's text, up to its fold."""
+    start = text.index("身障鑑定門檻")
+    return text[start : text.index("看完整說明", start) if "看完整說明" in text[start:] else None]
+
+
+class SelfTestAssessmentTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = consented_user(username="guide_self_test")
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    make = test_guide_summary.GuideSummaryTests.make
+
+    def self_test(self, right, left, tested_on):
+        audiogram = self.make(right, left, tested_on=tested_on)
+        Audiogram.objects.filter(pk=audiogram.pk).update(source="self_test")
+        return audiogram
+
+    def page(self):
+        return self.client.get(reverse("guide")).content.decode()
+
+    def test_only_a_self_test_says_go_for_an_exam_and_estimates_nothing(self):
+        """Acceptance 15."""
+        self.self_test(PTA_60, PTA_60, date(2026, 10, 1))
+        page = self.page()
+        part = _threshold_part(test_guide.text_of(self.client.get(reverse("guide"))))
+        self.assertIn(SELF_TEST_ONLY, part)
+        for said in ("達到身障鑑定門檻（45%）", "未達到", "雙耳障礙比率約", "至少約", "怎麼算的"):
+            self.assertNotIn(said, part)
+        self.assertNotIn("meter-ratio", page)
+        # 要不要找聽力師評估 still reads it (spec #693's rule, acceptance 18).
+        self.assertIn("四頻平均", test_guide.text_of(self.client.get(reverse("guide"))))
+
+    def test_a_newer_self_test_leaves_the_estimate_to_the_older_exam(self):
+        """Acceptance 16: the exam's ratio, the exam's date, and the owner's sentence."""
+        self.make(PTA_60, PTA_60, tested_on=date(2024, 5, 3))
+        self.self_test(PTA_30, PTA_30, date(2026, 10, 1))
+        text = test_guide.text_of(self.client.get(reverse("guide")))
+        # The page's audiogram is still the newest one.
+        self.assertIn("依您 2026/10/01 的聽力圖", text)
+        part = _threshold_part(text)
+        self.assertIn(
+            "依您 2024/05/03 的聽力圖估算，雙耳障礙比率約 52.5%，達到身障鑑定門檻（45%）。"
+            "實際以鑑定醫院為準。",
+            part,
+        )
+        self.assertIn("依您 2024/05/03 的聽力檢查估算。之後的自我測試不列入估算。", part)
+        self.assertNotIn(SELF_TEST_ONLY, part)
+
+    def test_the_newest_being_an_exam_is_as_before(self):
+        """Acceptance 17."""
+        self.self_test(PTA_30, PTA_30, date(2024, 5, 3))
+        self.make(PTA_60, PTA_60, tested_on=date(2026, 10, 1))
+        part = _threshold_part(test_guide.text_of(self.client.get(reverse("guide"))))
+        self.assertIn("依您 2026/10/01 的聽力圖估算，雙耳障礙比率約 52.5%", part)
+        self.assertNotIn("之後的自我測試不列入估算", part)
+        self.assertNotIn(SELF_TEST_ONLY, part)
+
+    def test_the_route_marks_no_estimate_from_a_self_test(self):
+        """The 身障鑑定 stop's 估算未達門檻 comes from an exam only (ADR 0017, 0068)."""
+        self.self_test(PTA_30, PTA_30, date(2026, 10, 1))
+        stops = dict(route_stops(self.page()))
+        self.assertNotIn("估算未達門檻", stops["assessment"])
+        self.make(PTA_30, PTA_30, tested_on=date(2024, 5, 3))
+        stops = dict(route_stops(self.page()))
+        self.assertIn("估算未達門檻", stops["assessment"])
+
+    def test_a_self_test_still_completes_the_audiogram_stop(self):
+        """Acceptance 18: 照顧旅程 step 2 and the route's first stop, whatever the source."""
+        self.self_test(PTA_60, PTA_60, date(2026, 10, 1))
+        stops = dict(route_stops(self.page()))
+        self.assertIn("已完成", stops["audiogram"])
