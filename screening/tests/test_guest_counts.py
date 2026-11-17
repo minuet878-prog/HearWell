@@ -170,7 +170,17 @@ class OnlyTheCountsTests(GuestCountTestCase):
         fields = {field.name for field in GuestMonth._meta.get_fields()}
         self.assertEqual(
             fields,
-            {"id", "month", "completed", "saved_password", "saved_google", "saved_line"},
+            {
+                "id",
+                "month",
+                "completed",
+                "saved_password",
+                "saved_google",
+                "saved_line",
+                # The clinic cards' scans (spec #677 acceptance 12).
+                "clinic_elder",
+                "clinic_family",
+            },
         )
 
     def test_every_way_to_register_has_its_own_saved_column(self):
@@ -190,7 +200,8 @@ class OnlyTheCountsTests(GuestCountTestCase):
         page = self.client.get(reverse("admin:screening_guestmonth_changelist")).content.decode()
         months = re.findall(r'<th class="field-month_label"><a [^>]*>([^<]+)</a></th>', page)
         self.assertEqual(months, ["2026/11", "2026/10"])
-        for heading in ("月份", "訪客完成", "保存（帳號密碼）", "保存（Google）", "保存（LINE）"):
+        headings = ("月份", "訪客完成", "保存（帳號密碼）", "保存（Google）", "保存（LINE）")
+        for heading in (*headings, "小卡：長輩卡", "小卡：家屬卡"):
             with self.subTest(heading=heading):
                 self.assertIn(heading, page)
         october = page[page.index(">2026/10<") :]
@@ -202,6 +213,8 @@ class OnlyTheCountsTests(GuestCountTestCase):
                 ("saved_password", "9"),
                 ("saved_google", "5"),
                 ("saved_line", "0"),
+                ("clinic_elder", "0"),
+                ("clinic_family", "0"),
             ],
         )
 

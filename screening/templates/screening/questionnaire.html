@@ -1,8 +1,11 @@
 {% extends "screening/layout.html" %}
+{% load static %}
 
 {% block title %}選問卷｜聽伴{% endblock %}
 
-{% block extra_head %}{% include "screening/continue_notice.html" %}{% endblock %}
+{% block extra_head %}{% include "screening/continue_notice.html" %}
+{# The elder card's landing (spec #677): arrival-count.js counts its mark once and takes it off. #}
+<script type="module" src="{% static 'screening/frontend/arrival-count.js' %}"></script>{% endblock %}
 
 {% block body %}
 {% if continue_notice %}<div id="continue-notice"></div>{% endif %}

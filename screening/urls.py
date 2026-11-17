@@ -6,6 +6,7 @@ from .views import (
     accounts,
     answering,
     audiograms,
+    clinic_cards,
     confirm_identity,
     crawlers,
     export,
@@ -26,6 +27,9 @@ from .views import (
 
 urlpatterns = [
     path("", home.index, name="index"),
+    # 小卡網址 (spec #677, ADR 0066): printed in the clinic cards' QR codes, kept forever.
+    path("c/e", clinic_cards.card_address, {"card": "elder"}, name="clinic_card_elder"),
+    path("c/f", clinic_cards.card_address, {"card": "family"}, name="clinic_card_family"),
     # The 公開頁面 for search engines (spec #583); Django marks the sitemap itself noindex.
     path(
         "sitemap.xml",

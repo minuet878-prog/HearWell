@@ -45,6 +45,7 @@ from screening.models import (
     AudiogramPoint,
     Category,
     Feedback,
+    GuestMonth,
     GuideChapterView,
     NormGroup,
     Question,
@@ -17183,3 +17184,42 @@ class NarrowOverflowsT668Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveS
                     self.double_text(on=False)
                     for side in ("paddingLeft", "paddingRight"):
                         self.assertEqual(self.style(block, side), "20.25px", f"{width}px")
+
+
+class ClinicCardArrivalTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Spec #677 acceptance 7-9 (ADR 0066): a clinic card's address, opened in a browser, lands on
+    its card's page with a clean address, and that card's column of the 訪客月計數 goes up by one,
+    once: reloading the page counts nothing more."""
+
+    CARDS = (
+        ("/c/e", "/questionnaire_list", "clinic_elder"),
+        ("/c/f", "/family", "clinic_family"),
+    )
+
+    def counted(self, column):
+        month = GuestMonth.objects.filter(month=timezone.localdate().replace(day=1)).first()
+        return getattr(month, column) if month else 0
+
+    def wait_until_counted(self, column, expected):
+        # The page sends the count after it opens; give it up to 5 seconds to arrive.
+        for _ in range(50):
+            if self.counted(column) == expected:
+                return
+            self.page.wait_for_timeout(100)
+        self.assertEqual(self.counted(column), expected, column)
+
+    def test_each_card_lands_clean_and_counts_once(self):
+        with self.saving_artifacts():
+            for card, landing, column in self.CARDS:
+                with self.subTest(card=card):
+                    self.open(card, signed_in=False)
+                    expect(self.page).to_have_url(f"{self.live_server_url}{landing}")
+                    self.wait_until_counted(column, 1)
+                    self.page.reload()
+                    self.page.wait_for_load_state("load")
+                    # Long enough for a second count to have arrived, had the page sent one.
+                    self.page.wait_for_timeout(1000)
+                    self.assertEqual(self.counted(column), 1, f"{card} after a reload")
+            self.assertEqual(
+                list(GuestMonth.objects.values_list("completed", "saved_password")), [(0, 0)]
+            )
