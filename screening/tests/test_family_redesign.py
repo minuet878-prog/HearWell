@@ -299,7 +299,11 @@ class FamilySubpagesTests(TestCase):
 
     def test_pick_explain_parts_are_labels_under_the_one_page_title(self):
         main = self._main("family_reluctant")
-        self.assertEqual(re.findall(r"<h\d[^>]*>([^<]*)</h\d>", main), ["長輩不肯去怎麼說"])
+        # Spec #655 (#674): 傳給他's heading follows the situations, the one other heading.
+        self.assertEqual(
+            re.findall(r"<h\d[^>]*>([^<]*)</h\d>", main),
+            ["長輩不肯去怎麼說", "先在家做個簡單的篩檢"],
+        )
         for label in ("可以試的說法", "容易有反效果的說法", "下一步"):
             with self.subTest(label=label):
                 self.assertIn(f'<p class="part-label">{label}</p>', main)

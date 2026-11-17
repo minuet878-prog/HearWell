@@ -146,12 +146,12 @@ class AccountSettingsTests(TestCase):
 
     # 12
     def test_home_order_and_text(self):
-        # #471 (mockup #458 ⑪): the visitor's home is the 空狀態首頁.
+        # Spec #655 (#673): the visitor's home is the two doors, then what stays below them.
         expected = (
-            "從一份問卷開始",
-            "聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。",
-            "回答問題，大約 3 分鐘。",
-            "開始篩檢",
+            "我想了解自己的聽力",
+            "大約 3 分鐘，不用註冊",
+            "我擔心家人的聽力",
+            "我已經有帳號，登入",
             "內容由台灣執業",
         )
         # The visitor's home: a signed-in user's is the 照顧旅程 or the 空狀態首頁 since #459

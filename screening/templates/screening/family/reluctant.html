@@ -4,6 +4,7 @@
 
 {% block extra_head %}
 <script defer src="{% static 'screening/pick-explain.js' %}"></script>
+<script defer src="{% static 'screening/share-button.js' %}"></script>
 {% endblock %}
 
 {% block body %}
@@ -14,6 +15,9 @@
 <p>選一種最接近的狀況，看看可以怎麼說。每個人情況不同，這些說法不一定都有用。這裡不會留下紀錄，可以改選。</p>
 
 {% include "screening/family/pick_explain.html" with pick=situations %}
+
+{# Spec #655 (#674): 傳給他 after the situations; the words above are unchanged. #}
+{% include "screening/family/send_to_him.html" %}
 
 <p class="mt-6">這些是一般性的建議，不能取代醫師或聽力師的診斷。有任何疑問，請和您的醫師或聽力師討論。</p>
 

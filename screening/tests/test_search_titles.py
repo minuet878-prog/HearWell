@@ -88,7 +88,7 @@ class PageHeadingTests(TestCase):
 
     def test_the_big_headings_are_the_ones_before(self):
         headings = {
-            "/": "從一份問卷開始",
+            "/": "聽伴",  # spec #655 (#673): the visitor's home is two doors, its heading hidden
             "/learn": "了解",
             "/learn/simulator": "聽損模擬",
             "/privacy": "隱私權說明",

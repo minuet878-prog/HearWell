@@ -165,18 +165,15 @@ class EmptyStateHomeTests(HomeJourneyTestCase):
         Submission.objects.create(user=other, questionnaire=self.questionnaires[hhie_s.CODE])
         self.assertIn("從一份問卷開始", self.main())
 
-    def test_a_visitor_sees_it_with_registering_to_keep_the_result(self):
-        # #471 (mockup #458 ⑪ for a visitor): the same page, with a way to log in; #499: its last
-        # step registering to keep the result. A signed-in user has neither (test_home for the
-        # visitor's).
+    def test_only_a_signed_in_user_sees_it(self):
+        # Spec #655 (#673, grill Q3): a visitor sees the two doors instead (test_home_doors); a
+        # signed-in user's 空狀態首頁 has no way to log in.
         signed_in = self.main()
         self.client.logout()
         visitor = self.main()
-        for main, signed_out in ((signed_in, False), (visitor, True)):
-            with self.subTest(signed_out=signed_out):
-                self.assertIn("從一份問卷開始", main)
-                self.assertEqual("想保存再註冊，不註冊也看得到結果。" in main, signed_out)
-                self.assertEqual("我已經有帳號，登入" in main, signed_out)
+        self.assertIn("從一份問卷開始", signed_in)
+        self.assertNotIn("我已經有帳號，登入", signed_in)
+        self.assertNotIn("從一份問卷開始", visitor)
 
 
 class JourneyHomeTests(HomeJourneyTestCase):

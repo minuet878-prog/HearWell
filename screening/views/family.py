@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
 
@@ -25,6 +26,9 @@ from screening.family_zone import (
     RELUCTANT_CHECKED_ON,
     RELUCTANT_SITUATIONS,
     RELUCTANT_SOURCES,
+    SEND_HEADING,
+    SEND_LEAD,
+    SEND_MESSAGE,
     VISIT_BRING,
     VISIT_CHECKED_ON,
     VISIT_QUESTIONS,
@@ -56,6 +60,21 @@ def family_talk(request):
     )
 
 
+def send_to_him(request):
+    """What 傳給他 shows and sends (spec #655): the owner's message and, after it, the address of
+    the wizard's age step with its mark (grill Q5, Q10). The mark is the same for everyone, so
+    nothing in the address tells who sent it or to whom. The address takes the scheme the page
+    was opened with, as the family page's own address does."""
+    address = request.build_absolute_uri(reverse("questionnaire_list")) + "?via=send"
+    return {
+        "heading": SEND_HEADING,
+        "lead": SEND_LEAD,
+        "message": SEND_MESSAGE,
+        "address": address,
+        "text": f"{SEND_MESSAGE}\n{address}",
+    }
+
+
 def family_reluctant(request):
     # #429 (spec #426): open without logging in (CODING_STANDARDS.md 2): it holds no personal data
     # and is for family members who have no account. The same words for everyone.
@@ -66,6 +85,7 @@ def family_reluctant(request):
             "situations": RELUCTANT_SITUATIONS,
             "sources": RELUCTANT_SOURCES,
             "checked_on": RELUCTANT_CHECKED_ON,
+            "send": send_to_him(request),
         },
     )
 

@@ -104,14 +104,13 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
         self.assertEqual(response.status_code, 200)
         return _main(response.content.decode())
 
-    def test_visitor_has_the_family_link_after_the_guide_s(self):
-        # #471 (mockup #458 ⑪): the visitor's home is the 空狀態首頁, its ways in text links
-        # after the start and login buttons, as for a signed-in user without records.
+    def test_visitor_reaches_the_family_zone_by_its_door(self):
+        # Spec #655 (#673, grill Q4): the door 我擔心家人的聽力 takes the place of the text link
+        # 我是家人, first on the page, before the login link.
         main = self._home()
-        self.assertIn(f'<li><a href="{self.url}">我是家人</a></li>', main)
-        self.assertLess(main.index("開始篩檢"), main.index("我已經有帳號，登入"))
-        self.assertLess(main.index("我已經有帳號，登入"), main.index("了解助聽器選配與補助"))
-        self.assertLess(main.index("了解助聽器選配與補助"), main.index("我是家人"))
+        self.assertNotIn("我是家人", main)
+        door = main.index(f'href="{self.url}" data-door="door_family"')
+        self.assertLess(door, main.index("我已經有帳號，登入"))
 
     def test_new_user_without_records_has_a_family_link(self):
         # #459: the 空狀態首頁 keeps the way in as a text link after the guide's (mockup #458 A).
@@ -493,8 +492,11 @@ class FamilyReluctantTests(SignsInWithARecord, TestCase):
             ),
             ["他不承認聽不到", "他不想去檢查", "他不想戴助聽器"],
         )
-        self.assertNotRegex(self.main, r"\shidden[\s>]")
-        self.assertEqual(self.main.count('aria-live="polite"'), 1)
+        # The situations, before 傳給他 (spec #655, #674), whose hidden buttons and copy status
+        # are its own (test_send_to_him).
+        situations = self.main[: self.main.index('<section class="send-to-him"')]
+        self.assertNotRegex(situations, r"\shidden[\s>]")
+        self.assertEqual(situations.count('aria-live="polite"'), 1)
         self.assertRegex(self.content, r'<script defer src="[^"]*screening/pick-explain\.js')
         items = self._items()
         self.assertEqual(len(items), 3)

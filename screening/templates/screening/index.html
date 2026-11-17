@@ -7,7 +7,9 @@
 <script type="module" src="{% static 'screening/frontend/care-journey.js' %}"></script>{% endif %}{% if guest_questionnaires %}
 {# #499 (spec #492, the #493 mockup's A1): guest-home.js fills #guest-home with the guest results kept in this browser. #}
 {{ guest_questionnaires|json_script:"guest-home-data" }}
-<script type="module" src="{% static 'screening/frontend/guest-home.js' %}"></script>{% endif %}{% endblock %}
+<script type="module" src="{% static 'screening/frontend/guest-home.js' %}"></script>{% endif %}{% if not user.is_authenticated %}
+{# Spec #655 (#673): door-count.js counts which of the two doors is pressed. #}
+<script type="module" src="{% static 'screening/frontend/door-count.js' %}"></script>{% endif %}{% endblock %}
 
 {% block body %}
 {% if continue_notice %}<div id="continue-notice"></div>{% endif %}
@@ -112,36 +114,52 @@
     <li data-hide-in-app><a href="{% url 'add_to_home' %}">加到手機主畫面</a></li>
 </ul>
 {% else %}
-{# #459 (mockup #458 A): the 空狀態首頁, for a signed-in user without a questionnaire or an audiogram. The dashed box is a preview, not a link. #471 (mockup #458 ⑪ for a visitor): a visitor sees the same page and can log in instead; since #499 (spec #492) a visitor answers without an account. #}
+{# #459 (mockup #458 A): the 空狀態首頁, for a signed-in user without a questionnaire or an audiogram. The dashed box is a preview, not a link. Since spec #655 (#673) a visitor sees the two doors below instead. #}
 {% if guest_questionnaires %}<div id="guest-home" class="grid gap-3 mb-6" hidden></div>{% endif %}
+{% if user.is_authenticated %}
 <h1 class="h3">從一份問卷開始</h1>
 <p>聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。</p>
 <div class="empty-preview">
     <p class="empty-preview-title">做完第一份問卷，這裡會排出您的照顧旅程</p>
     <ol class="step-list" role="list">
-        {% if user.is_authenticated %}
         <li><span class="step-list-number">1</span><span class="step-list-body">回答問題，大約 3 分鐘</span></li>
         <li><span class="step-list-number">2</span><span class="step-list-body">馬上看到結果分級和建議</span></li>
         <li><span class="step-list-number">3</span><span class="step-list-body">首頁一次告訴您一件該做的事</span></li>
-        {% else %}
-        {# #499 (spec #492): a visitor answers first and registers only to keep the result. #}
-        <li><span class="step-list-number">1</span><span class="step-list-body">回答問題，大約 3 分鐘。</span></li>
-        <li><span class="step-list-number">2</span><span class="step-list-body">馬上看到結果分級和建議。</span></li>
-        <li><span class="step-list-number">3</span><span class="step-list-body">想保存再註冊，不註冊也看得到結果。</span></li>
-        {% endif %}
     </ol>
 </div>
-{% url 'questionnaire_list' as list_url %}
-{# Without an account the list is the wizard's age step (#495). #}
-<a class="btn btn-primary btn-lg btn-start w-full" data-play-in-view href="{{ list_url }}">開始篩檢</a>
-{% if not user.is_authenticated %}
-<p class="mt-4 mb-0"><a class="home-login" href="{% url 'login' %}">我已經有帳號，登入</a></p>
-{% endif %}
+<a class="btn btn-primary btn-lg btn-start w-full" data-play-in-view href="{% url 'questionnaire_list' %}">開始篩檢</a>
 <ul class="home-links" role="list">
     <li><a href="{% url 'guide' %}">了解助聽器選配與補助</a></li>
     <li><a href="{% url 'family_guide' %}">我是家人</a></li>
     <li data-hide-in-app><a href="{% url 'add_to_home' %}">加到手機主畫面</a></li>
 </ul>
+{% else %}
+{# Spec #655 (#673, the #669 mockup's A, grill Q3, Q4): someone not signed in first sees two doors, pale blue blocks one above the other, in the owner's words (#671). They take the place of the heading, the three-step preview, 開始篩檢 and 我是家人; the doors are plain links, and door-count.js counts a press. #}
+<h1 class="visually-hidden">聽伴</h1>
+<ul class="home-doors list-unstyled" role="list">
+    <li><a class="link-card action-card home-door" href="{% url 'questionnaire_list' %}" data-door="door_self">
+        {% include "screening/action_icon.html" with icon="clipboard" %}
+        <span class="link-card-body">
+            <span class="link-card-title">我想了解自己的聽力</span>
+            <span class="link-card-note">大約 3 分鐘，不用註冊</span>
+        </span>
+        <span class="link-card-arrow" aria-hidden="true">›</span>
+    </a></li>
+    <li><a class="link-card action-card home-door" href="{% url 'family_guide' %}" data-door="door_family">
+        {% include "screening/action_icon.html" with icon="family" %}
+        <span class="link-card-body">
+            <span class="link-card-title">我擔心家人的聽力</span>
+            <span class="link-card-note">看看可以怎麼幫他</span>
+        </span>
+        <span class="link-card-arrow" aria-hidden="true">›</span>
+    </a></li>
+</ul>
+<p class="mt-4 mb-0"><a class="home-login" href="{% url 'login' %}">我已經有帳號，登入</a></p>
+<ul class="home-links" role="list">
+    <li><a href="{% url 'guide' %}">了解助聽器選配與補助</a></li>
+    <li data-hide-in-app><a href="{% url 'add_to_home' %}">加到手機主畫面</a></li>
+</ul>
+{% endif %}
 <p class="empty-credit">內容由台灣執業聽力師設計與審定。</p>
 {% endif %}
 {% endblock %}

@@ -1455,6 +1455,42 @@
     }
   }
 
+  /* Spec #655 (#673, the #669 mockup's A): the signed-out home's two doors, each a single link in
+     a pale blue block (as a single clickable thing sits in a colour block), one above the other,
+     the icon in a white circle. A mouse or a finger deepens the blue instead of turning it pale
+     blue; at large text sizes the words drop under the icon as every action card's do. */
+  .home-doors {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0;
+  }
+
+  .home-doors > li > .link-card.home-door {
+    min-height: 5.5rem;
+    padding: 1rem;
+    border: 0;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-brand-soft);
+  }
+
+  .home-door .action-card-icon {
+    background-color: #fff;
+  }
+
+  .home-door .link-card-title {
+    font-size: 1.15rem;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .home-doors > li > .link-card.home-door:hover {
+      background-color: var(--color-brand-soft-deep);
+    }
+  }
+
+  .home-doors > li > .link-card.home-door:active {
+    background-color: var(--color-brand-selected);
+  }
+
   /* #648 (spec #644 H4, the #645 mockup's 3A): a page with nothing yet, all in the middle: the
      action card's pale blue circle grown large, then the title, a sentence and its button. */
   .empty-state {

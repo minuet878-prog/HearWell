@@ -297,6 +297,19 @@ RELUCTANT_SOURCES = (
 )
 RELUCTANT_CHECKED_ON = date(2026, 11, 6)
 
+# 傳給他 (spec #655, #674): the owner's words (#671, family-pages-skeleton.md). One message for
+# every page that has it (grill Q9); the address of the wizard's age step follows it. The heading
+# and the lead above the message box, as on page one, the owner also chose for the reluctant page.
+SEND_MESSAGE = (
+    "分享你一個聽力自我篩檢，回答幾個問題大約 3 分鐘，不用註冊。"
+    "做完會看到結果和建議，有空可以做做看。"
+)
+SEND_HEADING = "先在家做個簡單的篩檢"
+SEND_LEAD = (
+    "篩檢是回答幾個生活中聽的問題，大約 3 分鐘、不用註冊。"
+    "它不能取代聽力檢查，但可以幫他看看聽力對生活的影響，結果也會建議下一步。"
+)
+
 # Drafts for the owner's review (#430, batch-2-wording.md section 1), from the guide's
 # 去找聽力師之前 chapter. Its one sentence on the printed report is an item here, and its questions,
 # in the reader's own voice there, speak of 他 here (Q17).
