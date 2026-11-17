@@ -7,7 +7,9 @@ from datetime import UTC, date, datetime
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from screening.models import RetestReminder, Submission, User
@@ -252,3 +254,16 @@ class ReminderDataTests(TestCase):
         delete = reverse("admin:screening_retestreminder_delete", args=[self.reminder.pk])
         self.assertEqual(self.client.post(delete, {"post": "yes"}).status_code, 403)
         self.assertTrue(RetestReminder.objects.get(pk=self.reminder.pk).enabled)
+
+    def test_the_admin_list_takes_the_same_queries_for_many(self):
+        # CODING_STANDARDS 15 (cross review): a row more for each account that turns it on.
+        self.client.force_login(User.objects.create_superuser(username="owner", password="pw"))
+        changelist = reverse("admin:screening_retestreminder_changelist")
+        self.client.get(changelist)  # the first request also looks up what the admin caches
+        with CaptureQueriesContext(connection) as one:
+            self.assertEqual(self.client.get(changelist).status_code, 200)
+        for number in range(5):
+            user = consented_user(username=f"many_{number}", email=f"m{number}@example.com")
+            RetestReminder.objects.create(user=user, enabled=True, enabled_on=date(2026, 11, 3))
+        with self.assertNumQueries(len(one)):
+            self.assertContains(self.client.get(changelist), "many_4")
