@@ -171,13 +171,6 @@ class FittingStepsTests(CareJourneyTestCase):
         self.assertEqual(self.states(), [DONE, DONE, NOT_NEEDED, NOT_NEEDED, CURRENT])
         self.assertEqual(journey.current, 5)
 
-    def test_reading_a_chapter_brings_step_3_back(self):
-        # Spec #453 acceptance 8, like the route's 等本人開始.
-        self.answer()
-        self.make(NORMAL, NORMAL)
-        GuideChapterView.objects.create(user=self.user, chapter="types-and-prices")
-        self.assertEqual(self.states(), [DONE, DONE, CURRENT, LATER, LATER])
-
     def test_wearing_without_an_audiogram_or_a_date_asks_for_the_date(self):
         # Spec #453 acceptance 9: from step 3 on, step 2 left unticked.
         self.answer(wearing=True)
@@ -415,3 +408,32 @@ class StepAboutTests(CareJourneyTestCase):
                 "時間到了，這裡會出現「再做一次」的按鈕。",
             ],
         )
+
+
+class ViewingDoesNotStartRouteJourneyTests(CareJourneyTestCase):
+    """#695 (spec #693 acceptance 10 to 12): within the normal range steps 3 and 4 are
+    目前不需要 until the user answers a question on the route; reading chapters is not enough."""
+
+    def setUp(self):
+        super().setUp()
+        self.answer()
+        self.make(NORMAL, NORMAL)
+
+    def test_reading_chapters_keeps_steps_3_and_4_not_needed(self):
+        # Acceptance 10.
+        for chapter in ("before-you-go", "types-and-prices"):
+            GuideChapterView.objects.create(user=self.user, chapter=chapter)
+        self.assertEqual(self.states(), [DONE, DONE, NOT_NEEDED, NOT_NEEDED, CURRENT])
+
+    def test_answering_a_route_question_brings_steps_3_and_4_back(self):
+        # Acceptance 11: the route goes on from the first stop not done.
+        AidAndSubsidy.objects.create(user=self.user, certificate=Certificate.APPLYING)
+        journey = self.journey()
+        self.assertEqual(self.states(), [DONE, DONE, CURRENT, LATER, LATER])
+        self.assertEqual(journey.card.title, "去找聽力師之前")
+
+    def test_wearing_and_reading_chapters_still_needs_step_3(self):
+        # Acceptance 12, in part: someone wearing hearing aids is not waited on, as before.
+        self.answer(wearing=True)
+        GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
+        self.assertEqual(self.states(), [DONE, DONE, CURRENT, LATER, LATER])

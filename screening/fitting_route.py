@@ -164,8 +164,9 @@ def fitting_state(user, today):
     done -= not_applicable  # a stop is never both: 不適用 wins (#291 review)
     if not shown:
         done -= SUBSIDY_STOPS  # folded away, a 補助站 is neither done nor here
-    # Q7: within the normal range, the route waits until the user starts on a stop.
-    started = bool(viewed) or (aid is not None and not aid.unanswered)
+    # Q7: within the normal range, the route waits until the user starts on a stop; only an
+    # answer on the route starts it, a chapter viewed does not (spec #693 Q9).
+    started = aid is not None and not aid.unanswered
     waiting = not wearing and fitting is False and not started
     passed = done | not_applicable | (frozenset() if shown else SUBSIDY_STOPS)
     stop = _stop(wearing, passed, waiting)

@@ -116,10 +116,11 @@ class GuideRouteTests(TestCase):
         self.assert_link(self.stop("assessment"), assessment, "找鑑定醫院")
 
     # 3
-    def test_within_25_reading_any_chapter_puts_here_on_the_route(self):
+    def test_within_25_reading_a_chapter_puts_no_here_on_the_route(self):
+        # #695 (spec #693 Q9): a chapter viewed does not start the route.
         self.make(*test_route_steps.WITHIN_25)
         self.client.get(reverse("guide_chapter", args=["form-9"]))
-        self.assert_only_here_at(self.tags(), "before-you-go")
+        self.assertNotIn('aria-current="step"', self.page())
 
     # 26
     def test_there_is_no_aid_and_subsidy_card(self):

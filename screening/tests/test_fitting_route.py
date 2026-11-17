@@ -4,7 +4,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from screening.fitting_route import AUDIOGRAM, fitting_state
-from screening.models import AidAndSubsidy, Questionnaire, Submission
+from screening.models import AidAndSubsidy, Certificate, GuideChapterView, Questionnaire, Submission
 from screening.questionnaires import hhie_s, ioi_ha
 from screening.tests import test_guide_summary
 from screening.tests.helpers import consented_user
@@ -271,3 +271,29 @@ class ReapplyDateTests(TestCase):
 
     def test_none_before_filling_anything_in(self):
         self.assertIsNone(self.reapply_on())
+
+
+class ViewingDoesNotStartRouteTests(TestCase):
+    """#695 (spec #693 Q9): within the normal range the route waits until the user answers a
+    question on it; a chapter viewed is 已完成 but does not start it."""
+
+    def setUp(self):
+        self.user = consented_user(username="viewing_user")
+        self.make((20, 20, 20, 20), (20, 20, 20, 20))
+
+    make = test_guide_summary.GuideSummaryTests.make
+
+    def test_viewing_chapters_keeps_the_route_waiting(self):
+        for chapter in ("before-you-go", "types-and-prices"):
+            GuideChapterView.objects.create(user=self.user, chapter=chapter)
+        state = fitting_state(self.user, TODAY)
+        self.assertTrue(state.waiting)
+        self.assertIsNone(state.stop)
+        self.assertEqual(state.done, {AUDIOGRAM, "before-you-go", "types-and-prices"})
+
+    def test_answering_a_question_on_the_route_starts_it(self):
+        GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
+        AidAndSubsidy.objects.create(user=self.user, certificate=Certificate.APPLYING)
+        state = fitting_state(self.user, TODAY)
+        self.assertFalse(state.waiting)
+        self.assertEqual(state.stop, "assessment")

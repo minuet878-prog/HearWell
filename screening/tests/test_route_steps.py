@@ -152,22 +152,16 @@ class HereTests(TestCase):
         self.assertEqual(self.state().done, {AUDIOGRAM})
         self.assertIsNone(self.state().stop)
 
-    def test_both_ears_within_25_after_viewing_any_chapter_follow_the_rule(self):
-        self.make(*WITHIN_25)
-        self.view("types-and-prices")
-        self.assertEqual(self.state().stop, "before-you-go")
-        self.view("before-you-go")
-        self.assertEqual(self.state().stop, "assessment")
-
     def test_both_ears_within_25_after_any_answer_follow_the_rule(self):
         self.make(*WITHIN_25)
         AidAndSubsidy.objects.create(user=self.user, certificate="applying")
         self.assertEqual(self.state().stop, "before-you-go")
 
-    def test_viewing_a_chapter_without_a_stop_of_its_own_also_starts_the_route(self):
+    def test_viewing_a_chapter_without_a_stop_of_its_own_does_not_start_the_route(self):
+        # #695 (spec #693 Q9): viewing is not starting, whichever chapter.
         self.make(*WITHIN_25)
         self.view("form-25")
-        self.assertEqual(self.state().stop, "before-you-go")
+        self.assertIsNone(self.state().stop)
         self.assertEqual(self.state().done, {AUDIOGRAM})
 
     # 5
