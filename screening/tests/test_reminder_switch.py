@@ -125,6 +125,19 @@ class ReminderSwitchTests(TestCase):
         self.assertIn("上一次是 2026/03/10", text)
         self.assertIn(f'href="{reverse("screening", args=[record.questionnaire.pk])}"', page)
         self.assertNotIn("下次篩檢", text)
+        # Due before the day it was turned on: the schedule does not send this one (23).
+        self.assertIn("這一次不另外寄信", text)
+
+    # 4, 23: due the day it is turned on, so the schedule sends it (cross review, Codex 5).
+    def test_due_the_day_it_is_turned_on_does_not_say_no_mail(self):
+        record = self._hhie_s(date(2026, 5, 17))  # + 6 months: 2026/11/17, today
+        self._turn("1")
+        page = self._page()
+        text = test_layout._text(page)
+        self.assertIn("您現在就可以再做一次", text)
+        self.assertIn("上一次是 2026/05/17", text)
+        self.assertIn(f'href="{reverse("screening", args=[record.questionnaire.pk])}"', page)
+        self.assertNotIn("不另外寄信", text)
 
     def test_off_says_nothing_of_doing_it_now(self):
         self._hhie_s(date(2026, 3, 10))

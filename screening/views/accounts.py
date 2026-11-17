@@ -30,7 +30,7 @@ from screening.forms import (
     attempts,
     may_reset_password,
 )
-from screening.main_flow import get_user_state
+from screening.main_flow import get_user_state, retest_due_on
 from screening.models import User
 from screening.views import confirm_identity, sign_in_methods
 from screening.views.common import health_data_page, safe_next, sign_in_choices
@@ -207,6 +207,12 @@ def account_settings(request):
         if reminder is not None and reminder.enabled
         else None
     )
+    # Due before it was turned on: the schedule leaves this one (Q6). Due that day, it sends it.
+    no_mail_this_time = (
+        retest is not None
+        and retest.retest_due
+        and retest_due_on(retest.life_impact) < reminder.enabled_on
+    )
     return render(
         request,
         "screening/account.html",
@@ -217,6 +223,7 @@ def account_settings(request):
             "sign_in_methods": sign_in_methods.group(request),
             "reminder": reminder,
             "retest": retest,
+            "no_mail_this_time": no_mail_this_time,
         },
     )
 

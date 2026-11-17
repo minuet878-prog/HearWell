@@ -51,7 +51,7 @@
     {% if retest.retest_due %}
     <div class="reminder-due">
         <p class="reminder-due-title">您現在就可以再做一次</p>
-        <p class="mt-1 mb-0">上一次是 {{ retest.life_impact.created_at|date:"Y/m/d" }}，已經超過半年。這一次不另外寄信，做完之後，半年後會寄提醒給您。</p>
+        <p class="mt-1 mb-0">上一次是 {{ retest.life_impact.created_at|date:"Y/m/d" }}，{% if no_mail_this_time %}已經超過半年。這一次不另外寄信，做完之後，半年後會寄提醒給您。{% else %}已經滿半年。{% endif %}</p>
         <a class="btn btn-primary w-full mt-3" href="{% url 'screening' retest.retest_questionnaire.pk %}">再做一次</a>
     </div>
     {% endif %}
