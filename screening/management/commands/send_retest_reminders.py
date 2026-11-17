@@ -143,7 +143,8 @@ def _quota_used_up(error):
 
 
 def _failed(record, today):
-    # A fixed message: the mail service's own words may hold the address (Sentry drops them).
+    # A fixed message: the mail service's own words may hold the address (Sentry and this
+    # machine's log drop them: config.monitoring).
     logger.exception("A retest reminder could not be sent")
     record.sent_at = None
     record.last_failed_on = today

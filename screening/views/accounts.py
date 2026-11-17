@@ -114,7 +114,7 @@ class ForgotPasswordView(auth_views.PasswordResetView):
             response = super().form_valid(form)
         except ResetEmailNotSent:
             # #529: the page says so. A fixed message: the mail service's own words may hold the
-            # email (Sentry drops them too).
+            # email (Sentry and this machine's log drop them too: config.monitoring).
             logger.exception("A password reset email could not be sent")
             return self.render_to_response(self.get_context_data(form=form, send_failed=True))
         self.request.session[RESET_EMAIL] = email

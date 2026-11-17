@@ -111,7 +111,8 @@ def notify_owner(request, feedback):
     try:
         send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [HELP_ADDRESS])
     except Exception:
-        # A fixed message: the mail service's own words may hold an address (Sentry drops them).
+        # A fixed message: the mail service's own words may hold an address (Sentry and this
+        # machine's log drop them: config.monitoring).
         logger.exception("A feedback notice could not be sent")
 
 
