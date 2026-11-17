@@ -62,14 +62,16 @@ class ReminderCancelTests(TestCase):
         self.assertFalse(reminder.enabled)
         self.assertIsNone(reminder.enabled_on)
 
-    # 34: RFC 8058's one-click, a POST with this body and no CSRF token or cookie
+    # 34: RFC 8058's one-click, a POST with this body and no CSRF token or cookie; answered
+    # there and then, not sent on to another address (cross review, Codex 7).
     def test_a_mail_programs_one_click_turns_it_off(self):
         response = self.client.post(
             self._url(),
             "List-Unsubscribe=One-Click",
             content_type="application/x-www-form-urlencoded",
         )
-        self.assertLess(response.status_code, 400)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("Location", response)
         self.assertFalse(self._reminder().enabled)
 
     # 35

@@ -51,6 +51,9 @@ def reminder_cancel(request, token):
         return _email_link_page(request, "screening/reminder_invalid.html", status=404)
     if request.method == "POST":
         reminder.turn_off()  # one already off answers the same
+        if request.POST.get("List-Unsubscribe") == "One-Click":
+            # RFC 8058: a mail program's one-click is answered here, not sent on.
+            return _email_link_page(request, "screening/reminder_cancelled.html")
         return HttpResponseRedirect(reverse("reminder_cancelled"))
     return _email_link_page(request, "screening/reminder_cancel.html", {"reminder": reminder})
 
