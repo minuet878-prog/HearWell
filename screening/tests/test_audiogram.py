@@ -521,6 +521,23 @@ class AudiogramPageTests(TestCase):
         self.assertRegex(main, r"右耳：\s*<span[^>]*>重度</span>")
         self.assertRegex(main, r"左耳：\s*<span[^>]*>資料不足</span>")
 
+    def test_list_marks_self_tests_only(self):
+        """Spec #702 acceptance 19 (#703 mockup 6A): a self test's row has the grey tag after its
+        date; an exam's has none."""
+        from screening.models import Audiogram
+
+        exam = self._make(_four(_air, "right", (20,) * 4), tested_on=date(2026, 1, 1))
+        self_test = self._make(_four(_air, "right", (20,) * 4), tested_on=date(2026, 9, 1))
+        Audiogram.objects.filter(pk=self_test.pk).update(source="self_test")
+        main = self._main(self.client.get(reverse("audiogram_list")))
+
+        def row(audiogram):
+            return re.search(rf'href="/audiograms/{audiogram.id}".*?</a>', main, re.DOTALL)[0]
+
+        tag = '<span class="source-tag">自我測試</span>'
+        self.assertRegex(row(self_test), rf"<strong>2026/09/01</strong>\s*{tag}")
+        self.assertNotIn("source-tag", row(exam))
+
     def test_empty_list(self):
         main = self._main(self.client.get(reverse("audiogram_list")))
         self.assertIn("還沒有聽力圖", main)
@@ -1194,6 +1211,22 @@ class AudiogramComparePageTests(TestCase):
         return re.search(
             r'<p class="[^"]*compare-legend[^"]*">(.*?)</p>', self._main(response), re.DOTALL
         ).group(1)
+
+    def test_the_picked_self_test_is_tagged(self):
+        """Spec #702 acceptance 19 (#703 mockup 6A, the trend's place per the #702 correction):
+        beside the picked self test's date, the grey tag; the exam beside it has none."""
+        from screening.models import Audiogram
+
+        old, _, new = self._three()
+        Audiogram.objects.filter(pk=new.pk).update(source="self_test")
+        main = self._main(self._get(a=old.id, b=new.id))
+        picks = re.findall(r"<summary>(.*?)</summary>", main, re.DOTALL)
+        new_pick = next(p for p in picks if "2026/09/10" in p)
+        old_pick = next(p for p in picks if "2026/01/10" in p)
+        self.assertRegex(
+            new_pick, r'<strong>2026/09/10</strong>\s*<span class="source-tag">自我測試</span>'
+        )
+        self.assertNotIn("source-tag", old_pick)
 
     # 清單頁的入口
     def test_list_button_needs_two(self):
