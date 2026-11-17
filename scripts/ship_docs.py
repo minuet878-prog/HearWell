@@ -19,6 +19,12 @@ def is_docs(path):
     return path.startswith("docs/") or path == "GLOSSARY.md"
 
 
+def changed_paths():
+    # -z: git otherwise quotes a non-ASCII name ("docs/design/\345..."), which is_docs rejects.
+    listed = git("diff", "--name-only", "-z", "origin/main...HEAD")
+    return [path for path in listed.split("\0") if path]
+
+
 def main():
     if len(sys.argv) != 3:
         sys.exit('用法：python3 scripts/ship_docs.py "<PR 標題>" <PR 內文檔>')
@@ -31,7 +37,7 @@ def main():
         sys.exit("有還沒 commit 的改動，先 commit。")
 
     git("fetch", "origin", "main")
-    changed = git("diff", "--name-only", "origin/main...HEAD").splitlines()
+    changed = changed_paths()
     if not changed:
         sys.exit("這個分支跟 origin/main 沒有差異。")
     outside = [path for path in changed if not is_docs(path)]
