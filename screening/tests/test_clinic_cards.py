@@ -1,9 +1,9 @@
 """診間小卡 (spec #677, ADR 0066): the two card addresses printed in the QR codes, kept forever,
 each landing on its card's page with the card's mark; the landing page counts the scan."""
 
-from unittest.mock import patch
-
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 
 from screening.models import GuestMonth, User
 from screening.public_pages import is_public
@@ -100,21 +100,15 @@ class ScanCountTests(TestCase):
         self.assertEqual(self.counts(), [(test_guest_counts.this_month(), 0, 0, 0, 0, 1, 2)])
 
     def test_two_sent_at_the_same_moment_both_count(self):
-        # Acceptance 11: a second scan arrives after the first has found this month's row and
-        # before it adds its one; both must count, as two scans in the same moment would.
-        find_month = GuestMonth.objects.get_or_create
-        second = []
-
-        def second_scan_arrives(**fields):
-            found = find_month(**fields)
-            if not second:
-                second.append(None)  # before sending: the second scan finds the row as well
-                second[0] = self.send("clinic_elder")
-            return found
-
-        with patch.object(GuestMonth.objects, "get_or_create", side_effect=second_scan_arrives):
+        # Acceptance 11: the one is added in the database (UPDATE ... SET x = x + 1), never read
+        # here and written back, so a second scan in the same moment cannot be written over.
+        self.send("clinic_elder")
+        with CaptureQueriesContext(connection) as queries:
             self.send("clinic_elder")
-        self.assertEqual(second[0].status_code, 204)
+        updates = [q["sql"] for q in queries if q["sql"].startswith("UPDATE")]
+        self.assertEqual(len(updates), 1, updates)
+        added_in_place = r'SET "clinic_elder" = \("screening_guestmonth"\."clinic_elder" \+ '
+        self.assertRegex(updates[0], added_in_place)
         self.assertEqual(GuestMonth.objects.get().clinic_elder, 2)
 
     def test_a_kind_it_does_not_know_is_refused_and_adds_nothing(self):
