@@ -28,7 +28,7 @@
 <summary>{% include "screening/action_icon.html" with icon="audiogram" %}<span class="report-fold-text"><h2 class="report-fold-title">聽力圖（{{ audiogram.tested_on|date:"Y/m/d" }}）{% include "screening/audiogram_source_tag.html" %}</h2><span class="report-fold-meta">{% include "screening/summaries/ears.html" %}</span></span></summary>
 <div class="report-fold-body">
 <section id="report-audiogram" aria-labelledby="audiogram-title">
-    <h2 id="audiogram-title" class="h4">聽力圖（{% if audiogram.source == "self_test" %}測試日期{% else %}檢查日期{% endif %} {{ audiogram.tested_on|date:"Y/m/d" }}）{% include "screening/audiogram_source_tag.html" %}</h2>
+    <h2 id="audiogram-title" class="h4">聽力圖（{% if audiogram.is_self_test %}測試日期{% else %}檢查日期{% endif %} {{ audiogram.tested_on|date:"Y/m/d" }}）{% include "screening/audiogram_source_tag.html" %}</h2>
     <div id="audiogram-chart" class="audiogram-chart"></div>
     {{ chart_points|json_script:"audiogram-points" }}
     <ul>

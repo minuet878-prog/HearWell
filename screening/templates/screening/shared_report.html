@@ -24,7 +24,7 @@
     <div class="family-level result-banner-{{ classified.color }}"><span class="family-level-label">{{ life_impact.questionnaire.definition.topic }}</span><span class="family-level-name">{{ classified.text }}</span><span>{{ life_impact.created_at|date:"Y/m/d" }} 作答</span></div>
     {% endwith %}{% endif %}
     {% if audiogram %}
-    <div class="family-level result-banner-unknown"><span class="family-level-label">聽力圖（{{ audiogram.tested_on|date:"Y/m/d" }}）</span><span>{% for ear, label, result in ears %}{{ label }}：{% include "screening/level_badge.html" with text=result.degree|default:"資料不足，無法判讀" color=result.degree|degree_level %}{% if not forloop.last %}　{% endif %}{% endfor %}</span></div>
+    <div class="family-level result-banner-unknown"><span class="family-level-label">聽力圖（{{ audiogram.tested_on|date:"Y/m/d" }}）{% include "screening/audiogram_source_tag.html" %}</span><span>{% for ear, label, result in ears %}{{ label }}：{% include "screening/level_badge.html" with text=result.degree|default:"資料不足，無法判讀" color=result.degree|degree_level %}{% if not forloop.last %}　{% endif %}{% endfor %}</span></div>
     {% endif %}
     <p class="text-(--color-muted) mb-0">結果僅供參考，不能取代聽力檢查與醫師診斷。</p>
 </section>

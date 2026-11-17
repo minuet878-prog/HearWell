@@ -44,6 +44,11 @@ class Audiogram(models.Model):
     def __str__(self):
         return f"{self.user} audiogram {self.tested_on}"
 
+    @property
+    def is_self_test(self):
+        # Spec #702, ADR 0068: pages tag it, and only an exam estimates the disability assessment.
+        return self.source == AudiogramSource.SELF_TEST
+
     def interpretation(self):
         # The only path to an audiogram's result; pages and the API all read it here.
         return interpret(self.points.all())
