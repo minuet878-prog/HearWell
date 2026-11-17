@@ -138,3 +138,29 @@ class NoAidAdviceGuestTests(test_guest_save.GuestSaveTestCase):
                 self.assertIn(WHERE_TO_TEST, box)
                 self.assertEqual(html.count(f"<p>{text}</p>"), 1)
                 self.assertNotIn(GUIDE, html)
+
+
+class NoAidAdviceEducationTests(TestCase):
+    """Spec #693 acceptance 16: signed out, the home page, the 了解 tab and the family zone still
+    lead to the guide and the hearing-aid education, which anyone may read."""
+
+    def main(self, name):
+        content = self.client.get(reverse(name)).content.decode()
+        # The footer's 家人專區 is on every page; the entries are the page's own.
+        return content[content.index("<main") : content.index("</main>")]
+
+    def test_the_home_page_links_to_the_guide_and_the_family_zone(self):
+        main = self.main("index")
+        self.assertIn(f'<a href="{reverse("guide")}">了解助聽器選配與補助</a>', main)
+        self.assertIn(f'<a href="{reverse("family_guide")}">我是家人</a>', main)
+
+    def test_the_learn_tab_links_to_the_guide_and_the_family_zone(self):
+        main = self.main("learn")
+        for name in ("guide", "family_guide"):
+            with self.subTest(link=name):
+                self.assertIn(f'class="link-card action-card" href="{reverse(name)}"', main)
+
+    def test_the_family_zone_links_to_living_with_hearing_aids(self):
+        main = self.main("family_guide")
+        url = reverse("family_hearing_aids")
+        self.assertIn(f'class="link-card action-card" href="{url}"', main)
