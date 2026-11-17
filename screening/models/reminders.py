@@ -26,6 +26,18 @@ class RetestReminder(models.Model):
     def __str__(self):
         return f"{self.user} retest reminder"
 
+    def turn_on(self, today):
+        """On from today (the Taiwan date). One already on stays as it is."""
+        if not self.enabled:
+            self.enabled, self.enabled_on = True, today
+            self.cancel_token = _cancel_token()
+            self.save()
+
+    def turn_off(self):
+        """From the account settings or an email's cancel link: one already off stays the same."""
+        self.enabled, self.enabled_on = False, None
+        self.save(update_fields=("enabled", "enabled_on"))
+
 
 class RetestReminderSent(models.Model):
     """One 重測提醒信 per account and due day (spec #656): the unique pair is what keeps a schedule

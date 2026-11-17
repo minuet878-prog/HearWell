@@ -7,7 +7,6 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from screening.models import RetestReminder
-from screening.models.reminders import _cancel_token
 from screening.views.common import form_address, health_data_page, safe_next
 
 
@@ -21,17 +20,12 @@ def retest_reminder(request):
         return HttpResponseBadRequest()
     user = request.user
     if enabled == "0":
-        RetestReminder.objects.filter(user=user).update(enabled=False, enabled_on=None)
+        reminder = RetestReminder.objects.filter(user=user).first()
+        if reminder is not None:
+            reminder.turn_off()
     elif user.email:  # without one there is nowhere to send it (acceptance 5)
-        today = timezone.localdate()
-        reminder, created = RetestReminder.objects.get_or_create(
-            user=user, defaults={"enabled": True, "enabled_on": today}
-        )
-        if not created and not reminder.enabled:
-            # On again: a new cancel code, so an old email's cancel link no longer works.
-            reminder.enabled, reminder.enabled_on = True, today
-            reminder.cancel_token = _cancel_token()
-            reminder.save()
+        reminder, _ = RetestReminder.objects.get_or_create(user=user)
+        reminder.turn_on(timezone.localdate())
     return HttpResponseRedirect(safe_next(request) or reverse("account_settings"))
 
 
@@ -56,8 +50,7 @@ def reminder_cancel(request, token):
     if reminder is None:  # wrong, or gone with its account: the same answer for both
         return _email_link_page(request, "screening/reminder_invalid.html", status=404)
     if request.method == "POST":
-        # Off as the account settings turn it off (#659); one already off answers the same.
-        RetestReminder.objects.filter(pk=reminder.pk).update(enabled=False, enabled_on=None)
+        reminder.turn_off()  # one already off answers the same
         return HttpResponseRedirect(reverse("reminder_cancelled"))
     return _email_link_page(request, "screening/reminder_cancel.html", {"reminder": reminder})
 
