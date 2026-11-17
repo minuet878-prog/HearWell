@@ -19,6 +19,8 @@ class GuestMonth(models.Model):
     # 診間小卡 (spec #677, ADR 0066): scans that reached the card's landing page in a browser.
     clinic_elder = models.PositiveIntegerField("小卡：長輩卡", default=0)
     clinic_family = models.PositiveIntegerField("小卡：家屬卡", default=0)
+    # Spec #656 Q11: 重測提醒信 sent, not guests', but counted per month here all the same.
+    reminders_sent = models.PositiveIntegerField("寄出提醒信", default=0)
 
     class Meta:
         verbose_name = verbose_name_plural = "訪客月計數"

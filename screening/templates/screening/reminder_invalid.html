@@ -1,0 +1,15 @@
+{% extends "screening/layout.html" %}
+
+{% block title %}連結已經不能用了｜聽伴{% endblock %}
+
+{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block body %}
+{# #662 (spec #656 acceptance 35, 37), the #657 mockup's 連結無效頁: a wrong code, a deleted account and an old email's link look the same. #}
+<div class="narrow-form">
+    <h1 class="h3 mt-4">這個連結已經不能用了</h1>
+    {# The owner's words, settled on 2026-11-17 (#658). #}
+    <p>這可能是比較舊的提醒信，或連結沒有複製完整。要關掉重測提醒，請登入後到帳號設定。</p>
+    <a class="btn btn-outline-primary btn-lg w-full" href="{% url 'index' %}">回首頁</a>
+</div>
+{% endblock %}

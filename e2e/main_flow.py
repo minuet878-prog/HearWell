@@ -54,6 +54,7 @@ from screening.models import (
     Questionnaire,
     ReportComparison,
     ReportShare,
+    RetestReminder,
     Submission,
     User,
 )
@@ -2450,6 +2451,52 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                     self.page = family.new_page()
                     self.page.goto(f"{self.live_server_url}{path}")
                     self.assert_fits_a_phone_at_double_text_size(path)
+
+    # #659 (spec #656 acceptance 40): the account settings' email 重測提醒 in each of its states,
+    # a long address included, 320px wide at 200% text.
+    def test_account_retest_reminder_fits_a_phone_at_double_text_size(self):
+        self.open(320, 640)
+        section = "#retest-reminder"
+        with self.saving_artifacts():
+            for state, words in (
+                ("no email", "補上 email"),
+                ("off", "打開提醒"),
+                ("on", "關掉提醒"),
+                ("on and due", "您現在就可以再做一次"),
+            ):
+                with self.subTest(state=state):
+                    if state == "off":
+                        User.objects.filter(pk=self.user.pk).update(
+                            email="wang.daughter.reminder.address@example.com"
+                        )
+                    elif state == "on":
+                        RetestReminder.objects.create(
+                            user=self.user, enabled=True, enabled_on=date(2026, 11, 16)
+                        )
+                    elif state == "on and due":
+                        self.user.submissions.update(
+                            created_at=datetime.now(ZoneInfo("Asia/Taipei")) - timedelta(days=200)
+                        )
+                    self.page.goto(f"{self.live_server_url}/account")
+                    expect(self.page.locator(section)).to_contain_text(words)
+                    self.assert_fits_a_phone_at_double_text_size(state)
+
+    # #662 (spec #656 acceptance 40): an email's cancel link, opened without signing in, and the
+    # 已取消 page its button leads to, a long account name included, 320px wide at 200% text.
+    def test_reminder_cancel_pages_fit_a_phone_at_double_text_size(self):
+        owner = User.objects.create_user(username="wang_family_father_hearing_account")
+        reminder = RetestReminder.objects.create(
+            user=owner, enabled=True, enabled_on=date(2026, 11, 16)
+        )
+        self.open(320, 640, signed_in=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/reminder/cancel/{reminder.cancel_token}")
+            expect(self.main()).to_contain_text(owner.username)
+            self.assert_fits_a_phone_at_double_text_size("cancel")
+            self.main().get_by_role("button", name="取消提醒").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/reminder/cancelled")
+            expect(self.main()).to_contain_text("已取消")
+            self.assert_fits_a_phone_at_double_text_size("cancelled")
 
     # #198 (#183 story 121, ADR 0006): the phone blocks change colour when hovered and pressed,
     # and never move. #303: the account's link rows are link cards now, which move like any other.
@@ -8671,7 +8718,16 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             address = account.get_by_role("link", name="hearwellweb@gmail.com")
             self.assertEqual(address.count(), 1)
             self.assert_flat(address)
-            links = self.main().get_by_role("link").filter(has_not_text="hearwellweb@gmail.com")
+            # #660: this account has no email, so the email row and the reminder offer 補上, two
+            # outline buttons to the same page rather than list rows.
+            add_email = self.main().locator('a[href="/account/email"]')
+            self.assertEqual(add_email.count(), 2)
+            links = (
+                self.main()
+                .get_by_role("link")
+                .filter(has_not_text="hearwellweb@gmail.com")
+                .filter(has_not_text="補上")
+            )
             self.assertEqual(
                 [link.get_attribute("href") for link in links.all()],
                 [

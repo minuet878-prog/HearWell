@@ -1,0 +1,26 @@
+{% extends "screening/layout.html" %}
+
+{% block title %}補上 email｜聽伴{% endblock %}
+
+{% block body %}
+{# #660 (spec #656 acceptance 7-9, the #657 mockup's 二): after 確認本人, one field and one button; added once. #}
+<div class="narrow-form">
+    <h1 class="h3 mt-4">補上 email</h1>
+    <p>補上之後可以收重測提醒，忘記密碼時也能寄重設密碼信給您。補上以後要修改，請寫信給我們。</p>
+    <form method="post" class="auth-form">
+        {% csrf_token %}
+        <div class="mb-4 auth-field">
+            {{ form.email.label_tag }}
+            <div class="auth-input">
+                {% include "screening/auth_field_icon.html" with icon="mail" %}
+                {{ form.email }}
+            </div>
+            {% include "screening/field_messages.html" with field=form.email help_class="field-help" %}
+        </div>
+        <div class="flex flex-col gap-4">
+            <button type="submit" class="btn btn-primary btn-lg w-full">儲存</button>
+            <a class="btn btn-link px-0" href="{% url 'account_settings' %}">取消，回帳號設定</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

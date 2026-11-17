@@ -3,7 +3,8 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 
 from screening.care_journey import next_step
-from screening.models import Submission
+from screening.main_flow import get_user_state
+from screening.models import RetestReminder, Submission
 from screening.scoring import TREND_STATUS_TEXT
 from screening.views.common import health_data_page
 from screening.views.my_hearing import shows_wearing_comparison
@@ -33,5 +34,17 @@ def submission_result(request, submission_id):
         ),
         "show_comparison": shows_wearing_comparison(request.user, submission.questionnaire),
         "next_step": suggested,
+        "retest_reminder": _retest_reminder(request.user, submission),
     }
     return render(request, result.page_template, shared | result.page_context())
+
+
+def _retest_reminder(user, submission):
+    # #661 (spec #656 acceptance 12-15): the email 重測提醒 block, on life-impact result pages
+    # only (not THI's or IOI-HA's); while off, the next date by the home page's own reckoning.
+    if not submission.questionnaire.definition.life_impact:
+        return None
+    if RetestReminder.objects.filter(user=user, enabled=True).exists():
+        return {"on": True}
+    state = get_user_state(user, timezone.localdate())
+    return {"on": False, "next_date": state.next_suggested_date}

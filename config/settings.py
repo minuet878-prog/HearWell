@@ -204,6 +204,12 @@ if not DEBUG:
             "正式環境缺少 DEFAULT_FROM_EMAIL 環境變數，請在部署平台設定寄件地址，"
             "例如 noreply@tingpal.tw"
         )
+    # The 重測提醒信 (spec #656) is sent by a schedule, with no request to take the address from.
+    if not SITE_URL:
+        raise ImproperlyConfigured(
+            "正式環境缺少 SITE_URL 環境變數，請在部署平台設定網站的正式網址"
+            "（重測提醒信的連結要用），例如 https://tingpal.tw"
+        )
     EMAIL_BACKEND = "anymail.backends.resend.EmailBackend"
     ANYMAIL = {"RESEND_API_KEY": resend_api_key}
 else:
@@ -211,6 +217,10 @@ else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
     from_address = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@tingpal.tw")
 DEFAULT_FROM_EMAIL = f"聽伴 <{from_address}>"
+
+# The 重測提醒信 sent in one day (spec #656), the oldest due first; the rest go the next day. Kept
+# under Resend's free 100 a day, so the 重設密碼信 can still go.
+RETEST_REMINDER_DAILY_LIMIT = 60
 
 # The forgot-password page's attempt counts (#528) are shared by every Gunicorn process, so they
 # live in a database table (build.sh creates it); each lasts an hour from its first attempt.
@@ -288,3 +298,16 @@ if sentry_dsn:
     from config import monitoring
 
     monitoring.init(sentry_dsn)
+
+# CODING_STANDARDS 4: the site's own logs on this machine (stderr: the VPS's journal) keep an
+# error's type and where it happened, not its words; a mail service's name the address. Sentry
+# still gets all of it, through config.monitoring._scrub.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"without_error_words": {"()": "config.monitoring.WithoutErrorWords"}},
+    "handlers": {
+        "stderr": {"class": "config.monitoring.StderrHandler", "formatter": "without_error_words"}
+    },
+    "loggers": {"screening": {"handlers": ["stderr"]}},
+}

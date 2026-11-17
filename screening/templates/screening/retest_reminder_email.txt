@@ -1,0 +1,15 @@
+{% autoescape off %}{# #663 (spec #656 acceptance 27, the #657 mockup's 提醒信 A): the 重設密碼信's layout, the cancel link at the foot; no score or level. The owner's words settled on 2026-11-17 (#658). #}聽伴
+
+{{ user.username }} 您好：
+
+{# The owner's body, settled on 2026-11-17 (#658). #}距離您上次在聽伴做聽力篩檢已經半年了。建議再做一次，看看這半年聽力對生活的影響有沒有變化，一共 10 題。
+
+再做一次：
+{{ retest_url }}
+
+{# The owner's foot line, settled on 2026-11-17 (#658), this link after its 取消提醒. #}您在聽伴打開了 email 重測提醒，所以收到這封信。不想再收到：取消提醒
+{{ cancel_url }}
+
+聽伴 聽力自我照護
+{{ site_url }}
+{% endautoescape %}

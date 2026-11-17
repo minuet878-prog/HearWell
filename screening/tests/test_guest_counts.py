@@ -180,6 +180,7 @@ class OnlyTheCountsTests(GuestCountTestCase):
                 # The clinic cards' scans (spec #677 acceptance 12).
                 "clinic_elder",
                 "clinic_family",
+                "reminders_sent",  # spec #656 Q11: 重測提醒信 sent
             },
         )
 
@@ -193,7 +194,11 @@ class OnlyTheCountsTests(GuestCountTestCase):
 
     def test_the_admin_lists_each_month_newest_first(self):
         GuestMonth.objects.create(
-            month=date(2026, 10, 1), completed=31, saved_password=9, saved_google=5
+            month=date(2026, 10, 1),
+            completed=31,
+            saved_password=9,
+            saved_google=5,
+            reminders_sent=7,
         )
         GuestMonth.objects.create(month=date(2026, 11, 1), completed=12, saved_password=4)
         self.client.force_login(User.objects.create_superuser(username="owner", password="pw"))
@@ -201,7 +206,7 @@ class OnlyTheCountsTests(GuestCountTestCase):
         months = re.findall(r'<th class="field-month_label"><a [^>]*>([^<]+)</a></th>', page)
         self.assertEqual(months, ["2026/11", "2026/10"])
         headings = ("月份", "訪客完成", "保存（帳號密碼）", "保存（Google）", "保存（LINE）")
-        for heading in (*headings, "小卡：長輩卡", "小卡：家屬卡"):
+        for heading in (*headings, "小卡：長輩卡", "小卡：家屬卡", "寄出提醒信"):
             with self.subTest(heading=heading):
                 self.assertIn(heading, page)
         october = page[page.index(">2026/10<") :]
@@ -215,6 +220,7 @@ class OnlyTheCountsTests(GuestCountTestCase):
                 ("saved_line", "0"),
                 ("clinic_elder", "0"),
                 ("clinic_family", "0"),
+                ("reminders_sent", "7"),
             ],
         )
 

@@ -59,7 +59,7 @@ def get_user_state(user, today):
     life_impact = [s for s in submissions if s.questionnaire.definition.life_impact]
     if life_impact:
         latest = life_impact[0]
-        next_date = add_months(timezone.localtime(latest.created_at).date(), RETEST_MONTHS)
+        next_date = retest_due_on(latest)
         due = next_date <= today
         return UserState(
             is_new=False,
@@ -78,6 +78,12 @@ def get_user_state(user, today):
         next_suggested_date=None,
         retest_questionnaire=None,
     )
+
+
+def retest_due_on(life_impact):
+    """The day a life-impact record falls due again: its Taiwan date + RETEST_MONTHS. The home
+    page's 下次篩檢 and the 重測提醒信 (send_retest_reminders) both go by it (spec #656)."""
+    return add_months(timezone.localtime(life_impact.created_at).date(), RETEST_MONTHS)
 
 
 def life_impact_questionnaire(user, questionnaires, state, age_group):

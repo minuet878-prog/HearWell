@@ -8,9 +8,10 @@ from screening.public_pages import PREVIEW_IMAGE, PROTOCOL, SITE_DESCRIPTION, pa
 # Spec #633 Q5: the pages whose footer link names which one, by its code; every other page is
 # named by its kind alone, so no record number or share code goes with it.
 NAMED_BY_CODE = {"guide_chapter": "chapter", "qa_answer": "code"}
-# A shared report's address is its share code: no way back from there, so the code never rides
-# into the feedback pages' addresses (cross review of spec #633, P2).
-NO_WAY_BACK = {"shared_cover", "shared_report"}
+# A shared report's address is its share code, and the reminder cancel page's its cancel code
+# (spec #656): no way back from there, so the code never rides into the feedback pages'
+# addresses (cross review of spec #633, P2).
+NO_WAY_BACK = {"shared_cover", "shared_report", "reminder_cancel"}
 
 
 def feedback_link(request):

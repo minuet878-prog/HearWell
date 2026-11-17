@@ -4308,6 +4308,32 @@
     font-weight: 400;
   }
 
+  /* #659 (the #657 mockup's C): the email 重測提醒 once on, a green line with its tick (the
+     success green, ADR 0007). */
+  .reminder-on {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    margin: 0 0 0.75rem;
+    padding: 0.6rem 0.8rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-normal-bg);
+    color: var(--color-normal);
+    font-weight: 700;
+  }
+
+  .reminder-on svg {
+    flex: none;
+    width: 1.4rem;
+    height: 1.4rem;
+    margin-top: 0.1rem;
+    fill: none;
+    stroke: var(--color-normal);
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
   /* Spec #505 (the #507 mockup 5): a way to sign in a row, its mark in a circle on the left,
      name and state in the middle, the one thing to do with it on the right; at large text sizes
      the action drops under the words. */
@@ -4824,6 +4850,37 @@
     font-size: var(--text-button);
     font-weight: 700;
     overflow-wrap: anywhere;
+  }
+
+  /* #661 (the #657 mockup's result page B): the email 重測提醒 under the 現在這一步, white in a
+     pale blue frame, so it reads as its own box beside the card above it. */
+  .result-reminder {
+    margin-top: 1rem;
+    padding: 1rem 1.125rem;
+    border: 2px solid var(--color-brand-soft);
+    border-radius: var(--radius-large);
+    background-color: #fff;
+  }
+
+  .result-reminder-title {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin: 0 0 0.25rem;
+    color: var(--color-heading);
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .result-reminder-title svg {
+    flex: none;
+    width: 1.4rem;
+    height: 1.4rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 
   .result-list {
