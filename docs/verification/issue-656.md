@@ -2,7 +2,7 @@
 
 日期：2026-11-17。分支：`feat/656-retest-reminder`。規格 [#656](https://github.com/minuet878-prog/HearWell/issues/656)，票 #657（設計圖）、#658（本人寫字）、#659–#665（實作）、#666（本人上線後在正式站做）。
 
-狀態：2026-11-17 本人在本機實際操作後回覆「看過了，沒問題」，**驗收通過**（含「不一樣的地方」第 1 條代理擬的用字）。自動測試全過（單元 2975、端對端 497）。上線後本人做 #666。
+狀態：2026-11-17 本人在本機實際操作後回覆「看過了，沒問題」，**驗收通過**（含「不一樣的地方」第 1 條代理擬的用字）。自動測試全過（單元 2975、端對端 497）。2026-11-17 上線（第五次部署，`6ba1a8dc` → `0c6a0251`），正式站驗收見最下面「上線後（#666）」；只剩隔天確認 09:00 排程自己跑過。
 
 - 拷問決定：[retest-reminder-grill-decisions.md](../planning/found-by-family/retest-reminder-grill-decisions.md)，ADR 0065（同意書不升版）。
 - 本人在設計圖選定（2026-11-16，#657）：帳號設定 C（狀態＋一顆按鈕）、補上 email 照畫的、結果頁 B（建議下一步下面一塊）、取消頁 B（寫出帳號）、提醒信 A（取消在信尾）。
@@ -61,7 +61,7 @@
 | 43–45 | 刪帳號一起刪、下載我的資料、後台只能看（兩筆對多筆查詢次數相同） | ✅ 自動 | `test_reminder_switch.py`（`ReminderDataTests`）；`test_retest_reminder_mail.py`（`DeletedAccountTests`、`SentAdminTests`） |
 | — | 首頁「下次篩檢」等於排程的到期日 | ✅ 自動 | `test_retest_reminder_mail.py`（`SameDueDayAsTheHomePageTests`） |
 | — | 照設計圖選定的排法、本人的字 | ✅ 本人 | 2026-11-17 本機操作，下面的清單 |
-| — | VPS 09:00 排程、正式站實收一封並取消 | ⏳ 本人上線後 | [排程清單](../deployment/retest-reminder-timer.md)，#666 |
+| — | VPS 09:00 排程、正式站實收一封並取消 | ✅ 本人（隔天自動執行待確認） | 下面「上線後（#666）」 |
 
 ## 本人實際操作驗收（本機）
 
@@ -81,3 +81,18 @@ cd /Users/huangweizhe/HearWell/.claude/worktrees/656-retest-reminder && /Users/h
 - [x] 取消頁：帳號設定打開提醒後，在後台「重測提醒設定」看不到代碼（正常）；取消頁要從信裡的連結進，本機驗收看提醒信預覽即可，取消流程由自動測試證明
 - [x] 隱私權說明：「email 重測提醒」一段與其他改動
 - [x] 上面「不一樣的地方」第 1 條的用字
+
+## 上線後（#666）
+
+2026-11-17 本人在 VPS 上做、代理在終端機核對：
+
+- 部署前確認 `.env` 有 `SITE_URL=https://tingpal.tw`。
+- 部署：先備份（`~/backups/hearwell-before-0040.dump`，104 KB，600）；`6ba1a8dc` → `0c6a0251`，一起帶上 #677 小卡（新套件 `segno`）與 #693；`check --deploy` 通過（1 silenced）；`migrate --plan` 只有 `0039_guestmonth_clinic_cards`、`0040_retestreminder`，都是新增；重啟後 `active (running)` 是剛剛、`/uptime-check` 200。
+- 排程：`hearwell-retest-reminders.service`／`.timer`（照[排程清單](../deployment/retest-reminder-timer.md)，服務檔照 02:30 清除服務的使用者與資料夾直接寫好）；`list-timers` 的下一次是 2026-11-18 01:00 UTC（台灣 09:00）；手動跑一次 `Sent 0`。
+- 實收一封（本人同意只動測試帳號 `minuet878`）：本人在正式站做 HHIA-S、結果頁打開提醒；VPS 上把這個帳號的兩筆生活影響問卷時間往前移（HHIA-S 第 7 筆 → 2026/05/17 12:00、HHIE-S 第 3 筆 → 2026/05/10 12:00，台灣時間；要兩筆都移，最新那筆才會是 5/17）。手動跑排程 `Sent 1`。
+  - 第一次查紀錄時代理把問卷代碼寫成大寫（`HHIE-S`），一筆都查不到；資料庫裡是小寫 `hhie-s`、`hhia-s`。
+- 本人確認：信的寄件人、「minuet878 您好：」、定稿內文、「再做一次」、信尾與取消連結都對，沒有分數分級；「再做一次」打開 HHIA-S 作答頁；取消頁寫出帳號、按了 ✓ 已取消；帳號設定變「沒有打開」。VPS 上 `enabled: False`、`enabled_on: None`；再跑一次 `Sent 0`。
+- Gmail 寄件人旁**沒有**出現「取消訂閱」：Gmail 對寄信量少的新寄件人常不顯示；一鍵取消標頭由 `TheMailTests.test_one_click_cancel_headers`、`test_the_cancel_header_turns_the_reminder_off` 證明。
+- 測試帳號 `minuet878` 的兩筆紀錄時間留在 5/10、5/17（首頁會顯示已到期），沒有改回。
+- 待辦：2026-11-18 09:00 過後跑 `journalctl -u hearwell-retest-reminders.service --since yesterday --no-pager`，看到排程自己跑的 `Sent ... retest reminder(s).` 就關 #666。
+
