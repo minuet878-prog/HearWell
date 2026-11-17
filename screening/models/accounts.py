@@ -5,6 +5,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models, transaction
 
 from screening.models.hearing_aids import AidAndSubsidy
+from screening.models.reminders import RetestReminder, RetestReminderSent
 from screening.models.submissions import Answer
 
 # Privacy notice (spec phase7_consent_privacy.md). A major revision (what is collected, why,
@@ -27,7 +28,8 @@ CONSENT_VERSION = 8
 # moved it yet: it is set to the day version 8 goes live. A guest's answers stay in the browser
 # (spec #492): nothing new is kept, so that sentence needed no version of its own. 意見回饋 (spec
 # #633, #641) is new data linked to no one, so only the date moved (ADR 0064), to the day it
-# went live (#643).
+# went live (#643). The email 重測提醒 (spec #656, #664) is a new use of the email that each one
+# ticks on, so again only the date moved (ADR 0065); set it to the day it goes live.
 PRIVACY_UPDATED_ON = date(2026, 11, 17)
 
 
@@ -66,6 +68,8 @@ class User(AbstractUser):
         AidAndSubsidy.objects.filter(user=self).delete()
         self.guide_views.all().delete()
         self.todo_ticks.all().delete()
+        RetestReminder.objects.filter(user=self).delete()  # email 重測提醒 (#659)
+        RetestReminderSent.objects.filter(user=self).delete()  # 重測提醒信 sent (#663)
         self.delete()
 
 

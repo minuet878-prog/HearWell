@@ -69,7 +69,7 @@ class FontSizeUnitTests(SimpleTestCase):
 # each with what it holds. Sources and the like first, then small text the owner chose to keep.
 SOURCES = {
     ".q-intro-source": "a questionnaire's source on its answer page",
-    ".source-note": "a source, HHIA-S's result limits, the privacy notice's version date",
+    ".source-note": "a source, HHIE-S and HHIA-S result limits, the privacy notice's version date",
     ".guide-source": "a guide chapter's sources",
     ".guide-checked": "the date a guide chapter was checked",
     ".history-tab-code": "a records tab's questionnaire code",
@@ -456,6 +456,7 @@ NO_HEALTH_DATA = {
     "confirm_identity": "the password field or the Google button, and what comes next",
     "google_add": "answers with a redirect, to 確認本人 or to Google",
     "line_add": "answers with a redirect, to 確認本人 or to LINE",
+    "add_email": "the email field, after 確認本人",
     "report_share_create": "POST only, answers with a redirect",
     "report_share_cancel": "POST only, answers with a redirect",
 }

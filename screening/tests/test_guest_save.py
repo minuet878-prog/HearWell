@@ -24,11 +24,11 @@ SAVE_FROM_CARD = "/guest/save?from=card"
 PASSWORD = "Fake-pass-2468"
 SAVE_TITLE = '<h2 class="result-next-title">註冊保存</h2>'
 MORE = "註冊後還有耳鳴、在吵雜環境聽不聽得清楚等問卷可以做。"
-# #598 (spec #593 acceptance 27, 28): the two that lead on to the fitting promise no subsidy.
+# Spec #693 acceptance 4: the two that lead on to the audiogram promise no fitting.
 REASONS = {
     "normal": "註冊保存後，半年後會提醒您再做一次，跟這次的結果比一比。",
-    "mild_to_moderate": ("註冊保存後，看完醫師可以接著記下聽力圖，網站會一步步帶您走助聽器選配。"),
-    "severe": "註冊保存後，就醫拿到聽力圖可以記下來，網站會一步步帶您走助聽器選配。",
+    "mild_to_moderate": "註冊保存後，看完醫師可以接著記下聽力圖，網站會依聽力圖幫您整理下一步。",
+    "severe": "註冊保存後，就醫拿到聽力圖可以記下來，網站會依聽力圖幫您整理下一步。",
 }
 
 
@@ -176,15 +176,17 @@ class GuestAdviceTests(GuestSaveTestCase):
                 self.assertLess(box, html.index(advice))
                 self.assertLess(html.index(advice), html.index(SAVE_TITLE))
 
-    def test_its_links_are_the_open_guide_only(self):
+    def test_its_link_is_where_to_have_the_hearing_checked_only(self):
         # 記錄聽力圖 and 看／印聽力報告 need an account; the save card is the way to one.
+        # #694 mockup A: the Q&A answer on where to have the hearing checked, not the guide.
         for code, level in self.ADVICE:
             questionnaire = self.hhie_s if code == hhie_s.CODE else self.hhia_s
             with self.subTest(questionnaire=code, level=level):
                 html = self.guest_html(self.LEVELS[level], questionnaire)
                 start = html.index('class="result-advice')
                 box = html[start : html.index('class="result-next"', start)]
-                self.assertIn(f'href="{reverse("guide")}"', box)
+                where = reverse("qa_answer", args=["where-to-get-a-hearing-test"])
+                self.assertIn(f'href="{where}">去哪裡做聽力檢查</a>', box)
                 for name in ("audiogram_new", "health_report"):
                     self.assertNotIn(f'href="{reverse(name)}"', html)
 

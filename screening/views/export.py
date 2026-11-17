@@ -68,6 +68,7 @@ def download_my_data(request):
     aid = models.AidAndSubsidy.for_user(user)
     rounds = current_rounds(aid, get_user_state(user, timezone.localdate()).life_impact)
     chapter_titles = {chapter.slug: chapter.title for chapter in GUIDE_CHAPTERS}
+    reminder = models.RetestReminder.objects.filter(user=user).first()
     data = {
         "account": {
             "username": user.username,
@@ -167,6 +168,14 @@ def download_my_data(request):
             }
             for tick in user.todo_ticks.order_by("ticked_at", "id")
         ],
+        # Spec #656 acceptance 44: on or off and since when; not the cancel code, which would let
+        # anyone holding the file turn it off.
+        "retest_reminder": {
+            "enabled": bool(reminder and reminder.enabled),
+            "enabled_on": reminder.enabled_on.isoformat()
+            if reminder and reminder.enabled_on
+            else None,
+        },
     }
     filename = f"聽伴-我的資料-{timezone.localdate().isoformat()}.json"
     return HttpResponse(

@@ -1,0 +1,25 @@
+{% extends "screening/layout.html" %}
+
+{% block title %}取消 email 重測提醒｜聽伴{% endblock %}
+
+{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block body %}
+{# #662 (spec #656 acceptance 32), the #657 mockup's cancel page B: which account, then the one button. Opening it cancels nothing. #}
+<div class="narrow-form">
+    <h1 class="h3 mt-4">取消 email 重測提醒</h1>
+    <dl class="settings-group rounded-(--radius-medium) bg-surface px-4">
+        <div class="settings-row">
+            <dt class="settings-row-note">帳號</dt>
+            <dd class="settings-row-title">{{ reminder.user.username }}</dd>
+        </div>
+    </dl>
+    {# The owner's words on what the button does, settled on 2026-11-17 (#658). #}
+    <p class="mt-4 mb-0">按下「取消提醒」後，這個帳號就不會再收到重測提醒信。您的帳號和篩檢紀錄都不會受影響。</p>
+    {# No CSRF token: a mail program's one-click posts here without one (RFC 8058). #}
+    <form method="post" action="{% url 'reminder_cancel' reminder.cancel_token %}" class="mt-6">
+        <button class="btn btn-primary btn-lg w-full" type="submit">取消提醒</button>
+    </form>
+    <a class="btn btn-link btn-lg w-full mt-2" href="{% url 'index' %}">不取消，回首頁</a>
+</div>
+{% endblock %}

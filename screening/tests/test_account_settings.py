@@ -192,7 +192,8 @@ class GroupedAccountSettingsTests(TestCase):
         headings = [test_layout._text(h) for h in re.findall(r"<h2[^>]*>(.*?)</h2>", main, re.S)]
         # #361: the red 刪除帳號 card has no heading of its own (AccountSettingsT361Tests).
         # #471 (mockup #470 account A): 家人與手機 and 資料與隱私 became one group.
-        self.assertEqual(headings, ["我的帳號", "家人與資料"])
+        # #659: the email 重測提醒 under the account (the #657 mockup).
+        self.assertEqual(headings, ["我的帳號", "email 重測提醒", "家人與資料"])
 
     def test_active_share_says_until_when_and_links_to_share_page(self):
         self._share(self.user)
@@ -268,7 +269,8 @@ class AccountSettingsT361Tests(TestCase):
 
     def _rows(self):
         main = self._main()
-        group = main[main.index("我的帳號") : main.index("家人與資料")]
+        # #659: up to the next section, the email 重測提醒.
+        group = main[main.index("我的帳號") : main.index('<section id="retest-reminder"')]
         return {
             test_layout._text(name): test_layout._text(value)
             for name, value in re.findall(r"<dt[^>]*>(.*?)</dt>(.*?)</div>", group, re.S)
@@ -276,10 +278,13 @@ class AccountSettingsT361Tests(TestCase):
 
     def _group(self):
         main = self._main()
-        return test_layout._text(main[main.index("我的帳號") : main.index("家人與資料")])
+        return test_layout._text(
+            main[main.index("我的帳號") : main.index('<section id="retest-reminder"')]
+        )
 
     def test_a_blank_says_how_to_change_it_once_under_the_details(self):
-        for email, birth_year in (("", 1955), ("a@example.com", None), ("", None)):
+        # #660: a blank email is added on the page (補上), so only the birth year says to write.
+        for email, birth_year in (("a@example.com", None), ("", None)):
             with self.subTest(email=email, birth_year=birth_year):
                 self.user.email = email
                 self.user.birth_year = birth_year
@@ -288,7 +293,7 @@ class AccountSettingsT361Tests(TestCase):
                 self.assertNotIn(self.NOTE, "".join(rows.values()))
                 for name, blank in (("電子郵件", not email), ("出生年", birth_year is None)):
                     if blank:
-                        self.assertEqual(rows[name], "未填")
+                        self.assertEqual(rows[name], "未填 補上" if name == "電子郵件" else "未填")
                 group = self._group()
                 self.assertEqual(group.count(self.NOTE), 1)
                 # #580: 複製信箱 follows the sentence, the last thing under the details.
@@ -301,7 +306,7 @@ class AccountSettingsT361Tests(TestCase):
     def test_copy_button_comes_with_the_sentence_and_goes_with_it(self):
         self.assertNotIn(self.NOTE, test_layout._text(self._main()))
         self.assertEqual(self._main().count(self.COPY), 0)
-        for email, birth_year in (("", 1955), ("a@example.com", None), ("", None)):
+        for email, birth_year in (("a@example.com", None), ("", None)):
             with self.subTest(email=email, birth_year=birth_year):
                 self.user.email = email
                 self.user.birth_year = birth_year
@@ -312,13 +317,21 @@ class AccountSettingsT361Tests(TestCase):
                 self.assertLess(main.index(self.COPY), main.index("家人與資料"))
 
     def test_the_address_can_be_tapped(self):
-        self.user.email = ""
+        self.user.birth_year = None
         self.user.save()
         main = self._main()
         self.assertIn('href="mailto:hearwellweb@gmail.com"', main)
 
     def test_filled_rows_have_no_note(self):
         self.assertNotIn(self.NOTE, test_layout._text(self._main()))
+
+    def test_a_blank_email_alone_has_no_note_nor_copy_button(self):
+        # #660 (the #657 mockup's 二): 補上 on its row instead.
+        self.user.email = ""
+        self.user.save()
+        main = self._main()
+        self.assertNotIn(self.NOTE, test_layout._text(main))
+        self.assertEqual(main.count(self.COPY), 0)
 
     def test_delete_account_is_not_said_twice_in_a_row(self):
         text = test_layout._text(self._main())

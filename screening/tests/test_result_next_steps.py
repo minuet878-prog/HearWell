@@ -7,7 +7,6 @@ from django.test import TestCase
 from django.urls import reverse
 
 from screening.models import Answer, Category, Question, Questionnaire, Submission
-from screening.questionnaires import hhia_s
 from screening.tests.helpers import consented_user, fake_definition, register
 
 RETEST = ("半年後再做一次，時間到了首頁會提醒您。", None)
@@ -15,9 +14,9 @@ AUDIOGRAM = ("記錄聽力圖", "/audiograms/new")
 REPORT = ("看／印聽力報告", "/report")
 
 # The owner's finalized wording (#156, with the corrections noted there), written out here so a
-# changed definition fails instead of being copied into the expectation. A step's own link (the
-# guide link after it is test_guide_result_entry's): the report only where its words mention the
-# report or this result (result page tidy-up), as the closing row of every result page links it.
+# changed definition fails instead of being copied into the expectation. A step's own link: the
+# report only where its words mention the report or this result (result page tidy-up), as the
+# closing row of every result page links it. Spec #693: no step links to the hearing-aid guide.
 STEPS = {
     "hhie-s": {
         "normal": (
@@ -48,7 +47,8 @@ STEPS = {
         "severe": (
             (
                 "聽力問題已經嚴重影響到您的生活了，若您尚未採取任何行動，"
-                "建議立即前往醫院耳鼻喉科尋求專業建議，並考慮配戴助聽器。",
+                "建議立即前往醫院耳鼻喉科尋求專業建議，"
+                "並做聽力檢查；有 AirPods Pro 的話，也可以先用 iPhone 做聽力自我測試。",
                 None,
             ),
             (
@@ -78,31 +78,31 @@ STEPS = {
     },
 }
 
-HHIA_S_NOTE = (
-    "這份問卷反映您感受到的生活影響，不能判定聽損程度，也不能單憑分數決定是否需要助聽器。"
-    " 已配戴助聽器者，可帶結果回原聽力照護單位討論。"
-)
-# The advice as it read before #157, unchanged ("完整建議").
+LIMITS = "這份問卷反映您感受到的生活影響，不能判定聽損程度，也不能單憑分數決定是否需要助聽器。"
+HHIA_S_NOTE = LIMITS + " 已配戴助聽器者，可帶結果回原聽力照護單位討論。"
+# The advice as it read before #157 ("完整建議"); spec #693 changed HHIE-S 顯著影響's clause on
+# hearing aids and gave HHIE-S HHIA-S's limits.
 ADVICE = {
     "hhie-s": {
         "normal": (
             "您的聽覺自覺障礙程度為無或是僅有輕微障礙，聽力的部分並未明顯影響"
             "您的情緒以及社交活動，然而高齡族群的聽力退化往往是較無自覺的，"
-            "建議若未進行過聽力檢查能夠至醫院進行定期篩檢。"
+            "建議若未進行過聽力檢查能夠至醫院進行定期篩檢。 " + LIMITS
         ),
         "mild_to_moderate": (
             "聽力的問題已經慢慢開始影響到您的社交活動以及情緒，例如"
             "與家人之間常常因為聽不清楚或是電視聲音等而產生爭吵、在多人且吵雜的"
             "社交環境當中會因為聽不清楚而導致社交上的窘迫及退縮，許多聽力衰退"
             "帶來的問題是微妙且和緩的，但經過此次篩檢能夠讓您體認到聽力對自身生"
-            "活的影響，建議前往醫院耳鼻喉科進行聽力相關檢查及詢問相關專業意見。"
+            "活的影響，建議前往醫院耳鼻喉科進行聽力相關檢查及詢問相關專業意見。 " + LIMITS
         ),
         "severe": (
             "聽力問題已經嚴重影響到您的生活了，許多人常常會忽視這一塊，聽不到這件事"
             "情往往已經十分嚴重了才會發現，若您尚未採取任何行動建議立即前往醫院耳鼻"
-            "喉科尋求專業建議，並且考慮配戴助聽器。聽力喪失影響的並不只是聽不聽得到，"
+            "喉科尋求專業建議，並做聽力檢查；有 AirPods Pro 的話，也可以先用 iPhone 做聽力"
+            "自我測試。聽力喪失影響的並不只是聽不聽得到，"
             "無形中也會增加社交活動的壓力（例如因為聽不清楚常會在聊天的過程中退縮、"
-            "裝作聽得懂等），這些壓力以及情緒的低落會增加長者的認知負擔。"
+            "裝作聽得懂等），這些壓力以及情緒的低落會增加長者的認知負擔。 " + LIMITS
         ),
     },
     "hhia-s": {
@@ -203,19 +203,17 @@ class ResultNextStepsTests(TestCase):
                     main = self._main(self._submit(self.questionnaires[code], TOTALS[level]))
                     self.assertIn(f"<p>{advice}</p>", main)
 
-    def test_hhia_s_states_its_limits_outside_the_fold(self):
+    def test_life_impact_states_its_limits_outside_the_fold(self):
         # Text-heavy pages tidy-up: the full advice is folded away, and it was the only place
         # HHIA-S said what the score cannot tell; the owner chose to show that outside the fold.
-        # #461: under the list rows, with the page's other source notes.
-        limits = hhia_s.EXPLANATION
-        for level in ("normal", "mild_to_moderate", "severe"):
-            with self.subTest(level=level):
-                main = self._main(self._submit(self.questionnaires["hhia-s"], TOTALS[level]))
-                note = f'<p class="source-note">{limits}</p>'
-                self.assertIn(note, main)
-                self.assertLess(main.rindex("</details>"), main.index(note))
-        main = self._main(self._submit(self.questionnaires["hhie-s"], TOTALS["normal"]))
-        self.assertNotIn('class="source-note"', main)
+        # #461: under the list rows, with the page's other source notes. Spec #693: HHIE-S too.
+        for code in self.questionnaires:
+            for level in ("normal", "mild_to_moderate", "severe"):
+                with self.subTest(questionnaire=code, level=level):
+                    main = self._main(self._submit(self.questionnaires[code], TOTALS[level]))
+                    note = f'<p class="source-note">{LIMITS}</p>'
+                    self.assertIn(note, main)
+                    self.assertLess(main.rindex("</details>"), main.index(note))
 
     def test_no_steps_when_unclassifiable_and_the_advice_is_the_sentence(self):
         # #363 (spec #354): 「無法判讀」's only explanation is the full advice, so it is not folded:

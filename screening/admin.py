@@ -9,6 +9,8 @@ from .models import (
     QuestionLog,
     QuestionLogMonth,
     Questionnaire,
+    RetestReminder,
+    RetestReminderSent,
     SignInMethod,
     Submission,
     User,
@@ -162,6 +164,21 @@ class QuestionLogMonthAdmin(ViewOnlyAdmin):
         return str(stats)
 
 
+@admin.register(RetestReminder)
+class RetestReminderAdmin(ViewOnlyAdmin):
+    # Spec #656 acceptance 45: whose is on, to answer 「我怎麼沒收到」; never the cancel code, which
+    # turns it off without signing in.
+    list_display = ("user", "enabled", "enabled_on")
+    fields = ("user", "enabled", "enabled_on")
+
+
+@admin.register(RetestReminderSent)
+class RetestReminderSentAdmin(ViewOnlyAdmin):
+    # Spec #656 acceptance 45: which due days were sent, tried or given up (#663).
+    list_display = ("user", "due_on", "sent_at", "attempts", "last_failed_on")
+    ordering = ("-due_on",)
+
+
 @admin.register(GuestMonth)
 class GuestMonthAdmin(ViewOnlyAdmin):
     # Spec #492 (#500): the owner reads whether going without an account brings more people in.
@@ -175,6 +192,7 @@ class GuestMonthAdmin(ViewOnlyAdmin):
         "saved_line",
         "clinic_elder",
         "clinic_family",
+        "reminders_sent",  # spec #656 Q11
         "door_self",
         "door_family",
         "send_opened",

@@ -151,6 +151,24 @@ TYPES_AND_PRICES_BUTTON = "去看助聽器種類與價格"
 RECORD_AUDIOGRAM_YES = "有，記錄聽力圖"
 NO_REPORT_YET = "還沒，看要去哪裡檢查"
 IOI_HA_DUE_BECAUSE = "您已經戴滿 3 個月，可以做使用效益問卷（IOI-HA），看助聽器幫了多少。"
+# My guide's 要不要找聽力師評估 by 建議評估選配 (ADR 0067): the owner's words in spec #693,
+# 建議 apart for an ear over 40 dB HL and for 輕度 with a life impact.
+FITTING_ADVICE_OVER_MILD = "您有一耳以上的四頻平均超過 40 dB HL，建議找聽力師評估選配助聽器。"
+FITTING_ADVICE_MILD_IMPACT = (
+    "您的聽力圖是輕度聽力損失，問卷也顯示聽力已經影響生活，建議找聽力師評估選配助聽器。"
+)
+FITTING_ADVICE_TRACK = (
+    "您的聽力圖是輕度聽力損失，目前對生活的影響不大，建議每年做一次聽力檢查追蹤。"
+    "如果開始覺得聽不清楚，可以找聽力師評估。"
+)
+FITTING_ADVICE_QUESTIONNAIRE_FIRST = (
+    "您的聽力圖是輕度聽力損失。輕度要不要評估選配，要看聽力對生活的影響，先做一份生活影響問卷。"
+)
+FITTING_ADVICE_NORMAL = (
+    "您兩耳的四頻平均都在 25 dB HL 以內。如果您仍覺得聽不清楚，建議安排聽力評估。"
+)
+# 建議's link, to 去找聽力師之前; 先做問卷's is LIFE_IMPACT_BUTTON, as step 1's.
+FITTING_ADVICE_BEFORE_YOU_GO = "去之前要準備什麼"
 
 
 def fitting_countdown_text(days):

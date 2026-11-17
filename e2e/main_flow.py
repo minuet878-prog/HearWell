@@ -6,12 +6,14 @@ Not named test_*.py, so the normal test run skips it; run it by name after build
 
 import base64
 import calendar
+import json
 import os
 import re
 from contextlib import contextmanager, nullcontext
 from datetime import date, datetime, timedelta
 from itertools import combinations, pairwise
 from math import log2
+from statistics import median
 from typing import ClassVar
 from unittest.mock import patch
 from urllib.parse import parse_qsl, urlparse
@@ -52,6 +54,7 @@ from screening.models import (
     Questionnaire,
     ReportComparison,
     ReportShare,
+    RetestReminder,
     Submission,
     User,
 )
@@ -80,17 +83,40 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
 ARTIFACTS = settings.BASE_DIR / "e2e-artifacts"
 QUESTION_COUNT = 10
+# A class longer than this on CI has its tests dealt out across the machines: one process runs a
+# class from start to end, so WhiteCardRuleTest (273 s on CI) alone held up its machine.
+SPLIT_SECONDS = 100
 
 
 def load_tests(loader, tests, pattern):
-    """CI's two e2e machines: E2E_SHARD=1/2 runs every other test class from the first, 2/2 the
-    rest. Without it (a local run) every class runs. unittest calls this when loading the module.
+    """CI's e2e machines: E2E_SHARD=1/3 runs the first machine's share of the tests.
+
+    Without it (a local run) every test runs. unittest calls this when loading the module.
+    Each class counts as its seconds in e2e/durations.json (a class missing there counts as the
+    median one; e2e/update_durations.py rewrites it); one over SPLIT_SECONDS becomes a piece per
+    machine. Longest first, each goes to the machine with the fewest seconds so far, so each
+    machine also starts its longest first and none is left to run alone at the end.
     """
     if not (shard := os.environ.get("E2E_SHARD")):
         return tests
     number, total = map(int, shard.split("/"))
-    classes = [suite for suite in tests if suite.countTestCases()]
-    return loader.suiteClass(classes[number - 1 :: total])
+    seconds = json.loads((settings.BASE_DIR / "e2e" / "durations.json").read_text())
+    usual = median(seconds.values())
+    pieces = []
+    for suite in tests:
+        if not (cases := list(suite)):
+            continue
+        time = seconds.get(type(cases[0]).__name__, usual)
+        if time > SPLIT_SECONDS:
+            pieces += [(time / total, cases[k::total]) for k in range(total)]
+        else:
+            pieces.append((time, cases))
+    machines = [[0, []] for _ in range(total)]
+    for time, cases in sorted(pieces, key=lambda piece: piece[0], reverse=True):
+        machine = min(machines, key=lambda m: m[0])
+        machine[0] += time
+        machine[1] += cases
+    return loader.suiteClass(machines[number - 1][1])
 
 
 def type_audiogram_date(main, year, month, day):
@@ -1593,8 +1619,9 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         expect(self.main().locator("#result-score")).to_contain_text("總分 20 分")
         expect(self.main().locator(".result-banner")).to_contain_text("輕度到中度影響")
         # HHIE-S 輕度到中度影響's steps (ticket #157), since #461 step 1 under the level and the
-        # others behind 看完整說明: the guide link, then the retest. The report is left to the
-        # list rows, as this step's words do not mention it (result page tidy-up).
+        # others behind 看完整說明: the check, then the retest. The report is left to the list
+        # rows, as this step's words do not mention it (result page tidy-up); since spec #693
+        # no link to the hearing-aid guide.
         expect(self.main().locator(".result-one-line")).to_contain_text(
             "聽力問題已經慢慢影響您的社交活動與情緒"
         )
@@ -1605,7 +1632,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         expect(folded.locator(".score-bar")).to_have_count(0)
         self.main().locator(".result-details > summary").click()
         expect(folded).to_contain_text("建議前往醫院耳鼻喉科進行聽力相關檢查")
-        expect(folded.get_by_role("link", name="看助聽器選配與補助")).to_be_visible()
+        expect(folded.get_by_role("link", name="看助聽器選配與補助")).to_have_count(0)
         expect(folded.get_by_role("link", name="看／印聽力報告")).to_have_count(0)
         expect(folded).to_contain_text("半年後再做一次，時間到了首頁會提醒您。")
         # Ticket #158: 20 of 40 sits halfway along the bar, inside the 輕度到中度 segment
@@ -2438,6 +2465,52 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                     self.page = family.new_page()
                     self.page.goto(f"{self.live_server_url}{path}")
                     self.assert_fits_a_phone_at_double_text_size(path)
+
+    # #659 (spec #656 acceptance 40): the account settings' email 重測提醒 in each of its states,
+    # a long address included, 320px wide at 200% text.
+    def test_account_retest_reminder_fits_a_phone_at_double_text_size(self):
+        self.open(320, 640)
+        section = "#retest-reminder"
+        with self.saving_artifacts():
+            for state, words in (
+                ("no email", "補上 email"),
+                ("off", "打開提醒"),
+                ("on", "關掉提醒"),
+                ("on and due", "您現在就可以再做一次"),
+            ):
+                with self.subTest(state=state):
+                    if state == "off":
+                        User.objects.filter(pk=self.user.pk).update(
+                            email="wang.daughter.reminder.address@example.com"
+                        )
+                    elif state == "on":
+                        RetestReminder.objects.create(
+                            user=self.user, enabled=True, enabled_on=date(2026, 11, 16)
+                        )
+                    elif state == "on and due":
+                        self.user.submissions.update(
+                            created_at=datetime.now(ZoneInfo("Asia/Taipei")) - timedelta(days=200)
+                        )
+                    self.page.goto(f"{self.live_server_url}/account")
+                    expect(self.page.locator(section)).to_contain_text(words)
+                    self.assert_fits_a_phone_at_double_text_size(state)
+
+    # #662 (spec #656 acceptance 40): an email's cancel link, opened without signing in, and the
+    # 已取消 page its button leads to, a long account name included, 320px wide at 200% text.
+    def test_reminder_cancel_pages_fit_a_phone_at_double_text_size(self):
+        owner = User.objects.create_user(username="wang_family_father_hearing_account")
+        reminder = RetestReminder.objects.create(
+            user=owner, enabled=True, enabled_on=date(2026, 11, 16)
+        )
+        self.open(320, 640, signed_in=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/reminder/cancel/{reminder.cancel_token}")
+            expect(self.main()).to_contain_text(owner.username)
+            self.assert_fits_a_phone_at_double_text_size("cancel")
+            self.main().get_by_role("button", name="取消提醒").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/reminder/cancelled")
+            expect(self.main()).to_contain_text("已取消")
+            self.assert_fits_a_phone_at_double_text_size("cancelled")
 
     # #198 (#183 story 121, ADR 0006): the phone blocks change colour when hovered and pressed,
     # and never move. #303: the account's link rows are link cards now, which move like any other.
@@ -6963,7 +7036,9 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
     # A4: a text link's underline thickens under a mouse, and a light blue shows behind its
     # words while it is pressed.
     def test_text_links_thicken_when_hovered_and_tint_when_pressed(self):
-        record = self.submission(self.hhie_s, [2] * 10)
+        # 無／極輕微影響: its folded step links 記錄聽力圖 (spec #693 left the other levels' folds
+        # without a link).
+        record = self.submission(self.hhie_s, [0] * 10)
         self.open()
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
@@ -8687,7 +8762,16 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             address = account.get_by_role("link", name="hearwellweb@gmail.com")
             self.assertEqual(address.count(), 1)
             self.assert_flat(address)
-            links = self.main().get_by_role("link").filter(has_not_text="hearwellweb@gmail.com")
+            # #660: this account has no email, so the email row and the reminder offer 補上, two
+            # outline buttons to the same page rather than list rows.
+            add_email = self.main().locator('a[href="/account/email"]')
+            self.assertEqual(add_email.count(), 2)
+            links = (
+                self.main()
+                .get_by_role("link")
+                .filter(has_not_text="hearwellweb@gmail.com")
+                .filter(has_not_text="補上")
+            )
             self.assertEqual(
                 [link.get_attribute("href") for link in links.all()],
                 [
@@ -12276,7 +12360,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
         self.sign_in(consented_user(username="speech_banana_reminder_e2e"))
 
     def page_for(self, db, size=LayoutOnAPhone.PHONE, java_script_enabled=True):
-        """Both ears flat at db, so each ear's PTA is db: over 25 dB is the guide's condition."""
+        """Both ears flat at db, so each ear's PTA is db: over 40 dB is the guide's condition."""
         audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 9, 1))
         AudiogramPoint.objects.bulk_create(
             AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=db)
@@ -12310,7 +12394,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
     # Acceptance 1: under the chart, and the chart itself says nothing of alarms.
     def test_the_reminders_are_under_the_chart_and_no_alarm_is_on_it(self):
         with self.saving_artifacts():
-            self.page_for(40)
+            self.page_for(45)
             plot = self.page.locator(".audiogram-plot")
             plot.locator("svg").wait_for()
             self.assert_the_reminders_show()
@@ -12325,7 +12409,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
     # The ticket's 不用 React: with no JavaScript the chart is gone and all of this still shows.
     def test_without_javascript_the_reminders_and_the_way_on_still_show(self):
         with self.saving_artifacts():
-            self.page_for(40, java_script_enabled=False)
+            self.page_for(45, java_script_enabled=False)
             expect(self.page.locator(".audiogram-plot")).to_have_count(0)
             self.assert_the_reminders_show()
             expect(
@@ -12336,7 +12420,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
     # Acceptance 2: over the condition the card leads to the guide, and the way back to this one.
     def test_the_guide_card_and_the_way_back_lead_where_they_say(self):
         with self.saving_artifacts():
-            audiogram = self.page_for(40)
+            audiogram = self.page_for(45)
             self.guide_card().click()
             self.page.wait_for_url("**/guide")
             self.page.go_back()
@@ -12356,7 +12440,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
     # on 320 they all double, the page does not scroll sideways, and the way on is big enough.
     def test_the_words_follow_the_text_size_on_a_narrow_phone(self):
         with self.saving_artifacts():
-            self.page_for(40, (320, 640))
+            self.page_for(45, (320, 640))
             reminder, alarm, source = (
                 self.words(text) for text in (self.REMINDER, self.ALARM, self.SOURCE)
             )
@@ -13938,6 +14022,8 @@ class WearMotionTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
     DOME = 10
     ARROW = 15
     HOOK_ON_ARROW = 14
+    # Any day will do; the page's clock starts here and is paused later on.
+    CLOCK = datetime(2026, 1, 1, 8, 0)
     # Where a piece is on the page, so scrolling to the button does not count as moving.
     WHERE = """el => {
         const box = el.getBoundingClientRect();
@@ -13960,6 +14046,10 @@ class WearMotionTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
     def test_push_in_plays_once_and_stops_on_the_reviewed_drawing(self):
         with self.saving_artifacts():
             self.open(self.PATH, signed_in=False)
+            # The page's own clock, so each press can be read with time held still: the dome
+            # waits at its start for 360 ms, and a busy machine once read it 530 ms late.
+            self.page.clock.install(time=self.CLOCK)
+            self.page.reload()
             self.pick()
             self.assertEqual(self.live().get_by_role("button").count(), len(self.TITLES))
             for title in self.TITLES:
@@ -13980,12 +14070,14 @@ class WearMotionTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
             before.get_by_role("checkbox").focus()
             self.page.keyboard.press("Tab")
             expect(button).to_be_focused()
+            self.page.clock.pause_at(self.CLOCK + timedelta(hours=1))
             self.page.keyboard.press("Enter")
             start = dome.evaluate(self.WHERE)
             self.assertNotEqual(start, drawn)
             # Acceptance 7: the thin tube goes with the dome.
             self.assertNotEqual(tube.bounding_box(), tube_drawn)
             expect(arrow).to_be_hidden()
+            self.page.clock.resume()
             # On its way: neither where it started nor where it is drawn.
             self.page.wait_for_function(
                 """([el, start, drawn]) => {
@@ -14005,6 +14097,7 @@ class WearMotionTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
             expect(button).to_be_focused()
             self.assertNotEqual(self.style(button, "boxShadow"), "none")
 
+            self.page.clock.pause_at(self.CLOCK + timedelta(hours=2))
             self.page.keyboard.press("Space")
             self.assertEqual(dome.evaluate(self.WHERE), start)
             expect(button).to_have_accessible_name("再看一次：推進耳塞")

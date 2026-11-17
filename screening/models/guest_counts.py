@@ -19,6 +19,8 @@ class GuestMonth(models.Model):
     # 診間小卡 (spec #677, ADR 0066): scans that reached the card's landing page in a browser.
     clinic_elder = models.PositiveIntegerField("小卡：長輩卡", default=0)
     clinic_family = models.PositiveIntegerField("小卡：家屬卡", default=0)
+    # Spec #656 Q11: 重測提醒信 sent, not guests', but counted per month here all the same.
+    reminders_sent = models.PositiveIntegerField("寄出提醒信", default=0)
     # 兩個門 and 傳給他 (spec #655, #672): presses of each door on the signed-out home, and opens
     # in a browser of the address 傳給他 sends.
     door_self = models.PositiveIntegerField("門：了解自己", default=0)
