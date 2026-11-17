@@ -56,7 +56,8 @@ class AudiogramImportTests(TestCase):
         self.assertIn("從 iPhone 匯入", main)
         steps = re.findall(r'<span class="step-list-body">(.*?)</span>', main, re.S)
         self.assertEqual(
-            [test_layout._text(step) for step in steps],
+            # The words before each step's drawing (#709), whose own words are the picture's.
+            [test_layout._text(step.split("<svg")[0]) for step in steps],
             [
                 "打開「健康」app，點下面的「瀏覽」",
                 "點「聽力」",
@@ -71,6 +72,20 @@ class AudiogramImportTests(TestCase):
             main, r'<input type="file" name="pdf" accept="application/pdf"[^>]*required'
         )
         self.assertLess(main.rindex("step-list-body"), main.index('type="file"'))
+
+    def test_each_step_has_its_phone_drawing(self):
+        """#709 (#709 mockup A): under each step's words, a drawing of the phone in the site's
+        blue lines, read out by its own words."""
+        main = self._main(self.client.get(reverse("audiogram_import")))
+        steps = re.findall(r"<li>(.*?)</li>", main.split('class="step-list"')[1], re.S)
+        self.assertEqual(len(steps), 6)
+        for number, step in enumerate(steps, 1):
+            with self.subTest(step=number):
+                drawing = re.search(r'<svg class="import-drawing"[^>]*>', step)
+                self.assertIsNotNone(drawing)
+                self.assertIn('role="img"', drawing[0])
+                self.assertRegex(drawing[0], r'aria-label="手機畫面示意：[^"]+"')
+                self.assertLess(step.index("step-list-body"), step.index("<svg"))
 
     def test_reading_shows_what_was_read_and_saves_nothing(self):
         """Spec #702 acceptance 1, 4 (#703 mockup 3A): who it goes to, the check, the test's

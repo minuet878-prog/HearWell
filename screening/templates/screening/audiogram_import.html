@@ -16,8 +16,8 @@
 <p>先在 iPhone 的「健康」app 把聽力測試存成 PDF，再回來選這個檔案。</p>
 {# #703 mockup 2A: the steps first, the file at the bottom where they end. #}
 <ol class="step-list" role="list">
-    {% for step in steps %}
-    <li><span class="step-list-number">{{ forloop.counter }}</span><span class="step-list-body">{{ step }}</span></li>
+    {% for words, drawing in steps %}
+    <li><span class="step-list-number">{{ forloop.counter }}</span><span class="step-list-body">{{ words }}{% include "screening/import_drawings/"|add:drawing|add:".html" %}</span></li>
     {% endfor %}
 </ol>
 <form method="post" enctype="multipart/form-data" class="mt-4">

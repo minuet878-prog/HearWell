@@ -4224,6 +4224,37 @@
   }
 
   .care-drawing .soft { fill: var(--color-pull); }
+
+  /* #709 (the owner's mockup A, after Age UK East London's NHS App guide): each 從 iPhone 匯入
+     step's phone in the site's blue lines, the screen in pale blocks, the place to tap framed
+     thick with a fingertip under it. Its words are only a picture's: the step says them. */
+  .import-drawing {
+    display: block;
+    width: 100%;
+    max-width: 12rem;
+    height: auto;
+    margin-top: 0.5rem;
+  }
+
+  .import-drawing * {
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .import-drawing .frame,
+  .import-drawing .field { fill: #fff; }
+  .import-drawing .soft { fill: var(--color-pull); stroke: none; }
+  .import-drawing .dot { fill: #fff; stroke-width: 1.6; }
+  .import-drawing .sheet { fill: #fff; stroke-width: 1.6; }
+  .import-drawing .thin { stroke-width: 1.6; }
+  .import-drawing .tap { stroke-width: 4; }
+  .import-drawing .finger { fill: #fff; }
+  .import-drawing text { stroke: none; fill: var(--color-primary); font-family: inherit; }
+  .import-drawing .strong { font-weight: 700; }
+  .import-drawing .dim { fill: var(--color-muted); }
   .care-drawing .thin { stroke-width: 1.6; }
   .care-drawing .thick { stroke-width: 4; }
   .care-drawing .dot { fill: var(--color-primary); stroke: none; }

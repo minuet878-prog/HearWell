@@ -89,14 +89,15 @@ def way_back(request):
     return (WAYS_BACK[name], next_url) if name in WAYS_BACK else None
 
 
-# Spec #702 (#703 mockup 2A): the steps in 「健康」, then back here for the file.
+# Spec #702 (#703 mockup 2A): the steps in 「健康」, then back here for the file; each with its
+# drawing of the phone (#709, the owner's mockup A), in import_drawings/.
 IMPORT_STEPS = (
-    "打開「健康」app，點下面的「瀏覽」",
-    "點「聽力」",
-    "點「聽力測試結果」，選要匯入的那一次",
-    "往下滑，點「輸出 PDF」",
-    "點分享，選「儲存到檔案」",
-    "回到這裡，選剛剛存的 PDF",
+    ("打開「健康」app，點下面的「瀏覽」", "browse"),
+    ("點「聽力」", "hearing"),
+    ("點「聽力測試結果」，選要匯入的那一次", "results"),
+    ("往下滑，點「輸出 PDF」", "export"),
+    ("點分享，選「儲存到檔案」", "save"),
+    ("回到這裡，選剛剛存的 PDF", "pick"),
 )
 IMPORT_SALT = "screening.audiogram_import"
 # The preview's reading is signed for this person and kept good this long (spec #702).
