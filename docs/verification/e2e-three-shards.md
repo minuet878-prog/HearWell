@@ -1,54 +1,84 @@
-# e2e 分三台、依每組秒數分配（小改動，無 issue）
+# e2e 分三台、依 CI 秒數分配、大組拆開（小改動，無 issue）
 
 日期：2026-11-17。基準：`8fccea71`（main，含 #701）；分支：`ci/e2e-three-shards`。
 
-狀態：本機分組檢查與三組執行通過；CI 上的實際秒數等這個 PR 的 run。只動 CI 與 e2e 的測試載入，
-沒碰計分、門檻、資料 migration、權限，不需交叉審查。未操作真實資料；沒有啟動開發伺服器。
+狀態：分組檢查通過；第一版（只依本機秒數分組）在 CI 上不平均，改成依 CI 秒數並拆開大組，等 CI 驗證。
+只動 CI 與 e2e 的測試載入，沒碰計分、門檻、資料 migration、權限，不需交叉審查。未操作真實資料；沒有啟動開發伺服器。
 
 ## 為什麼做
 
 #701 之後 e2e 兩台各約 6 分 20 秒，是最慢的檢查；#711 讓 backend 降到約 1 分 46 秒。只把台數加大不夠：
 輪流分組在 3 台時三台分別 97／229／162 秒（本機量的測試秒數模擬），最慢的幾組容易擠在同一台。
 
+## 第一版在 CI 上的結果（找原因）
+
+第一版照本機秒數分三台，本機算起來三台各約 137 秒，CI 上卻不平均，跑了兩次都一樣：
+
+| CI run | e2e (1/3) | e2e (2/3) | e2e (3/3) | 整輪 |
+|---|---|---|---|---|
+| 第一次 | 332 秒 | 181 秒 | 176 秒 | 6 分 52 秒（兩台時 6 分 32 秒） |
+| 第二次（加 `--durations 0`） | 287 秒 | 166 秒 | 156 秒 | |
+
+（秒數是測試步驟本身；整台 job 另有約 1 分半的準備。）
+
+第二次讓 CI 印出每個測試的秒數，和本機比對：
+
+- WhiteCardRuleTest 在 CI 上 273 秒，本機 109 秒（2.5 倍）；SlidingPillTest 等幾組約 2 倍，其他大多 1–1.3 倍。
+- 一組測試由一個程序從頭跑到尾，WhiteCardRuleTest 一組就佔掉第 1 台的 273 秒，開幾台都一樣；兩台時也是它卡住。
+
 ## 改了什麼
 
-- `.github/workflows/ci.yml`：e2e matrix 改成 `1/3`、`2/3`、`3/3`。
-- `e2e/main_flow.py` 的 `load_tests`：照 `e2e/durations.json` 的秒數，最慢的組先分、每組交給目前秒數最少的機器；
-  每台照秒數由多到少跑，最慢的組最先開始。秒數表沒有的組別當成中位數。本機不設 `E2E_SHARD` 照舊跑全部。
-- `e2e/durations.json`：本機 `--durations 0` 量的每組秒數（89 組，共 1620 秒）。
-- `e2e/update_durations.py`：讀 `--durations 0` 的輸出重寫秒數表；用法在檔頭。分組只看組與組之間的相對時間，
-  本機量的就能用在 CI。
+- `.github/workflows/ci.yml`：e2e matrix 改成 `1/3`、`2/3`、`3/3`；e2e 步驟加 `--durations 0`，記錄裡留有 CI 上每個測試的秒數。
+- `e2e/main_flow.py` 的 `load_tests`：
+  - 照 `e2e/durations.json` 的秒數計算；秒數表沒有的組別當成中位數。
+  - 超過 `SPLIT_SECONDS`（100 秒）的組，把它的測試輪流分成每台一份（目前是 WhiteCardRuleTest、StyleInBrowserTest、
+    SharedLayoutTest）。
+  - 最慢的先分、交給目前秒數最少的機器；每台照秒數由多到少跑，最慢的組最先開始。
+  - 本機不設 `E2E_SHARD` 照舊跑全部。
+- `e2e/durations.json`：改用 CI 第二次 run 的每組秒數（89 組，共 1944 秒）。
+- `e2e/update_durations.py`：讀 `--durations 0` 的輸出重寫秒數表，CI 的記錄（`gh run view <run> --log`）和本機的輸出都讀得懂；
+  檔頭寫明要用 CI 的。
+
+拆開大組前先確認：
+
+- Django 的 `reorder_tests` 把同一組的測試排在一起，順序照每組第一次出現的先後，所以「最慢的先跑」在各台仍成立。
+- 被拆開的 3 組在組層級只有開、關瀏覽器（`setUpClass`／`tearDownClass`），沒有測試寫入組層級的資料；每個測試有自己的
+  瀏覽器分頁，資料庫每次清空，所以分到不同機器不影響結果。
 
 ## 驗收對照
 
 | 需求 | 驗證 | 證據 |
 |---|---|---|
-| 三組合起來就是全部、不重複 | ✅ 本機執行 | 不分組 495 項；三組 182＋151＋162 項，合併後與全部相同，重複 0 |
-| 三組時間平均 | ✅ 估算 | 三組測試量 541／540／539 秒，4 程序下各約 136／137／137 秒（同樣算法下輪流分組是 97／229／162） |
-| 最慢的組先跑 | ✅ 本機執行 | 三組的第一組依序是 WhiteCardRuleTest、StyleInBrowserTest、HearingAidGuideTest |
-| 三組都通過 | ⚠️ 本機有干擾，以 CI 為準 | 2/3：151 項 220 秒 OK；3/3：162 項 240 秒 OK；1/3 見下方「本機第 1 組」 |
-| 秒數表能重新產生 | ✅ 本機執行 | `update_durations.py` 讀完整 e2e（495 項 OK）的輸出：89 classes, 1620 seconds |
-| CI 上 e2e 變快 | ⏳ 等 PR 的 CI | 兩台時各約 6 分 20 秒 |
+| 三台合起來就是全部、不重複 | ✅ 本機執行 | 不分組 495 項；三台 164＋181＋150 項，合併後與全部相同，重複 0 |
+| 大組分到三台 | ✅ 本機執行 | WhiteCardRuleTest 的 45 項，三台各 15 項 |
+| 三台時間平均 | ✅ 估算 | 用 CI 第二次 run 每個測試的秒數模擬：三台 679／626／639 秒，4 程序下各約 170／157／161 秒（第一版實際 287／166／156） |
+| 最慢的組先跑 | ✅ 本機執行 | 三台的第一組都是 WhiteCardRuleTest（各一份） |
+| 秒數表能重新產生 | ✅ 本機執行 | `update_durations.py` 讀 CI 記錄：89 classes, 1944 seconds；本機的輸出也讀得懂 |
+| 三台都通過 | ⏳ 等 PR 的 CI | 本機有其他 session 在跑測試，見下方「本機」 |
+| CI 上 e2e 變快 | ⏳ 等 PR 的 CI | 兩台時 e2e job 約 6 分 20 秒 |
 
 這些都是測試基礎設施，沒有寫自動斷言；分組用上表的實際載入結果驗證。
 
-## 本機第 1 組
+## 本機
 
-- 第一次：182 項 1 個失敗，`WearMotionTest.test_push_in_plays_once_and_stops_on_the_reviewed_drawing`
-  （`main_flow.py` 按空白鍵重播後那行 `assertEqual(..., start)`）：起點位置差 0.6 px。原因是測試本身的時間競爭：
+第一版在本機跑三組時：2/3（151 項 220 秒）、3/3（162 項 240 秒）OK；1/3 兩次都沒跑乾淨：
+
+- 第一次：1 個失敗，`WearMotionTest.test_push_in_plays_once_and_stops_on_the_reviewed_drawing`
+  （按空白鍵重播後那行 `assertEqual(..., start)`）：起點位置差 0.6 px。原因是測試本身的時間競爭：
   `play()` 按下時先畫起點，之後每個 `requestAnimationFrame` 往前畫；測試按鍵後再讀位置，中間只要過了一格就不相等。
   跟分組無關；單獨重跑 5 次都通過，過去 40 次失敗的 CI 沒有它。要不要修另外決定。
-- 第二次：167 個 error，三個類別（WhiteCardRuleTest、ReturningUserRetestTest、ContentAndContact576Test）的瀏覽器同時被關
-  （`TargetClosedError`），之後同類的測試全部出錯。當時這台電腦另有兩個 session 在 worktree 跑 e2e、一組在跑後端測試。
-  原因沒有確認；三個程序同時發生，不像單一測試的問題。本人決定先開 PR，以乾淨的 CI 機器為準。
+- 第二次：167 個 error，三個類別的瀏覽器同時被關（`TargetClosedError`），之後同類的測試全部出錯。當時這台電腦另有兩個
+  session 在 worktree 跑 e2e、一組在跑後端測試。原因沒有確認；三個程序同時發生，不像單一測試的問題。
+- 本人決定以乾淨的 CI 機器為準。拆大組這一版寫好時其他 session 仍在跑測試，所以沒有在本機跑三台。
 
 ## 以後要注意
 
-- 新增或擴充測試組後，秒數表會慢慢不準（新組先當中位數），三台開始不平均時照 `update_durations.py` 檔頭重跑。
-- 再加台數效益很小：每台固定約 1 分 10 秒的準備，加上最大一組（WhiteCardRuleTest）不能拆開。
+- 新增或擴充測試組後，秒數表會慢慢不準（新組先當中位數）。三台開始不平均時，拿一次通過的 CI run 照
+  `update_durations.py` 檔頭重跑；不要用本機的，本機和 CI 的相對快慢不同。
+- 再加台數：照 CI 秒數模擬，4 台約 123 秒，只比 3 台快約 40 秒，每台固定約 1 分半的準備佔比越來越高。
 
 ## 測試與審查
 
 - `ruff check .`、`ruff format --check .`：全過。
-- 秒數表用的完整 e2e（不分組、`--parallel 4`）：495 項 566 秒 OK。
+- 第一版的秒數表用的完整 e2e（本機、不分組、`--parallel 4`）：495 項 566 秒 OK。
 - 自審：看過 diff，沒有要修的項目。
