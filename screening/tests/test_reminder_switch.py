@@ -26,6 +26,25 @@ PURPOSE = (
     "您的 email 只用來寄這個提醒和重設密碼信，隨時可以關掉。"
 )
 
+# Acceptance 2, 13: 「✓ 已開啟，到期會寄到〈信箱〉」, the tick drawn before the words.
+TICKED_ON = re.compile(
+    r'<p class="reminder-on[^"]*"><svg [^>]*aria-hidden="true"[^>]*>'
+    r'<path d="M5 12\.5l4\.5 4\.5L19 7\.5"/></svg>'
+    r"<span[^>]*>已開啟，到期會寄到 ([^<]+)</span></p>"
+)
+
+
+def admin_rows(page):
+    """What each row of an admin list shows, by column; a yes/no icon by its alt text."""
+    rows = re.findall(r"<tr>(.*?)</tr>", page.split("<tbody>")[1].split("</tbody>")[0], re.S)
+    return [
+        {
+            name: test_layout._text(re.sub(r'<img [^>]*alt="(\w+)"[^>]*>', r"\1", cell))
+            for name, cell in re.findall(r'class="field-(\w+)[^"]*">(.*?)</t[dh]>', row, re.S)
+        }
+        for row in rows
+    ]
+
 
 class ReminderSwitchTests(TestCase):
     fixtures = ("questions_fixture.json",)  # HHIE-S
@@ -78,8 +97,8 @@ class ReminderSwitchTests(TestCase):
         reminder = self._reminder()
         self.assertTrue(reminder.enabled)
         self.assertEqual(reminder.enabled_on, date(2026, 11, 17))
+        self.assertEqual(TICKED_ON.findall(self._page()), ["a@example.com"])
         text = self._section()
-        self.assertIn("已開啟，到期會寄到 a@example.com", text)
         self.assertIn("目前 已開啟（2026/11/17 起）", text)
         self.assertIn("關掉提醒", text)
         self.assertNotIn("打開提醒", text.replace("關掉提醒", ""))
@@ -241,6 +260,10 @@ class ReminderDataTests(TestCase):
         page = self.client.get(changelist).content.decode()
         headers = re.findall(r'<th scope="col" class="[^"]*column-(\w+)', page)
         self.assertEqual(headers, ["user", "enabled", "enabled_on"])
+        self.assertEqual(
+            admin_rows(page),
+            [{"user": "reminder_data", "enabled": "True", "enabled_on": "2026年11月3日"}],
+        )
         change = reverse("admin:screening_retestreminder_change", args=[self.reminder.pk])
         detail = self.client.get(change)
         self.assertEqual(detail.status_code, 200)
