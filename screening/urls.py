@@ -99,6 +99,7 @@ urlpatterns = [
     path("my_data/download", export.download_my_data, name="download_my_data"),
     path("account", accounts.account_settings, name="account_settings"),
     path("account/delete", accounts.delete_account, name="delete_account"),
+    path("account/email", accounts.add_email, name="add_email"),
     path("reminder", reminders.retest_reminder, name="retest_reminder"),
     path("reminder/cancel/<str:token>", reminders.reminder_cancel, name="reminder_cancel"),
     path("reminder/cancelled", reminders.reminder_cancelled, name="reminder_cancelled"),

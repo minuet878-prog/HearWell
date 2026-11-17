@@ -11,6 +11,7 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
+from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 from rest_framework.throttling import BaseThrottle
 
@@ -19,6 +20,7 @@ from screening.forms import (
     RESETS_PER_ADDRESS,
     ROC_OFFSET,
     TOO_MANY_RESETS,
+    AddEmailForm,
     ForgotPasswordForm,
     PasswordConfirmForm,
     RegisterForm,
@@ -257,3 +259,23 @@ def delete_account(request):
             "audiogram_count": user.audiograms.count(),
         },
     )
+
+
+@never_cache
+@login_required
+@require_http_methods(["GET", "POST"])
+def add_email(request):
+    """#660 (spec #656 acceptance 7-11, the #657 mockup's 二): an account without an email adds
+    one, after 確認本人; one with an email changes it by writing to us, as before."""
+    if request.user.email:
+        return redirect("account_settings")
+    if not confirm_identity.is_confirmed(request, "add_email"):
+        # Taken out all the same, so a stale one makes the confirm page say so (W18).
+        confirm_identity.use_confirmation(request, "add_email")
+        return confirm_identity.ask_confirmation("add_email")
+    form = AddEmailForm(request.POST if request.method == "POST" else None)
+    # A mistyped email keeps the confirmation, to try again; the one that is saved uses it up.
+    if form.is_valid() and confirm_identity.use_confirmation(request, "add_email"):
+        form.save(request.user)
+        return redirect("account_settings")
+    return render(request, "screening/add_email.html", {"form": form})
