@@ -280,7 +280,7 @@ docker exec -it hearwell-db psql -U hearwell -d hearwell_dev
 ## 常用指令
 
 ```bash
-python manage.py test --settings=config.test_settings  # 後端測試（不需要先 collectstatic）
+python manage.py test --settings=config.test_settings --parallel  # 後端測試（不需要先 collectstatic；依核心數分工跑）
 python manage.py test --settings=config.test_settings e2e.main_flow --parallel 4  # 端對端測試（先建置前端；第一次要 python -m playwright install chromium）
 npm test --prefix frontend                             # 前端測試
 npm run build --prefix frontend                        # 前端建置
