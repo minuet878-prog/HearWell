@@ -4865,6 +4865,37 @@
     overflow-wrap: anywhere;
   }
 
+  /* #661 (the #657 mockup's result page B): the email 重測提醒 under the 現在這一步, white in a
+     pale blue frame, so it reads as its own box beside the card above it. */
+  .result-reminder {
+    margin-top: 1rem;
+    padding: 1rem 1.125rem;
+    border: 2px solid var(--color-brand-soft);
+    border-radius: var(--radius-large);
+    background-color: #fff;
+  }
+
+  .result-reminder-title {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin: 0 0 0.25rem;
+    color: var(--color-heading);
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .result-reminder-title svg {
+    flex: none;
+    width: 1.4rem;
+    height: 1.4rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
   .result-list {
     margin: 1.25rem 0 1.5rem;
   }
