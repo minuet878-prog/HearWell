@@ -17320,6 +17320,16 @@ class ClinicCardPrintTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
                         self.assertLessEqual(box["x"] + box["width"], edge["x"] + edge["width"])
                         self.assertLessEqual(box["y"] + box["height"], edge["y"] + edge["height"])
 
+    def test_a_window_a_little_wider_than_a_phone_does_not_scroll_sideways(self):
+        # Cross review of spec #677 (acceptance 21-22): the A4 sheet and its 16px sides need
+        # about 826px; between that and 800px the sheet showed whole and scrolled sideways.
+        with self.saving_artifacts():
+            for width in (801, 810, 825, 840):
+                with self.subTest(width=width):
+                    self.open("/clinic-cards", (width, 900), signed_in=False)
+                    scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
+                    self.assertLessEqual(scroll_width, width)
+
     def test_it_fits_a_phone_at_double_text_size(self):
         with self.saving_artifacts():
             for width in (320, 390):

@@ -7382,8 +7382,9 @@
     letter-spacing: 0.03em;
   }
 
-  /* Narrower than the sheet (a phone): one card shows what is printed; printing wants a computer. */
-  @media screen and (max-width: 50em) {
+  /* Narrower than the sheet and its 16px sides, 826px (a phone): one card shows what is printed;
+     printing wants a computer. */
+  @media screen and (max-width: 52em) {
     .clinic-cards-phone-note {
       display: block;
     }
