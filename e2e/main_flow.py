@@ -81,6 +81,17 @@ ARTIFACTS = settings.BASE_DIR / "e2e-artifacts"
 QUESTION_COUNT = 10
 
 
+def load_tests(loader, tests, pattern):
+    """CI's two e2e machines: E2E_SHARD=1/2 runs every other test class from the first, 2/2 the
+    rest. Without it (a local run) every class runs. unittest calls this when loading the module.
+    """
+    if not (shard := os.environ.get("E2E_SHARD")):
+        return tests
+    number, total = map(int, shard.split("/"))
+    classes = [suite for suite in tests if suite.countTestCases()]
+    return loader.suiteClass(classes[number - 1 :: total])
+
+
 def type_audiogram_date(main, year, month, day):
     """The audiogram's date, typed as on a report (the 2026-11-14 walkthrough, mockup 12A)."""
     main.get_by_label("民國年").fill(year)
