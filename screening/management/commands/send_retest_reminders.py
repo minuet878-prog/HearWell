@@ -1,4 +1,5 @@
 import logging
+from time import sleep
 from urllib.parse import quote, urlsplit
 
 from anymail.exceptions import AnymailAPIError
@@ -16,9 +17,16 @@ from screening.models import RetestReminder, RetestReminderSent, count_guest
 
 logger = logging.getLogger(__name__)
 
+# Resend takes 10 requests a second for the whole team, the password and feedback mails too
+# (resend.com/docs/api-reference/rate-limit): at most 2 a second leaves them room.
+SEND_INTERVAL = 0.5  # seconds
+# Resend's 429 for the quota used up, the day's (free plan) or the month's; its other 429 is the
+# rate, rate_limit_exceeded (resend.com/docs/api-reference/errors).
+QUOTA_USED_UP = ("daily_quota_exceeded", "monthly_quota_exceeded")
+
 
 class QuotaUsedUp(Exception):
-    """Resend sends no more today: the rest wait for the next day's run, none counted as failed."""
+    """Resend sends no more: the rest wait for the next day's run, none counted as failed."""
 
 
 class Command(BaseCommand):
@@ -31,7 +39,11 @@ class Command(BaseCommand):
         today = timezone.localdate()
         due = sorted(_due(today), key=lambda each: (each[1], each[0].pk))
         sent = 0
-        for reminder, due_on, questionnaire in due[: settings.RETEST_REMINDER_DAILY_LIMIT]:
+        for number, (reminder, due_on, questionnaire) in enumerate(
+            due[: settings.RETEST_REMINDER_DAILY_LIMIT]
+        ):
+            if number:
+                sleep(SEND_INTERVAL)
             try:
                 sent += _send(reminder, due_on, questionnaire, today)
             except QuotaUsedUp:
@@ -75,9 +87,8 @@ def _send(reminder, due_on, questionnaire, today):
         try:
             _message(reminder, questionnaire).send()
         except Exception as error:
-            # Resend's 429: the day's quota (or the rate) used up. Raised out of the transaction,
-            # so the row is as it was.
-            if isinstance(error, AnymailAPIError) and error.status_code == 429:
+            # Raised out of the transaction, so the row is as it was.
+            if isinstance(error, AnymailAPIError) and _quota_used_up(error):
                 raise QuotaUsedUp from error
             _failed(record, today)
             return 0
@@ -85,6 +96,11 @@ def _send(reminder, due_on, questionnaire, today):
         record.save()
         count_guest("reminders_sent")
         return 1
+
+
+def _quota_used_up(error):
+    # Resend names the limit in its JSON body; anymail keeps the response.
+    return error.status_code == 429 and error.response.json().get("name") in QUOTA_USED_UP
 
 
 def _failed(record, today):

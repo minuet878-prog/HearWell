@@ -1,6 +1,7 @@
 """#663 (spec #656 acceptance 16-31, 43): the 重測提醒信, sent by the 09:00 schedule's
 send_retest_reminders on the day a life-impact record falls due again."""
 
+import json
 import re
 from datetime import date, datetime, timedelta
 from io import StringIO
@@ -8,6 +9,7 @@ from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 from zoneinfo import ZoneInfo
 
+import requests
 from anymail.exceptions import AnymailAPIError
 from django.conf import settings
 from django.core import mail
@@ -36,6 +38,9 @@ ANSWERED_ON = date(2026, 5, 17)
 DUE_ON = date(2026, 11, 17)
 RETEST_LINK = r'<a href="([^"]*)"[^>]*>再做一次</a>'
 COMMAND_LOGGER = "screening.management.commands.send_retest_reminders"
+# Resend's default: 10 requests a second for the whole team, the password and feedback mails too
+# (resend.com/docs/api-reference/rate-limit).
+RESEND_PER_SECOND = 10
 # The owner's subject, body and foot line, settled on 2026-11-17 (#658).
 SUBJECT = "聽伴 重測提醒"
 BODY = (
@@ -60,15 +65,35 @@ class FailingBackend(EmailBackend):
         return super().send_messages(messages)
 
 
+def resend_429(name):
+    """Resend's 429 as anymail raises it: the JSON body names which limit it is (resend.com/docs/
+    api-reference/errors)."""
+    response = requests.Response()
+    response.status_code = 429
+    response.headers["Content-Type"] = "application/json"
+    response._content = json.dumps({"statusCode": 429, "name": name, "message": name}).encode()
+    return AnymailAPIError("Resend API response 429", status_code=429, response=response)
+
+
 class QuotaBackend(EmailBackend):
-    """Resend with `left` emails of today's quota: then its 429 daily_quota_exceeded."""
+    """Resend with `left` emails of the quota: then its 429 named `used_up`."""
 
     left = 0
+    used_up = "daily_quota_exceeded"
 
     def send_messages(self, messages):
         if QuotaBackend.left == 0:
-            raise AnymailAPIError("Resend API response 429", status_code=429)
+            raise resend_429(QuotaBackend.used_up)
         QuotaBackend.left -= 1
+        return super().send_messages(messages)
+
+
+class RateLimitedBackend(EmailBackend):
+    """Resend says too many a second for slow@example.com; the rest go to the outbox."""
+
+    def send_messages(self, messages):
+        if messages[0].to[0] == "slow@example.com":
+            raise resend_429("rate_limit_exceeded")
         return super().send_messages(messages)
 
 
@@ -93,9 +118,17 @@ class ReminderMailTestCase(TestCase):
         return submission
 
     def run_on(self, day, hour=9):
-        """The schedule's run on that day: to whom it sent, in order."""
+        """The schedule's run on that day: to whom it sent, in order. Its pauses are kept in
+        self.pauses as (emails sent so far, seconds), not waited."""
         mail.outbox.clear()
-        with at(day, hour):
+        self.pauses = []
+        with (
+            at(day, hour),
+            patch(
+                f"{COMMAND_LOGGER}.sleep",
+                side_effect=lambda seconds: self.pauses.append((len(mail.outbox), seconds)),
+            ),
+        ):
             call_command("send_retest_reminders", stdout=StringIO())
         return [message.to[0] for message in mail.outbox]
 
@@ -221,6 +254,16 @@ class WhenItIsSentTests(ReminderMailTestCase):
         self.assertEqual(self.run_on(DUE_ON + timedelta(days=1)), ["due_17th@example.com"])
 
     # 26
+    def test_a_pause_between_each_one_within_resend_s_rate(self):
+        self.person("due_15th", answered_on=date(2026, 5, 15))
+        self.person("due_16th", answered_on=date(2026, 5, 16))
+        self.person("due_17th")
+        self.assertEqual(len(self.run_on(DUE_ON)), 3)
+        self.assertEqual([sent for sent, _ in self.pauses], [1, 2])
+        for _, seconds in self.pauses:
+            # At most half of Resend's rate: the other mails share it.
+            self.assertGreaterEqual(seconds, 2 / RESEND_PER_SECOND)
+
     def test_one_email_for_each_account_of_the_same_address(self):
         self.person("wang_mama", email="daughter@example.com")
         self.person("wang_baba", email="daughter@example.com")
@@ -371,12 +414,31 @@ class FailedSendTests(ReminderMailTestCase):
             self.run_on(DUE_ON + timedelta(days=3))  # given up: not tried a fourth day
         self.assertEqual(self.records()[0], ("fails", DUE_ON, 3, DUE_ON + timedelta(days=2)))
 
+    @override_settings(EMAIL_BACKEND=f"{__name__}.RateLimitedBackend")
+    def test_too_many_a_second_fails_that_one_and_the_others_go(self):
+        # Resend's other 429: not the quota, so the day goes on and it is tried again tomorrow.
+        self.person("slow", email="slow@example.com", answered_on=date(2026, 5, 15))
+        self.person("goes", email="goes@example.com")
+        with self.assertLogs(COMMAND_LOGGER, "ERROR"):
+            self.assertEqual(self.run_on(DUE_ON), ["goes@example.com"])
+        self.assertEqual(
+            self.records(), [("goes", DUE_ON, 1, None), ("slow", date(2026, 11, 15), 1, DUE_ON)]
+        )
+
 
 @override_settings(EMAIL_BACKEND=f"{__name__}.QuotaBackend")
 class QuotaUsedUpTests(ReminderMailTestCase):
-    """30: Resend's quota used up stops the day's sending, none counted as failed."""
+    """30: Resend's quota for the day or the month used up stops the day's sending, none counted
+    as failed."""
 
-    def test_the_rest_wait_for_the_next_day(self):
+    def test_the_day_s_quota_the_rest_wait_for_the_next_day(self):
+        self.the_rest_wait_for_the_next_day("daily_quota_exceeded")
+
+    def test_the_month_s_quota_the_rest_wait_for_the_next_day(self):
+        self.the_rest_wait_for_the_next_day("monthly_quota_exceeded")
+
+    def the_rest_wait_for_the_next_day(self, used_up):
+        QuotaBackend.used_up = used_up
         self.person("due_15th", answered_on=date(2026, 5, 15))
         self.person("due_16th", answered_on=date(2026, 5, 16))
         self.person("due_17th")
