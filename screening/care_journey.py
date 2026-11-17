@@ -28,6 +28,7 @@ from screening.scoring import (
     RETEST_COUNTDOWN_TEXT,
     RETEST_DUE_TEXT,
     TYPES_AND_PRICES_BUTTON,
+    UNKNOWN,
     fitting_countdown_text,
 )
 from screening.views.guide import here_stop
@@ -133,9 +134,11 @@ def care_journey(user, today):
         else None
     )
     # Each step's day, None while it is not done; step 5 never is, a retest only moves the
-    # next one on.
+    # next one on. A 無法判讀 record leaves step 1 to do again, whatever the hearing, as
+    # fitting_advice counts it as none (the owner, 2026-11-17).
+    readable = life_impact is not None and life_impact.result.level["level"] != UNKNOWN["level"]
     done_on = {
-        1: _day(life_impact) if life_impact else None,
+        1: _day(life_impact) if readable else None,
         2: route.audiogram.tested_on if AUDIOGRAM in route.done else None,
         3: fitted_on,
         4: _day(ioi_ha) if ioi_ha else None,

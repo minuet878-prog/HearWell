@@ -3,6 +3,7 @@
 from datetime import date, datetime
 
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from screening.care_journey import (
@@ -18,13 +19,17 @@ from screening.fitting_route import fitting_state
 from screening.models import (
     AidAndSubsidy,
     AidLevel,
+    Audiogram,
+    Category,
     Certificate,
     GuideChapterView,
+    Question,
     Questionnaire,
     Submission,
     Subsidy,
 )
 from screening.questionnaires import hhia_s, hhie_s, ioi_ha, thi
+from screening.scoring import LIFE_IMPACT_BUTTON
 from screening.tests import test_fitting_advice, test_guide_summary
 from screening.tests.helpers import consented_user
 
@@ -481,3 +486,74 @@ class FittingAdviceJourneyTests(test_fitting_advice.LifeImpactTestCase):
         self.make(self.MILD_EAR, NORMAL)
         self.record(test_fitting_advice.NORMAL_SCORES, wearing=True)
         self.assertEqual(self.states(), [DONE, DONE, CURRENT, LATER, LATER])
+
+
+class SelfReview693UnreadableLifeImpactTests(test_fitting_advice.LifeImpactTestCase):
+    """The self review on #693: the latest life-impact record 無法判讀 (a total off the
+    thresholds table) leaves step 1 the 現在這一步, to be done again, whatever the hearing (the
+    owner, 2026-11-17); 上次結果 still shows that record."""
+
+    MILD_EAR = (30, 30, 30, 30)
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        # An 11th item makes four on every item 44, over the table's 40: 無法判讀.
+        Question.objects.create(
+            questionnaire=Questionnaire.objects.get(code=hhie_s.CODE),
+            question_text="假題11",
+            question_number=11,
+            category=Category.SOCIAL,
+        )
+        # IOI-HA has seven items, which the home page's pages read.
+        Question.objects.filter(questionnaire__code=ioi_ha.CODE, question_number__gt=7).delete()
+
+    def setUp(self):
+        self.user = consented_user(username="unreadable_journey", birth_year=1950)
+        self.unreadable = test_fitting_advice.record(self.user, (4,) * 11)
+
+    make = test_guide_summary.GuideSummaryTests.make
+
+    def journey(self):
+        return care_journey(self.user, TODAY)
+
+    def test_the_record_is_unreadable(self):
+        self.assertEqual(self.unreadable.result.level["level"], "unknown")
+
+    def test_mild_hearing_makes_step_1_current_with_its_button(self):
+        self.make(self.MILD_EAR, NORMAL)
+        journey = self.journey()
+        self.assertEqual(journey.current, 1)
+        self.assertEqual(
+            [step.state for step in journey.steps], [CURRENT, DONE, LATER, LATER, LATER]
+        )
+        self.assertIsNone(journey.steps[0].done_on)
+        self.assertEqual(journey.card.button[0], LIFE_IMPACT_BUTTON)
+
+    def test_whatever_the_hearing_step_1_is_current(self):
+        for right in (None, NORMAL, PTA_55):
+            with self.subTest(right=right):
+                Audiogram.objects.filter(user=self.user).delete()
+                if right is not None:
+                    self.make(right, NORMAL)
+                self.assertEqual(self.journey().current, 1)
+                self.assertEqual(self.journey().steps[0].state, CURRENT)
+
+    def test_the_last_result_tile_still_shows_the_record(self):
+        self.assertEqual(self.journey().last_result, self.unreadable)
+
+    def test_the_home_page_opens_on_step_1(self):
+        self.make(self.MILD_EAR, NORMAL)
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("index"))
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn('<span class="journey-tile-score">44 <small>分</small></span>', content)
+        self.assertIn(f">{LIFE_IMPACT_BUTTON}</a>", content)
+
+    def test_the_result_page_opens(self):
+        # Its 建議下一步 is the 照顧旅程's card (next_step), so the same cause.
+        self.make(self.MILD_EAR, NORMAL)
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("result", args=[self.unreadable.pk]))
+        self.assertEqual(response.status_code, 200)
