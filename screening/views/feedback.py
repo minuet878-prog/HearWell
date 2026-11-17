@@ -72,6 +72,7 @@ PAGE_NAMES = {
     "confirm_identity": "確認本人",
     "audiogram_list": "聽力圖",
     "audiogram_new": "記錄聽力圖",
+    "audiogram_import": "從 iPhone 匯入",
     "audiogram_compare": "聽力圖比較",
     "audiogram_detail": "聽力圖",
     "audiogram_edit": "修改聽力圖",

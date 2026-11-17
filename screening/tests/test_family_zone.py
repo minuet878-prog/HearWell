@@ -651,12 +651,16 @@ class ReviewedPagesTests(SimpleTestCase):
                 "<p>有新的意見回饋時",
                 "<li>看大家在意見回饋寫了什麼",
                 "<li>意見回饋保存 90 天",
+                # Spec #702's 從 iPhone 匯入 in the health data line (the version stays 8); the
+                # owner picked the words on 2026-11-17.
+                "<li>健康資料：每一次篩檢問卷的作答和分數",
             ),
             # #471 (the #470 mockup B) folded each part into a row and dropped the 這一頁的段落
             # list; the visible words are the same as main's apart from that list's title.
             # #526 and spec #505, #506, #633 added the tags of the 忘記密碼時, 用 Google 登入時,
-            # 用 LINE 登入時 and 意見回饋 rows.
-            "63be57d6ad6094f22ca8991920a75c9d09d6749e9ec41cce561177e9126e037a",
+            # 用 LINE 登入時 and 意見回饋 rows. Spec #702 let the health data line change: the page
+            # hashes the same on main and after it without that line.
+            "68e40d6a23d9b5906aeb69a84da9423dc8c143eb2026e3a013b0d665e008adb9",
         ),
     )
 

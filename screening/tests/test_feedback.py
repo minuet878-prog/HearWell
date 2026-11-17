@@ -500,6 +500,8 @@ class OwnersWordsTests(TestCase):
 # names them: redirects, form addresses, files and what only machines read.
 NOT_PAGES = {
     "sitemap",
+    # Spec #702: 存下來 on the import preview only saves and goes on to the audiogram's page.
+    "audiogram_import_save",
     "robots_txt",
     "uptime_check",
     "monitoring_test",

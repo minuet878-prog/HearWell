@@ -1,0 +1,30 @@
+{% extends "screening/layout.html" %}
+{% load static %}
+{% block title %}確認匯入的結果｜聽伴{% endblock %}
+{% block extra_head %}
+<script type="module" src="{% static 'screening/frontend/audiogram-view.js' %}"></script>
+{% endblock %}
+{% block body %}
+<h1 class="h3 mt-4">確認匯入的結果</h1>
+{# Spec #702 (#703 mockup 3A): whose record first, then the check, the date, the chart and the values. #}
+<p class="text-xl/normal font-bold mb-1 wrap-anywhere">要存進「{{ user.username }}」的紀錄</p>
+<p class="field-help">PDF 上印的是 iPhone 主人的名字，不一定是做測試的人。</p>
+<p>請跟 PDF 對一下，數字都一樣再按「存下來」。</p>
+<p class="font-bold">測試日期：{{ tested_on|date:"Y/m/d" }}</p>
+<div id="audiogram-chart" class="audiogram-chart"></div>
+{{ chart_points|json_script:"audiogram-points" }}
+{# One frequency a row, so it fits a phone at 200% text (the mockup drew it the other way). #}
+<table class="table">
+    <caption class="visually-hidden">讀出的數值（dB HL）</caption>
+    <thead><tr><th scope="col">頻率</th><th scope="col">右耳</th><th scope="col">左耳</th></tr></thead>
+    <tbody>
+        {% for frequency, right, left in rows %}<tr><th scope="row">{{ frequency }} Hz</th><td>{{ right }}</td><td>{{ left }}</td></tr>{% endfor %}
+    </tbody>
+</table>
+<form method="post" action="{% url 'audiogram_import_save' %}" class="mt-4">
+    {% csrf_token %}
+    <input type="hidden" name="reading" value="{{ reading }}">
+    <button type="submit" class="btn btn-primary btn-lg w-full">存下來</button>
+</form>
+<p class="quiet-links mt-4"><a href="{% url 'audiogram_list' %}">不存了，回聽力圖清單</a></p>
+{% endblock %}

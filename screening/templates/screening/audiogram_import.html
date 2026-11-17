@@ -1,0 +1,21 @@
+{% extends "screening/layout.html" %}
+{% block title %}從 iPhone 匯入｜聽伴{% endblock %}
+{% block body %}
+<h1 class="h3 mt-4">從 iPhone 匯入</h1>
+{# Spec #702 (#703 mockup 4A): what could not be read goes first, with the file again below it. #}
+{% if unreadable %}<div class="alert alert-warning" role="alert">這份 PDF 讀不出來。請確認是「健康」app 的聽力測試結果；也可以照著 PDF 自己把數字標上去。</div>{% endif %}
+<p>先在 iPhone 的「健康」app 把聽力測試存成 PDF，再回來選這個檔案。</p>
+{# #703 mockup 2A: the steps first, the file at the bottom where they end. #}
+<ol class="step-list" role="list">
+    {% for step in steps %}
+    <li><span class="step-list-number">{{ forloop.counter }}</span><span class="step-list-body">{{ step }}</span></li>
+    {% endfor %}
+</ol>
+<form method="post" enctype="multipart/form-data" class="mt-4">
+    {% csrf_token %}
+    <label class="form-label font-bold" for="import-pdf">聽力測試的 PDF</label>
+    <input type="file" name="pdf" accept="application/pdf" id="import-pdf" class="form-control" required>
+    <button type="submit" class="btn btn-primary btn-lg w-full mt-3">讀取這份 PDF</button>
+</form>
+<p class="quiet-links mt-4"><a href="{% url 'audiogram_list' %}">不匯入了，回聽力圖清單</a></p>
+{% endblock %}

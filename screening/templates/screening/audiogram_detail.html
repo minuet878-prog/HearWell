@@ -87,5 +87,6 @@
     </details>
 </div>
 {# #365: the way back, as on the compare page; #465: all three quiet text links (S1). #}
-<p class="quiet-links"><a href="{% url 'audiogram_edit' audiogram.id %}">修改這張</a><a class="quiet-link-danger" href="{% url 'audiogram_delete' audiogram.id %}">刪除這張</a><a href="{% url 'audiogram_list' %}">回聽力圖清單</a></p>
+{# Spec #702 acceptance 13: one imported from Apple's PDF stays as read; delete and import again instead. #}
+<p class="quiet-links">{% if audiogram.entry != "apple_pdf" %}<a href="{% url 'audiogram_edit' audiogram.id %}">修改這張</a>{% endif %}<a class="quiet-link-danger" href="{% url 'audiogram_delete' audiogram.id %}">刪除這張</a><a href="{% url 'audiogram_list' %}">回聽力圖清單</a></p>
 {% endblock %}

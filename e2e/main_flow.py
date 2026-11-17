@@ -56,6 +56,7 @@ from screening.models import (
 )
 from screening.questionnaires.thi import SUPPORT_MESSAGE as THI_SUPPORT_MESSAGE
 from screening.tests import test_line_in_app_browser
+from screening.tests.apple_pdf import apple_pdf
 from screening.tests.helpers import (
     GOOGLE_AUTHORIZE,
     GOOGLE_CLIENT_ID,
@@ -17196,3 +17197,37 @@ class NarrowOverflowsT668Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveS
                     self.double_text(on=False)
                     for side in ("paddingLeft", "paddingRight"):
                         self.assertEqual(self.style(block, side), "20.25px", f"{width}px")
+
+
+class AppleHearingTestImportTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Spec #702 (ticket #707): 從 iPhone 匯入 in a real browser, on a made-up PDF drawn like
+    「健康」's (screening/tests/apple_pdf.py): from the audiogram list to the preview, saved,
+    and its page; the steps and the preview fit a phone at 200% text."""
+
+    def setUp(self):
+        self.sign_in(consented_user(username="apple_import_e2e"))
+
+    def test_imports_a_pdf_and_opens_its_audiogram(self):
+        self.open("/audiograms", size=(320, 640))
+        with self.saving_artifacts():
+            self.main().get_by_role("link", name="從 iPhone 匯入", exact=True).click()
+            expect(self.main().get_by_role("heading", level=1)).to_have_text("從 iPhone 匯入")
+            self.assert_fits_a_phone_at_double_text_size("import steps")
+            self.double_text(on=False)
+            self.main().get_by_label("聽力測試的 PDF").set_input_files(
+                {"name": "聽力測試.pdf", "mimeType": "application/pdf", "buffer": apple_pdf()}
+            )
+            self.main().get_by_role("button", name="讀取這份 PDF", exact=True).click()
+            expect(self.main().get_by_text("要存進「apple_import_e2e」的紀錄")).to_be_visible()
+            expect(self.main().get_by_text("測試日期：2026/11/10")).to_be_visible()
+            # The chart is drawn, with all sixteen marks.
+            expect(self.main().locator("[data-point]")).to_have_count(16)
+            self.assert_fits_a_phone_at_double_text_size("import preview")
+            self.double_text(on=False)
+            self.main().get_by_role("button", name="存下來", exact=True).click()
+            expect(self.page).to_have_url(re.compile(r"/audiograms/\d+$"))
+            heading = self.main().get_by_role("heading", level=1)
+            expect(heading).to_have_text("2026/11/10 測試的聽力圖 自我測試")
+            expect(self.main().get_by_role("link", name="修改這張")).to_have_count(0)
+            audiogram = self.user.audiograms.get()
+            self.assertEqual((audiogram.source, audiogram.entry), ("self_test", "apple_pdf"))

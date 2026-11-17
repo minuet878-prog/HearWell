@@ -15,6 +15,8 @@
 {% include "screening/records_switch.html" with side="audiograms" %}
 {# #465 (the #464 mockup 2A): adding is the page's one solid button, comparing the outlined one under it. #}
 <a class="btn btn-primary btn-lg w-full" href="{% url 'audiogram_new' %}">記錄聽力圖</a>
+{# Spec #702 (#703 mockup 1C): an Apple hearing test's PDF comes in from here too. #}
+<a class="btn btn-outline-primary btn-lg w-full mt-3" href="{% url 'audiogram_import' %}">從 iPhone 匯入</a>
 {% if audiograms|length >= 2 %}
 <a class="btn btn-outline-primary btn-lg w-full mt-3" href="{% url 'audiogram_compare' %}">比較聽力圖</a>
 {% else %}

@@ -203,7 +203,8 @@ class PrivacyHighlightsTests(TestCase):
         collected = main[main.index("蒐集哪些資料") : main.index("存放在哪裡、保存多久")]
         # #361: the answers on the route are a list of their own (PrivacyPageT361Tests).
         self.assertIn(
-            "健康資料：每一次篩檢問卷的作答和分數、作答時有沒有戴助聽器、您自己輸入的聽力圖、"
+            "健康資料：每一次篩檢問卷的作答和分數、作答時有沒有戴助聽器、"
+            "您自己輸入或從 iPhone 匯入的聽力圖（匯入用的 PDF 讀完就丟，不保存）、"
             "您在選配路線上的回答 有沒有聽覺機能的身心障礙證明 九號表與核定公文的進度 "
             "核定單耳或雙耳與補助等級 助聽器開始配戴的日期與戴哪一耳 有沒有用身障補助買 "
             "二十五號表完成了沒 以及您看過哪幾個選配指引章節。",
@@ -577,7 +578,9 @@ class PrivacyPageT361Tests(TestCase):
         outer = re.sub(r"\s+", "", re.sub(r"<ul>.*?</ul>", "", item, flags=re.S))
         self.assertEqual(
             outer,
-            "健康資料：每一次篩檢問卷的作答和分數、作答時有沒有戴助聽器、您自己輸入的聽力圖、"
+            "健康資料：每一次篩檢問卷的作答和分數、作答時有沒有戴助聽器、"
+            # Whitespace is stripped above, the spaces around iPhone and PDF too.
+            "您自己輸入或從iPhone匯入的聽力圖（匯入用的PDF讀完就丟，不保存）、"
             "您在選配路線上的回答以及您看過哪幾個選配指引章節。",
         )
 

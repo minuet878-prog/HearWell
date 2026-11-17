@@ -26,6 +26,7 @@ from screening.api.serializers import (
 from screening.models import (
     Answer,
     Audiogram,
+    AudiogramEntry,
     AudiogramPoint,
     Question,
     Questionnaire,
@@ -173,6 +174,7 @@ class GuestScoreThrottle(SimpleRateThrottle):
         return self.cache_format % {"scope": self.scope, "ident": self.get_ident(request)}
 
 
+IMPORTED_STAYS = "從 iPhone 匯入的聽力圖不能修改，可以刪掉重新匯入"
 GUEST_LIMIT = "剛才做了很多次，請過一小時再試。您的作答沒有不見。"
 
 
@@ -341,6 +343,9 @@ class AudiogramDetail(RetrieveAPIView):
         # The whole audiogram is replaced, so sending it twice changes nothing more: no receipt
         # number needed. Same validation as creating one.
         audiogram = self.get_object()
+        # Spec #702 acceptance 13: one imported from Apple's PDF stays as it was read.
+        if audiogram.entry == AudiogramEntry.APPLE_PDF:
+            return Response({"detail": IMPORTED_STAYS}, status.HTTP_400_BAD_REQUEST)
         serializer = AudiogramCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         _replace_audiogram(audiogram, serializer.validated_data)

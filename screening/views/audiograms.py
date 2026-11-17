@@ -2,12 +2,15 @@ from urllib.parse import urlsplit
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core import signing
+from django.db import transaction
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import Resolver404, resolve
 from django.utils import timezone
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 
+from screening.apple_hearing_test import MAX_BYTES, CannotRead, read
 from screening.audiogram import (
     SPEECH_BANANA,
     SPEECH_BANANA_CHECKED_ON,
@@ -18,7 +21,14 @@ from screening.audiogram import (
     speech_banana,
 )
 from screening.audiogram_thumbnail import thumbnail
-from screening.models import Ear
+from screening.models import (
+    Audiogram,
+    AudiogramEntry,
+    AudiogramPoint,
+    AudiogramSource,
+    Conduction,
+    Ear,
+)
 from screening.views.common import RECENT_SHOWN, health_data_page, older_fold, safe_next
 
 
@@ -75,6 +85,102 @@ def way_back(request):
     except Resolver404:
         return None
     return (WAYS_BACK[name], next_url) if name in WAYS_BACK else None
+
+
+# Spec #702 (#703 mockup 2A): the steps in 「健康」, then back here for the file.
+IMPORT_STEPS = (
+    "打開「健康」app，點下面的「瀏覽」",
+    "點「聽力」",
+    "點「聽力測試結果」，選要匯入的那一次",
+    "往下滑，點「輸出 PDF」",
+    "點分享，選「儲存到檔案」",
+    "回到這裡，選剛剛存的 PDF",
+)
+IMPORT_SALT = "screening.audiogram_import"
+# The preview's reading is signed for this person and kept good this long (spec #702).
+IMPORT_GOOD_FOR = 30 * 60
+
+
+@login_required
+@health_data_page
+@require_http_methods(["GET", "POST"])
+def audiogram_import(request):
+    """從 iPhone 匯入: the steps and the file; a readable PDF opens its preview (spec #702). The
+    PDF is read in memory and dropped, so its name and birthday are never kept."""
+    if request.method == "GET":
+        return _import_page(request)
+    upload = request.FILES.get("pdf")
+    try:
+        test = read(upload.read(MAX_BYTES + 1) if upload else b"")
+    except CannotRead:
+        return _import_page(request, unreadable=True)
+    points = [
+        AudiogramPoint(
+            ear=p["ear"], conduction=Conduction.AIR, frequency=p["frequency"], db=p["db"]
+        )
+        for p in test.points
+    ]
+    reading = {
+        "user": request.user.pk,
+        "tested_on": test.tested_on.isoformat(),
+        "points": test.points,
+    }
+    return render(
+        request,
+        "screening/audiogram_import_preview.html",
+        {
+            "tested_on": test.tested_on,
+            "chart_points": _chart_points(points),
+            "rows": [
+                (right.frequency, right.db, left.db)
+                for right, left in zip(*_by_ear(points), strict=True)
+            ],
+            "reading": signing.dumps(reading, salt=IMPORT_SALT),
+        },
+    )
+
+
+def _by_ear(points):
+    """Right ear's points, then left's, each in frequency order."""
+    return [
+        sorted((p for p in points if p.ear == ear), key=lambda p: p.frequency)
+        for ear in (Ear.RIGHT, Ear.LEFT)
+    ]
+
+
+def _import_page(request, unreadable=False):
+    return render(
+        request,
+        "screening/audiogram_import.html",
+        {"steps": IMPORT_STEPS, "unreadable": unreadable},
+    )
+
+
+@login_required
+@health_data_page
+@require_POST
+def audiogram_import_save(request):
+    """存下來: the reading the preview showed, as a self test imported from Apple's PDF."""
+    try:
+        reading = signing.loads(
+            request.POST.get("reading", ""), salt=IMPORT_SALT, max_age=IMPORT_GOOD_FOR
+        )
+    except signing.BadSignature:
+        return redirect("audiogram_import")
+    if reading["user"] != request.user.pk:
+        return redirect("audiogram_import")
+    with transaction.atomic():
+        audiogram = Audiogram.objects.create(
+            user=request.user,
+            tested_on=reading["tested_on"],
+            source=AudiogramSource.SELF_TEST,
+            entry=AudiogramEntry.APPLE_PDF,
+        )
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, conduction=Conduction.AIR, **point)
+            for point in reading["points"]
+        )
+    return redirect("audiogram_detail", audiogram.id)
 
 
 def _own_audiogram(request, audiogram_id):
@@ -166,6 +272,9 @@ def audiogram_delete(request, audiogram_id):
 @health_data_page
 def audiogram_edit(request, audiogram_id):
     audiogram = _own_audiogram(request, audiogram_id)
+    # Spec #702 acceptance 13: one imported from Apple's PDF is never edited.
+    if audiogram.entry == AudiogramEntry.APPLE_PDF:
+        raise Http404
     initial = {
         "tested_on": audiogram.tested_on.isoformat(),
         "source": audiogram.source,
