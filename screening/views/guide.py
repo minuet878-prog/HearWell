@@ -219,17 +219,24 @@ def _percent(ratio):
 
 
 def _guide_audiogram(state):
-    # The latest audiogram's 選配 and 身障鑑定門檻 meters (#226, #227, #260, ADR 0017).
-    estimate = state.threshold
-    ears = [(ear.label, ear.value, estimate[ear.value]) for ear in (Ear.RIGHT, Ear.LEFT)]
+    # The latest audiogram's 選配 meters, and the 身障鑑定門檻's from the newest hearing exam
+    # (#226, #227, #260, ADR 0017, 0068).
+    latest = state.threshold
+    ears = [(ear.label, ear.value, latest[ear.value]) for ear in (Ear.RIGHT, Ear.LEFT)]
+    estimate = state.assessment
     context = {
         "audiogram": state.audiogram,
         "ears": ears,
-        "threshold": estimate,
+        "threshold": latest,
+        "assessment": estimate,
+        "assessment_exam": state.assessment_exam,
+        # The estimate's exam is older than the page's audiogram, a newer self test (#706).
+        "older_exam": state.assessment_exam not in (None, state.audiogram),
     }
-    if estimate["ratio"] is not None:
+    if estimate is not None and estimate["ratio"] is not None:
+        assessed = [(label, estimate[side]) for label, side, _ in ears]
         context["worked"] = {
-            "ears": [(label, e["pta"], _percent(e["ratio"])) for label, _, e in ears],
+            "ears": [(label, e["pta"], _percent(e["ratio"])) for label, e in assessed],
             "better": _percent(estimate["better"]),
             "worse": _percent(estimate["worse"]),
         }
@@ -428,8 +435,8 @@ def _route_stop(state, user, slug, title, url, edit=None, question=None):
     if (
         slug == "assessment"
         and slug not in state.done
-        and state.threshold
-        and state.threshold["status"] == "not_reached"
+        and state.assessment
+        and state.assessment["status"] == "not_reached"
     ):
         marks.append("估算未達門檻")
         links.append(without_certificate)

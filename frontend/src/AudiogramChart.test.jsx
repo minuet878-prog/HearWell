@@ -92,3 +92,26 @@ it("without oldPoints nothing extra is drawn", () => {
   );
   expect(container.querySelector(".audiogram-old")).toBeNull();
 });
+
+// Spec #702 (#703 mockup 7A): Apple's values are 1 dB apart and may be below -10; the chart grows
+// a row up to -20 only when one is, and every other chart stays as on a clinic's report.
+it("grows up to -20 only for a point below -10, and draws 1 dB values where they fall", () => {
+  const air = (frequency, db) => ({ ear: "right", conduction: "air", frequency, db, no_response: false });
+  const grid = (container) => [...container.querySelectorAll("svg text")].map((t) => t.textContent);
+  const { container } = render(<AudiogramChart points={[air(1000, 9), air(8000, -14)]} />);
+  const svg = container.querySelector("svg");
+  const row = y(-10) - y(-20);
+  expect(svg.getAttribute("viewBox")).toBe(`0 ${-row} ${CHART.width} ${CHART.height + row}`);
+  expect(grid(container)).toContain("-20");
+  const circle = (key) => container.querySelector(`[data-point="${key}"] circle`);
+  expect(Number(circle("right-air-1000").getAttribute("cy"))).toBe(y(9));
+  expect(Number(circle("right-air-8000").getAttribute("cy"))).toBe(y(-14));
+  // The frame and the frequency numbers move up with it.
+  expect(Number(container.querySelector(".audiogram-frame").getAttribute("y"))).toBe(y(-20));
+  cleanup();
+
+  const { container: usual } = render(<AudiogramChart points={[air(1000, 9), air(8000, -10)]} />);
+  expect(usual.querySelector("svg").getAttribute("viewBox")).toBe(`0 0 ${CHART.width} ${CHART.height}`);
+  expect(grid(usual)).not.toContain("-20");
+  expect(Number(usual.querySelector(".audiogram-frame").getAttribute("y"))).toBe(CHART.top);
+});

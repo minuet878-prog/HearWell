@@ -1303,6 +1303,22 @@
     color: var(--color-body);
   }
 
+  /* Spec #702 (#703 mockup 6A): an audiogram someone tested themself. Grey and framed thin, not a
+     level's colours (ADR 0007), so it never reads as a degree; 1rem like other reading text. */
+  .source-tag {
+    display: inline-block;
+    padding: 0 0.375rem;
+    border: 1.5px solid var(--color-border-strong);
+    border-radius: var(--radius-badge);
+    background-color: #fff;
+    color: var(--color-muted);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.5;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+
   /* Clickable card, E (#454, ADR 0043): a row of a list, the whole row one link, parted from the
      next by a thin line; a pale blue round icon in front (where it has one), the title in the
      heading colour and a blue arrow at the end. The first row of a run, or of a list of them,
@@ -4224,6 +4240,38 @@
   .care-drawing text { fill: var(--color-primary); stroke: none; font-weight: 700; }
   /* 看動作 (#519, the #520 mockup's B): wear-motion.js puts it under a drawing that moves. */
   .care-motion-play { margin-bottom: 0.5rem; }
+
+  /* #709 (the owner's mockup A, after Age UK East London's NHS App guide): each 從 iPhone 匯入
+     step's phone in the site's blue lines, the screen in pale blocks, the place to tap framed
+     thick with a fingertip under it. Its words are only a picture's: the step says them. */
+  .import-drawing {
+    display: block;
+    width: 100%;
+    max-width: 12rem;
+    height: auto;
+    margin-top: 0.5rem;
+  }
+
+  .import-drawing * {
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .import-drawing .frame,
+  .import-drawing .field { fill: #fff; }
+  .import-drawing .soft { fill: var(--color-pull); stroke: none; }
+  .import-drawing .dot { fill: #fff; stroke-width: 1.6; }
+  .import-drawing .sheet { fill: #fff; stroke-width: 1.6; }
+  .import-drawing .thin { stroke-width: 1.6; }
+  .import-drawing .tap { stroke-width: 4; }
+  .import-drawing .finger { fill: #fff; }
+  .import-drawing text { stroke: none; fill: var(--color-primary); font-family: inherit; }
+  .import-drawing .strong { font-weight: 700; }
+  .import-drawing .dim { fill: var(--color-muted); }
 
   /* 怎麼戴上、拿下's 戴上 and 拿下 (the #503 mockup A): a title over each group of steps, the
      squeal sentence in a grey box between them, and a link under a step lined up with its words

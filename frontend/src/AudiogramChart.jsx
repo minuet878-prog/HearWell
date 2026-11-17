@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { AIR_FREQUENCIES, CHART, levelAt, nearestFrequency, pointKey, x, y } from "./audiogram.js";
+import { AIR_FREQUENCIES, CHART, DB_MIN, chartTop, levelAt, nearestFrequency, pointKey, x, y } from "./audiogram.js";
 import AudiogramGrid from "./AudiogramGrid.jsx";
 
 const COLORS = { right: "#c0392b", left: "#1f4e8c" };
@@ -122,11 +122,14 @@ export default function AudiogramChart({ points, oldPoints, symbol, masked = fal
     return () => chart.removeEventListener("touchmove", stopScroll);
   }, [marking]);
 
+  // Spec #702 (#703 mockup 7A): one more row on top, up to -20, when a point is below -10.
+  const top = chartTop([...points, ...(oldPoints ?? [])]);
+  const rise = y(DB_MIN) - y(top);
   const toChart = (event) => {
     const box = svg.current.getBoundingClientRect();
     return {
       px: ((event.clientX - box.left) * CHART.width) / box.width,
-      py: ((event.clientY - box.top) * CHART.height) / box.height,
+      py: ((event.clientY - box.top) * (CHART.height + rise)) / box.height - rise,
     };
   };
   // The point under the finger, as a marked point is shaped.
@@ -191,7 +194,7 @@ export default function AudiogramChart({ points, oldPoints, symbol, masked = fal
     <div className="audiogram-plot">
       <svg
         ref={svg}
-        viewBox={`0 0 ${CHART.width} ${CHART.height}`}
+        viewBox={`0 ${-rise} ${CHART.width} ${CHART.height + rise}`}
         role="img"
         aria-label={symbol ? "聽力圖（用手指按住拖曳標記；鍵盤請用下方的數值表）" : label}
         className="audiogram-svg"
@@ -199,9 +202,9 @@ export default function AudiogramChart({ points, oldPoints, symbol, masked = fal
         onClick={onTap && ((event) => onTap(toChart(event)))}
         {...handlers}
       >
-        <AudiogramGrid normalBand={normalBand} />
+        <AudiogramGrid from={top} normalBand={normalBand} />
         {behind}
-        <rect className="audiogram-frame" x={CHART.left} y={CHART.top} width={CHART.right - CHART.left} height={CHART.bottom - CHART.top} fill="none" stroke="#555" />
+        <rect className="audiogram-frame" x={CHART.left} y={y(top)} width={CHART.right - CHART.left} height={CHART.bottom - y(top)} fill="none" stroke="#555" />
         {oldPoints && <Layer points={oldPoints} old />}
         <Layer points={shown} />
       </svg>

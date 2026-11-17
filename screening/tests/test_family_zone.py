@@ -665,12 +665,17 @@ class ReviewedPagesTests(SimpleTestCase):
                 "<li>寄信服務和重設密碼信一樣",
                 "<li>您打開 email 重測提醒時",
                 "<li>您有沒有打開 email 重測提醒",
+                # Spec #702's 從 iPhone 匯入 in the health data line (the version stays 8); the
+                # owner picked the words on 2026-11-17.
+                "<li>健康資料：每一次篩檢問卷的作答和分數",
             ),
             # #471 (the #470 mockup B) folded each part into a row and dropped the 這一頁的段落
             # list; the visible words are the same as main's apart from that list's title.
             # #526 and spec #505, #506, #633, #656 added the tags of the 忘記密碼時,
-            # 用 Google 登入時, 用 LINE 登入時, 意見回饋 and email 重測提醒 rows.
-            "22d555d10a8c4270216661e5de8f34a03c868ddc0bcbbe90c2e0747b5e355995",
+            # 用 Google 登入時, 用 LINE 登入時, 意見回饋 and email 重測提醒 rows. Spec #702 let
+            # the health data line change: the page hashes the same on main and after it
+            # without that line.
+            "4e1bc201e1caa22f2813aa5d4a84c4d182f5c6f2443f8f64b910bc85dfc02f8f",
         ),
     )
 

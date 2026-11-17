@@ -184,6 +184,42 @@ class HealthReportTests(TestCase):
         self.assertIn("35 dB HL", audiogram)
         self.assertIn("輕度", audiogram)
 
+    def test_a_self_test_is_tagged_on_the_report_and_its_shared_copy(self):
+        """Spec #702 acceptance 19 (#703 mockup 6A): the summary line, the row and the section
+        title say 自我測試 in the grey tag, and the section calls it the test date."""
+        audiogram = self._audiogram(
+            self.user, date(2026, 9, 28), right_air=(40, 45, 50, 45), left_air=(30, 35, 40, 35)
+        )
+        Audiogram.objects.filter(pk=audiogram.pk).update(source="self_test")
+        tag = '<span class="source-tag">自我測試</span>'
+        share = ReportShare.objects.create(user=self.user)
+        owner = self.client.get(self.url).content.decode()
+        self.client.logout()
+        family = self.client.get(reverse("shared_report", args=[share.token])).content.decode()
+        for name, content in (("owner", owner), ("family", family)):
+            with self.subTest(name):
+                summary = _section(content, "report-summary")
+                self.assertRegex(summary, rf"<li>聽力圖（2026/09/28）\s*{tag}：")
+                self.assertRegex(content, rf'report-fold-title">聽力圖（2026/09/28）\s*{tag}</h2>')
+                section = _section(content, "report-audiogram")
+                self.assertRegex(section, rf"聽力圖（測試日期 2026/09/28）\s*{tag}</h2>")
+        # The family's copy opens on 先看重點: the audiogram's line there carries the tag too.
+        highlights = _section(family, "family-highlights")
+        self.assertRegex(highlights, rf"聽力圖（2026/09/28）\s*{tag}")
+
+    def test_an_exam_is_not_tagged_on_the_report(self):
+        self._audiogram(
+            self.user, date(2026, 9, 28), right_air=(40, 45, 50, 45), left_air=(30, 35, 40, 35)
+        )
+        share = ReportShare.objects.create(user=self.user)
+        owner = self.client.get(self.url).content.decode()
+        self.client.logout()
+        family = self.client.get(reverse("shared_report", args=[share.token])).content.decode()
+        for name, content in (("owner", owner), ("family", family)):
+            with self.subTest(name):
+                self.assertNotIn("source-tag", content)
+                self.assertIn("聽力圖（檢查日期 2026/09/28）</h2>", content)
+
     # phase9_ui_refresh_4d_ioi_ha_items.md acceptance 6a: notes stay on the result page
     def test_ioi_ha_notes_not_in_report(self):
         self._full_records()  # item 2 is below the norm

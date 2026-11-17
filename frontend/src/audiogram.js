@@ -4,6 +4,10 @@
 export const AIR_FREQUENCIES = [250, 500, 1000, 2000, 3000, 4000, 6000, 8000];
 export const BONE_FREQUENCIES = [500, 1000, 2000, 4000];
 export const DB_MIN = -10;
+// Spec #702 (#703 mockup 7A): Apple's Health PDF goes down to -20; a chart holding such a point
+// grows one row up to it, every other chart starts at DB_MIN as a clinic's report does.
+export const APPLE_DB_MIN = -20;
+export const chartTop = (points) => (points.some((p) => p.db < DB_MIN) ? APPLE_DB_MIN : DB_MIN);
 // A no-response point sits at its conduction's maximum.
 export const DB_MAX = { air: 120, bone: 80 };
 const STEP = 5;

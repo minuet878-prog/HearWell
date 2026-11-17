@@ -64,13 +64,20 @@ const point = (key) => chart().querySelector(`[data-point="${key}"]`);
 const magnifier = () => document.querySelector(".audiogram-magnifier");
 const select = (name) => screen.getByRole("combobox", { name });
 // The 2026-11-14 walkthrough (mockup 12A): the date is typed as on a report, 民國 year, month, day.
-const dateGroup = () => screen.queryByRole("group", { name: "檢查日期" });
+const dateGroup = () => screen.queryByRole("group", { name: "日期" });
+// Spec #702 (#703 mockup 5A): which kind it is, asked on the first step with the date.
+const kindGroup = () => screen.queryByRole("group", { name: "這是哪一種？" });
+const EXAM = "聽力檢查（醫院、診所、聽力所）";
+const SELF_TEST = "自我測試（手機、耳機、App）";
+const pickKind = (label) => fireEvent.click(screen.getByRole("radio", { name: label }));
 const typeDate = (year, month, day) => {
   fireEvent.change(screen.getByLabelText("民國年"), { target: { value: year } });
   fireEvent.change(screen.getByLabelText("月"), { target: { value: month } });
   fireEvent.change(screen.getByLabelText("日"), { target: { value: day } });
 };
+// The first step as most tests fill it: an exam on that date.
 const setDate = (iso) => {
+  pickKind(EXAM);
   const [year, month, day] = iso.split("-").map(Number);
   typeDate(String(year - 1911), String(month), String(day));
 };
@@ -424,7 +431,7 @@ describe("masking", () => {
 describe("steps", () => {
   it("each step shows only what it needs (#199 acceptance 1)", () => {
     renderApp();
-    expect(progress()).toBe("第 1 步／共 4 步：檢查日期");
+    expect(progress()).toBe("第 1 步／共 4 步：哪一種、哪一天");
     expect(dateGroup()).toBeTruthy();
     expect(screen.queryByRole("img", { name: /聽力圖/ })).toBeNull();
     expect(document.querySelectorAll(".step-progress-segment")).toHaveLength(4);
@@ -507,7 +514,7 @@ describe("steps", () => {
     drag(1000, 40, 40);
     forward();
     const main = document.querySelector(".audiogram-app");
-    expect(main.textContent).toContain("檢查日期：2026/10/01");
+    expect(main.textContent).toContain("日期：2026/10/01");
     expect(screen.getByText("右耳：還沒有標任何點")).toBeTruthy();
     expect(screen.getByText("左耳：氣導 0 個、骨導 1 個")).toBeTruthy();
     // One read-only chart with both ears; no symbol to mark with.
@@ -537,7 +544,67 @@ describe("steps", () => {
     expect(progress()).toBe("第 3 步／共 4 步：標左耳");
     forward();
     fireEvent.click(screen.getByRole("button", { name: "改日期" }));
-    expect(progress()).toBe("第 1 步／共 4 步：檢查日期");
+    expect(progress()).toBe("第 1 步／共 4 步：哪一種、哪一天");
+  });
+});
+
+describe("which kind (spec #702)", () => {
+  const sent = () => JSON.parse(fetch.mock.calls[0][1].body);
+
+  it("asks on the first step with the date, nothing chosen (acceptance 11, mockup 5A)", () => {
+    renderApp();
+    expect(progress()).toBe("第 1 步／共 4 步：哪一種、哪一天");
+    expect(kindGroup()).toBeTruthy();
+    const radios = screen.getAllByRole("radio");
+    expect(radios.map((r) => r.labels[0].textContent)).toEqual([EXAM, SELF_TEST]);
+    expect(radios.every((r) => !r.checked)).toBe(true);
+    expect(dateGroup()).toBeTruthy();
+    forward();
+    expect(kindGroup()).toBeNull();
+  });
+
+  it("will not save until one is chosen (acceptance 11)", async () => {
+    renderApp();
+    typeDate("115", "10", "1");
+    forward();
+    drag(1000, 40, 40);
+    confirmAndSave();
+    expect(screen.getByRole("alert").textContent).toContain("請選擇這是哪一種");
+    expect(fetch).not.toHaveBeenCalled();
+    expect(document.querySelector(".audiogram-app").textContent).toContain("哪一種：未選");
+  });
+
+  it("sends the chosen kind and shows it before saving (acceptance 11)", async () => {
+    renderApp();
+    pickKind(SELF_TEST);
+    typeDate("115", "10", "1");
+    forward();
+    drag(1000, 40, 40);
+    while (!screen.queryByRole("button", { name: "存檔" })) forward();
+    expect(document.querySelector(".audiogram-app").textContent).toContain("哪一種：自我測試");
+    save();
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    expect(sent().source).toBe("self_test");
+  });
+
+  it("修改 opens on the saved kind and can change it (acceptance 12)", async () => {
+    render(
+      <AudiogramApp
+        today={TODAY}
+        csrfToken="csrf-token"
+        navigate={navigate}
+        audiogramId={7}
+        initialPoints={[{ ear: "right", conduction: "air", frequency: 1000, db: 40, no_response: false, masked: false }]}
+        initialTestedOn="2026-01-10"
+        initialSource="exam"
+      />,
+    );
+    expect(screen.getByRole("radio", { name: EXAM }).checked).toBe(true);
+    pickKind(SELF_TEST);
+    confirmAndSave();
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    expect(fetch.mock.calls[0][1].method).toBe("PUT");
+    expect(sent().source).toBe("self_test");
   });
 });
 
@@ -579,6 +646,7 @@ describe("save", () => {
     // The same shape as before the steps (#199 acceptance 3).
     expect(sent()).toEqual({
       tested_on: "2026-10-01",
+      source: "exam",
       points: [
         { ear: "right", conduction: "air", frequency: 1000, db: 40, no_response: false, masked: false },
         { ear: "left", conduction: "bone", frequency: 1000, db: 80, no_response: true, masked: false },
@@ -632,6 +700,7 @@ describe("save", () => {
     for (const name of ["民國年", "月", "日"]) {
       expect(screen.getByLabelText(name).getAttribute("inputmode")).toBe("numeric");
     }
+    pickKind(EXAM);
     typeDate("115", "10", "1");
     forward();
     drag(1000, 40, 40);
@@ -739,13 +808,14 @@ describe("edit", () => {
         audiogramId={7}
         initialPoints={SAVED}
         initialTestedOn="2026-01-10"
+        initialSource="exam"
       />,
     );
   const sent = () => JSON.parse(fetch.mock.calls[0][1].body);
 
   it("opens with the saved points and date, in four steps (acceptance 1, #200 acceptance 2)", () => {
     renderEdit();
-    expect(progress()).toBe("第 1 步／共 4 步：檢查日期");
+    expect(progress()).toBe("第 1 步／共 4 步：哪一種、哪一天");
     expect(screen.getByLabelText("民國年").value).toBe("115");
     expect(screen.getByLabelText("月").value).toBe("1");
     expect(screen.getByLabelText("日").value).toBe("10");
@@ -787,6 +857,7 @@ describe("edit", () => {
     expect(options.headers["Idempotency-Key"]).toBeUndefined();
     expect(sent()).toEqual({
       tested_on: "2026-01-12",
+      source: "exam",
       points: [{ ear: "right", conduction: "air", frequency: 1000, db: 60, no_response: false, masked: false }],
     });
   });
@@ -942,7 +1013,7 @@ describe("field names (#354)", () => {
       forward();
       collect();
     }
-    expect(names).toContain("檢查日期");
+    expect(names).toContain("日期");
     expect(names.filter((name) => /[：:]$/.test(name))).toEqual([]);
   });
 });
@@ -1075,6 +1146,7 @@ describe("missed marks on the confirm step (#619)", () => {
         audiogramId={7}
         initialPoints={initialPoints}
         initialTestedOn="2026-01-10"
+        initialSource="exam"
       />,
     );
     forward();
@@ -1169,7 +1241,7 @@ describe("Enter in the date (#616)", () => {
     expect(document.activeElement).toBe(part("日"));
     expect(enter("日")).toBe(true);
     expect(document.activeElement).toBe(part("日"));
-    expect(progress()).toBe("第 1 步／共 4 步：檢查日期");
+    expect(progress()).toBe("第 1 步／共 4 步：哪一種、哪一天");
   });
 
   it("leaves the Enter that picks a character alone", () => {

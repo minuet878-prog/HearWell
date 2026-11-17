@@ -17,6 +17,7 @@ from screening.models import (
     Answer,
     Audiogram,
     AudiogramPoint,
+    AudiogramSource,
     Conduction,
     Ear,
     Question,
@@ -375,7 +376,7 @@ class AudiogramSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Audiogram
-        fields = ("id", "tested_on", "created_at", "points", "interpretation")
+        fields = ("id", "tested_on", "source", "entry", "created_at", "points", "interpretation")
 
 
 FREQUENCIES = {Conduction.AIR: AIR_FREQUENCIES, Conduction.BONE: BONE_FREQUENCIES}
@@ -402,9 +403,19 @@ class AudiogramPointInputSerializer(serializers.Serializer):
 
 class AudiogramCreateSerializer(serializers.Serializer):
     DATE_REQUIRED = "請填寫檢查日期"
+    SOURCE_REQUIRED = "請選擇這是哪一種"
 
     tested_on = serializers.DateField(
         error_messages={"required": DATE_REQUIRED, "null": DATE_REQUIRED}
+    )
+    # Spec #702 acceptance 11: asked when marking, nothing chosen for you.
+    source = serializers.ChoiceField(
+        choices=AudiogramSource.choices,
+        error_messages={
+            "required": SOURCE_REQUIRED,
+            "null": SOURCE_REQUIRED,
+            "invalid_choice": SOURCE_REQUIRED,
+        },
     )
     points = serializers.ListField(
         child=AudiogramPointInputSerializer(),

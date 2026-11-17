@@ -7,7 +7,7 @@ what the points mean is in screening.audiogram (rule 9), whose ranges this reuse
 
 import math
 
-from screening.audiogram import AIR_FREQUENCIES, DB_MAX, DB_MIN, NORMAL_LIMIT
+from screening.audiogram import AIR_FREQUENCIES, APPLE_DB_MIN, DB_MAX, DB_MIN, NORMAL_LIMIT
 
 WIDTH, HEIGHT, MARGIN = 120, 90, 4
 DB_TOP, DB_BOTTOM = DB_MIN, DB_MAX["air"]
@@ -21,12 +21,12 @@ def _x(frequency):
     return round(MARGIN + octaves / span * (WIDTH - 2 * MARGIN), 1)
 
 
-def _y(db):
-    # Worse hearing further down, as on every audiogram.
-    return round(MARGIN + (db - DB_TOP) / (DB_BOTTOM - DB_TOP) * (HEIGHT - 2 * MARGIN), 1)
+def _y(db, top=DB_TOP):
+    # Worse hearing further down, as on every audiogram. top: -20 for an Apple test below -10.
+    return round(MARGIN + (db - top) / (DB_BOTTOM - top) * (HEIGHT - 2 * MARGIN), 1)
 
 
-def _lines(air, ear):
+def _lines(air, ear, top):
     # Same rule as the full chart's airLines: frequency order, missing frequencies skipped,
     # a no-response point breaks the line, single points get no line.
     pieces = [[]]
@@ -39,7 +39,7 @@ def _lines(air, ear):
         else:
             pieces[-1].append(point)
     return [
-        {"ear": ear, "points": " ".join(f"{_x(p.frequency)},{_y(p.db)}" for p in piece)}
+        {"ear": ear, "points": " ".join(f"{_x(p.frequency)},{_y(p.db, top)}" for p in piece)}
         for piece in pieces
         if len(piece) > 1
     ]
@@ -47,8 +47,10 @@ def _lines(air, ear):
 
 def thumbnail(points):
     air = {(p.ear, p.frequency): p for p in points if p.conduction == "air"}
+    # Spec #702 (#703 mockup 7A): as the full chart, one row more when a point is below -10.
+    top = APPLE_DB_MIN if any(p.db < DB_MIN for p in air.values()) else DB_TOP
     marks = [
-        {"ear": ear, "x": _x(frequency), "y": _y(air[(ear, frequency)].db)}
+        {"ear": ear, "x": _x(frequency), "y": _y(air[(ear, frequency)].db, top)}
         for ear in ("right", "left")
         for frequency in AIR_FREQUENCIES
         if (ear, frequency) in air
@@ -56,14 +58,14 @@ def thumbnail(points):
     return {
         "width": WIDTH,
         "height": HEIGHT,
-        "lines": _lines(air, "right") + _lines(air, "left"),
+        "lines": _lines(air, "right", top) + _lines(air, "left", top),
         "marks": marks,
-        "grid": [_y(db) for db in range(0, DB_BOTTOM + 1, GRID_STEP)],
+        "grid": [_y(db, top) for db in range(0, DB_BOTTOM + 1, GRID_STEP)],
         "normal": {
             "x": MARGIN,
-            "y": _y(DB_TOP),
+            "y": _y(top, top),
             "width": WIDTH - 2 * MARGIN,
-            "height": round(_y(NORMAL_LIMIT) - _y(DB_TOP), 1),
+            "height": round(_y(NORMAL_LIMIT, top) - _y(top, top), 1),
         },
         "left_edge": MARGIN,
         "right_edge": WIDTH - MARGIN,

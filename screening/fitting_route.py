@@ -12,7 +12,15 @@ from screening.audiogram import (
     fitting_advice,
     readable_for_aid_wearer,
 )
-from screening.models import AidAndSubsidy, AidLevel, Audiogram, Certificate, Submission, Subsidy
+from screening.models import (
+    AidAndSubsidy,
+    AidLevel,
+    Audiogram,
+    AudiogramSource,
+    Certificate,
+    Submission,
+    Subsidy,
+)
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 
 # The route's first stop, recording an audiogram; the other stops are the guide's chapters,
@@ -74,7 +82,9 @@ class FittingState:
     audiogram: Audiogram | None  # the newest audiogram, its points prefetched
     wearing: bool
     advice: FittingAdvice | None  # 建議評估選配 (fitting_advice); None without an audiogram
-    threshold: dict | None  # assessment_estimate, without an audiogram None
+    # assessment_estimate of the newest audiogram, for its ears' 四頻平均 on the 選配 meters;
+    # the 身障鑑定門檻 reads `assessment` (an exam's). Without an audiogram None.
+    threshold: dict | None
     # 資料不足: the latest audiogram cannot tell whether to suggest an assessment. Shown even
     # when another stop comes first (wearing), but then it is not the 目前這一站.
     insufficient: bool
@@ -87,6 +97,10 @@ class FittingState:
     # waits until the user starts on a stop; the 照顧旅程's 目前不需要 is part of it (ADR 0067).
     waiting: bool
     subsidy_shown: bool  # the 補助站 on the route (subsidy_stops_shown)
+    # 身障鑑定門檻 (ADR 0017) from the newest hearing exam only (ADR 0068): its estimate and
+    # the exam, or both None when there is no exam (a self test alone estimates nothing).
+    assessment: dict | None
+    assessment_exam: Audiogram | None
 
     @property
     def stops(self):
@@ -170,6 +184,13 @@ def fitting_state(user, today):
             insufficient = not readable_for_aid_wearer(points)
         else:
             insufficient = advice == FittingAdvice.UNKNOWN
+    # ADR 0068: a self test estimates no 身障鑑定; the newest exam does, the newest audiogram
+    # or an older one.
+    exam = audiogram
+    if audiogram is not None and audiogram.is_self_test:
+        exams = user.audiograms.filter(source=AudiogramSource.EXAM).prefetch_related("points")
+        exam = exams.first()
+    assessment = assessment_estimate(list(exam.points.all())) if exam is not None else None
     viewed = set(user.guide_views.values_list("chapter", flat=True))
     done = viewed & DONE_BY_VIEWING
     if audiogram is not None and not insufficient:
@@ -211,6 +232,8 @@ def fitting_state(user, today):
         aid,
         waiting,
         shown,
+        assessment,
+        exam,
     )
 
 

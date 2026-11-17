@@ -138,6 +138,8 @@ class DownloadMyDataTests(TestCase):
         self.assertEqual(len(data["audiograms"]), 1)
         audiogram = data["audiograms"][0]
         self.assertEqual(audiogram["tested_on"], "2026-03-04")
+        # Spec #702 acceptance 21: each audiogram says who did the test and how it came in.
+        self.assertEqual((audiogram["source"], audiogram["entry"]), ("聽力檢查", "自己標"))
         self.assertTrue(audiogram["created_at"].endswith("+08:00"))
         self.assertCountEqual(
             audiogram["points"],
@@ -160,6 +162,13 @@ class DownloadMyDataTests(TestCase):
                 },
             ],
         )
+
+    def test_a_self_test_says_so(self):
+        """Spec #702 acceptance 21: a self test is named as one."""
+        self._audiogram(self.user)
+        Audiogram.objects.update(source="self_test")
+        audiogram = self._download()["audiograms"][0]
+        self.assertEqual((audiogram["source"], audiogram["entry"]), ("自我測試", "自己標"))
 
     # 2
     def test_contains_nothing_of_other_users(self):

@@ -3,3 +3,6 @@ django-debug-toolbar==8.0.0
 ruff==0.16.1
 playwright==1.64.0
 tblib==3.2.2
+# Test-only: draws the made-up Apple hearing test PDFs (spec #702).
+pillow==13.0.0
+reportlab==5.1.0

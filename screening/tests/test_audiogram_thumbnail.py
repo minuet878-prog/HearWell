@@ -39,6 +39,18 @@ class ThumbnailDrawingTests(TestCase):
         self.assertEqual([m["ear"] for m in drawing["marks"]], ["right"] * 3)
 
     # 3
+    def test_a_point_below_minus_ten_stays_inside(self):
+        """Spec #702 (#703 mockup 7A): an Apple test down to -20 grows the scale up to -20, so
+        its points stay in the drawing; one that stops at -10 draws as before."""
+        low = thumbnail([_point("right", 500, -20), _point("right", 1000, 30)])
+        self.assertEqual(min(mark["y"] for mark in low["marks"]), 4)  # MARGIN, the top edge
+        usual = thumbnail([_point("right", 500, -10), _point("right", 1000, 30)])
+        self.assertEqual(min(mark["y"] for mark in usual["marks"]), 4)
+        self.assertEqual(usual["marks"][1]["y"], _y(30))
+        # One row more on top: the same 30 dB sits a little lower in the drawing.
+        self.assertEqual(low["marks"][1]["y"], _y(30, top=-20))
+        self.assertGreater(low["marks"][1]["y"], usual["marks"][1]["y"])
+
     def test_left_ear_marked_and_bone_left_out(self):
         drawing = thumbnail(
             [

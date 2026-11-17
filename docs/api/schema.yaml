@@ -321,6 +321,10 @@ components:
         tested_on:
           type: string
           format: date
+        source:
+          $ref: '#/components/schemas/SourceEnum'
+        entry:
+          $ref: '#/components/schemas/EntryEnum'
         created_at:
           type: string
           format: date-time
@@ -343,12 +347,15 @@ components:
         tested_on:
           type: string
           format: date
+        source:
+          $ref: '#/components/schemas/SourceEnum'
         points:
           type: array
           items:
             $ref: '#/components/schemas/AudiogramPointInput'
       required:
       - points
+      - source
       - tested_on
     AudiogramPoint:
       type: object
@@ -443,6 +450,14 @@ components:
       - no_response
       - pta
       - type
+    EntryEnum:
+      enum:
+      - manual
+      - apple_pdf
+      type: string
+      description: |-
+        * `manual` - 自己標
+        * `apple_pdf` - Apple PDF 匯入
     GuestAnswers:
       type: object
       description: |-
@@ -707,6 +722,14 @@ components:
       - emotional
       - social
       - total
+    SourceEnum:
+      enum:
+      - exam
+      - self_test
+      type: string
+      description: |-
+        * `exam` - 聽力檢查
+        * `self_test` - 自我測試
     Submission:
       type: object
       properties:

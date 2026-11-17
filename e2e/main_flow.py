@@ -59,6 +59,7 @@ from screening.models import (
 )
 from screening.questionnaires.thi import SUPPORT_MESSAGE as THI_SUPPORT_MESSAGE
 from screening.tests import test_line_in_app_browser
+from screening.tests.apple_pdf import apple_pdf
 from screening.tests.helpers import (
     GOOGLE_AUTHORIZE,
     GOOGLE_CLIENT_ID,
@@ -119,7 +120,9 @@ def load_tests(loader, tests, pattern):
 
 
 def type_audiogram_date(main, year, month, day):
-    """The audiogram's date, typed as on a report (the 2026-11-14 walkthrough, mockup 12A)."""
+    """The first step as an exam (spec #702, #703 mockup 5A), its date typed as on a report (the
+    2026-11-14 walkthrough, mockup 12A)."""
+    main.get_by_label("聽力檢查（醫院、診所、聽力所）").check()
     main.get_by_label("民國年").fill(year)
     main.get_by_label("月", exact=True).fill(month)
     main.get_by_label("日", exact=True).fill(day)
@@ -2246,7 +2249,7 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/audiograms/new")
             main = self.main()
-            expect(main.get_by_text("第 1 步／共 4 步：檢查日期", exact=True)).to_be_visible()
+            expect(main.get_by_text("第 1 步／共 4 步：哪一種、哪一天", exact=True)).to_be_visible()
             type_audiogram_date(main, "115", "10", "1")
             main.get_by_role("button", name="下一步：標右耳", exact=True).click()
             for ear, button in (("右耳", "右耳標完了，換左耳"), ("左耳", "左耳標完了，確認存檔")):
@@ -2259,7 +2262,8 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                 count = f"{ear}已標：氣導 4 個、骨導 0 個"
                 expect(main.locator(".audiogram-count")).to_have_text(count)
                 main.get_by_role("button", name=button, exact=True).click()
-            expect(main.get_by_text("檢查日期：2026/10/01", exact=True)).to_be_visible()
+            expect(main.get_by_text("哪一種：聽力檢查", exact=True)).to_be_visible()
+            expect(main.get_by_text("日期：2026/10/01", exact=True)).to_be_visible()
             expect(main.get_by_text("右耳：氣導 4 個、骨導 0 個", exact=True)).to_be_visible()
             expect(main.get_by_text("中度")).to_have_count(0)
             main.get_by_role("button", name="存檔", exact=True).click()
@@ -2329,7 +2333,7 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
         self.open(320, 640)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/audiograms/new")
-            for step in ("檢查日期", "標右耳", "標左耳", "確認存檔"):
+            for step in ("哪一種、哪一天", "標右耳", "標左耳", "確認存檔"):
                 with self.subTest(step=step):
                     expect(self.main()).to_contain_text(f"共 4 步：{step}")
                     for summary in self.main().locator("details > summary").all():
@@ -7543,13 +7547,15 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             card = self.main().locator(".journey-card")
             self.assertEqual(self.style(card, "backgroundColor"), self.BLUE_SOFT)
             self.assertEqual(self.style(card, "boxShadow"), "none")
-            # The 2026-11-14 walkthrough (mockup 2A): its solid button, then 還沒 in outline.
+            # The 2026-11-14 walkthrough (mockup 2A): its solid button, then 還沒 in outline;
+            # spec #702 (#703 mockup 1C) put 從 iPhone 匯入 between them, outlined too.
             self.assertEqual(
                 self.style(card.locator("a.btn-primary"), "backgroundColor"), self.PRIMARY
             )
-            second = card.locator("a.btn-outline-primary")
-            expect(second).to_have_text("還沒，看要去哪裡檢查")
-            self.assertEqual(self.style(second, "backgroundColor"), "rgb(255, 255, 255)")
+            outlined = card.locator("a.btn-outline-primary")
+            expect(outlined).to_have_text(["從 iPhone 匯入", "還沒，看要去哪裡檢查"])
+            for button in outlined.all():
+                self.assertEqual(self.style(button, "backgroundColor"), "rgb(255, 255, 255)")
             tile = self.main().locator("a.journey-tile")
             self.assertEqual(self.style(tile, "boxShadow"), "none")
             arrow = tile.locator(".journey-tile-arrow")
@@ -15827,8 +15833,7 @@ class AudiogramMissedMarksTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
     def test_says_what_one_ear_is_missing_and_saves_as_usual(self):
         self.open("/audiograms/new")
         with self.saving_artifacts():
-            for name, value in (("民國年", "115"), ("月", "1"), ("日", "10")):
-                self.main().get_by_label(name, exact=True).fill(value)
+            type_audiogram_date(self.main(), "115", "1", "10")
             for _ in range(2):
                 self.main().get_by_role("button", name=AUDIOGRAM_FORWARD).click()
             # Acceptance 59: the same kind of box as 遮蔽's tip on the ear step.
@@ -16255,7 +16260,7 @@ class EnterNextFieldTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
             day.fill("1")
             day.press("Enter")
             expect(day).to_be_focused()
-            expect(self.main().get_by_text("第 1 步／共 4 步：檢查日期")).to_be_visible()
+            expect(self.main().get_by_text("第 1 步／共 4 步：哪一種、哪一天")).to_be_visible()
 
 
 class AnswerReassuranceTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
@@ -16874,6 +16879,40 @@ class NarrowOverflowsT668Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveS
                     self.double_text(on=False)
                     for side in ("paddingLeft", "paddingRight"):
                         self.assertEqual(self.style(block, side), "20.25px", f"{width}px")
+
+
+class AppleHearingTestImportTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Spec #702 (ticket #707): 從 iPhone 匯入 in a real browser, on a made-up PDF drawn like
+    「健康」's (screening/tests/apple_pdf.py): from the audiogram list to the preview, saved,
+    and its page; the steps and the preview fit a phone at 200% text."""
+
+    def setUp(self):
+        self.sign_in(consented_user(username="apple_import_e2e"))
+
+    def test_imports_a_pdf_and_opens_its_audiogram(self):
+        self.open("/audiograms", size=(320, 640))
+        with self.saving_artifacts():
+            self.main().get_by_role("link", name="從 iPhone 匯入", exact=True).click()
+            expect(self.main().get_by_role("heading", level=1)).to_have_text("從 iPhone 匯入")
+            self.assert_fits_a_phone_at_double_text_size("import steps")
+            self.double_text(on=False)
+            self.main().get_by_label("聽力測試的 PDF").set_input_files(
+                {"name": "聽力測試.pdf", "mimeType": "application/pdf", "buffer": apple_pdf()}
+            )
+            self.main().get_by_role("button", name="讀取這份 PDF", exact=True).click()
+            expect(self.main().get_by_text("要存進「apple_import_e2e」的紀錄")).to_be_visible()
+            expect(self.main().get_by_text("測試日期：2026/11/10")).to_be_visible()
+            # The chart is drawn, with all sixteen marks.
+            expect(self.main().locator("[data-point]")).to_have_count(16)
+            self.assert_fits_a_phone_at_double_text_size("import preview")
+            self.double_text(on=False)
+            self.main().get_by_role("button", name="存下來", exact=True).click()
+            expect(self.page).to_have_url(re.compile(r"/audiograms/\d+$"))
+            heading = self.main().get_by_role("heading", level=1)
+            expect(heading).to_have_text("2026/11/10 測試的聽力圖 自我測試")
+            expect(self.main().get_by_role("link", name="修改這張")).to_have_count(0)
+            audiogram = self.user.audiograms.get()
+            self.assertEqual((audiogram.source, audiogram.entry), ("self_test", "apple_pdf"))
 
 
 class ClinicCardArrivalTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):

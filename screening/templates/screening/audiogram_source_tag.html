@@ -1,0 +1,1 @@
+{# Spec #702 (#703 mockup 6A): a self test's grey tag, put right after its date; an exam has none. `audiogram`: the one to tag. #}{% if audiogram.is_self_test %}<span class="source-tag">{{ audiogram.get_source_display }}</span>{% endif %}

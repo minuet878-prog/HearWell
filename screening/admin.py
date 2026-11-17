@@ -5,6 +5,7 @@ from .models import (
     Answer,
     Feedback,
     GuestMonth,
+    ImportFailureMonth,
     Question,
     QuestionLog,
     QuestionLogMonth,
@@ -193,6 +194,18 @@ class GuestMonthAdmin(ViewOnlyAdmin):
         "clinic_family",
         "reminders_sent",  # spec #656 Q11
     )
+    ordering = ("-month",)
+
+    @admin.display(description="月份", ordering="month")
+    def month_label(self, counts):
+        return str(counts)
+
+
+@admin.register(ImportFailureMonth)
+class ImportFailureMonthAdmin(ViewOnlyAdmin):
+    # Spec #702 Q14 (#708): the owner reads which PDFs 從 iPhone 匯入 cannot read, to know what
+    # to support next.
+    list_display = ("month_label", "not_a_pdf", "not_apple", "layout", "cross_check")
     ordering = ("-month",)
 
     @admin.display(description="月份", ordering="month")
