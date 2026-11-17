@@ -4309,7 +4309,7 @@
   }
 
   /* #659 (the #657 mockup's C): the email 重測提醒 once on, a green line with its tick (the
-     success green, ADR 0007); when the retest is already due, a pale box asking for it now. */
+     success green, ADR 0007). */
   .reminder-on {
     display: flex;
     gap: 0.6rem;
@@ -4332,19 +4332,6 @@
     stroke-width: 2.5;
     stroke-linecap: round;
     stroke-linejoin: round;
-  }
-
-  .reminder-due {
-    margin: 0 0 0.5rem;
-    padding: 0.875rem 1rem;
-    border-radius: var(--radius-medium);
-    background-color: var(--color-surface);
-  }
-
-  .reminder-due-title {
-    margin: 0;
-    color: var(--color-heading);
-    font-weight: 700;
   }
 
   /* Spec #505 (the #507 mockup 5): a way to sign in a row, its mark in a circle on the left,
