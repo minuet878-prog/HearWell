@@ -2,12 +2,13 @@
 each landing on its card's page with the card's mark; the landing page counts the scan."""
 
 import re
+import threading
 from unittest.mock import patch
 
 import segno
 from django.conf import settings
 from django.db import connection
-from django.test import TestCase, override_settings
+from django.test import Client, TestCase, TransactionTestCase, override_settings
 from django.test.utils import CaptureQueriesContext
 
 from screening.models import GuestMonth, User
@@ -315,3 +316,31 @@ class CardWordsTests(TestCase):
             for part, text in words.items():
                 with self.subTest(card=card, part=part):
                     self.assertEqual(page.count(f'<p class="clinic-card-{part}">{text}</p>'), 10)
+
+
+class SimultaneousScanTests(TransactionTestCase):
+    """Acceptance 11 (cross review): two scans sent at the same moment, from two threads with
+    their own database connections, both count, even into a month with no row yet."""
+
+    def test_two_sent_at_once_both_count(self):
+        both_ready = threading.Barrier(2)
+        answers = []
+
+        def scan():
+            try:
+                both_ready.wait(timeout=5)
+                answers.append(
+                    Client()
+                    .post(GUEST_COUNTS, {"kind": "clinic_elder"}, content_type="application/json")
+                    .status_code
+                )
+            finally:
+                connection.close()
+
+        scans = [threading.Thread(target=scan) for _ in range(2)]
+        for each in scans:
+            each.start()
+        for each in scans:
+            each.join(timeout=10)
+        self.assertEqual(answers, [204, 204])
+        self.assertEqual(GuestMonth.objects.get().clinic_elder, 2)
