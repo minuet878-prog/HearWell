@@ -654,8 +654,9 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/family")
             entries = self.page.get_by_role("navigation", name="專區內容")
-            # #487: the hearing loss simulator's row first.
-            expect(entries.get_by_role("link")).to_have_count(5)
+            # #487: the hearing loss simulator's row; spec #655 (#675): the three family pages'
+            # group above it, so eight.
+            expect(entries.get_by_role("link")).to_have_count(8)
             for link in entries.get_by_role("link").all():
                 self.assertNotIn("#", link.get_attribute("href"))
             urgent = self.main().locator("section", has=self.page.locator("#urgent-title"))
@@ -4271,11 +4272,12 @@ class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
                 '[aria-current="page"]'
             )
             expect(current).to_have_text("了解")
-            # #469: rows to other pages (#487: the hearing loss simulator first, so five);
-            # readability batch 2 moved 陪伴配戴助聽器's fold row to the hearing aids page.
+            # #469: rows to other pages (#487: the hearing loss simulator); readability batch 2
+            # moved 陪伴配戴助聽器's fold row to the hearing aids page; spec #655 (#675) put the
+            # three family pages in a group of their own on top, so eight.
             zone = self.main().get_by_role("navigation", name="專區內容")
             entries = zone.get_by_role("link")
-            expect(entries).to_have_count(5)
+            expect(entries).to_have_count(8)
             expect(zone.locator("summary")).to_have_count(0)
             for entry in entries.all():
                 with self.subTest(entry=entry.inner_text()):
@@ -17508,20 +17510,29 @@ class FamilyDoorsAndSendTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
             self.page.wait_for_timeout(500)
             self.assertEqual(self.count("send_opened"), 1)
 
-    def test_the_reluctant_page_fits_a_phone_at_double_text_size(self):
+    # Acceptance 7 (#675) and the reluctant page with 傳給他 (#674).
+    PAGES = ("/family/reluctant", "/family/signs", "/family/loud-tv", "/family/huh")
+
+    def test_the_pages_with_send_to_him_fit_a_phone_at_double_text_size(self):
         self.open_context()
         with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/family/reluctant")
-            self.assert_fits_a_phone_at_double_text_size("reluctant", width=390)
+            for path in self.PAGES:
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    self.assert_fits_a_phone_at_double_text_size(path, width=390)
+                    self.double_text(on=False)
 
     def test_without_javascript_the_message_and_address_are_there_to_copy(self):
         # Acceptance 20.
         self.open_context(javascript=False)
         with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/family/reluctant")
-            box = self.main().locator(".send-to-him .tip-box")
-            expect(box).to_contain_text("分享你一個聽力自我篩檢")
-            expect(box).to_contain_text(f"{self.live_server_url}/questionnaire_list?via=send")
-            for name in ("傳給他做篩檢", "複製訊息"):
-                with self.subTest(name=name):
-                    expect(self.main().get_by_role("button", name=name)).to_be_hidden()
+            for path in self.PAGES:
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    box = self.main().locator(".send-to-him .tip-box")
+                    expect(box).to_contain_text("分享你一個聽力自我篩檢")
+                    expect(box).to_contain_text(
+                        f"{self.live_server_url}/questionnaire_list?via=send"
+                    )
+                    for name in ("傳給他做篩檢", "複製訊息"):
+                        expect(self.main().get_by_role("button", name=name)).to_be_hidden()

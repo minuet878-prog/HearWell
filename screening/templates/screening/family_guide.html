@@ -17,8 +17,37 @@
 
 {# #427 (spec #426): the zone's entries, comparison page option A. Only what is live has one. #469 (the #468 mockup A): list rows; 怎麼跟他說話 has a page of its own and 陪伴配戴助聽器 folds open in its row. #}
 <nav aria-label="專區內容">
+    {# Spec #655 (#675, the #669 mockup's 2 A, grill Q2): two groups under the owner's subheadings (#671): first the three pages for families not yet sure it is hearing, then the five rows for after. #}
+    <h2 class="h4 mt-6">先看看是不是聽力的問題</h2>
     <ul class="list-unstyled family-entries">
-        {# #487 (the #485 mockup ⑤): first, so the family hears it before reading how to talk. #}
+        <li><a class="link-card action-card" href="{% url 'family_signs' %}">
+            {% include "screening/action_icon.html" with icon="help" %}
+            <span class="link-card-body">
+                <span class="link-card-title">怎麼知道爸媽的聽力變差了</span>
+                <span>看電視、講電話、吃飯聊天時的情況</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a></li>
+        <li><a class="link-card action-card" href="{% url 'family_loud_tv' %}">
+            {% include "screening/action_icon.html" with icon="info" %}
+            <span class="link-card-body">
+                <span class="link-card-title">爸媽看電視開很大聲</span>
+                <span>為什麼會這樣、在家可以先試試</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a></li>
+        <li><a class="link-card action-card" href="{% url 'family_huh' %}">
+            {% include "screening/action_icon.html" with icon="question" %}
+            <span class="link-card-body">
+                <span class="link-card-title">他一直說「蛤」</span>
+                <span>為什麼聽得到、聽不清楚</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a></li>
+    </ul>
+    <h2 class="h4 mt-6">確定聽力不好之後</h2>
+    <ul class="list-unstyled family-entries">
+        {# #487 (the #485 mockup ⑤): first of its group, so the family hears it before reading how to talk. #}
         <li><a class="link-card action-card" href="{% url 'hearing_loss_simulator' %}">
             {% include "screening/action_icon.html" with icon="sound" %}
             <span class="link-card-body">

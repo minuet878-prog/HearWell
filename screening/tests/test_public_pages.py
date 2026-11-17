@@ -83,6 +83,10 @@ class PublicPageTests(TestCase):
             "/family/visits",
             "/family/visits/subsidy",
             "/family/visits/deadlines",
+            # Spec #655 (#675): the three family pages.
+            "/family/signs",
+            "/family/loud-tv",
+            "/family/huh",
             "/guide",
             "/qa",
         }

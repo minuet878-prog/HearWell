@@ -47,7 +47,8 @@ class ConfirmedWordingTests(TestCase):
     def test_each_page_in_the_table_shows_the_confirmed_title_and_description(self):
         # Spec #583 acceptance 14.
         pages = confirmed_pages()
-        self.assertEqual(len(pages), 23)  # A1–A5 (A5: spec #633), B1–B7, C1–C7, D1, D3–D5
+        # A1–A5 (A5: spec #633), B1–B10 (B8–B10: spec #655), C1–C7, D1, D3–D5.
+        self.assertEqual(len(pages), 26)
         for path, (title, description) in pages.items():
             with self.subTest(path=path):
                 self.assertEqual(head_of(self.client.get(path)), (title, description))
@@ -99,6 +100,10 @@ class PageHeadingTests(TestCase):
             "/family/visits": "陪診與代辦",
             "/family/visits/subsidy": "補助檢核",
             "/family/visits/deadlines": "期限試算",
+            # Spec #655 (#675): the three family pages' own headings (#671).
+            "/family/signs": "怎麼知道爸媽的聽力變差了",
+            "/family/loud-tv": "爸媽看電視開很大聲，怎麼辦？",
+            "/family/huh": "跟他講話，他一直說「蛤」？",
             "/guide": "助聽器選配與補助",
             "/guide/before-you-go": "去找聽力師之前",
             "/guide/assessment": "身障鑑定與鑑定醫院",

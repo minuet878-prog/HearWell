@@ -182,7 +182,8 @@ class SimulatorEntryTests(TestCase):
         start = content.index('aria-label="專區內容"')
         entries = content[start : content.index("</nav>", start)]
         self.assertEqual(
-            test_family_zone.ENTRY.findall(entries)[0],
+            # Spec #655 (#675): first of the group after the three family pages.
+            test_family_zone.ENTRY.findall(entries)[3],
             (
                 reverse("hearing_loss_simulator"),
                 "sound",

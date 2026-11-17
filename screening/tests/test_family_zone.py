@@ -156,7 +156,16 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
         self.assertEqual(
             ENTRY.findall(self._entries(content)),
             [
-                # #487 (the #485 mockup ⑤): the hearing loss simulator comes first.
+                # Spec #655 (#675): first the three family pages' group.
+                (
+                    "/family/signs",
+                    "help",
+                    "怎麼知道爸媽的聽力變差了",
+                    "看電視、講電話、吃飯聊天時的情況",
+                ),
+                ("/family/loud-tv", "info", "爸媽看電視開很大聲", "為什麼會這樣、在家可以先試試"),
+                ("/family/huh", "question", "他一直說「蛤」", "為什麼聽得到、聽不清楚"),
+                # #487 (the #485 mockup ⑤): the hearing loss simulator first in its group.
                 ("/learn/simulator", "sound", "先聽聽看他聽到的聲音", "選程度，聽同一句話怎麼變"),
                 ("/family/talk", "family", "怎麼跟他說話", TALK_NOTE),
                 ("/family/visits", "clipboard", "陪診與代辦", VISITS_NOTE),
@@ -164,7 +173,7 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
                 ("/family/hearing-aids", "ear", "助聽器", HEARING_AIDS_NOTE),
             ],
         )
-        # Readability batch 2: five rows that open pages; 陪伴配戴助聽器's fold moved to the
+        # Readability batch 2: rows that open pages; 陪伴配戴助聽器's fold moved to the
         # hearing aids page (test_family_redesign). The urgent box is never folded, has no row.
         self.assertNotIn("<details", self._entries(content))
         self.assertNotIn(AID_NOTE, content)

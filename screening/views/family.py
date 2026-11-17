@@ -23,12 +23,16 @@ from screening.family_zone import (
     HEARING_AID_SOURCES,
     HEARING_AID_STAGES,
     HEARING_AID_WEAR,
+    HUH_PAGE,
+    LOUD_TV_PAGE,
     RELUCTANT_CHECKED_ON,
     RELUCTANT_SITUATIONS,
     RELUCTANT_SOURCES,
     SEND_HEADING,
+    SEND_HEADING_TOO,
     SEND_LEAD,
     SEND_MESSAGE,
+    SIGNS_PAGE,
     VISIT_BRING,
     VISIT_CHECKED_ON,
     VISIT_QUESTIONS,
@@ -36,6 +40,7 @@ from screening.family_zone import (
 )
 from screening.forms import DeadlineForm, SubsidyCheckForm
 from screening.models import Questionnaire
+from screening.qa_assistant import content as qa_content
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.subsidy_check import (
     FORM_9_LINK,
@@ -60,19 +65,49 @@ def family_talk(request):
     )
 
 
-def send_to_him(request):
+def send_to_him(request, heading=SEND_HEADING):
     """What 傳給他 shows and sends (spec #655): the owner's message and, after it, the address of
     the wizard's age step with its mark (grill Q5, Q10). The mark is the same for everyone, so
     nothing in the address tells who sent it or to whom. The address takes the scheme the page
     was opened with, as the family page's own address does."""
     address = request.build_absolute_uri(reverse("questionnaire_list")) + "?via=send"
     return {
-        "heading": SEND_HEADING,
+        "heading": heading,
         "lead": SEND_LEAD,
         "message": SEND_MESSAGE,
         "address": address,
         "text": f"{SEND_MESSAGE}\n{address}",
     }
+
+
+def family_question_page(request, page, send_heading=SEND_HEADING, outline=False):
+    # Spec #655 (#675): open without logging in (CODING_STANDARDS.md 2), the same words for
+    # everyone; it reads no records.
+    return render(
+        request,
+        "screening/family/question_page.html",
+        {
+            "page": page,
+            "urgent": qa_content.BY_CODE[qa_content.URGENT_CODE],
+            "sources": page.sources,
+            "checked_on": page.checked_on,
+            "send": send_to_him(request, send_heading),
+            "outline": outline,
+        },
+    )
+
+
+def family_signs(request):
+    return family_question_page(request, SIGNS_PAGE)
+
+
+def family_loud_tv(request):
+    return family_question_page(request, LOUD_TV_PAGE)
+
+
+def family_huh(request):
+    # Grill Q6: the simulator is the main way on, so 傳給他 is the outline kind under 也.
+    return family_question_page(request, HUH_PAGE, SEND_HEADING_TOO, outline=True)
 
 
 def family_reluctant(request):
