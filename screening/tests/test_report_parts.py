@@ -13,7 +13,7 @@ from django.test import TestCase
 
 from screening.models import Answer, NormGroup, Question, Questionnaire, Submission
 from screening.questionnaires import sadl
-from screening.questionnaires.hhia_s import EXPLANATION as HHIA_S_EXPLANATION
+from screening.questionnaires.definition import LIFE_IMPACT_LIMITS as HHIA_S_EXPLANATION
 from screening.tests import test_report
 from screening.tests.helpers import consented_user, register
 

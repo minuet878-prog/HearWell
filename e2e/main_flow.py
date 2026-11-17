@@ -1560,8 +1560,9 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         expect(self.main().locator("#result-score")).to_contain_text("總分 20 分")
         expect(self.main().locator(".result-banner")).to_contain_text("輕度到中度影響")
         # HHIE-S 輕度到中度影響's steps (ticket #157), since #461 step 1 under the level and the
-        # others behind 看完整說明: the guide link, then the retest. The report is left to the
-        # list rows, as this step's words do not mention it (result page tidy-up).
+        # others behind 看完整說明: the check, then the retest. The report is left to the list
+        # rows, as this step's words do not mention it (result page tidy-up); since spec #693
+        # no link to the hearing-aid guide.
         expect(self.main().locator(".result-one-line")).to_contain_text(
             "聽力問題已經慢慢影響您的社交活動與情緒"
         )
@@ -1572,7 +1573,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         expect(folded.locator(".score-bar")).to_have_count(0)
         self.main().locator(".result-details > summary").click()
         expect(folded).to_contain_text("建議前往醫院耳鼻喉科進行聽力相關檢查")
-        expect(folded.get_by_role("link", name="看助聽器選配與補助")).to_be_visible()
+        expect(folded.get_by_role("link", name="看助聽器選配與補助")).to_have_count(0)
         expect(folded.get_by_role("link", name="看／印聽力報告")).to_have_count(0)
         expect(folded).to_contain_text("半年後再做一次，時間到了首頁會提醒您。")
         # Ticket #158: 20 of 40 sits halfway along the bar, inside the 輕度到中度 segment
@@ -6904,7 +6905,9 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
     # A4: a text link's underline thickens under a mouse, and a light blue shows behind its
     # words while it is pressed.
     def test_text_links_thicken_when_hovered_and_tint_when_pressed(self):
-        record = self.submission(self.hhie_s, [2] * 10)
+        # 無／極輕微影響: its folded step links 記錄聽力圖 (spec #693 left the other levels' folds
+        # without a link).
+        record = self.submission(self.hhie_s, [0] * 10)
         self.open()
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
