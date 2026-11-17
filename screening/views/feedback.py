@@ -69,6 +69,7 @@ PAGE_NAMES = {
     "shared_report": "家人看的聽力報告",
     "account_settings": "帳號設定",
     "delete_account": "刪除帳號",
+    "add_email": "補上 email",
     "confirm_identity": "確認本人",
     "audiogram_list": "聽力圖",
     "audiogram_new": "記錄聽力圖",
