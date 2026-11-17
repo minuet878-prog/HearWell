@@ -192,7 +192,8 @@ class GroupedAccountSettingsTests(TestCase):
         headings = [test_layout._text(h) for h in re.findall(r"<h2[^>]*>(.*?)</h2>", main, re.S)]
         # #361: the red 刪除帳號 card has no heading of its own (AccountSettingsT361Tests).
         # #471 (mockup #470 account A): 家人與手機 and 資料與隱私 became one group.
-        self.assertEqual(headings, ["我的帳號", "家人與資料"])
+        # #659: the email 重測提醒 under the account (the #657 mockup).
+        self.assertEqual(headings, ["我的帳號", "email 重測提醒", "家人與資料"])
 
     def test_active_share_says_until_when_and_links_to_share_page(self):
         self._share(self.user)
@@ -268,7 +269,8 @@ class AccountSettingsT361Tests(TestCase):
 
     def _rows(self):
         main = self._main()
-        group = main[main.index("我的帳號") : main.index("家人與資料")]
+        # #659: up to the next section, the email 重測提醒.
+        group = main[main.index("我的帳號") : main.index('<section id="retest-reminder"')]
         return {
             test_layout._text(name): test_layout._text(value)
             for name, value in re.findall(r"<dt[^>]*>(.*?)</dt>(.*?)</div>", group, re.S)
@@ -276,7 +278,9 @@ class AccountSettingsT361Tests(TestCase):
 
     def _group(self):
         main = self._main()
-        return test_layout._text(main[main.index("我的帳號") : main.index("家人與資料")])
+        return test_layout._text(
+            main[main.index("我的帳號") : main.index('<section id="retest-reminder"')]
+        )
 
     def test_a_blank_says_how_to_change_it_once_under_the_details(self):
         for email, birth_year in (("", 1955), ("a@example.com", None), ("", None)):

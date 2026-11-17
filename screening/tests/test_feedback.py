@@ -520,6 +520,7 @@ NOT_PAGES = {
     "report_share_create",
     "report_share_cancel",
     "download_my_data",
+    "retest_reminder",
 }
 
 

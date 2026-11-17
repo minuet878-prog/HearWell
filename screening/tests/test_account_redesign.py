@@ -60,7 +60,8 @@ class AccountSettingsTests(TestCase):
         group = main[main.index("家人與資料</h2>") : main.index("刪除帳號")]
         titles = re.findall(r'<span class="link-card-title">([^<]+)</span>', group)
 
-        self.assertEqual(headings, ["我的帳號", "家人與資料"])
+        # #659: the email 重測提醒 under the account (the #657 mockup).
+        self.assertEqual(headings, ["我的帳號", "email 重測提醒", "家人與資料"])
         self.assertEqual(
             titles,
             [

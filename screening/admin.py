@@ -9,6 +9,7 @@ from .models import (
     QuestionLog,
     QuestionLogMonth,
     Questionnaire,
+    RetestReminder,
     SignInMethod,
     Submission,
     User,
@@ -160,6 +161,14 @@ class QuestionLogMonthAdmin(ViewOnlyAdmin):
     @admin.display(description="月份", ordering="month")
     def month_label(self, stats):
         return str(stats)
+
+
+@admin.register(RetestReminder)
+class RetestReminderAdmin(ViewOnlyAdmin):
+    # Spec #656 acceptance 45: whose is on, to answer 「我怎麼沒收到」; never the cancel code, which
+    # turns it off without signing in.
+    list_display = ("user", "enabled", "enabled_on")
+    fields = ("user", "enabled", "enabled_on")
 
 
 @admin.register(GuestMonth)
