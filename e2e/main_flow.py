@@ -158,6 +158,14 @@ class OnAPhone:
     def main(self):
         return self.page.get_by_role("main")
 
+    def click_mid_screen(self, locator, **options):
+        """Clicks locator in the screen's middle. A plain click scrolls it only as far as the
+        screen's foot, and that scroll brings up 回到頂端 or the tab bar there a frame later: on
+        a slow CI they come between the press and the release, which lands on them, and the click
+        is lost without an error (CI run 43984356597)."""
+        locator.evaluate("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })")
+        locator.click(**options)
+
     def double_text(self, on=True):
         """Sets the page's text to 200%, or (on=False) back to its usual size. Not add_style_tag:
         it waits for the style's load event, which never fires without JavaScript."""
@@ -3522,7 +3530,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             self.page.goto(f"{self.live_server_url}/guide")
             expect(self.here()).to_contain_text("配戴助聽器之後")
             self.here().get_by_label("這副助聽器哪一天開始戴？").fill(fitted_on.isoformat())
-            self.here().get_by_role("button", name="儲存").click()
+            self.click_mid_screen(self.here().get_by_role("button", name="儲存"))
 
             # 8 二十五號表: at least a month on, dated. Answered 完成了 at the foot of its
             # chapter, then on the route 修改 to 還沒 and 完成了 again.
@@ -3552,7 +3560,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             form_25.get_by_role("button", name="還沒").click()
             expect(self.here()).to_contain_text("二十五號表")
             expect(self.here().locator(".route-answer")).to_have_text("二十五號表還沒完成")
-            self.here().get_by_role("button", name="完成了").click()
+            self.click_mid_screen(self.here().get_by_role("button", name="完成了"))
 
             # 9 等待補助發放: here, asking nothing and never 已完成; the eight before it done.
             expect(self.here()).to_contain_text("等待補助發放")
@@ -13411,7 +13419,7 @@ class FamilyAdjustingTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
         with self.saving_artifacts():
             self.open(self.PATH, signed_in=False)
             self.group().get_by_label(self.UNUSED.label).check()
-            self.live().get_by_role("link", name="怎麼跟聽損的家人說話").click()
+            self.click_mid_screen(self.live().get_by_role("link", name="怎麼跟聽損的家人說話"))
             expect(self.page).to_have_url(f"{self.live_server_url}/family/talk")
 
             self.page.goto(f"{self.live_server_url}{self.PATH}")
@@ -15947,7 +15955,7 @@ class AudiogramReadingTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServ
                     self.open_step(3, width)
                     if double:
                         self.double_text()
-                    self.main().get_by_text(self.TABLE).click()
+                    self.click_mid_screen(self.main().get_by_text(self.TABLE))
                     expect(self.reading()).to_have_text("點一下圖來標記")
                     top = self.chart_top()
                     for name, value, rows in longest:
@@ -15969,6 +15977,15 @@ class AudiogramReadingTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServ
                         lines = [text for text, _ in self.lines(self.reading())]
                         self.assertFalse(any(re.search(r"^(Hz|dB)", line) for line in lines))
                         self.assertEqual(self.chart_top(), top)
+
+    # CI run 43984356597: a press held as long as a slow CI's still opens the table at 200% text,
+    # far enough down for 回到頂端 to come up as the page scrolls to it.
+    def test_table_opens_with_a_slow_press_at_double_text_size(self):
+        self.open_step(3)
+        with self.saving_artifacts():
+            self.double_text()
+            self.click_mid_screen(self.main().get_by_text(self.TABLE), delay=100)
+            expect(self.main().get_by_label("左耳骨導 4000 Hz", exact=True)).to_be_visible()
 
     # Acceptance 40: the confirm step's read-only chart has no reading.
     def test_confirm_step_has_no_reading(self):
