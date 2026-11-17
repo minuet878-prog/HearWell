@@ -227,6 +227,14 @@ class Screenshots(StaticLiveServerTestCase):
             Shot("public", "consent", reverse("consent"), who="new"),
             Shot("public", "account", reverse("account_settings")),
             Shot("public", "account-delete", reverse("delete_account")),
+            # Spec #633 (#636): 意見回饋 as from the privacy page's footer, and its sent page.
+            Shot(
+                "public",
+                "feedback",
+                f"{reverse('feedback')}?page=privacy&next=%2Fprivacy",
+                who="anon",
+            ),
+            Shot("public", "feedback-sent", f"{reverse('feedback_sent')}?next=%2Fprivacy"),
             # #346: a returning user's 篩檢 is the catalogue; the wizard is behind 「幫我選問卷」.
             Shot("answering", "questionnaire-list", reverse("questionnaire_list")),
             Shot(

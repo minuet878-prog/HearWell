@@ -15,6 +15,7 @@ from django.utils.html import format_html, format_html_join
 
 from screening import family_deadlines
 from screening.models import (
+    FEEDBACK_MAX_LENGTH,
     AidAndSubsidy,
     AidEar,
     AidLevel,
@@ -672,6 +673,36 @@ class SubsidyCheckForm(NoLabelSuffix, forms.Form):
                 widget=forms.RadioSelect(attrs={"class": "choice-group choice-stack"}),
                 error_messages={"required": unanswered, "invalid_choice": unanswered},
             )
+
+
+# Spec #633 (#637): one address may send 5 意見回饋 an hour, counted as the forgot-password page
+# counts (attempts, add_attempt); the whole site keeps at most 100 a day, Taipei time.
+FEEDBACKS_PER_ADDRESS = 5
+FEEDBACKS_PER_DAY = 100
+TOO_MANY_FEEDBACKS_AN_HOUR = "這一小時送太多次了，請一小時後再試。您寫的字還在下面。"
+
+
+class FeedbackForm(NoLabelSuffix, forms.Form):
+    # Spec #633 (#636): the 意見回饋 page's form; the words are the owner's to change (#634
+    # mockup, marked draft).
+    text = forms.CharField(
+        label="想跟我們說的話",
+        max_length=FEEDBACK_MAX_LENGTH,
+        help_text=f"最多 {FEEDBACK_MAX_LENGTH:,} 字",
+        error_messages={
+            "required": "請先寫下想說的話",
+            "max_length": "請縮短到 %(limit_value)d 字以內，現在是 %(show_value)d 字",
+        },
+    )
+    email = forms.EmailField(
+        label="Email（選填）",
+        required=False,
+        help_text="想收到回覆才填。不填也可以送出。",
+        error_messages={"invalid": "Email 格式不對，請檢查，或清空不填"},
+    )
+    # Spec #633 Q9: a box people never see and screen readers skip (feedback.html); only a robot
+    # fills it, and is told it was sent (views.feedback).
+    website = forms.CharField(required=False)
 
 
 class QaQuestionForm(NoLabelSuffix, forms.Form):

@@ -1,0 +1,25 @@
+{% extends "screening/layout.html" %}
+
+{% block body %}
+{# Spec #633 (#640), the #634 mockup's A: four parts laid out in turn. 誰做的, 內容怎麼查核 and 不能取代檢查 are the owner's words chosen in #635 (#642); 誰做的 says only 執業聽力師, no name or workplace (the grill's Q13), and 不能取代檢查 is the privacy notice's 不是醫療診斷. #}
+<h1 class="h3 mt-2">關於聽伴</h1>
+<section class="mt-6" aria-labelledby="about-who">
+    <h2 id="about-who" class="h4">誰做的</h2>
+    <p>聽伴由一位台灣的執業聽力師設計與審定。在門診常聽到家屬問同樣的問題，所以做了這個網站，讓長輩和家人在家也能先了解聽力。</p>
+</section>
+<section class="mt-6" aria-labelledby="about-checked">
+    <h2 id="about-checked" class="h4">內容怎麼查核</h2>
+    <p>衛教內容和問答小助手的答案，都由執業聽力師審定，並附上出處。法規、補助金額這類會變動的資料，每年對照官方公告重新查核一次，頁面最下面寫著上次查核的日期。</p>
+</section>
+{# Q15: the privacy notice's own highlights, so the two never say it differently. #}
+<section class="mt-6" aria-labelledby="about-data">
+    <h2 id="about-data" class="h4">資料怎麼處理</h2>
+    {% include "screening/consent_highlights.html" with class="tip-box" %}
+    <p><a class="inline-link" href="{% url 'privacy' %}">看完整的隱私權說明</a></p>
+</section>
+<section class="mt-6" aria-labelledby="about-not-a-test">
+    <h2 id="about-not-a-test" class="h4">不能取代檢查</h2>
+    <p>聽伴的篩檢結果只是參考，不能取代醫師或聽力師的檢查和診斷。覺得聽力有問題，請找耳鼻喉科或聽力師。</p>
+</section>
+<p class="guide-checked">本頁資料查核於 {{ checked_on|date:"Y/m/d" }}。</p>
+{% endblock %}

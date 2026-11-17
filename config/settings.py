@@ -124,6 +124,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "screening.context_processors.page_head",
+                "screening.context_processors.feedback_link",
             ],
         },
     },

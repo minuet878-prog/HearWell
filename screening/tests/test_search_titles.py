@@ -47,7 +47,7 @@ class ConfirmedWordingTests(TestCase):
     def test_each_page_in_the_table_shows_the_confirmed_title_and_description(self):
         # Spec #583 acceptance 14.
         pages = confirmed_pages()
-        self.assertEqual(len(pages), 22)  # A1–A4, B1–B7, C1–C7, D1, D3–D5
+        self.assertEqual(len(pages), 23)  # A1–A5 (A5: spec #633), B1–B7, C1–C7, D1, D3–D5
         for path, (title, description) in pages.items():
             with self.subTest(path=path):
                 self.assertEqual(head_of(self.client.get(path)), (title, description))

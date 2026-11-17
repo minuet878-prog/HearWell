@@ -48,6 +48,8 @@ class LearnPageTests(TestCase):
                 (reverse("hearing_loss_simulator"), "sound", "聽損模擬：聽聽看他聽到的聲音"),
                 # #397 (spec #396): the Q&A assistant's entry.
                 (reverse("qa_home"), "question", "問答小助手：常見問題一次查"),
+                # Spec #633 (#640, the #634 mockup's A): 關於聽伴 last.
+                (reverse("about"), "info", "關於聽伴"),
             ],
         )
 
