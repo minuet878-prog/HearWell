@@ -19,6 +19,11 @@ from screening.tests.helpers import consented_user, submission_with_answers
 # 01:00 on 2026/11/17 in Taiwan, still the 16th in UTC.
 NOW = datetime(2026, 11, 16, 17, tzinfo=UTC)
 BLOCK = '<section class="result-reminder"'
+# The owner's words beside the switch, settled on 2026-11-17 (#658).
+PURPOSE = (
+    "打開後，上次做完滿半年的那天早上，我們會寄一封提醒信到您的 email。信裡不會寫分數或結果。"
+    "您的 email 只用來寄這個提醒和重設密碼信，隨時可以關掉。"
+)
 
 
 class ResultReminderTests(TestCase):
@@ -58,6 +63,7 @@ class ResultReminderTests(TestCase):
                 text = test_layout._text(block)
                 self.assertIn("半年後再做一次", text)
                 self.assertIn("下次建議 2027/05/17。", text)
+                self.assertIn(PURPOSE, text)
                 self.assertIn("到期時寄 email 提醒我", text)
                 self.assertIn("會寄到 a@example.com", text)
                 self.assertIn(f'action="{reverse("retest_reminder")}"', block)

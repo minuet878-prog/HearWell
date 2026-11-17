@@ -14,7 +14,8 @@
             <dd class="settings-row-title">{{ reminder.user.username }}</dd>
         </div>
     </dl>
-    {# #665: the owner's words (#658) on what the button does go here. #}
+    {# The owner's words on what the button does, settled on 2026-11-17 (#658). #}
+    <p class="mt-4 mb-0">按下「取消提醒」後，這個帳號就不會再收到重測提醒信。您的帳號和篩檢紀錄都不會受影響。</p>
     {# No CSRF token: a mail program's one-click posts here without one (RFC 8058). #}
     <form method="post" action="{% url 'reminder_cancel' reminder.cancel_token %}" class="mt-6">
         <button class="btn btn-primary btn-lg w-full" type="submit">取消提醒</button>

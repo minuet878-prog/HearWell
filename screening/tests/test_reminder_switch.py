@@ -18,6 +18,11 @@ from screening.tests.helpers import consented_user, submission_with_answers
 TAIPEI = ZoneInfo("Asia/Taipei")
 # 01:00 on 2026/11/17 in Taiwan, still the 16th in UTC: the day it was turned on is Taiwan's.
 NOW = datetime(2026, 11, 16, 17, tzinfo=UTC)
+# The owner's words beside the switch, settled on 2026-11-17 (#658).
+PURPOSE = (
+    "打開後，上次做完滿半年的那天早上，我們會寄一封提醒信到您的 email。信裡不會寫分數或結果。"
+    "您的 email 只用來寄這個提醒和重設密碼信，隨時可以關掉。"
+)
 
 
 class ReminderSwitchTests(TestCase):
@@ -57,6 +62,7 @@ class ReminderSwitchTests(TestCase):
     def test_off_by_default_says_where_it_would_go(self):
         text = self._section()
         self.assertIn("email 重測提醒", text)
+        self.assertIn(PURPOSE, text)
         self.assertIn("目前 沒有打開", text)
         self.assertIn("打開提醒", text)
         self.assertIn("會寄到 a@example.com", text)

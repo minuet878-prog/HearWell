@@ -36,6 +36,13 @@ ANSWERED_ON = date(2026, 5, 17)
 DUE_ON = date(2026, 11, 17)
 RETEST_LINK = r'<a href="([^"]*)"[^>]*>再做一次</a>'
 COMMAND_LOGGER = "screening.management.commands.send_retest_reminders"
+# The owner's subject, body and foot line, settled on 2026-11-17 (#658).
+SUBJECT = "聽伴 重測提醒"
+BODY = (
+    "距離您上次在聽伴做聽力篩檢已經半年了。建議再做一次，看看這半年聽力對生活的影響有沒有變化，"
+    "一共 10 題。"
+)
+FOOT = "您在聽伴打開了 email 重測提醒，所以收到這封信。不想再收到："
 
 
 def at(day, hour=9):
@@ -251,6 +258,19 @@ class TheMailTests(ReminderMailTestCase):
                 self.assertIn(self.cancel_url, body)
         self.assertIn(f'<a href="{self.cancel_url}"', self.html)
 
+    # 27: the owner's words, the body between 您好 and 再做一次, 取消提醒 the foot's link.
+    def test_the_owner_s_subject_body_and_foot_line(self):
+        self.assertEqual(self.message.subject, SUBJECT)
+        text = self.message.body
+        self.assertLess(text.index("wang_baba 您好："), text.index(BODY))
+        self.assertLess(text.index(BODY), text.index("再做一次"))
+        self.assertIn(f"{FOOT}取消提醒\n{self.cancel_url}", text)
+        self.assertLess(self.html.index("wang_baba 您好："), self.html.index(BODY))
+        self.assertLess(self.html.index(BODY), re.search(RETEST_LINK, self.html).start())
+        self.assertRegex(
+            self.html, re.escape(f'{FOOT}<a href="{self.cancel_url}"') + "[^>]*>取消提醒</a>"
+        )
+
     def test_from_the_site_replies_to_the_contact_address(self):
         self.assertEqual(self.message.from_email, settings.DEFAULT_FROM_EMAIL)
         self.assertTrue(settings.DEFAULT_FROM_EMAIL.startswith("聽伴 <"))
@@ -279,7 +299,9 @@ class NoHealthDataTests(ReminderMailTestCase):
         (message,) = mail.outbox
         for body in (message.body, message.alternatives[0].content, message.subject):
             with self.subTest(body=body[:20]):
-                for health in ("顯著影響", "影響", "40 分", "40分", "分數", "分級"):
+                # Not the bare 影響: the owner's body asks whether 聽力對生活的影響 has changed.
+                levels = ("無／極輕微影響", "輕度到中度影響", "顯著影響")
+                for health in (*levels, "40 分", "40分", "分數", "分級"):
                     self.assertNotIn(health, body)
 
 
