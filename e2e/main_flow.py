@@ -17277,8 +17277,11 @@ class ClinicCardPrintTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             # Acceptance 23: white, no colour behind the words, each at least 4.5:1 on it.
             self.assertEqual(self.style(first, "backgroundColor"), "rgba(0, 0, 0, 0)")
             self.assertEqual(self.style(first, "backgroundImage"), "none")
-            sheet_colour = self.style(self.page.locator(".clinic-cards-sheet"), "backgroundColor")
+            sheet = self.page.locator(".clinic-cards-sheet")
+            sheet_colour = self.style(sheet, "backgroundColor")
             self.assertEqual(sheet_colour, "rgb(255, 255, 255)")
+            # The sheet itself: white, with no image over it (cross review, third round).
+            self.assertEqual(self.style(sheet, "backgroundImage"), "none")
             parts = ("brand", "brand-tint", "title", "free", "sees", "camera", "address")
             # Every box from the words out to the sheet: no colour and no image behind them, so
             # the sheet's white is what the words stand on (cross review, second round).
