@@ -14,7 +14,7 @@ from django.test.utils import CaptureQueriesContext
 from screening.models import GuestMonth, User
 from screening.public_pages import is_public
 from screening.tests import test_guest_counts
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, submission_with_answers
 
 ELDER_CARD = "/c/e"
 FAMILY_CARD = "/c/f"
@@ -84,6 +84,22 @@ class CardAddressTests(TestCase):
                 self.assertFalse(is_public(card))
                 self.assertNotIn(card, self.client.get("/sitemap.xml").content.decode())
         self.assertNotIn("Disallow", self.client.get("/robots.txt").content.decode())
+
+
+class ReturningUserLandingTests(TestCase):
+    """Acceptance 2 (cross review, second round): a signed-in user with a record lands on the
+    questionnaire catalogue, 選問卷, which the elder card's address takes them to."""
+
+    fixtures = ("questions_fixture.json",)  # HHIE-S
+
+    def test_a_user_with_a_record_sees_the_catalogue(self):
+        user = consented_user(username="pat", password="x")
+        submission_with_answers(user, "hhie-s", [4] * 10)
+        self.client.force_login(user)
+        response = self.client.get(ELDER_CARD, follow=True)
+        self.assertEqual(response.redirect_chain, [("/questionnaire_list?via=clinic-elder", 302)])
+        headings = re.findall(r"<h1[^>]*>([^<]+)</h1>", response.content.decode())
+        self.assertEqual(headings, ["選問卷"])
 
 
 GUEST_COUNTS = "/api/guest-counts/"
@@ -252,6 +268,23 @@ class QrCodeTests(TestCase):
         self.assertContains(response, "沒有設定正式網址，印出來的 QR code 不能用")
 
 
+# Spec #677 acceptance 25: the owner's words from #679, as written, line breaks and all.
+OWNERS_WORDS = {
+    "elder": {
+        "title": "花 3 分鐘，看看<br>聽力對生活的影響",
+        "free": "不用註冊・免費",
+        "sees": "回答 10 題，<br>馬上看到結果和建議",
+        "camera": "用手機相機掃",
+    },
+    "family": {
+        "title": "陪家人一起<br>面對聽力問題",
+        "free": "不用註冊・免費",
+        "sees": "怎麼跟他說話、陪他看診、<br>助聽器怎麼照顧",
+        "camera": "用手機相機掃",
+    },
+}
+
+
 class PrintPageReachTests(TestCase):
     """Acceptance 14, 15, 18 and 19: who opens the print page, how the owner finds it, and what a
     card never says."""
@@ -274,37 +307,25 @@ class PrintPageReachTests(TestCase):
         self.client.force_login(User.objects.create_superuser(username="owner", password="pw"))
         self.assertContains(self.client.get("/admin/"), f'href="{PRINT_PAGE}"')
 
-    def test_every_card_has_the_logo_and_the_address_but_no_name_or_workplace(self):
-        # Acceptance 15 (cross review): all 10 of both kinds, the whole 聽伴 on each.
-        wordmark = '<span>聽<span class="clinic-card-brand-tint">伴</span></span>'
-        for kind in ("elder", "family"):
+    def test_every_card_says_only_its_words_with_its_own_code(self):
+        # Acceptance 15 (cross review, second round): each of the 10 cards of both kinds, read
+        # as its words alone, is the logo's 聽伴, the owner's words and tingpal.tw, nothing
+        # more, so a name or a workplace added anywhere on it shows; each has one QR code.
+        for kind, words in OWNERS_WORDS.items():
+            expected = "".join(
+                part.replace("<br>", "")
+                for part in ("聽伴", words["title"], words["free"], words["sees"])
+            ) + "".join((words["camera"], "tingpal.tw"))
             page = self.client.get(PRINT_PAGE, {"card": kind}).content.decode()
             cards = page.split('<div class="clinic-card" data-card=')[1:]
             self.assertEqual(len(cards), 10)
             for number, card in enumerate(cards, start=1):
                 with self.subTest(card=kind, number=number):
+                    self.assertEqual(card.count('class="qrline"'), 1)
                     self.assertIn('class="clinic-card-logo"', card)
-                    self.assertIn(wordmark, card)
-                    self.assertIn('<p class="clinic-card-address">tingpal.tw</p>', card)
-                    for kept_off in ("執業聽力師", "審定", "醫院", "診所", "醫師"):
-                        self.assertNotIn(kept_off, card)
-
-
-# Spec #677 acceptance 25: the owner's words from #679, as written, line breaks and all.
-OWNERS_WORDS = {
-    "elder": {
-        "title": "花 3 分鐘，看看<br>聽力對生活的影響",
-        "free": "不用註冊・免費",
-        "sees": "回答 10 題，<br>馬上看到結果和建議",
-        "camera": "用手機相機掃",
-    },
-    "family": {
-        "title": "陪家人一起<br>面對聽力問題",
-        "free": "不用註冊・免費",
-        "sees": "怎麼跟他說話、陪他看診、<br>助聽器怎麼照顧",
-        "camera": "用手機相機掃",
-    },
-}
+                    shown = re.sub(r"<svg.*?</svg>", "", card, flags=re.S)
+                    shown = re.sub(r"<[^>]+>|\s", "", shown.split(">", 1)[1])
+                    self.assertEqual(shown, expected.replace(" ", ""))
 
 
 class CardWordsTests(TestCase):
