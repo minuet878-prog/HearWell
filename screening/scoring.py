@@ -150,6 +150,7 @@ TYPES_AND_PRICES_BUTTON = "去看助聽器種類與價格"
 # mockup 2A); 還沒 opens the Q&A on where a hearing test is done.
 RECORD_AUDIOGRAM_YES = "有，記錄聽力圖"
 NO_REPORT_YET = "還沒，看要去哪裡檢查"
+IMPORT_FROM_IPHONE = "從 iPhone 匯入"  # spec #702
 IOI_HA_DUE_BECAUSE = "您已經戴滿 3 個月，可以做使用效益問卷（IOI-HA），看助聽器幫了多少。"
 
 

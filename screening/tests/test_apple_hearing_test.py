@@ -35,3 +35,8 @@ class ReadTests(SimpleTestCase):
 
     def test_values_without_an_asterisk(self):
         self.assertCountEqual(read(apple_pdf(stars=False)).points, _points(RIGHT, LEFT))
+
+    def test_the_export_time_is_never_taken_for_the_test_date(self):
+        """Spec #702 acceptance 4, should 輸出時間 ever carry a time of day."""
+        test = read(apple_pdf(exported_on="2026年11月17日 上午9:05"))
+        self.assertEqual(test.tested_on, date(2026, 11, 10))

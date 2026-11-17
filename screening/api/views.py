@@ -26,7 +26,6 @@ from screening.api.serializers import (
 from screening.models import (
     Answer,
     Audiogram,
-    AudiogramEntry,
     AudiogramPoint,
     Question,
     Questionnaire,
@@ -344,7 +343,7 @@ class AudiogramDetail(RetrieveAPIView):
         # number needed. Same validation as creating one.
         audiogram = self.get_object()
         # Spec #702 acceptance 13: one imported from Apple's PDF stays as it was read.
-        if audiogram.entry == AudiogramEntry.APPLE_PDF:
+        if audiogram.is_imported:
             return Response({"detail": IMPORTED_STAYS}, status.HTTP_400_BAD_REQUEST)
         serializer = AudiogramCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

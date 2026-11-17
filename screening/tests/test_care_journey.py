@@ -92,6 +92,8 @@ class FirstStepsTests(CareJourneyTestCase):
         # The 2026-11-14 walkthrough (mockup 2A): asked whether there is a report, two ways on.
         self.assertEqual(journey.card.because, "手上有醫院的聽力檢查報告了嗎？")
         self.assertEqual(journey.card.button, ("有，記錄聽力圖", "/audiograms/new"))
+        # Spec #702 (#703 mockup 1C): an Apple hearing test's PDF, beside recording one.
+        self.assertEqual(journey.card.import_button, ("從 iPhone 匯入", "/audiograms/import"))
         self.assertEqual(
             journey.card.second, ("還沒，看要去哪裡檢查", "/qa/where-to-get-a-hearing-test")
         )

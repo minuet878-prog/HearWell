@@ -80,6 +80,14 @@ def read(data):
     lines = _lines(chars)
     if not any("Apple聽力測試" in line.replace(" ", "") for line in lines):
         raise CannotRead(Unreadable.NOT_APPLE)
+    try:
+        return _test(page, chars, lines)
+    # A page shaped otherwise (a colour given as a name, a point with no number): not the layout.
+    except (TypeError, ValueError, IndexError) as error:
+        raise CannotRead(Unreadable.LAYOUT) from error
+
+
+def _test(page, chars, lines):
     tested_on = _tested_on(lines)
     curves = _curves(page)
     words = _words(chars)
@@ -87,9 +95,11 @@ def read(data):
     points = []
     for ear in EAR_COLOURS:
         curve = curves[ear]
+        # Each of the curve's points (by its x) and the value printed beside it.
         values = _values(words, ear, curve)
         for (x, y), frequency in zip(curve, AIR_FREQUENCIES, strict=True):
             db = values[x]
+            # The point's height read on the grey scale must agree with its printed value.
             if abs(db - (zero - y) / per_db) > CROSS_CHECK_DB:
                 raise CannotRead(Unreadable.CROSS_CHECK)
             points.append({"ear": ear, "frequency": frequency, "db": db})
@@ -118,8 +128,9 @@ def _ear_of(colour):
 
 
 def _text(char):
-    # The page writes some characters as CJK radicals (⼒ for 力, ⽉ for 月).
-    return unicodedata.normalize("NFKC", char.get_text())
+    # The page writes some characters as CJK radicals (⼒ for 力, ⽉ for 月); a typeset minus
+    # (U+2212), which NFKC leaves alone, is read as the hyphen it means.
+    return unicodedata.normalize("NFKC", char.get_text()).replace("\u2212", "-")
 
 
 def _rows(chars):
@@ -181,7 +192,10 @@ def _word(run):
 
 
 def _tested_on(lines):
+    # The header's 輸出時間 is the export's date, never the test's, whatever it carries.
     for line in lines:
+        if "輸出" in line:
+            continue
         if found := TEST_DATE.search(line):
             year, month, day = map(int, found.groups())
             try:

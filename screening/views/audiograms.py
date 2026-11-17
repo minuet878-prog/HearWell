@@ -273,7 +273,7 @@ def audiogram_delete(request, audiogram_id):
 def audiogram_edit(request, audiogram_id):
     audiogram = _own_audiogram(request, audiogram_id)
     # Spec #702 acceptance 13: one imported from Apple's PDF is never edited.
-    if audiogram.entry == AudiogramEntry.APPLE_PDF:
+    if audiogram.is_imported:
         raise Http404
     initial = {
         "tested_on": audiogram.tested_on.isoformat(),

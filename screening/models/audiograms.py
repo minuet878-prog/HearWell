@@ -49,6 +49,11 @@ class Audiogram(models.Model):
         # Spec #702, ADR 0068: pages tag it, and only an exam estimates the disability assessment.
         return self.source == AudiogramSource.SELF_TEST
 
+    @property
+    def is_imported(self):
+        # Spec #702 acceptance 13: read from Apple's PDF, so never edited.
+        return self.entry == AudiogramEntry.APPLE_PDF
+
     def interpretation(self):
         # The only path to an audiogram's result; pages and the API all read it here.
         return interpret(self.points.all())

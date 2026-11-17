@@ -118,9 +118,13 @@ class AudiogramImportTests(TestCase):
     def test_signed_out_goes_to_sign_in(self):
         """Spec #702 acceptance 10."""
         self.client.logout()
-        for url in (reverse("audiogram_import"), reverse("audiogram_import_save")):
-            with self.subTest(url):
-                response = self.client.post(url)
+        for method, url in (
+            ("get", reverse("audiogram_import")),
+            ("post", reverse("audiogram_import")),
+            ("post", reverse("audiogram_import_save")),
+        ):
+            with self.subTest(method=method, url=url):
+                response = getattr(self.client, method)(url)
                 self.assertEqual(response.status_code, 302)
                 self.assertIn(reverse("login"), response.url)
         self.assertEqual(Audiogram.objects.count(), 0)
@@ -159,7 +163,14 @@ class AudiogramImportTests(TestCase):
         self.assertEqual(
             response.json()["detail"], "從 iPhone 匯入的聽力圖不能修改，可以刪掉重新匯入"
         )
-        self.assertEqual(audiogram.points.count(), 16)
+        audiogram.refresh_from_db()
+        self.assertEqual(audiogram.tested_on, date(2026, 11, 10))
+        kept = {(p.ear, p.frequency): p.db for p in audiogram.points.all()}
+        self.assertEqual(
+            kept,
+            {("right", f): db for f, db in zip(FREQUENCIES, RIGHT, strict=True)}
+            | {("left", f): db for f, db in zip(FREQUENCIES, LEFT, strict=True)},
+        )
 
 
 class PrivacyNoticeTests(TestCase):
@@ -220,3 +231,14 @@ class ImportEntryTests(TestCase):
         self.assertIn("btn-outline-primary", self._after_record(stop, reverse("audiogram_new")))
         part = content[content.index('id="audiogram-title"') :]
         self._after_record(part, reverse("audiogram_new"))
+
+    def test_the_home_card_offers_it_under_recording_one(self):
+        """#703 mockup 1C: the 照顧旅程's 記錄聽力圖 card has it too, outlined."""
+        from screening.models import Submission
+
+        Submission.objects.create(user=self.user, questionnaire=self.hhie_s)
+        content = self.client.get(reverse("index")).content.decode()
+        card = content[content.index('class="journey-card"') :]
+        button = self._after_record(card, reverse("audiogram_new") + "?next=/")
+        self.assertIn("btn-outline-primary", button)
+        self.assertLess(card.index("從 iPhone 匯入"), card.index("還沒，看要去哪裡檢查"))

@@ -7703,13 +7703,15 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             card = self.main().locator(".journey-card")
             self.assertEqual(self.style(card, "backgroundColor"), self.BLUE_SOFT)
             self.assertEqual(self.style(card, "boxShadow"), "none")
-            # The 2026-11-14 walkthrough (mockup 2A): its solid button, then 還沒 in outline.
+            # The 2026-11-14 walkthrough (mockup 2A): its solid button, then 還沒 in outline;
+            # spec #702 (#703 mockup 1C) put 從 iPhone 匯入 between them, outlined too.
             self.assertEqual(
                 self.style(card.locator("a.btn-primary"), "backgroundColor"), self.PRIMARY
             )
-            second = card.locator("a.btn-outline-primary")
-            expect(second).to_have_text("還沒，看要去哪裡檢查")
-            self.assertEqual(self.style(second, "backgroundColor"), "rgb(255, 255, 255)")
+            outlined = card.locator("a.btn-outline-primary")
+            expect(outlined).to_have_text(["從 iPhone 匯入", "還沒，看要去哪裡檢查"])
+            for button in outlined.all():
+                self.assertEqual(self.style(button, "backgroundColor"), "rgb(255, 255, 255)")
             tile = self.main().locator("a.journey-tile")
             self.assertEqual(self.style(tile, "boxShadow"), "none")
             arrow = tile.locator(".journey-tile-arrow")

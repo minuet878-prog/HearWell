@@ -16,6 +16,7 @@ from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.scoring import (
     CARE_JOURNEY_ABOUT,
     CARE_JOURNEY_STEPS,
+    IMPORT_FROM_IPHONE,
     IOI_HA_BUTTON,
     IOI_HA_DUE_BECAUSE,
     LIFE_IMPACT_BECAUSE,
@@ -86,6 +87,8 @@ class JourneyCard:
     # and whether the solid one's page leads back here (the page adds ?next=).
     second: tuple | None = None
     come_back: bool = False
+    # Spec #702 (#703 mockup 1C): 從 iPhone 匯入 (text, url), outlined, between the two.
+    import_button: tuple | None = None
 
 
 @dataclass(frozen=True)
@@ -268,9 +271,10 @@ def _route_card(route, user):
         because = because.format(deadline=route.form_25[1])
     icon = "audiogram" if stop.slug == AUDIOGRAM else "guide"
     button = stop.action
-    second, come_back = None, False
+    second, come_back, import_button = None, False, None
     if stop.slug == AUDIOGRAM and not route.insufficient:
         button = (RECORD_AUDIOGRAM_YES, stop.action[1])
+        import_button = (IMPORT_FROM_IPHONE, reverse("audiogram_import"))
         second = (NO_REPORT_YET, reverse("qa_answer", args=[WHERE_TO_TEST]))
         come_back = True
     if stop.slug == "types-and-prices":
@@ -286,6 +290,7 @@ def _route_card(route, user):
         todos=stop.todos,
         second=second,
         come_back=come_back,
+        import_button=import_button,
     )
 
 
