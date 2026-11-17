@@ -9,6 +9,7 @@ from django.utils.cache import add_never_cache_headers
 from django.views.decorators.http import require_http_methods
 
 from screening import models
+from screening.care_journey import first_questionnaire_url
 from screening.main_flow import get_user_state
 from screening.models import Answer, Questionnaire, User
 from screening.questionnaires.results import AverageResult, GradedResult, NormResult, SubscaleResult
@@ -90,6 +91,10 @@ def health_report(request):
     # #287: the owner's report only; the family's copy shares the template but not this.
     aid = models.AidAndSubsidy.for_user(request.user)
     context["aid_report_text"] = aid.report_text if aid else ""
+    if not context["has_records"]:
+        context["first_questionnaire_href"] = first_questionnaire_url(
+            request.user, timezone.localdate()
+        )
     return render(request, "screening/health_report.html", context)
 
 
@@ -107,6 +112,8 @@ def share_report(request):
         # The link to pass on takes the scheme the page was opened with (https on tingpal.tw).
         path = reverse("shared_cover", args=[share.token])
         context["share_url"] = request.build_absolute_uri(path)
+    elif not context["has_records"]:
+        context["first_questionnaire_href"] = first_questionnaire_url(user, timezone.localdate())
     return render(request, "screening/share_report.html", context)
 
 

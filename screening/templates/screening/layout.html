@@ -142,11 +142,14 @@
         {% block body %}{% endblock %}
     </main>
     </div>
-    {# Site-wide footer (spec phase9_ui_refresh_1_shared.md 4.3; readability batch 1, the owner's A: the family zone's short name, the links in one row on a phone). "加到手機主畫面" lives on the home page (the first-time card or the row of links) and the account page; icons are decorative, the words carry the meaning. #}
+    {# Site-wide footer (spec phase9_ui_refresh_1_shared.md 4.3; readability batch 1, the owner's A: the family zone's short name; spec #633, the #634 mockup's A: at most three links a row on a phone). "加到手機主畫面" lives on the home page (the first-time card or the row of links) and the account page; icons are decorative, the words carry the meaning. #}
     <footer class="site-footer">
         <div class="container">
             <ul class="site-footer-links">
                 <li><a href="{% url 'family_guide' %}"><svg class="site-footer-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20a5.5 5.5 0 0 1 11 0M13 20a4 4 0 0 1 8 0"/></svg>家人專區</a></li>
+                <li><a href="{% url 'about' %}"><svg class="site-footer-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>關於聽伴</a></li>
+                {# Spec #633 (#636, the #634 mockup's A): the link names this page and the way back (context_processors.feedback_link). #}
+                <li><a href="{{ feedback_url }}"><svg class="site-footer-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 4h16v12H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg>意見回饋</a></li>
                 <li><a href="{% url 'privacy' %}"><svg class="site-footer-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>隱私權說明</a></li>
                 {% if user.is_authenticated %}<li><a href="{% url 'account_settings' %}"><svg class="site-footer-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>帳號設定</a></li>{% endif %}
             </ul>

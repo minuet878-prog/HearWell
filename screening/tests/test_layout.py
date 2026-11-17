@@ -255,16 +255,26 @@ class LayoutTests(TestCase):
 
 class FooterOneRowTests(TestCase):
     """Readability batch 1 (docs/planning/redesign/mockup-readability-batch1.html, the owner's A):
-    the footer's links in one row on a phone, the family zone's link in its short name."""
+    the footer's links with short names, the family zone's too; one row until spec #633 made them
+    two (e2e FeedbackTest)."""
 
     def _links(self, content):
         return re.findall(r"<a href=\"([^\"]+)\">.*?</svg>([^<]*)</a>", _footer(content), re.S)
 
-    def test_a_visitor_sees_two_links_with_short_names(self):
+    # Spec #633 (#636, #640): 關於聽伴 and 意見回饋 join them, after the family zone (the #634
+    # mockup's A).
+    FEEDBACK = f"{reverse('feedback')}?page=index&amp;next=%2F"
+
+    def test_a_visitor_sees_the_links_with_short_names(self):
         content = self.client.get(reverse("index")).content.decode()
         self.assertEqual(
             self._links(content),
-            [(reverse("family_guide"), "家人專區"), (reverse("privacy"), "隱私權說明")],
+            [
+                (reverse("family_guide"), "家人專區"),
+                (reverse("about"), "關於聽伴"),
+                (self.FEEDBACK, "意見回饋"),
+                (reverse("privacy"), "隱私權說明"),
+            ],
         )
 
     def test_a_signed_in_user_also_sees_account_settings(self):
@@ -274,6 +284,8 @@ class FooterOneRowTests(TestCase):
             self._links(content),
             [
                 (reverse("family_guide"), "家人專區"),
+                (reverse("about"), "關於聽伴"),
+                (self.FEEDBACK, "意見回饋"),
                 (reverse("privacy"), "隱私權說明"),
                 (reverse("account_settings"), "帳號設定"),
             ],

@@ -1,0 +1,4 @@
+{% autoescape off %}{# Spec #633 (#638): only that one came, never what was sent; the owner's words from #635 (#642). #}今天有新的意見回饋，到後台看：
+{{ admin_url }}
+今天之後的回饋不會再寄信通知。
+{% endautoescape %}

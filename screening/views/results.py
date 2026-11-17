@@ -18,8 +18,16 @@ def submission_result(request, submission_id):
     result = submission.result
     # #455 (ADR 0044): the 照顧旅程's 現在這一步, by the user's state now, not this record's.
     suggested = next_step(request.user, timezone.localdate())
+    # Spec #644 H3: which time this is, worn or not, in the order since_last uses (a tie by id).
+    attempt_number = (
+        Submission.objects.filter(user=request.user, questionnaire_id=submission.questionnaire_id)
+        .earlier_than(submission)
+        .count()
+        + 1
+    )
     shared = {
         "submission": submission,
+        "attempt_number": attempt_number,
         "wearing_text": (
             TREND_STATUS_TEXT[submission.wearing_hearing_aid] if result.page_shows_wearing else None
         ),

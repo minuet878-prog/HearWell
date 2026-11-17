@@ -13,6 +13,10 @@
 - [收尾清單](closing-checklist.md)：Mac 自動拉備份的腳本與排程、刪手動備份、還原演練、外部監控與停機測試，本人照順序做（規格 #561）。
 - [從備份還原資料庫](restore.md)：每年一次的還原演練，以及 VPS 整台壞掉時的順序。
 
+## 排程
+
+- [意見回饋 90 天清除](feedback-purge.md)：在 VPS 的 02:30 清除服務多加一行 `purge_feedback`，本人照順序做（規格 #633）。
+
 ## 搜尋引擎
 
 - [Google Search Console](search-console.md)：用 DNS 紀錄驗證網站、提交 sitemap、檢查一個公開與一個不公開的頁面，本人照順序做（規格 #583）。

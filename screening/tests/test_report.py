@@ -225,8 +225,7 @@ class HealthReportTests(TestCase):
     # 5
     def test_no_records_shows_empty_message_without_print_button(self):
         content = self._content()
-        self.assertIn("還沒有可以放進報告的紀錄", content)
-        self.assertIn(f'href="{reverse("questionnaire_list")}"', content)
+        self.assertIn('<h2 class="h4">還沒有報告</h2>', content)
         self.assertNotIn('id="print-button"', content)
         self.assertNotIn('id="report-summary"', content)
 
@@ -271,7 +270,8 @@ class HealthReportTests(TestCase):
     # 10
     def test_history_page_links_to_report(self):
         # The report and sharing it; #465 (the #464 mockup 1A): the report is the page's solid
-        # button, sharing a row near the end.
+        # button, sharing a row near the end; #648: once there is a record (test_empty_states).
+        self._hhie_s(self.user, [0] * 10, wearing=False, days_ago=1)
         content = self.client.get(reverse("my_hearing")).content.decode()
         self.assertIn(
             f'class="btn btn-primary btn-lg w-full mt-4 mb-4" href="{self.url}">', content

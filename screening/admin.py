@@ -3,6 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 
 from .models import (
     Answer,
+    Feedback,
     GuestMonth,
     Question,
     QuestionLog,
@@ -12,6 +13,7 @@ from .models import (
     Submission,
     User,
     count_and_delete_questions,
+    purge_feedback,
     purge_question_log,
 )
 
@@ -94,8 +96,10 @@ class QuestionLogAdmin(admin.ModelAdmin):
 
     def changelist_view(self, request, extra_context=None):
         # #401: besides the VPS's daily 02:30 run (#452), opening the list clears those past
-        # 90 days first.
-        purge_question_log()
+        # 90 days first; only for one who may see it, so the refused delete nothing (cross
+        # review of spec #633).
+        if self.has_view_or_change_permission(request):
+            purge_question_log()
         return super().changelist_view(request, extra_context)
 
     # The owner's call (2026-10-27): one deleted early, alone or selected with others, is still
@@ -109,6 +113,35 @@ class QuestionLogAdmin(admin.ModelAdmin):
     @admin.display(description="結果")
     def result(self, log):
         return log.faq_code or "沒對到"
+
+
+@admin.register(Feedback)
+class FeedbackAdmin(admin.ModelAdmin):
+    # Spec #633 (#639, ADR 0064): the owner reads each 意見回饋, ticks it handled once answered
+    # and may delete one early; what was sent, from where and when stay as they were.
+    list_display = ("created_at", "page", "handled", "start", "email")
+    list_display_links = ("start",)
+    list_filter = ("handled",)
+    # A request to delete one's own is answered by finding the email it was sent with.
+    search_fields = ("email",)
+    ordering = ("-created_at", "-id")
+    fields = ("created_at", "page", "text", "email", "handled")
+    readonly_fields = ("created_at", "page", "text", "email")
+
+    def has_add_permission(self, request):
+        return False
+
+    def changelist_view(self, request, extra_context=None):
+        # Besides the VPS's daily 02:30 run, opening the list clears those past 90 days first;
+        # only for one who may see it, so the refused delete nothing (cross review, S1).
+        if self.has_view_or_change_permission(request):
+            purge_feedback()
+        return super().changelist_view(request, extra_context)
+
+    @admin.display(description="內容")
+    def start(self, feedback):
+        text = feedback.text
+        return f"{text[:30]}…" if len(text) > 30 else text
 
 
 @admin.register(QuestionLogMonth)

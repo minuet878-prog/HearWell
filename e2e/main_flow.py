@@ -44,6 +44,7 @@ from screening.models import (
     Audiogram,
     AudiogramPoint,
     Category,
+    Feedback,
     GuideChapterView,
     NormGroup,
     Question,
@@ -1459,7 +1460,10 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
             # #463: count, minutes and 上次 in one grey line, 上次 and its date kept together.
             last = cards.locator(".inline-block", has_text="上次")
             expect(last).to_have_count(1)
-            expect(cards.first.locator(".inline-block")).to_have_text(f"上次 {self.old_date}")
+            # #649: then the last result, every answer 4 (40 points).
+            expect(cards.first.locator(".inline-block")).to_have_text(
+                f"上次 {self.old_date}・顯著影響"
+            )
             # #347: the retest is due, so HHIE-S is recommended on top, and still a card below.
             recommended = self.main().get_by_role("region", name="推薦您做這一份")
             expect(recommended).to_contain_text("HHIE-S")
@@ -1606,7 +1610,8 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         expect(since_last).to_contain_text(f"上一次（{self.old_date}）：40 分")
         expect(since_last).to_contain_text(f"最近一次（{today}，沒戴助聽器）")
         # 40 then 20 points, both 沒戴.
-        expect(since_last).to_contain_text("比上一次少 20 分（分數越低越好）")
+        expect(since_last.locator(".change-label")).to_have_text("比上次少 20 分")
+        expect(since_last).to_contain_text(f"上一次（{self.old_date}）：40 分（分數越低越好）")
 
 
 class ContinueNoticeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
@@ -2171,8 +2176,8 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                 self.assert_fits_a_phone_at_double_text_size("IOI-HA result")
             with self.subTest(page="SSQ12-TW result"):
                 self.page.goto(f"{self.live_server_url}/submission/{ssq_latest.pk}")
-                # #461: SSQ12-TW is not graded, so no 比上一次; its items are folded.
-                expect(self.main()).not_to_contain_text("比上一次")
+                # #461: SSQ12-TW is not graded, so no 比上次 (#646); its items are folded.
+                expect(self.main()).not_to_contain_text("比上次")
                 self.main().locator(".result-details > summary").click()
                 expect(self.main().get_by_role("heading", name="分數最低的 3 題")).to_be_visible()
                 self.main().get_by_text("看全部 12 題的回答", exact=True).click()
@@ -8205,9 +8210,9 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     def test_learn_cards_are_list_rows(self):
         with self.saving_artifacts():
             self.visit(False, "/learn")
-            # #487: the hearing loss simulator is the fourth.
+            # #487: the hearing loss simulator is the fourth; #640: 關於聽伴 the fifth.
             cards = self.main().get_by_role("link")
-            self.assertEqual(cards.count(), 4)
+            self.assertEqual(cards.count(), 5)
             for card in cards.all():
                 with self.subTest(card=card.inner_text()):
                     self.assert_list_row(card)
@@ -8942,8 +8947,8 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 "- paragraph: /最近一次（\\d{4}/\\d\\d/\\d\\d \\d\\d:\\d\\d，沒戴助聽器）/\n"
                 "- paragraph: 40 分\n"
                 "- paragraph: 顯著影響\n"
-                "- paragraph: 比上一次多 20 分（分數越低越好）\n"
-                "- paragraph: /上一次（\\d{4}/\\d\\d/\\d\\d \\d\\d:\\d\\d）：20 分/"
+                "- paragraph: 比上次多 20 分\n"
+                "- paragraph: /上一次（\\d{4}/\\d\\d/\\d\\d \\d\\d:\\d\\d）：20 分（分數越低越好）/"
             )
             number = float(self.style(block.locator(".result-number"), "fontSize")[:-2])
             first = float(self.style(block.locator("p").first, "fontSize")[:-2])
@@ -10335,10 +10340,11 @@ class FooterPinButtonRowsT359Test(SavesFailureArtifacts, LayoutOnAPhone, StaticL
 
 class FooterOneRowTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """Readability batch 1 (docs/planning/redesign/mockup-readability-batch1.html, the owner's A):
-    on a phone the footer's links share one row, each icon over its words; a computer keeps the
-    icon beside the words. The links stay at least 44px tall to tap."""
+    on a phone each icon is over its words, at most three links a row since spec #633 (the #634
+    mockup's A); a computer keeps the icon beside the words. The links stay at least 44px tall to
+    tap."""
 
-    LINKS = ("家人專區", "隱私權說明", "帳號設定")
+    LINKS = ("家人專區", "關於聽伴", "意見回饋", "隱私權說明", "帳號設定")
     # The box of a link's words alone, without its icon.
     WORDS = """el => {
         const words = [...el.childNodes].find((n) => n.nodeType === 3 && n.data.trim());
@@ -10366,28 +10372,29 @@ class FooterOneRowTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTe
             )
         return boxes
 
-    def test_a_phone_puts_the_links_in_one_row_icons_over_words(self):
+    def test_a_phone_puts_three_links_a_row_icons_over_words(self):
         with self.saving_artifacts():
             for width in (320, 390):
                 with self.subTest(width=width):
                     self.open("/privacy", (width, 844))
                     boxes = self.boxes()
-                    tops = {round(link["y"]) for link, _, _ in boxes}
-                    self.assertEqual(len(tops), 1, tops)
+                    tops = [round(link["y"]) for link, _, _ in boxes]
+                    self.assertEqual(len(set(tops[:3])), 1, tops)
+                    self.assertGreater(tops[3], tops[2], tops)
                     for (link, icon, words), name in zip(boxes, self.LINKS, strict=True):
                         self.assertGreaterEqual(link["height"], 44, name)
                         self.assertLessEqual(icon["y"] + icon["height"], words["y"] + 1, name)
                         # One line of words, the name not broken.
                         self.assertLess(words["height"], self.rem() * 2, name)
 
-    def test_a_visitor_has_two_links_in_one_row(self):
+    def test_a_visitor_has_three_links_in_one_row(self):
         with self.saving_artifacts():
             self.open("/privacy", (320, 844), signed_in=False)
             footer = self.page.locator(".site-footer")
             expect(footer.get_by_role("link", name="帳號設定")).to_have_count(0)
             boxes = [
                 footer.get_by_role("link", name=name, exact=True).bounding_box()
-                for name in self.LINKS[:2]
+                for name in self.LINKS[:3]
             ]
             self.assertEqual(len({round(box["y"]) for box in boxes}), 1)
             for box in boxes:
@@ -11046,7 +11053,7 @@ class MyRecordsT364Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerT
         with self.saving_artifacts():
             self.visit(True, lambda test: test.hhia_s_records(), width=390)
             block = self.main().locator(".records-score")
-            expect(block.locator("#since-last")).to_contain_text("比上一次多 20 分")
+            expect(block.locator("#since-last .change-label")).to_have_text("比上次多 20 分")
             self.assertNotEqual(self.style(block, "backgroundColor"), WhiteCardRuleTest.WHITE)
             self.assertEqual(self.style(block, "borderLeftWidth"), "0px")
             self.visit(True, "/my_hearing?questionnaire=hhia-s", width=320)
@@ -11307,9 +11314,9 @@ class ReportShareLearnT366Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
     def test_learn_card_titles_end_with_more_than_one_character(self):
         self.open("/learn", self.PHONE, signed_in=False)
         with self.saving_artifacts():
-            # #487: the hearing loss simulator is the fourth.
+            # #487: the hearing loss simulator is the fourth; #640: 關於聽伴 the fifth.
             titles = self.main().locator(".link-card-title")
-            expect(titles).to_have_count(4)
+            expect(titles).to_have_count(5)
             for title in titles.all():
                 lines = self.lines(title)
                 with self.subTest(title=lines):
@@ -14014,13 +14021,14 @@ class ResultPagesT461Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
         with self.saving_artifacts():
             banner = self.main().locator(".result-banner")
             expect(banner).to_contain_text("輕度到中度影響")
-            expect(banner.locator(".result-since-last")).to_have_text(
-                "上次 2026/03/26 是 18 分，這次少 4 分"
+            # #646: the label, then the sentence without the difference.
+            expect(banner.locator(".result-since-last p")).to_have_text(
+                ["比上次少 4 分", "上次 2026/03/26 是 18 分"]
             )
             # 48px for the number (2.6667rem), at least the body size for every other word.
             self.assertAlmostEqual(self.font_size(banner.locator(".result-number")), 48, delta=0.1)
             for words in (
-                banner.locator(".result-since-last p"),
+                *banner.locator(".result-since-last p").all(),
                 self.main().locator(".result-one-line"),
             ):
                 self.assertGreaterEqual(self.font_size(words), self.rem())
@@ -16626,3 +16634,552 @@ class AnswerReassuranceTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
                         self.wait_for_questions()
                         expect(self.reassure()).to_be_visible()
                         self.assert_fits_a_phone_at_double_text_size(where, width)
+
+
+class FeedbackTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Spec #633 (#636, #640, the #634 mockup's A): 意見回饋 from any footer, sent with or
+    without JavaScript, its pages and 關於聽伴 on a phone (the footer's rows: FooterOneRowTest)."""
+
+    def footer_links(self):
+        return self.page.locator(".site-footer-links a")
+
+    def sent_title(self):
+        return self.main().get_by_role("heading", name="已送出，謝謝您")
+
+    def test_sent_from_a_footer_without_javascript_and_back_to_that_page(self):
+        with self.saving_artifacts():
+            self.open("/privacy", signed_in=False, java_script_enabled=False)
+            self.footer_links().get_by_text("意見回饋").click()
+            expect(self.main()).to_contain_text("您是從「隱私權說明」過來的。")
+            self.main().get_by_label("想跟我們說的話").fill("字太小了")
+            self.main().get_by_role("button", name="送出").click()
+            expect(self.sent_title()).to_be_visible()
+            self.main().get_by_role("link", name="回到剛才那一頁").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/privacy")
+        feedback = Feedback.objects.get()
+        self.assertEqual((feedback.text, feedback.page), ("字太小了", "隱私權說明"))
+
+    def test_the_robots_box_is_never_met_by_eye_tab_or_screen_reader(self):
+        # Cross review of spec #633 (acceptance 31).
+        with self.saving_artifacts():
+            self.open("/feedback", signed_in=False)
+            expect(self.page.locator("#id_website")).to_be_hidden()
+            self.main().get_by_label("想跟我們說的話").focus()
+            self.page.keyboard.press("Tab")
+            expect(self.main().get_by_label("Email（選填）")).to_be_focused()
+            self.page.keyboard.press("Tab")
+            expect(self.main().get_by_role("button", name="送出")).to_be_focused()
+            tree = self.page.locator("main").aria_snapshot()
+            self.assertNotIn("網站", tree)
+
+    def test_the_about_page_fits_a_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            for width in (320, 390):
+                with self.subTest(width=width):
+                    self.open("/about", (width, 844), signed_in=False)
+                    self.assert_fits_a_phone_at_double_text_size("about", width)
+
+    def test_its_pages_fit_a_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            for width in (320, 390):
+                with self.subTest(width=width):
+                    self.open("/feedback?page=result&next=%2F", (width, 844), signed_in=False)
+                    self.assert_fits_a_phone_at_double_text_size("feedback", width)
+                    self.double_text(on=False)
+                    self.main().get_by_label("想跟我們說的話").fill("字太小了")
+                    self.main().get_by_role("button", name="送出").click()
+                    expect(self.sent_title()).to_be_visible()
+                    self.assert_fits_a_phone_at_double_text_size("feedback sent", width)
+
+
+class ChangeLabelT646Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#646 (spec #644 H2, the #645 mockup's A): the label on top of 跟上次比 in the result box
+    and in 我的紀錄's 最近一次, neutral dark words on white, read out whole and never cut."""
+
+    fixtures = ("questions_fixture.json",)
+    TAIPEI = ResultPagesT461Test.TAIPEI
+    record = ResultPagesT461Test.record
+    lowest_contrast = staticmethod(StyleInBrowserTest.lowest_contrast)
+    CUT_OFF = WhiteCardRuleTest.CUT_OFF
+    WHITE = "rgb(255, 255, 255)"
+    HEADING = "rgb(33, 37, 41)"  # --color-heading
+    MUTED = "rgb(74, 84, 96)"  # --color-muted
+    RECORDS = "/my_hearing?questionnaire=hhie-s"
+    # 200% text before the page's scripts run, as PlayInViewTest's double does: the trend
+    # chart's ResponsiveContainer redraws only some time after the text size changes, so set it
+    # first, as for someone whose text is already large, and the chart is drawn at it once.
+    DOUBLE_FROM_THE_START = f"""document.addEventListener("readystatechange", () => {{
+        document.documentElement.style.setProperty(
+            "font-size", "{OnAPhone.DOUBLE_TEXT_SIZE}", "important");
+    }}, {{ once: true }});"""
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+        self.sign_in(consented_user(username="change_label_t646"))
+        self.record("hhie-s", [4, 4, 4, 4, 2] + [0] * 5, (2026, 3, 26), wearing_hearing_aid=False)
+        # 14, today: 比上次少 4 分.
+        self.latest = self.record("hhie-s", [4, 4, 4, 2] + [0] * 6, wearing_hearing_aid=False)
+
+    def label_box(self):
+        return self.main().locator(".result-since-last")
+
+    def assert_neutral(self, label):
+        # Acceptance 7: the heading colour on white in a thin muted frame, in every level's box.
+        self.assertEqual(self.style(label, "color"), self.HEADING)
+        self.assertEqual(self.style(label, "backgroundColor"), self.WHITE)
+        for side in ("Top", "Right", "Bottom", "Left"):
+            self.assertEqual(self.style(label, f"border{side}Color"), self.MUTED, side)
+            self.assertEqual(self.style(label, f"border{side}Width"), "2px", side)
+        self.assertEqual(self.style(label, "fontWeight"), "700")
+        self.assertGreaterEqual(self.lowest_contrast(self.HEADING, self.WHITE), 4.5)
+        expect(label.locator("svg, img")).to_have_count(0)
+
+    def test_the_result_box_reads_the_label_then_the_sentence(self):
+        # Acceptance 1, 2, 7 and 9: a screen reader hears the whole label, then the sentence.
+        with self.saving_artifacts():
+            self.open(f"/submission/{self.latest.pk}")
+            expect(self.label_box()).to_match_aria_snapshot(
+                "- paragraph: 比上次少 4 分\n- paragraph: 上次 2026/03/26 是 18 分"
+            )
+            self.assert_neutral(self.label_box().locator(".change-label"))
+
+    def test_the_latest_record_reads_the_label_then_the_last_time(self):
+        # Acceptance 5, 7 and 9 on 我的紀錄.
+        with self.saving_artifacts():
+            self.open(self.RECORDS)
+            expect(self.page.locator(".recharts-wrapper")).to_be_visible()
+            expect(self.main().locator("#since-last")).to_match_aria_snapshot(
+                "- paragraph: 比上次少 4 分\n"
+                "- paragraph: 上一次（2026/03/26）：18 分（分數越低越好）"
+            )
+            self.assert_neutral(self.main().locator("#since-last .change-label"))
+
+    def test_fits_a_phone_at_double_text_size(self):
+        # Acceptance 10: no sideways scrolling, the label inside its box, nothing cut.
+        with self.saving_artifacts():
+            for path in (f"/submission/{self.latest.pk}", self.RECORDS):
+                for width in (320, 390):
+                    with self.subTest(path=path, width=width):
+                        self.open(path, (width, 844), script=self.DOUBLE_FROM_THE_START)
+                        if path == self.RECORDS:
+                            expect(self.page.locator(".recharts-wrapper")).to_be_visible()
+                        self.assert_fits_a_phone_at_double_text_size(path, width)
+                        self.assertEqual(self.page.evaluate(self.CUT_OFF), [], path)
+                        label = self.label_box().locator(".change-label")
+                        box = self.label_box().bounding_box()
+                        tag = label.bounding_box()
+                        self.assertLessEqual(tag["x"] + tag["width"], box["x"] + box["width"] + 0.5)
+                        width_now, room = label.evaluate("e => [e.scrollWidth, e.clientWidth]")
+                        self.assertLessEqual(width_now, room, path)
+
+
+class AttemptNumberT647Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#647 (spec #644 H3, acceptance 18): 這是您第 N 次做這份問卷。 under every result page's
+    header line fits a phone, moves the result box down by that one line only, and leaves the
+    solid button above the tab bar (the owner's pick A)."""
+
+    fixtures = ("questions_fixture.json",)
+    record = ResultPagesT461Test.record
+    TAIPEI = ResultPagesT461Test.TAIPEI
+    ITEMS: ClassVar = {
+        "hhie-s": 10,
+        "hhia-s": 10,
+        "thi": 25,
+        "ssq12-tw": 12,
+        "ioi-ha": 7,
+        "sadl": 15,
+    }
+    # The result box is the element after the sentence; its top with the sentence, then without.
+    MOVED = """() => {
+        const sentence = document.querySelector("main .result-attempt");
+        const box = sentence.nextElementSibling;
+        const withIt = box.getBoundingClientRect().top;
+        const line = parseFloat(getComputedStyle(sentence).lineHeight);
+        sentence.remove();
+        return [withIt - box.getBoundingClientRect().top, line];
+    }"""
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+        self.sign_in(consented_user(username="attempt_number_t647"))
+        self.latest = {}
+        for code, items in self.ITEMS.items():
+            score = ResultPagesT461Test.SCORES[code]
+            aided = code in ("ioi-ha", "sadl")
+            norm_group = NormGroup.UNGROUPED if code == "ioi-ha" else ""
+            for day in ((2026, 3, 1), None):
+                self.latest[code] = self.record(
+                    code, [score] * items, day, wearing_hearing_aid=aided, norm_group=norm_group
+                )
+
+    def test_fits_a_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            for code, record in self.latest.items():
+                for width in (320, 390):
+                    with self.subTest(code=code, width=width):
+                        self.open(f"/submission/{record.pk}", (width, 844))
+                        expect(self.main().locator(".result-attempt")).to_have_text(
+                            "這是您第 2 次做這份問卷。"
+                        )
+                        self.assert_fits_a_phone_at_double_text_size(code, width)
+
+    def test_the_result_box_moves_down_one_line_at_most(self):
+        # At 390px and the usual text size, the sentence takes one line and no more.
+        with self.saving_artifacts():
+            for code, record in self.latest.items():
+                with self.subTest(code=code):
+                    self.open(f"/submission/{record.pk}")
+                    moved, line = self.page.evaluate(self.MOVED)
+                    self.assertGreater(moved, 0, code)
+                    self.assertLessEqual(moved, line + 0.5, code)
+
+    def test_the_solid_button_stays_above_the_tab_bar(self):
+        # The owner's pick A (2026-11-16): with the sentence added, the space outside the boxes
+        # shrinks so the one solid button stays on a 390 x 844 phone's first screen, above the
+        # floating tab bar, as ResultPagesT461Test asks of HHIE-S. Its records: 18, then 14.
+        # A short name: a long one wraps 目前登入 at the top onto a second line.
+        self.sign_in(consented_user(username="t647_first"))
+        latest = {}
+        for code, earlier, now in (
+            ("hhie-s", [4, 4, 4, 4, 2] + [0] * 5, [4, 4, 4, 2] + [0] * 6),
+            ("hhia-s", [4, 4, 4, 4, 2] + [0] * 5, [4, 4, 4, 2] + [0] * 6),
+            ("thi", [2] * 24 + [0], [2] * 21 + [0] * 4),
+        ):
+            self.record(code, earlier, (2026, 3, 26), wearing_hearing_aid=False)
+            latest[code] = self.record(code, now, wearing_hearing_aid=False)
+        with self.saving_artifacts():
+            for code, record in latest.items():
+                with self.subTest(code=code):
+                    self.open(f"/submission/{record.pk}")
+                    expect(self.main().locator(".result-attempt")).to_have_text(
+                        "這是您第 2 次做這份問卷。"
+                    )
+                    button = self.main().locator(".btn-primary").bounding_box()
+                    tab_bar = self.page.get_by_role("navigation", name="主要導覽").bounding_box()
+                    self.assertLessEqual(button["y"] + button["height"], tab_bar["y"], code)
+
+
+class EmptyStatesT648Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#648 (spec #644 H4, acceptance 26-27, the #645 mockup's 3A): the four pages with nothing
+    yet read their title first, past the icon, and fit a phone at 200% text with buttons a finger
+    can press."""
+
+    # Each page, its empty state's words in reading order and its solid button.
+    PAGES = (
+        (
+            "/my_hearing",
+            '- heading "還沒有紀錄" [level=2]\n'
+            "- paragraph: 做完第一份問卷，分數和變化會出現在這裡。\n"
+            '- link "做第一份問卷"',
+            "做第一份問卷",
+        ),
+        (
+            "/audiograms",
+            '- heading "還沒有聽力圖" [level=2]\n'
+            "- paragraph: 拿著醫院的聽力檢查報告，按上面的「記錄聽力圖」把它描進來。",
+            "記錄聽力圖",
+        ),
+        (
+            "/report",
+            '- heading "還沒有報告" [level=2]\n'
+            "- paragraph: 做完第一份問卷或記錄聽力圖，報告就會有內容，可以印出來給醫師看。\n"
+            '- link "做第一份問卷"',
+            "做第一份問卷",
+        ),
+        (
+            "/share",
+            '- heading "還沒有可以分享的紀錄" [level=2]\n'
+            "- paragraph: 做完第一份問卷或記錄聽力圖，就能傳給家人看。\n"
+            '- link "做第一份問卷"',
+            "做第一份問卷",
+        ),
+    )
+
+    def setUp(self):
+        self.sign_in(consented_user(username="empty_states_t648"))
+
+    def test_the_title_is_read_first_and_the_icon_not_at_all(self):
+        # Acceptance 26: the icon is in the page but not in what a screen reader reads.
+        with self.saving_artifacts():
+            for path, read, _ in self.PAGES:
+                with self.subTest(path=path):
+                    self.open(path)
+                    empty = self.main().locator(".empty-state")
+                    expect(empty.locator(".action-card-icon svg")).to_be_visible()
+                    expect(empty).to_match_aria_snapshot(read)
+                    solid = self.main().locator(".btn-primary")
+                    expect(solid).to_have_count(1)
+
+    def test_fits_a_phone_at_double_text_size(self):
+        # Acceptance 27: no sideways scrolling, the solid button at least 44px high.
+        with self.saving_artifacts():
+            for path, _, button in self.PAGES:
+                for width in (320, 390):
+                    with self.subTest(path=path, width=width):
+                        self.open(path, (width, 844))
+                        self.assert_fits_a_phone_at_double_text_size(path, width)
+                        solid = self.main().get_by_role("link", name=button, exact=True)
+                        self.assertGreaterEqual(solid.bounding_box()["height"], 44, path)
+                        self.double_text(on=False)
+                        self.assertGreaterEqual(solid.bounding_box()["height"], 44, path)
+
+
+class LastResultT649Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#649 (spec #644 Q1, acceptance 38): the catalogue's cards, the recommended one too, say
+    the last result after 上次 and still fit a phone at 200% text, 上次 and its words on one
+    line together inside the card."""
+
+    fixtures = ("questions_fixture.json",)
+    record = ResultPagesT461Test.record
+    TAIPEI = ResultPagesT461Test.TAIPEI
+    # Each card's 上次 words; HHIE-S 200 days ago, so it is also the recommendation (retest due).
+    LAST: ClassVar = {
+        "hhie-s": "輕度到中度影響",
+        "thi": "極重度障礙",
+        "ssq12-tw": "未計算：包含不適用題目",
+        "sadl": "整體滿意度：4.0",
+        "ioi-ha": None,
+    }
+    # Where the words end, overflow too, and where their card or the recommended block ends.
+    WORDS_END = """e => [
+        e.getBoundingClientRect().left + e.scrollWidth,
+        e.closest("a, section").getBoundingClientRect().right,
+    ]"""
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+        self.sign_in(consented_user(username="last_result_t649", birth_year=1956))
+        old = datetime.now(self.TAIPEI) - timedelta(days=200)
+        self.days = {"hhie-s": f"{old:%Y/%m/%d}"}
+        hhie_s = self.record("hhie-s", [4, 4, 2, 2] + [0] * 6, wearing_hearing_aid=False)
+        Submission.objects.filter(pk=hhie_s.pk).update(created_at=old)
+        self.record("thi", [4] * 25)
+        self.record("ssq12-tw", [8] * 11 + [None], wearing_hearing_aid=False)
+        self.record("sadl", [4] * 15, wearing_hearing_aid=True)
+        self.record("ioi-ha", [3] * 7, norm_group=NormGroup.UNGROUPED)
+        today = f"{datetime.now(self.TAIPEI):%Y/%m/%d}"
+        for code in ("thi", "ssq12-tw", "sadl", "ioi-ha"):
+            self.days[code] = today
+
+    def test_fits_a_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            for width in (320, 390):
+                with self.subTest(width=width):
+                    self.open("/questionnaire_list", (width, 844))
+                    recommended = self.main().get_by_role("region", name="推薦您做這一份")
+                    expect(recommended.locator(".inline-block")).to_have_text(
+                        f"上次 {self.days['hhie-s']}・輕度到中度影響"
+                    )
+                    for code, said in self.LAST.items():
+                        name = Questionnaire.objects.get(code=code).questionnaire_name
+                        card = self.main().locator("a.questionnaire-card", has_text=f"（{name}）")
+                        last = f"上次 {self.days[code]}" + (f"・{said}" if said else "")
+                        expect(card.locator(".inline-block")).to_have_text(last)
+                    self.assert_fits_a_phone_at_double_text_size("catalogue", width)
+                    # Each 上次 and its words end inside their card or the recommended block; the
+                    # recommended block's words alone in NarrowOverflowsT668Test (#668).
+                    for tag in self.main().locator(".inline-block", has_text="上次").all():
+                        words_end, box_end = tag.evaluate(self.WORDS_END)
+                        self.assertLessEqual(words_end, box_end, tag.text_content())
+
+
+class FittingDayT650Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#650 (spec #644 R2, acceptance 39, 40, 45 and 47; the #645 mockup's A): the trend chart's
+    line on the day hearing aids were first worn, 開始戴 in a white box clear of every date,
+    point and score, and the sentence under the chart, on a phone at 200% text."""
+
+    fixtures = ("questions_fixture.json",)
+    TAIPEI = ResultPagesT461Test.TAIPEI
+    record = ResultPagesT461Test.record
+    DOUBLE_FROM_THE_START = ChangeLabelT646Test.DOUBLE_FROM_THE_START
+    WHITE = ChangeLabelT646Test.WHITE
+    MUTED = ChangeLabelT646Test.MUTED
+    HEADING = ChangeLabelT646Test.HEADING
+    # Each questionnaire's top score on one day, so a point sits right under the box.
+    ITEMS: ClassVar = {"hhie-s": 10, "thi": 25}
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+        self.sign_in(consented_user(username="fitting_day_t650"))
+        for code, items in self.ITEMS.items():
+            self.record(code, [2] * items, (2026, 3, 1), wearing_hearing_aid=False)
+            self.record(code, [4] * items, (2026, 9, 1), wearing_hearing_aid=True)
+            self.record(code, [0] * items, (2026, 10, 14), wearing_hearing_aid=True)
+        AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1))
+
+    @staticmethod
+    def overlap(a, b):
+        return not (
+            a["x"] + a["width"] <= b["x"]
+            or b["x"] + b["width"] <= a["x"]
+            or a["y"] + a["height"] <= b["y"]
+            or b["y"] + b["height"] <= a["y"]
+        )
+
+    def test_the_line_and_its_box_stay_clear_on_a_phone(self):
+        with self.saving_artifacts():
+            for code in self.ITEMS:
+                for width in (320, 390):
+                    for double in (False, True):
+                        where = f"{code} at {width}px{' and 200%' if double else ''}"
+                        with self.subTest(where=where):
+                            script = self.DOUBLE_FROM_THE_START if double else ""
+                            self.open(
+                                f"/my_hearing?questionnaire={code}", (width, 844), script=script
+                            )
+                            self.assert_clear(where, width)
+
+    def assert_clear(self, where, width):
+        expect(self.page.locator(".recharts-wrapper")).to_be_visible()
+        marker = self.main().locator(".trend-fitting")
+        expect(marker).to_have_text("開始戴")
+        line, box, words = (
+            marker.locator(f".trend-fitting-{part}") for part in ("line", "box", "text")
+        )
+        # Acceptance 45: neutral dark grey, the words in the heading colour on white.
+        self.assertEqual(self.style(line, "stroke"), self.MUTED, where)
+        self.assertEqual(self.style(box, "stroke"), self.MUTED, where)
+        self.assertEqual(self.style(box, "fill"), self.WHITE, where)
+        self.assertEqual(self.style(words, "fill"), self.HEADING, where)
+        # Dashed, the box's corners rounded: site.css (.trend-fitting-*), with the colours.
+        self.assertEqual(self.style(line, "strokeDasharray"), "6px, 4px", where)
+        self.assertEqual(self.style(box, "rx"), "4px", where)
+        # Acceptance 47: the words inside their box, the box inside the chart, clear of the
+        # dates, the points and the scores.
+        frame, inner = box.bounding_box(), words.bounding_box()
+        self.assertGreaterEqual(inner["x"], frame["x"], where)
+        self.assertLessEqual(inner["x"] + inner["width"], frame["x"] + frame["width"], where)
+        self.assertGreaterEqual(inner["y"], frame["y"], where)
+        self.assertLessEqual(inner["y"] + inner["height"], frame["y"] + frame["height"], where)
+        chart = self.page.locator(".recharts-wrapper").bounding_box()
+        self.assertGreaterEqual(frame["x"], chart["x"], where)
+        self.assertLessEqual(frame["x"] + frame["width"], chart["x"] + chart["width"], where)
+        others = self.page.locator(
+            ".recharts-xAxis-tick-labels text, .recharts-line-dots .trend-dot, .trend-score"
+        ).all()
+        self.assertGreater(len(others), 0, where)
+        for other in others:
+            self.assertFalse(self.overlap(frame, other.bounding_box()), where)
+        # Acceptance 41: the sentence under the chart, never scrolled sideways.
+        sentence = self.main().locator(".trend-fitted")
+        expect(sentence).to_have_text("2026/05/01 開始戴助聽器。")
+        scroll_width, client_width = sentence.evaluate("e => [e.scrollWidth, e.clientWidth]")
+        self.assertLessEqual(scroll_width, client_width, where)
+        # The whole page inside the phone: #668 fixed the questionnaire tabs that ran past it.
+        scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
+        self.assertLessEqual(scroll_width, width, where)
+
+
+class NarrowOverflowsT668Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#668: three overflows on a 320px phone at 200% text, found in #644 and older than it: the
+    questionnaire tabs on 我的紀錄, the trend chart's first score, and 上次's date in the
+    recommended block."""
+
+    fixtures = ("questions_fixture.json",)
+    TAIPEI = ResultPagesT461Test.TAIPEI
+    record = ResultPagesT461Test.record
+    DOUBLE_FROM_THE_START = ChangeLabelT646Test.DOUBLE_FROM_THE_START
+    # Where the words' last line ends, and where the room for words in their paragraph ends.
+    WORDS_END = """e => {
+        const range = document.createRange();
+        range.selectNodeContents(e);
+        const words = e.closest("p");
+        return [
+            Math.max(...[...range.getClientRects()].map((r) => r.right)),
+            words.getBoundingClientRect().left + words.clientWidth,
+        ];
+    }"""
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+        self.sign_in(consented_user(username="narrow_overflows_t668", birth_year=1956))
+
+    def test_the_records_tabs_fit_the_phone(self):
+        # Acceptance 1: two questionnaires, so two tabs; no sideways scrolling, every tab's words
+        # inside it.
+        self.record("hhie-s", [2] * 10, (2026, 3, 1), wearing_hearing_aid=False)
+        self.record("thi", [2] * 25, (2026, 3, 1), wearing_hearing_aid=False)
+        with self.saving_artifacts():
+            for width in (320, 390):
+                with self.subTest(width=width):
+                    self.open("/my_hearing", (width, 844), script=self.DOUBLE_FROM_THE_START)
+                    expect(self.page.locator(".recharts-wrapper")).to_be_visible()
+                    scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
+                    self.assertLessEqual(scroll_width, width)
+                    tabs = self.main().locator(".history-tabs a")
+                    expect(tabs).to_have_count(2)
+                    for tab in tabs.all():
+                        edge = tab.bounding_box()
+                        self.assertLessEqual(edge["x"] + edge["width"], width, tab.text_content())
+                        content, room = tab.evaluate("e => [e.scrollWidth, e.clientWidth]")
+                        self.assertLessEqual(content, room, tab.text_content())
+        # Acceptance 4: at the usual size on a 390px phone the two tabs stay side by side (at
+        # 320px they were one under the other already).
+        with self.subTest(size="usual"):
+            self.open("/my_hearing")
+            first, second = (
+                tab.bounding_box() for tab in self.main().locator(".history-tabs a").all()
+            )
+            self.assertEqual(first["y"], second["y"])
+            self.assertLess(first["x"], second["x"])
+
+    def test_every_score_on_the_trend_chart_stays_inside_it(self):
+        # Acceptance 2: THI's first score (50) was cut by the chart's left edge; HHIE-S too.
+        for code, items in {"hhie-s": 10, "thi": 25}.items():
+            self.record(code, [2] * items, (2026, 3, 1), wearing_hearing_aid=False)
+            self.record(code, [4] * items, (2026, 9, 1), wearing_hearing_aid=True)
+            self.record(code, [0] * items, (2026, 10, 14), wearing_hearing_aid=True)
+        with self.saving_artifacts():
+            for code in ("hhie-s", "thi"):
+                for width in (320, 390):
+                    with self.subTest(code=code, width=width):
+                        self.open(
+                            f"/my_hearing?questionnaire={code}",
+                            (width, 844),
+                            script=self.DOUBLE_FROM_THE_START,
+                        )
+                        expect(self.page.locator(".recharts-wrapper")).to_be_visible()
+                        chart = self.page.locator(".recharts-wrapper").bounding_box()
+                        scores = self.page.locator(".trend-score").all()
+                        self.assertEqual(len(scores), 3)
+                        for score in scores:
+                            edge = score.bounding_box()
+                            said = f"{code} {score.text_content()} at {width}px: {edge} in {chart}"
+                            self.assertGreaterEqual(edge["x"], chart["x"], said)
+                            self.assertLessEqual(
+                                edge["x"] + edge["width"], chart["x"] + chart["width"], said
+                            )
+                # Acceptance 4: at the usual size the first point is 16px in from the chart's
+                # edge, as before.
+                for width in (320, 390):
+                    with self.subTest(code=code, width=width, size="usual"):
+                        self.open(f"/my_hearing?questionnaire={code}", (width, 844))
+                        expect(self.page.locator(".recharts-wrapper")).to_be_visible()
+                        first = self.page.locator(".trend-dot").first
+                        self.assertEqual(float(first.get_attribute("data-cx")), 16)
+
+    def test_the_recommended_date_stays_inside_its_words(self):
+        # Acceptance 3: HHIE-S 200 days ago, so it is recommended (retest due) with 上次 and its
+        # date; the date ends inside the block's words, not in its padding.
+        old = datetime.now(self.TAIPEI) - timedelta(days=200)
+        hhie_s = self.record("hhie-s", [4, 4, 2, 2] + [0] * 6, wearing_hearing_aid=False)
+        Submission.objects.filter(pk=hhie_s.pk).update(created_at=old)
+        with self.saving_artifacts():
+            for width in (320, 390):
+                with self.subTest(width=width):
+                    self.open("/questionnaire_list", (width, 844))
+                    self.assert_fits_a_phone_at_double_text_size("catalogue", width)
+                    facts = self.main().locator(".recommended-block .recommended-facts")
+                    expect(facts).to_contain_text(f"上次 {old:%Y/%m/%d}")
+                    words_end, room_end = facts.locator(".inline-block").evaluate(self.WORDS_END)
+                    # Half a pixel for sub-pixel rounding of the text's box.
+                    self.assertLessEqual(words_end, room_end + 0.5, f"{width}px")
+                    # Acceptance 4: the block keeps its 1.125rem sides where the date fits: at
+                    # 390px even at 200% (40.5px), and at the usual size (20.25px).
+                    block = self.main().locator(".recommended-block")
+                    if width == 390:
+                        for side in ("paddingLeft", "paddingRight"):
+                            self.assertEqual(self.style(block, side), "40.5px", "390px at 200%")
+                    self.double_text(on=False)
+                    for side in ("paddingLeft", "paddingRight"):
+                        self.assertEqual(self.style(block, side), "20.25px", f"{width}px")

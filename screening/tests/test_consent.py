@@ -584,15 +584,17 @@ class PrivacyPageT361Tests(TestCase):
         # #471 (mockup #470 privacy B): the open sections' titles and the folded rows' titles,
         # each kind alike; all are level 2.
         classes = {anchor: kind for anchor, kind, _ in self._headings()}
-        # #400 the question log, #526 忘記密碼時, #505 Google, #506 LINE.
-        self.assertEqual(len(classes), 16)
+        # #400 the question log, #526 忘記密碼時, #505 Google, #506 LINE, #641 意見回饋.
+        self.assertEqual(len(classes), 17)
         open_ones = {classes.pop("highlights-title"), classes.pop("contact-title")}
         self.assertEqual(open_ones, {"h4"})
         self.assertEqual(set(classes.values()), {"fold-row-title"})
 
 
+# Spec #633 (#641): 意見回饋 is kept 90 days too.
 BACKUP_DAYS = (
-    "刪除的資料（包括刪除的帳號、超過 90 天的提問紀錄），在備份中最多再保留 10 天，之後自動清除。"
+    "刪除的資料（包括刪除的帳號、超過 90 天的提問紀錄和意見回饋），"
+    "在備份中最多再保留 10 天，之後自動清除。"
 )
 
 
@@ -623,9 +625,9 @@ class VpsPrivacyTests(TestCase):
     def test_the_backup_days_come_after_the_90_days_they_refer_to(self):
         # Self-review of #450: read before the 90 days, 「超過 90 天的提問紀錄」 means nothing yet.
         storage = self._section("storage-title", "recipients-title")
-        self.assertGreater(
-            storage.index(BACKUP_DAYS), storage.index("提問紀錄保存 90 天後自動刪除")
-        )
+        for kept in ("提問紀錄保存 90 天後自動刪除", "意見回饋保存 90 天後自動刪除"):
+            with self.subTest(kept=kept):
+                self.assertGreater(storage.index(BACKUP_DAYS), storage.index(kept))
 
     def test_the_old_hosts_and_6_hours_are_gone(self):
         response = self.client.get(reverse("privacy"))

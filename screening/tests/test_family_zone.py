@@ -635,12 +635,28 @@ class ReviewedPagesTests(SimpleTestCase):
                 "<p>我們拿到代號後",
                 "<p>您按「使用 LINE 帳號登入」",
                 "<li>登入方式：用 LINE 或 Google 登入時",
+                # Spec #633's 意見回饋 and its lines under 為什麼蒐集 and 存放在哪裡 (the version
+                # stays 8, ADR 0064); the owner approved the draft on 2026-11-16. Its row's tags
+                # are in the digest.
+                "{# Spec #633 (#641, ADR 0064)",
+                '<summary><h2 id="feedback-title"',
+                "<p>在頁尾按「意見回饋」送出時",
+                "<li>您寫的內容",
+                "<li>您填的 email",
+                "<li>您是從哪一種頁面過來的",
+                "<li>送出的時間",
+                "<p>意見回饋是匿名的",
+                "<p>意見回饋保存 90 天",
+                "<p>為了防止有人大量送出",
+                "<p>有新的意見回饋時",
+                "<li>看大家在意見回饋寫了什麼",
+                "<li>意見回饋保存 90 天",
             ),
             # #471 (the #470 mockup B) folded each part into a row and dropped the 這一頁的段落
             # list; the visible words are the same as main's apart from that list's title.
-            # #526 and spec #505, #506 added the tags of the 忘記密碼時, 用 Google 登入時 and
-            # 用 LINE 登入時 rows.
-            "d2e220de28fae17829ee65a178f5ef3efe421123f364790123d25f5b08977135",
+            # #526 and spec #505, #506, #633 added the tags of the 忘記密碼時, 用 Google 登入時,
+            # 用 LINE 登入時 and 意見回饋 rows.
+            "63be57d6ad6094f22ca8991920a75c9d09d6749e9ec41cce561177e9126e037a",
         ),
     )
 

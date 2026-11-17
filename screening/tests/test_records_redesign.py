@@ -83,7 +83,7 @@ class MyRecordsTests(Records):
         self.assertEqual(
             text(block.group(2)),
             "最近一次（2026/11/12，沒戴助聽器） 14 分 輕度到中度影響 "
-            "比上一次少 4 分（分數越低越好） 上一次（2026/05/20）：18 分",
+            "比上次少 4 分 上一次（2026/05/20）：18 分（分數越低越好）",
         )
         self.assertNotIn("和上一次比", main)
         self.assertNotIn("trend-summary", main)
