@@ -26,9 +26,9 @@ CONSENT_VERSION = 8
 # 6 and 7 moved it with the version (#452, spec #478, #526, spec #505). Version 8 (#506) has not
 # moved it yet: it is set to the day version 8 goes live. A guest's answers stay in the browser
 # (spec #492): nothing new is kept, so that sentence needed no version of its own. 意見回饋 (spec
-# #633, #641) is new data linked to no one, so only the date moved (ADR 0064); set it to the
-# day it goes live.
-PRIVACY_UPDATED_ON = date(2026, 11, 16)
+# #633, #641) is new data linked to no one, so only the date moved (ADR 0064), to the day it
+# went live (#643).
+PRIVACY_UPDATED_ON = date(2026, 11, 17)
 
 
 class User(AbstractUser):
