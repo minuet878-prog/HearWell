@@ -43,9 +43,8 @@ def _due(today):
     """(reminder, due day, the questionnaire to do again) of each account to send to today (spec
     #656 誰會收到)."""
     reminders = (
-        RetestReminder.objects.filter(
-            enabled=True, user__is_active=True, user__is_staff=False, user__is_superuser=False
-        )
+        # Not the admins: create_superuser makes staff too.
+        RetestReminder.objects.filter(enabled=True, user__is_active=True, user__is_staff=False)
         .exclude(user__email="")
         .select_related("user")
     )

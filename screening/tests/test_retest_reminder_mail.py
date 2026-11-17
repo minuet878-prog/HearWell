@@ -13,7 +13,9 @@ from django.conf import settings
 from django.core import mail
 from django.core.mail.backends.locmem import EmailBackend
 from django.core.management import call_command
+from django.db import connection
 from django.test import TestCase, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from screening.forms import HELP_ADDRESS
@@ -25,7 +27,7 @@ from screening.models import (
     Submission,
     User,
 )
-from screening.questionnaires import hhia_s, hhie_s
+from screening.questionnaires import hhia_s, hhie_s, ioi_ha
 from screening.tests.helpers import consented_user, submission_with_answers
 
 TAIPEI = ZoneInfo("Asia/Taipei")
@@ -169,11 +171,13 @@ class WhenItIsSentTests(ReminderMailTestCase):
         RetestReminder.objects.create(user=owner, enabled=True, enabled_on=ANSWERED_ON)
         self.person("no_record", answered_on=None)
         self.assertEqual(self.run_on(DUE_ON), ["gets_it@example.com"])
+        # Nothing for the others either: one without an email is not counted as sent.
+        self.assertEqual([record[0] for record in self.records()], ["gets_it"])
 
     def test_not_for_another_questionnaire_s_record(self):
         # IOI-HA is not a life-impact questionnaire: it never falls due (ADR 0016).
         user = self.person("ioi_only", answered_on=None)
-        submission = submission_with_answers(user, "ioi-ha", [1] * 7)
+        submission = submission_with_answers(user, ioi_ha.CODE, [1] * 7)
         moment = datetime(2026, 5, 17, 12, tzinfo=TAIPEI)
         Submission.objects.filter(pk=submission.pk).update(created_at=moment)
         self.assertEqual(self.run_on(DUE_ON), [])
@@ -413,6 +417,23 @@ class SentAdminTests(ReminderMailTestCase):
         delete = reverse("admin:screening_retestremindersent_delete", args=[record.pk])
         self.assertEqual(self.client.post(delete, {"post": "yes"}).status_code, 403)
         self.assertEqual(RetestReminderSent.objects.get().attempts, 1)
+
+    def test_two_or_many_take_the_same_queries(self):
+        # CODING_STANDARDS 15: a row more each day something is sent.
+        for number in range(2):
+            self.person(f"two_{number}")
+        self.run_on(DUE_ON)
+        self.client.force_login(User.objects.create_superuser(username="owner", password="pw"))
+        changelist = reverse("admin:screening_retestremindersent_changelist")
+        self.client.get(changelist)  # the first request also looks up what the admin caches
+        with CaptureQueriesContext(connection) as two:
+            self.assertEqual(self.client.get(changelist).status_code, 200)
+        for number in range(5):
+            self.person(f"many_{number}")
+        self.run_on(DUE_ON)
+        self.assertEqual(RetestReminderSent.objects.count(), 7)
+        with self.assertNumQueries(len(two)):
+            self.assertEqual(self.client.get(changelist).status_code, 200)
 
 
 class SameDueDayAsTheHomePageTests(ReminderMailTestCase):

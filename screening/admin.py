@@ -176,7 +176,6 @@ class RetestReminderAdmin(ViewOnlyAdmin):
 class RetestReminderSentAdmin(ViewOnlyAdmin):
     # Spec #656 acceptance 45: which due days were sent, tried or given up (#663).
     list_display = ("user", "due_on", "sent_at", "attempts", "last_failed_on")
-    list_select_related = ("user",)
     ordering = ("-due_on",)
 
 
