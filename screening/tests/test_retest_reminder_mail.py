@@ -101,6 +101,15 @@ class RefusingBackend(EmailBackend):
         raise OSError(f"Resend refused {messages[0].to[0]}")
 
 
+class StoppedBackend(EmailBackend):
+    """The mail service takes it, then the run is stopped (the VPS shut down) before it can
+    write anything down."""
+
+    def send_messages(self, messages):
+        super().send_messages(messages)
+        raise KeyboardInterrupt
+
+
 class RateLimitedBackend(EmailBackend):
     """Resend says too many a second for slow@example.com; the rest go to the outbox."""
 
@@ -182,6 +191,16 @@ class WhenItIsSentTests(ReminderMailTestCase):
         self.assertEqual(self.run_on(DUE_ON), ["run_twice@example.com"])
         self.assertEqual(self.run_on(DUE_ON, hour=15), [])
         self.assertEqual(RetestReminderSent.objects.count(), 1)
+
+    # 18, 19: the owner's call on the cross review (Codex 3), rather one missed than one twice.
+    def test_a_run_stopped_while_sending_never_sends_it_again(self):
+        self.person("stopped")
+        with override_settings(EMAIL_BACKEND=f"{__name__}.StoppedBackend"):
+            with self.assertRaises(KeyboardInterrupt):
+                self.run_on(DUE_ON)
+        self.assertEqual([message.to[0] for message in mail.outbox], ["stopped@example.com"])
+        self.assertEqual(self.run_on(DUE_ON, hour=15), [])
+        self.assertEqual(self.run_on(DUE_ON + timedelta(days=1)), [])
 
     # 19
     def test_never_again_for_the_same_due_day(self):
@@ -524,6 +543,18 @@ class QuotaUsedUpTests(ReminderMailTestCase):
             ["due_16th@example.com", "due_17th@example.com"],
         )
         self.assertEqual(GuestMonth.objects.get().reminders_sent, 3)
+
+    def test_one_tried_before_is_left_as_it_was(self):
+        self.person("failed_once")
+        with override_settings(EMAIL_BACKEND=f"{__name__}.RefusingBackend"):
+            with self.assertLogs(COMMAND_LOGGER, "ERROR"):
+                self.run_on(DUE_ON)
+        QuotaBackend.used_up, QuotaBackend.left = "daily_quota_exceeded", 0
+        self.assertEqual(self.run_on(DUE_ON + timedelta(days=1)), [])
+        self.assertEqual(self.records(), [("failed_once", DUE_ON, 1, DUE_ON)])
+        QuotaBackend.left = 1
+        self.assertEqual(self.run_on(DUE_ON + timedelta(days=2)), ["failed_once@example.com"])
+        self.assertEqual(RetestReminderSent.objects.get().attempts, 2)
 
 
 class FailedSendSentryTests(ReminderMailTestCase):

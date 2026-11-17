@@ -97,8 +97,9 @@ def _due_for(reminder, today):
 
 
 def _send(due, today):
-    """1 when it went, 0 when it did not. The row stays locked while sending, so a run at the same
-    moment waits, then finds it sent."""
+    """1 when it went, 0 when it did not. Written down as sent before it goes, the owner's call on
+    the cross review (Codex 3): rather one missed than one twice. A run stopped while sending
+    leaves it sent; the home page still says 再做一次."""
     with transaction.atomic():
         # Looked at again just before it goes (cross review, Codex 2): the list was made before
         # the first one went, and since then it may have been turned off, done again and so on.
@@ -106,27 +107,28 @@ def _send(due, today):
         now = None if reminder is None else _due_for(reminder, today)
         if now is None or now.due_on != due.due_on:
             return 0
-        record, _ = RetestReminderSent.objects.select_for_update().get_or_create(
+        # Locked, so a run at the same moment waits, then finds it sent.
+        record, created = RetestReminderSent.objects.select_for_update().get_or_create(
             user=reminder.user, due_on=now.due_on
         )
         if not record.to_try_on(today):
             return 0
         record.attempts += 1
-        try:
-            _message(now.reminder, now.questionnaire).send()
-        except AnymailAPIError as error:
-            # Raised out of the transaction, so the row is as it was.
-            if _quota_used_up(error):
-                raise QuotaUsedUp from error
-            _failed(record, today)
-            return 0
-        except Exception:
-            _failed(record, today)
-            return 0
         record.sent_at = timezone.now()
         record.save()
-        count_guest("reminders_sent")
-        return 1
+    try:
+        _message(now.reminder, now.questionnaire).send()
+    except AnymailAPIError as error:
+        if _quota_used_up(error):
+            _not_tried(record, created)
+            raise QuotaUsedUp from error
+        _failed(record, today)
+        return 0
+    except Exception:
+        _failed(record, today)
+        return 0
+    count_guest("reminders_sent")
+    return 1
 
 
 def _quota_used_up(error):
@@ -137,8 +139,19 @@ def _quota_used_up(error):
 def _failed(record, today):
     # A fixed message: the mail service's own words may hold the address (Sentry drops them).
     logger.exception("A retest reminder could not be sent")
+    record.sent_at = None
     record.last_failed_on = today
     record.save()
+
+
+def _not_tried(record, created):
+    # Resend's quota used up: as it was before, for the next day's run, not counted as failed.
+    if created:
+        record.delete()
+    else:
+        record.attempts -= 1
+        record.sent_at = None
+        record.save()
 
 
 def _message(reminder, questionnaire):

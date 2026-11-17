@@ -42,7 +42,10 @@ class RetestReminder(models.Model):
 class RetestReminderSent(models.Model):
     """One 重測提醒信 per account and due day (spec #656): the unique pair is what keeps a schedule
     run again, or two at once, from sending it twice. attempts counts every try, the one that sent
-    it too; a day that failed is tried again the next, at most MAX_ATTEMPTS days."""
+    it too; a day that failed is tried again the next, at most MAX_ATTEMPTS days. sent_at is
+    written just before the mail goes and cleared if it fails (the owner's call on the cross
+    review: rather one missed than one twice), so a run stopped while sending leaves it sent;
+    Resend's own log tells whether that one really went."""
 
     MAX_ATTEMPTS = 3
 
