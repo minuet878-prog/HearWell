@@ -1,0 +1,58 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    {# 診間小卡 print page (spec #677, the #678 mockup's P): no header, footer or tab bar, on screen or on paper. #}
+    <title>列印診間小卡｜聽伴</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="{% static 'screening/frontend/site.css' %}" rel="stylesheet">
+    <link rel="icon" href="{% static 'screening/pwa/favicon-32.png' %}" sizes="32x32">
+    <link rel="icon" href="{% static 'screening/pwa/favicon.svg' %}" type="image/svg+xml">
+    {# Here, after site.css: this page's A4 sheet fills the paper, over the 1.5cm margin every other printed page keeps. #}
+    <style>@page { size: A4; margin: 0; }</style>
+</head>
+<body class="m-0 bg-white text-heading">
+{# 16px sides, not rem: the card keeps its size at 200% text, so wider sides would push it off a phone. #}
+<main class="max-w-[54rem] mx-auto px-[16px] pt-4 pb-8 print:max-w-none print:p-0">
+{# On screen only: what to choose and how to print (the #678 mockup's P). #}
+<div class="print:hidden">
+<h1 class="h3">列印診間小卡</h1>
+{# A link each, so choosing works without JavaScript. #}
+<nav aria-label="卡種" class="clinic-cards-choices">{% for key, label in choices %}<a class="clinic-cards-choice" href="{% url 'clinic_cards' %}?card={{ key }}"{% if key == card %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}</nav>
+{% if not qr_code %}<p class="mb-4 px-4 py-3 border-l-[0.375rem] border-severe bg-severe-bg text-severe font-bold" role="alert">沒有設定正式網址，印出來的 QR code 不能用。</p>{% endif %}
+<div class="mb-4 px-4 py-3 rounded-medium bg-surface">
+<p class="mb-0"><strong>列印要點</strong></p>
+<ol class="mt-1 mb-0 pl-6 list-decimal">
+<li>紙張選 A4。</li>
+<li>比例選「實際大小」或 100%，不要選「符合頁面大小」。</li>
+<li>印完沿著灰線裁，一張 A4 裁成 10 張。</li>
+</ol>
+</div>
+<p class="clinic-cards-phone-note">手機上只顯示一張卡的樣子；要印整張請用電腦。</p>
+</div>
+{# The logo's gradient and mask, once: an SVG fill prints, a CSS background (the header's logo) does not by default. #}
+<svg class="absolute" width="0" height="0" aria-hidden="true" focusable="false"><defs>
+<linearGradient id="clinic-card-brand" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color: var(--color-gradient-start)"/><stop offset="1" style="stop-color: var(--color-gradient-end)"/></linearGradient>
+<mask id="clinic-card-bird"><path fill="#fff" fill-rule="evenodd" d="M12 50c1-3 3-6 5-9 0-14 9-24 21-24a11 11 0 0 1 11 9l7 4-7 3c-2 11-10 17-21 17zM40 25a2.8 2.8 0 1 0 .01 0z"/><path fill="none" stroke="#000" stroke-width="3.9" stroke-linecap="round" stroke-linejoin="round" transform="translate(28 33.5) scale(.9) translate(-28.5 -35)" d="M22 33a6.5 6.5 0 0 1 13 0c0 4-4 5-4 8.5a3.3 3.3 0 0 1-6 2"/></mask>
+</defs></svg>
+{# One A4 sheet, 2 columns by 5 rows, a pale grey line round each card to cut along (the #678 mockup's C). #}
+<div class="clinic-cards-sheet">
+{% for _ in sheet %}
+<div class="clinic-card" data-card="{{ card }}">
+<div class="clinic-card-words">
+<p class="clinic-card-brand"><svg class="clinic-card-logo" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><path fill="url(#clinic-card-brand)" d="M33 2c17 0 29 11 29 29 0 18-12 31-31 31C13 62 2 50 2 33 2 15 15 2 33 2z"/><rect width="64" height="64" fill="#fff" mask="url(#clinic-card-bird)"/></svg><span>聽<span class="clinic-card-brand-tint">伴</span></span></p>
+<p class="clinic-card-title">{% for line in words.title %}{{ line }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</p>
+<p class="clinic-card-free">{{ words.free }}</p>
+<p class="clinic-card-sees">{% for line in words.sees %}{{ line }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</p>
+</div>
+<div class="clinic-card-scan">
+{% if qr_code %}<div class="clinic-card-qr">{{ qr_code }}</div>{% endif %}
+<p class="clinic-card-camera">{{ words.camera }}</p>
+<p class="clinic-card-address">tingpal.tw</p>
+</div>
+</div>
+{% endfor %}
+</div>
+</main>
+</body>
+</html>

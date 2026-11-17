@@ -3,6 +3,8 @@
 日期：2026-10-22（本人審定，助聽器選配指引拷問 Q1、Q3、Q9、Q10）
 
 > 選配那條（任一耳 PTA 超過 25 dB 就建議評估選配）已由 [ADR 0067](0067-fitting-advice-needs-an-audiogram.md) 取代；鑑定門檻與「有依據才判斷」仍有效。
+>
+> 鑑定門檻只用聽力檢查估算，自我測試不估算，見 [ADR 0068](0068-self-tests-are-audiograms-not-for-disability.md)。
 
 ## 情境
 

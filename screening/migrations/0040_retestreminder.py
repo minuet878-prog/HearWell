@@ -9,7 +9,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('screening', '0038_feedbacknotice'),
+        ('screening', '0039_guestmonth_clinic_cards'),
     ]
 
     operations = [

@@ -4,6 +4,8 @@
 
 {% block extra_head %}
 <script defer src="{% static 'screening/share-button.js' %}"></script>
+{# The family card's landing (spec #677): arrival-count.js counts its mark once and takes it off. #}
+<script type="module" src="{% static 'screening/frontend/arrival-count.js' %}"></script>
 {% endblock %}
 
 {% block body %}
