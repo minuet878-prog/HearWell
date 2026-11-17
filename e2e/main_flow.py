@@ -17287,14 +17287,19 @@ class ClinicCardPrintTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
 
     def test_printed_the_owners_words_keep_their_lines_inside_the_card(self):
         # Acceptance 25 (#682): each line the owner wrote stays one line, nothing cut or outside.
+        # Written without spaces: self.lines (LINES) reads a line's words without them.
         lines = {
             "elder": {
                 "title": ["花3分鐘，看看", "聽力對生活的影響"],
                 "sees": ["回答10題，", "馬上看到結果和建議"],
+                "free": ["不用註冊・免費"],
+                "camera": ["用手機相機掃"],
             },
             "family": {
                 "title": ["陪家人一起", "面對聽力問題"],
                 "sees": ["怎麼跟他說話、陪他看診、", "助聽器怎麼照顧"],
+                "free": ["不用註冊・免費"],
+                "camera": ["用手機相機掃"],
             },
         }
         with self.saving_artifacts():
