@@ -280,13 +280,16 @@ class ReminderDataTests(TestCase):
 
     def test_the_admin_list_takes_the_same_queries_for_many(self):
         # CODING_STANDARDS 15 (cross review): a row more for each account that turns it on.
+        # Two rows, then seven (Codex's second look: two and many, as the standard says).
         self.client.force_login(User.objects.create_superuser(username="owner", password="pw"))
+        second = consented_user(username="reminder_second", email="s@example.com")
+        RetestReminder.objects.create(user=second, enabled=True, enabled_on=date(2026, 11, 3))
         changelist = reverse("admin:screening_retestreminder_changelist")
         self.client.get(changelist)  # the first request also looks up what the admin caches
-        with CaptureQueriesContext(connection) as one:
-            self.assertEqual(self.client.get(changelist).status_code, 200)
+        with CaptureQueriesContext(connection) as two:
+            self.assertContains(self.client.get(changelist), "reminder_second")
         for number in range(5):
             user = consented_user(username=f"many_{number}", email=f"m{number}@example.com")
             RetestReminder.objects.create(user=user, enabled=True, enabled_on=date(2026, 11, 3))
-        with self.assertNumQueries(len(one)):
+        with self.assertNumQueries(len(two)):
             self.assertContains(self.client.get(changelist), "many_4")
