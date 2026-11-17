@@ -26,6 +26,7 @@ PRIVACY_SECTIONS = [
     ("google-title", "用 Google 登入時"),  # spec #505
     ("password-reset-title", "忘記密碼時"),  # #526
     ("question-log-title", "問答小助手的提問紀錄"),
+    ("feedback-title", "意見回饋"),  # spec #633
     ("storage-title", "存放在哪裡、保存多久"),
     ("recipients-title", "會交給誰"),
     ("sharing-title", "您主動分享時"),

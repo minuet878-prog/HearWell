@@ -130,7 +130,7 @@ class CopyTests(TestCase):
 
     def test_empty_history_uses_polite_you(self):
         response = self.client.get(reverse("my_hearing"))
-        self.assertContains(response, "您還沒有做過篩檢紀錄")
+        self.assertContains(response, "做完第一份問卷，分數和變化會出現在這裡。")
         self.assertNotContains(response, "你還沒有")
 
     def test_questionnaire_list_has_no_orphan_li(self):

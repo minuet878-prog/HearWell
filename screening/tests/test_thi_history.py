@@ -85,8 +85,8 @@ class ThiHistoryTests(test_thi.ThiTestCase):
                 "最近一次（2026/07/15，有戴助聽器）",
                 "30 分",
                 "輕度障礙",
-                "比上一次少 22 分（分數越低越好）",
-                "上一次（2026/01/15）：52 分",
+                "比上次少 22 分",
+                "上一次（2026/01/15）：52 分（分數越低越好）",
                 "上次沒戴、這次有戴助聽器。",
             ],
         )
@@ -97,8 +97,8 @@ class ThiHistoryTests(test_thi.ThiTestCase):
         self.assertEqual(
             self._since_last_lines(self._main())[3:],
             [
-                "比上一次多 6 分（分數越低越好）",
-                "上一次（2026/01/15）：30 分",
+                "比上次多 6 分",
+                "上一次（2026/01/15）：30 分（分數越低越好）",
                 "上次有戴、這次沒戴助聽器。",
             ],
         )
@@ -109,9 +109,10 @@ class ThiHistoryTests(test_thi.ThiTestCase):
         main = self._main()
         self.assertEqual(
             self._since_last_lines(main)[3:],
-            ["比上一次少 22 分（分數越低越好）", "上一次（2026/01/15）：52 分"],
+            ["比上次少 22 分", "上一次（2026/01/15）：52 分（分數越低越好）"],
         )
-        self.assertNotIn("上次", main)
+        # #646: 「比上次少 22 分」 says 上次 too; no 上次沒戴／有戴 line anywhere.
+        self.assertNotIn("、這次", main)
 
     def test_one_record_has_no_since_last_nor_wearing_groups(self):
         self._record(52, True, (2026, 1, 15))

@@ -500,7 +500,7 @@ class SubscoreQueryCountTests(ThiTestCase):
 
     def test_list_pages_take_the_same_queries(self):
         for url, queries in (
-            (reverse("my_hearing"), 8),
+            (reverse("my_hearing"), 9),  # #650: the trend chart's fitting day
             (reverse("health_report"), 18),
             (reverse("api:submissions"), 5),
         ):

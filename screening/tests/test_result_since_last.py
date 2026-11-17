@@ -1,10 +1,12 @@
 """#461 (spec #453 acceptance 23-26): a graded result against the record just before it."""
 
 import datetime
+import re
 from io import StringIO
 
 from django.core.management import call_command
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from screening.models import Question, Submission
@@ -45,19 +47,25 @@ class SinceLastTests(TestCase):
         latest = self.hhie_s(14, (2026, 11, 12))
         self.assertEqual(
             latest.result.since_last,
-            {"text": "上次 2026/03/26 是 18 分，這次少 4 分", "level_change": None},
+            {"label": "比上次少 4 分", "text": "上次 2026/03/26 是 18 分", "level_change": None},
         )
 
     def test_a_higher_score_says_how_many_more(self):
         self.hhie_s(10, (2026, 3, 26))
         latest = self.hhie_s(14, (2026, 11, 12))
-        self.assertEqual(latest.result.since_last["text"], "上次 2026/03/26 是 10 分，這次多 4 分")
+        self.assertEqual(
+            (latest.result.since_last["label"], latest.result.since_last["text"]),
+            ("比上次多 4 分", "上次 2026/03/26 是 10 分"),
+        )
 
     def test_the_same_score_says_it_is_the_same(self):
         # The draft sentence of the #460 mockup.
         self.hhie_s(12, (2026, 5, 20))
         latest = self.hhie_s(12, (2026, 11, 12))
-        self.assertEqual(latest.result.since_last["text"], "上次 2026/05/20 也是 12 分，這次一樣")
+        self.assertEqual(
+            (latest.result.since_last["label"], latest.result.since_last["text"]),
+            ("跟上次一樣", "上次 2026/05/20 也是 12 分"),
+        )
 
     def test_a_changed_level_is_written_out(self):
         # Acceptance 23-24: 10 is 輕度到中度影響, 6 is 無／極輕微影響 (the threshold is 8).
@@ -66,7 +74,8 @@ class SinceLastTests(TestCase):
         self.assertEqual(
             latest.result.since_last,
             {
-                "text": "上次 2026/03/26 是 10 分，這次少 4 分",
+                "label": "比上次少 4 分",
+                "text": "上次 2026/03/26 是 10 分",
                 "level_change": "分級從「輕度到中度影響」變成「無／極輕微影響」",
             },
         )
@@ -91,13 +100,19 @@ class SinceLastTests(TestCase):
         self.hhie_s(20, (2026, 1, 5))
         old = self.hhie_s(16, (2026, 3, 26))
         self.hhie_s(4, (2026, 11, 12))
-        self.assertEqual(old.result.since_last["text"], "上次 2026/01/05 是 20 分，這次少 4 分")
+        self.assertEqual(
+            (old.result.since_last["label"], old.result.since_last["text"]),
+            ("比上次少 4 分", "上次 2026/01/05 是 20 分"),
+        )
 
     def test_records_at_the_same_moment_are_ordered_by_id(self):
         first = self.hhie_s(18, (2026, 3, 26))
         second = self.hhie_s(14, (2026, 3, 26))
         self.assertIsNone(first.result.since_last)
-        self.assertEqual(second.result.since_last["text"], "上次 2026/03/26 是 18 分，這次少 4 分")
+        self.assertEqual(
+            (second.result.since_last["label"], second.result.since_last["text"]),
+            ("比上次少 4 分", "上次 2026/03/26 是 18 分"),
+        )
 
     def test_the_day_is_the_taipei_day(self):
         # 2026/03/26 00:30 in Taipei is still 03/25 in UTC.
@@ -105,7 +120,10 @@ class SinceLastTests(TestCase):
         moment = datetime.datetime(2026, 3, 26, 0, 30, tzinfo=TAIPEI)
         Submission.objects.filter(pk=previous.pk).update(created_at=moment)
         latest = self.hhie_s(14, (2026, 11, 12))
-        self.assertEqual(latest.result.since_last["text"], "上次 2026/03/26 是 18 分，這次少 4 分")
+        self.assertEqual(
+            (latest.result.since_last["label"], latest.result.since_last["text"]),
+            ("比上次少 4 分", "上次 2026/03/26 是 18 分"),
+        )
 
     def test_thi_is_compared_too(self):
         # THI is graded (five levels): 48 is 中度障礙, 42 is 中度障礙 as well (39-56).
@@ -113,7 +131,7 @@ class SinceLastTests(TestCase):
         latest = self.record("thi", [2] * 21 + [0] * 4, (2026, 11, 12), wearing_hearing_aid=False)
         self.assertEqual(
             latest.result.since_last,
-            {"text": "上次 2026/08/10 是 48 分，這次少 6 分", "level_change": None},
+            {"label": "比上次少 6 分", "text": "上次 2026/08/10 是 48 分", "level_change": None},
         )
 
     def test_questionnaires_that_are_not_graded_have_no_comparison(self):
@@ -145,14 +163,20 @@ class SinceLastTests(TestCase):
         self.hhie_s(8, (2026, 6, 1), wearing=True)
         self.hhie_s(20, (2026, 8, 1), wearing=False)
         latest = self.hhie_s(6, (2026, 11, 12), wearing=True)
-        self.assertEqual(latest.result.since_last["text"], "上次 2026/06/01 是 8 分，這次少 2 分")
+        self.assertEqual(
+            (latest.result.since_last["label"], latest.result.since_last["text"]),
+            ("比上次少 2 分", "上次 2026/06/01 是 8 分"),
+        )
 
     def test_an_old_record_is_compared_with_the_one_before_it_worn_the_same_way(self):
         self.hhie_s(12, (2026, 1, 5), wearing=True)
         self.hhie_s(18, (2026, 3, 26), wearing=False)
         old = self.hhie_s(8, (2026, 6, 1), wearing=True)
         self.hhie_s(6, (2026, 11, 12), wearing=True)
-        self.assertEqual(old.result.since_last["text"], "上次 2026/01/05 是 12 分，這次少 4 分")
+        self.assertEqual(
+            (old.result.since_last["label"], old.result.since_last["text"]),
+            ("比上次少 4 分", "上次 2026/01/05 是 12 分"),
+        )
 
     def test_without_a_hearing_aid_status_there_is_no_comparison(self):
         # As 我的紀錄 (Submission.previous_same_wearing): a record from before the question has
@@ -162,3 +186,90 @@ class SinceLastTests(TestCase):
         self.assertIsNone(unknown.result.since_last)
         latest = self.hhie_s(10, (2026, 11, 12), wearing=False)
         self.assertIsNone(latest.result.since_last)
+
+
+class ChangeLabelOnTheResultPageTests(TestCase):
+    """#646 (spec #644 H2, the #645 mockup's A): the label at the top of the result box's line
+    against last time, the sentence under it shortened; which record is compared is unchanged."""
+
+    fixtures = SinceLastTests.fixtures
+    setUpTestData = SinceLastTests.setUpTestData
+    setUp = SinceLastTests.setUp
+    record = SinceLastTests.record
+    hhie_s = SinceLastTests.hhie_s
+
+    def since_last_lines(self, submission):
+        # The result box's 跟上次比 part as a screen reader reads it, paragraph by paragraph,
+        # with each paragraph's own markup; None when the page has no such part.
+        self.client.force_login(self.user)
+        page = self.client.get(reverse("result", args=[submission.pk])).content.decode()
+        part = re.search(r'<div class="result-since-last">(.*?)</div>', page, re.S)
+        if part is None:
+            return None
+        return re.findall(r"(<p[^>]*>)(.*?)</p>", part.group(1), re.S)
+
+    def assert_lines(self, submission, *expected):
+        lines = self.since_last_lines(submission)
+        self.assertEqual([words for _, words in lines], list(expected))
+        # The label is its own paragraph, first, plain words: no icon, nothing hidden from a
+        # screen reader, no level colour (acceptance 7, 9).
+        self.assertEqual(lines[0][0], '<p class="change-label">')
+        return lines
+
+    def test_more_says_the_label_then_the_last_day_and_score(self):
+        # Acceptance 1 (and 3: 0 is 無／極輕微影響, 12 輕度到中度影響).
+        self.hhie_s(0, (2026, 9, 1))
+        latest = self.hhie_s(12, (2026, 9, 11))
+        self.assert_lines(
+            latest,
+            "比上次多 12 分",
+            "上次 2026/09/01 是 0 分",
+            "分級從「無／極輕微影響」變成「輕度到中度影響」",
+        )
+
+    def test_fewer_and_the_same(self):
+        # Acceptance 2.
+        self.hhie_s(18, (2026, 3, 26))
+        fewer = self.hhie_s(14, (2026, 9, 1))
+        self.assert_lines(fewer, "比上次少 4 分", "上次 2026/03/26 是 18 分")
+        same = self.hhie_s(14, (2026, 9, 11))
+        self.assert_lines(same, "跟上次一樣", "上次 2026/09/01 也是 14 分")
+
+    def test_a_changed_level_stays_under_the_sentence(self):
+        # Acceptance 3: 10 is 輕度到中度影響, 6 is 無／極輕微影響.
+        self.hhie_s(10, (2026, 3, 26))
+        latest = self.hhie_s(6, (2026, 11, 12))
+        self.assert_lines(
+            latest,
+            "比上次少 4 分",
+            "上次 2026/03/26 是 10 分",
+            "分級從「輕度到中度影響」變成「無／極輕微影響」",
+        )
+
+    def test_thi_has_the_label_too(self):
+        self.record("thi", [2] * 24 + [0], (2026, 8, 10), wearing_hearing_aid=False)
+        latest = self.record("thi", [2] * 21 + [0] * 4, (2026, 11, 12), wearing_hearing_aid=False)
+        self.assert_lines(latest, "比上次少 6 分", "上次 2026/08/10 是 48 分")
+
+    def test_nothing_to_compare_has_no_label_and_no_sentence(self):
+        # Acceptance 4: the first record, one without a hearing aid status, one worn otherwise
+        # and one that cannot be graded (a guest's: test_result_from_answers, NoAccountTests).
+        first = self.hhie_s(18, (2026, 3, 26))
+        unrecorded = self.hhie_s(14, (2026, 4, 1), wearing=None)
+        worn = self.hhie_s(10, (2026, 5, 1), wearing=True)
+        out_of_range = self.record("hhie-s", [10] * 10, (2026, 6, 1), wearing_hearing_aid=False)
+        after_it = self.hhie_s(12, (2026, 7, 1))
+        for record in (first, unrecorded, worn, out_of_range, after_it):
+            with self.subTest(record=record.pk):
+                self.assertIsNone(self.since_last_lines(record))
+                page = self.client.get(reverse("result", args=[record.pk])).content.decode()
+                self.assertNotIn("change-label", page)
+                self.assertNotIn("比上次", page)
+
+    def test_the_label_has_no_arrow_and_no_verdict(self):
+        # Acceptance 7, ADR 0017: words only.
+        self.hhie_s(0, (2026, 9, 1))
+        latest = self.hhie_s(12, (2026, 9, 11))
+        label = self.since_last_lines(latest)[0][1]
+        for sign in ("↑", "↓", "▲", "▼", "⬆", "⬇", "<svg", "進步", "退步", "變好", "變差"):
+            self.assertNotIn(sign, label)

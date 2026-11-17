@@ -1,15 +1,31 @@
 import re
 from datetime import date, datetime, timedelta
+from io import StringIO
+from typing import ClassVar
 from unittest.mock import patch
 
+from django.core.management import call_command
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
-from screening.models import Answer, Category, Question, Questionnaire, Submission
-from screening.tests.helpers import consented_user, fake_definition, register
+from screening.models import (
+    AidAndSubsidy,
+    Answer,
+    Category,
+    NormGroup,
+    Question,
+    Questionnaire,
+    Submission,
+)
+from screening.tests.helpers import (
+    consented_user,
+    fake_definition,
+    register,
+    submission_with_answers,
+)
 
 
 class TrendChartPageTests(TestCase):
@@ -79,7 +95,7 @@ class TrendChartPageTests(TestCase):
 
     def test_history_page_without_submissions_has_no_chart(self):
         response = self.client.get(reverse("my_hearing"))
-        self.assertContains(response, "您還沒有做過篩檢紀錄")
+        self.assertContains(response, '<h2 class="h4">還沒有紀錄</h2>')
         self.assertNotContains(response, 'id="trend-chart"')
         self.assertNotContains(response, self.CHART_JS)
 
@@ -244,7 +260,7 @@ class HistoryTabsTests(TestCase):
     def test_no_records(self):
         response = self.client.get(self.url)
         main = self._main_html(response)
-        self.assertIn("您還沒有做過篩檢紀錄", main)
+        self.assertIn('<h2 class="h4">還沒有紀錄</h2>', main)
         self.assertIsNone(self._tabs(main))
         self.assertNotIn("trend-chart", main)
         self.assertNotIn("ioi-chart", main)
@@ -537,24 +553,22 @@ class HistoryTabsTests(TestCase):
                 f"最近一次（{self._date(latest)}，有戴助聽器）",
                 "10 分",
                 "輕度到中度影響",
-                "比上一次少 4 分（分數越低越好）",
-                f"上一次（{self._date(aided)}）：14 分",
+                "比上次少 4 分",
+                f"上一次（{self._date(aided)}）：14 分（分數越低越好）",
             ],
         )
         self.assertIn('<span class="result-number">10</span> 分', main)
         since_last = self._since_last_text(main)
-        self.assertIn(f"上一次（{self._date(aided)}）：14 分", since_last)
-        self.assertIn("比上一次少 4 分（分數越低越好）", since_last)
+        self.assertIn(f"上一次（{self._date(aided)}）：14 分（分數越低越好）", since_last)
+        self.assertIn("比上次少 4 分", since_last)
 
     def test_trend_summary_has_no_comparison_line_down_to_0(self):
         self._hhie_s(12, False, days_ago=10)
         self._hhie_s(18, False, days_ago=5)
-        self.assertEqual(self._summary()[3], "比上一次多 6 分（分數越低越好）")
+        self.assertEqual(self._summary()[3], "比上次多 6 分")
         self._hhie_s(0, False, days_ago=1)
         summary = self._summary()
-        self.assertEqual(
-            summary[1:4], ["0 分", "無／極輕微影響", "比上一次少 18 分（分數越低越好）"]
-        )
+        self.assertEqual(summary[1:4], ["0 分", "無／極輕微影響", "比上次少 18 分"])
 
     def test_since_last_finds_the_previous_status_before_the_charts_five_days(self):
         # Acceptance 17: the chart draws five days, the comparison looks further back.
@@ -565,8 +579,18 @@ class HistoryTabsTests(TestCase):
         since_last = self._since_last_text(
             self._main_html(self.client.get(self._tab_url("hhie-s")))
         )
-        self.assertIn(f"上一次（{self._date(aided)}）：8 分", since_last)
-        self.assertIn("比上一次多 4 分（分數越低越好）", since_last)
+        self.assertIn(f"上一次（{self._date(aided)}）：8 分（分數越低越好）", since_last)
+        self.assertIn("比上次多 4 分", since_last)
+
+    def test_since_last_says_which_way_is_better_from_scoring(self):
+        # CODING_STANDARDS 9: 分數越低越好 comes from scoring.py, not a second copy in the template.
+        previous = self._hhie_s(8, True, days_ago=10)
+        self._hhie_s(12, True, days_ago=1)
+        with patch("screening.views.my_hearing.LOWER_IS_BETTER", "替身說明"):
+            main = self._main_html(self.client.get(self._tab_url("hhie-s")))
+        self.assertIn(
+            f"上一次（{self._date(previous)}）：8 分（替身說明）", self._since_last_text(main)
+        )
 
     def test_trend_summary_with_one_record_and_a_score_of_0(self):
         latest = self._hhie_s(0, False, days_ago=1)
@@ -808,8 +832,8 @@ class HistoryRetestTests(TestCase):
             self._since_last_lines(main),
             [
                 "最近一次（2026/10/12，沒戴助聽器）",
-                "比上一次少 4 分（分數越低越好）",
-                "上一次（2026/09/12）：16 分",
+                "比上次少 4 分",
+                "上一次（2026/09/12）：16 分（分數越低越好）",
             ],
         )
         # Above the trend chart.
@@ -825,20 +849,21 @@ class HistoryRetestTests(TestCase):
     def test_since_last_says_the_same(self):
         self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=40)  # 12
         self._submit("hhie-s", [2] * 6 + [0] * 4, days_ago=10)  # 12, answered differently
-        self.assertEqual(self._since_last_lines(self._fetch_main_html())[1], "和上一次一樣")
+        self.assertEqual(self._since_last_lines(self._fetch_main_html())[1], "跟上次一樣")
 
     def test_since_last_says_how_many_points_more(self):
         self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=40)  # 12
         self._submit("hhie-s", [4, 4, 4, 4, 4, 2] + [0] * 4, days_ago=10)  # 22
-        self.assertEqual(
-            self._since_last_lines(self._fetch_main_html())[1], "比上一次多 10 分（分數越低越好）"
-        )
+        self.assertEqual(self._since_last_lines(self._fetch_main_html())[1], "比上次多 10 分")
 
     def test_no_since_last_with_one_record(self):
         self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=10)
         main = self._fetch_main_html()
         self.assertIsNone(self._since_last_lines(main))
         self.assertNotIn("和上一次比", main)
+        # #646 acceptance 6: no label, the chart's line as it was.
+        self.assertNotIn("change-label", main)
+        self.assertIn("再做一次篩檢，就能看到分數的變化。", main)
 
     def test_no_verdict_words_on_the_page(self):
         for name, newest in (
@@ -863,7 +888,7 @@ class HistoryRetestTests(TestCase):
         self._submit("hhia-s", [4, 4, 4, 2] + [0] * 6, days_ago=10)  # 14
         main = self._fetch_main_html()
         self.assertNotIn('id="trend-chart"', main)
-        self.assertEqual(self._since_last_lines(main)[1], "比上一次少 6 分（分數越低越好）")
+        self.assertEqual(self._since_last_lines(main)[1], "比上次少 6 分")
         self.assertLess(main.index('id="since-last"'), main.index('class="link-card"'))
 
     def test_other_questionnaires_do_not_compare(self):
@@ -882,12 +907,12 @@ class HistoryRetestTests(TestCase):
             self._since_last_lines(main),
             [
                 "最近一次（2026/10/12，沒戴助聽器）",
-                "比上一次少 4 分（分數越低越好）",
-                "上一次（2026/09/12）：16 分",
+                "比上次少 4 分",
+                "上一次（2026/09/12）：16 分（分數越低越好）",
             ],
         )
         # One block says it, so it is said once.
-        self.assertEqual(main.count("比上一次少 4 分"), 1)
+        self.assertEqual(main.count("比上次少 4 分"), 1)
         self.assertNotIn("上一次沒戴助聽器", main)
 
     def test_no_since_last_when_the_newest_status_is_unrecorded(self):
@@ -896,6 +921,7 @@ class HistoryRetestTests(TestCase):
         self._submit("hhie-s", [4, 4] + [0] * 8, days_ago=10, wearing_hearing_aid=None)  # 8
         main = self._fetch_main_html()
         self.assertIsNone(self._since_last_lines(main))
+        self.assertNotIn("change-label", main)
         # The trend summary still explains why there is no comparison.
         self.assertIn("這筆沒有記錄助聽器，不和其他紀錄比較。", main)
 
@@ -904,6 +930,7 @@ class HistoryRetestTests(TestCase):
         self._submit("hhie-s", [4, 4] + [0] * 8, days_ago=10, wearing_hearing_aid=True)  # 8
         main = self._fetch_main_html()
         self.assertIsNone(self._since_last_lines(main))
+        self.assertNotIn("change-label", main)
         self.assertIn("這是第一筆有戴助聽器的紀錄。", main)
 
     def test_only_the_logged_in_user_s_records_count(self):
@@ -919,8 +946,8 @@ class HistoryRetestTests(TestCase):
             self._since_last_lines(main),
             [
                 "最近一次（2026/04/22，沒戴助聽器）",
-                "比上一次少 4 分（分數越低越好）",
-                "上一次（2026/03/23）：16 分",
+                "比上次少 4 分",
+                "上一次（2026/03/23）：16 分（分數越低越好）",
             ],
         )
         # And the other way round: their one record, none of this user's.
@@ -1068,7 +1095,7 @@ class MyRecordsTidyT364Tests(TestCase):
                 main = self._main(code)
                 self.assertEqual(main.count("records-score"), 1)
                 block = main[main.index("records-score") :]
-                self.assertIn("比上一次少 6 分（分數越低越好）", block[: block.index("</div>")])
+                self.assertIn("比上次少 6 分", block[: block.index("</div>")])
 
     def test_ioi_ha_frame_holds_only_the_chart_and_its_legend(self):
         # Acceptance 5 (ADR 0022, like the trend chart): the title, the latest record, the norm
@@ -1095,3 +1122,115 @@ class MyRecordsTidyT364Tests(TestCase):
             re.findall(r'^        <(\w+)(?: class="([^"]*)")?', frame, re.M),
             [("ul", "ioi-columns"), ("ul", "trend-legend")],
         )
+
+
+class FittingDayT650Tests(TestCase):
+    """#650 (spec #644 R2, acceptance 39-46): the current pair's fitting day on the trend chart,
+    and a sentence under it the server writes, so screen readers and pages without JavaScript
+    have it too. Whether the line fits between the chart's points is the chart's call."""
+
+    fixtures = ("questions_fixture.json",)
+    NOON = timezone.make_aware(datetime(2026, 9, 1, 12))
+    SENTENCE = "2026/05/01 開始戴助聽器。"
+    # A valid score for every item of each questionnaire.
+    SCORES: ClassVar = {"hhie-s": 2, "hhia-s": 2, "thi": 2, "ssq12-tw": 6, "ioi-ha": 3, "sadl": 4}
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_questionnaires", stdout=StringIO())
+        cls.user = consented_user(username="fitting_day_user")
+        for code, score in cls.SCORES.items():
+            aided = code in ("ioi-ha", "sadl")
+            norm_group = NormGroup.UNGROUPED if code == "ioi-ha" else ""
+            # 2026/03/01 without and 2026/09/01 with: the fitting day falls between them.
+            for when, wearing in ((cls.NOON - timedelta(days=184), aided), (cls.NOON, True)):
+                questionnaire = Questionnaire.objects.get(code=code)
+                record = submission_with_answers(
+                    cls.user,
+                    code,
+                    [score] * questionnaire.questions.count(),
+                    wearing_hearing_aid=wearing,
+                    norm_group=norm_group,
+                )
+                Submission.objects.filter(pk=record.pk).update(created_at=when)
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def _fitted(self, day):
+        # As the hearing aid form saves it, so a later day counts as a new pair.
+        aids = AidAndSubsidy.for_user(self.user) or AidAndSubsidy(user=self.user)
+        aids.fitted_on = day
+        aids.save()
+
+    def _main(self, code):
+        response = self.client.get(f"{reverse('my_hearing')}?questionnaire={code}")
+        html = response.content.decode()
+        return html[html.index("<main") : html.index("</main>")]
+
+    def _plot(self, main):
+        return re.search(r'<div id="trend-plot"([^>]*)>', main).group(1)
+
+    def test_hhie_s_and_thi_send_the_day_to_the_chart_and_say_it_under_it(self):
+        # Acceptance 39-41: the chart gets the day; the sentence is outside the chart's frame,
+        # which pages without JavaScript hide, and not hidden from screen readers.
+        self._fitted(date(2026, 5, 1))
+        for code in ("hhie-s", "thi"):
+            with self.subTest(code):
+                main = self._main(code)
+                self.assertIn('data-fitted-on="2026/05/01"', self._plot(main))
+                trend = re.search(r'<div id="trend-chart">(.*?)</section>', main, re.S).group(1)
+                sentence = re.search(rf"<p([^>]*)>{self.SENTENCE}</p>", trend)
+                self.assertIsNotNone(sentence)
+                self.assertNotIn("aria-hidden", sentence.group(1))
+                # After the frame (the legends are its last part), not inside it.
+                self.assertRegex(
+                    trend, rf'</ul>\s*</div>\s*<p class="trend-fitted">{self.SENTENCE}</p>'
+                )
+
+    def test_a_day_outside_the_records_is_still_said(self):
+        # Acceptance 42: the chart draws no line then, but the sentence is the same.
+        for day in (date(2025, 1, 1), date(2026, 10, 1)):
+            self._fitted(day)
+            with self.subTest(day=day):
+                main = self._main("hhie-s")
+                self.assertIn(f"{day:%Y/%m/%d} 開始戴助聽器。", main)
+                self.assertIn(f'data-fitted-on="{day:%Y/%m/%d}"', self._plot(main))
+
+    def test_no_day_no_line_and_no_sentence(self):
+        # Acceptance 43: no hearing aid answers at all, then answers without a fitting day.
+        for row in (False, True):
+            if row:
+                AidAndSubsidy.objects.create(user=self.user, ear="both")
+            with self.subTest(row=row):
+                for code in ("hhie-s", "thi"):
+                    main = self._main(code)
+                    self.assertIn('id="trend-plot"', main)
+                    self.assertNotIn("data-fitted-on", main)
+                    self.assertNotIn("開始戴", main)
+
+    def test_the_current_pair_s_day(self):
+        # Acceptance 44: a new pair moves the day later; the chart and the sentence follow it.
+        self._fitted(date(2026, 5, 1))
+        self._fitted(date(2026, 8, 1))
+        self.assertEqual(AidAndSubsidy.objects.get(user=self.user).pair_number, 2)
+        main = self._main("hhie-s")
+        self.assertIn('data-fitted-on="2026/08/01"', self._plot(main))
+        self.assertIn("2026/08/01 開始戴助聽器。", main)
+        self.assertNotIn("2026/05/01", main)
+
+    def test_only_the_day(self):
+        # Acceptance 45: the sentence is the day alone, no comparison or verdict.
+        self._fitted(date(2026, 5, 1))
+        main = self._main("hhie-s")
+        sentence = re.search(r'<p class="trend-fitted">(.*?)</p>', main, re.S).group(1)
+        self.assertEqual(sentence, self.SENTENCE)
+
+    def test_other_tabs_have_neither(self):
+        # Acceptance 46: only HHIE-S and THI have a trend chart.
+        self._fitted(date(2026, 5, 1))
+        for code in ("hhia-s", "ssq12-tw", "sadl", "ioi-ha"):
+            with self.subTest(code):
+                main = self._main(code)
+                self.assertNotIn("data-fitted-on", main)
+                self.assertNotIn("開始戴助聽器。", main)

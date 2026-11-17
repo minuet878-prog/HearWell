@@ -39,6 +39,7 @@ moved only the date (#400).
                 <li>您忘記密碼時，寄重設密碼信給您。</li>
                 <li>網站出錯時找出原因、修好它。</li>
                 <li>看大家在問答小助手怎麼問，補充題目。</li>
+                <li>看大家在意見回饋寫了什麼，修正網站，並回覆想收到回覆的人。</li>
             </ul>
             <p>我們不會把您的資料拿去賣、做廣告，或做上面以外的用途。</p>
             </div>
@@ -120,6 +121,23 @@ moved only the date (#400).
             <p>提問紀錄保存 90 天後自動刪除。如果問題裡有姓名、電話這類個人資料，我們會提早刪除那一筆。請不要在問題裡輸入姓名、電話、身分證字號、病歷號碼。</p>
             </div>
         </details>
+        {# Spec #633 (#641, ADR 0064): the owner's approved words (privacy-feedback-draft.md). Anonymous like the question log, so not in 下載我的資料 and not deleted with the account; the version stays. #}
+        <details class="fold-row">
+            <summary><h2 id="feedback-title" class="fold-row-title">意見回饋</h2></summary>
+            <div class="fold-row-body">
+            <p>在頁尾按「意見回饋」送出時，我們會保存：</p>
+            <ul>
+                <li>您寫的內容</li>
+                <li>您填的 email（有填才有）</li>
+                <li>您是從哪一種頁面過來的，例如「結果頁」（不含網址）</li>
+                <li>送出的時間</li>
+            </ul>
+            <p>意見回饋是匿名的：不記錄您的帳號、IP 位址，登入或沒登入都一樣。所以「下載我的資料」不包含意見回饋，刪除帳號時也認不出哪幾則是您送的。</p>
+            <p>意見回饋保存 90 天後自動刪除。如果內容有姓名、電話這類個人資料，我們會提早刪除那一則。想刪除自己送的意見回饋，請寫信到 hearwellweb@gmail.com，附上當時填的 email。請不要在意見回饋裡輸入姓名、電話、身分證字號、病歷號碼。</p>
+            <p>為了防止有人大量送出，同一個網路每小時最多送 5 次；送出時會暫存您 IP 位址換算過的代碼（不是原文），一小時後自動清除。</p>
+            <p>有新的意見回饋時，網站會寄一封通知信給營運者，信裡不包含您寫的內容和 email。</p>
+            </div>
+        </details>
         <details class="fold-row">
             <summary><h2 id="storage-title" class="fold-row-title">存放在哪裡、保存多久</h2></summary>
             <div class="fold-row-body">
@@ -132,7 +150,8 @@ moved only the date (#400).
                 <li>錯誤紀錄（見下一段）保存 30 天後自動刪除。</li>
                 <li>重設密碼信會傳到美國的寄信服務 Resend，保存 30 天後自動刪除。</li>
                 <li>問答小助手的提問紀錄保存 90 天後自動刪除。</li>
-                <li>刪除的資料（包括刪除的帳號、超過 90 天的提問紀錄），在備份中最多再保留 10 天，之後自動清除。</li>
+                <li>意見回饋保存 90 天後自動刪除。</li>
+                <li>刪除的資料（包括刪除的帳號、超過 90 天的提問紀錄和意見回饋），在備份中最多再保留 10 天，之後自動清除。</li>
             </ul>
             </div>
         </details>

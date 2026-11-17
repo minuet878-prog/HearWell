@@ -92,6 +92,14 @@ class SubmissionQuerySet(models.QuerySet):
             .filter(answer_count=10, valid_hhi_count=10)
         )
 
+    def earlier_than(self, submission):
+        # The records before this one: earlier, or at the same moment with a lower id (the order
+        # with_scores gives). A result page's 第幾次 and its 跟上次比 both count this way (#644).
+        return self.filter(
+            models.Q(created_at__lt=submission.created_at)
+            | models.Q(created_at=submission.created_at, id__lt=submission.id)
+        )
+
     def with_scores(self):
         # id breaks ties so "newest" is consistent with the API's cursor ordering.
         return self.annotate(**_score_expressions()).order_by("-created_at", "-id")

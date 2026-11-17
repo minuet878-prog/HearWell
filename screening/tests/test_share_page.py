@@ -105,7 +105,7 @@ class SharePageTests(TestCase):
 
     def test_without_records_there_is_nothing_to_share(self):
         content = self._page().content.decode()
-        self.assertIn("還沒有可以放進報告的紀錄。", content)
+        self.assertIn('<h2 class="h4">還沒有可以分享的紀錄</h2>', content)
         self.assertNotIn(CREATE_BUTTON, content)
         self.client.post(reverse("report_share_create"), {"confirm": "1"})
         self.assertFalse(ReportShare.objects.exists())

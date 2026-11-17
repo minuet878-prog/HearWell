@@ -1,6 +1,30 @@
+from urllib.parse import urlencode
+
 from django.templatetags.static import static
+from django.urls import reverse
 
 from screening.public_pages import PREVIEW_IMAGE, PROTOCOL, SITE_DESCRIPTION, page_at
+
+# Spec #633 Q5: the pages whose footer link names which one, by its code; every other page is
+# named by its kind alone, so no record number or share code goes with it.
+NAMED_BY_CODE = {"guide_chapter": "chapter", "qa_answer": "code"}
+# A shared report's address is its share code: no way back from there, so the code never rides
+# into the feedback pages' addresses (cross review of spec #633, P2).
+NO_WAY_BACK = {"shared_cover", "shared_report"}
+
+
+def feedback_link(request):
+    """The footer's 意見回饋 link (spec #633, #636): which page it is on (views.feedback turns it
+    into words) and the way back to it, which is never kept."""
+    match = request.resolver_match
+    page = match.url_name if match and match.url_name else ""
+    if page in NAMED_BY_CODE:
+        page = f"{page}:{match.kwargs[NAMED_BY_CODE[page]]}"
+    query = {"page": page}
+    if page not in NO_WAY_BACK:
+        query["next"] = request.get_full_path()
+    query = urlencode(query)
+    return {"feedback_url": f"{reverse('feedback')}?{query}"}
 
 
 def page_head(request):

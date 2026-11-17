@@ -3,17 +3,19 @@ from django.db.models import Prefetch
 from django.shortcuts import redirect, render
 from django.utils import timezone
 
+from screening.care_journey import first_questionnaire_url
 from screening.main_flow import get_user_state
-from screening.models import Answer, NormGroup, shared_days
+from screening.models import AidAndSubsidy, Answer, NormGroup, shared_days
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.questionnaires.results import GradedResult
 from screening.scoring import (
     IOI_HA_ITEM_NAMES,
     IOI_HA_NORMS,
+    LOWER_IS_BETTER,
     NORM_COMPARISON_TEXT,
     TREND_STATUS_TEXT,
+    change_label_text,
     compare_to_norm,
-    since_last_text,
 )
 from screening.views.common import RECENT_SHOWN, health_data_page, older_fold
 
@@ -66,9 +68,9 @@ TREND_LEGEND = (
 )
 
 
-def _trend_chart(records, since_last):
+def _trend_chart(records, since_last, fitted_on):
     # records: one tab's records (HHIE-S, THI), newest first; since_last: the page's
-    # 「和上一次比」 or None.
+    # 「和上一次比」 or None; fitted_on: the current pair's fitting day or None (#650).
     # React draws only the chart itself, so the text around it is on the page from the start
     # and nothing below moves when it arrives. The wording is fixed by spec
     # phase9_ui_refresh_2_data.md 4.2.
@@ -88,6 +90,9 @@ def _trend_chart(records, since_last):
     statuses = {r.wearing_hearing_aid for r in records}
     return {
         "change": change,
+        # #650 (spec #644 R2): the chart marks it between its first and last day; the sentence
+        # under the chart says it whatever the day.
+        "fitted_on": fitted_on,
         "legend": [
             {"shape": shape, "text": text}
             for value, shape, text in TREND_LEGEND
@@ -136,7 +141,9 @@ def my_hearing(request):
         # empty page; the switch's 問卷 link (view=questionnaires) always stays here.
         if request.GET.get("view") != "questionnaires" and request.user.audiograms.exists():
             return redirect("audiogram_list")
-        return render(request, "screening/my_hearing.html", {"submissions": []})
+        href = first_questionnaire_url(request.user, timezone.localdate())
+        context = {"submissions": [], "first_questionnaire_href": href}
+        return render(request, "screening/my_hearing.html", context)
     # One tab per questionnaire this user has answered, in questionnaire order (HHIE-S first).
     questionnaires = sorted({s.questionnaire for s in submissions}, key=lambda q: q.id)
     # Default: the newest record's questionnaire; an unknown or empty choice falls back to it.
@@ -165,12 +172,17 @@ def my_hearing(request):
             since_last = {
                 "latest": latest,
                 "previous": previous,
-                "text": since_last_text(latest.total_answer_score - previous.total_answer_score),
+                "label": change_label_text(latest.total_answer_score - previous.total_answer_score),
+                "lower_is_better": LOWER_IS_BETTER,
                 "wearing_change": WEARING_CHANGE_TEXT.get(
                     (previous.wearing_hearing_aid, latest.wearing_hearing_aid)
                 ),
             }
-    trend_chart = _trend_chart(records, since_last) if current.definition.trend_chart else None
+    trend_chart = None
+    if current.definition.trend_chart:
+        # #650: only the current pair's day is kept (spec #644, owner 2026-11-16).
+        aids = AidAndSubsidy.for_user(request.user)
+        trend_chart = _trend_chart(records, since_last, aids.fitted_on if aids else None)
     return render(
         request,
         "screening/my_hearing.html",

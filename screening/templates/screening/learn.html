@@ -36,5 +36,14 @@
         </span>
         <span class="link-card-arrow" aria-hidden="true">›</span>
     </a></li>
+    {# Spec #633 (#640, the #634 mockup's A): 關於聽伴 last, its line under the title as the family zone's cards have one. #}
+    <li><a class="link-card action-card" href="{% url 'about' %}">
+        {% include "screening/action_icon.html" with icon="info" %}
+        <span class="link-card-body">
+            <span class="link-card-title">關於聽伴</span>
+            <span>誰做的、內容怎麼查核</span>
+        </span>
+        <span class="link-card-arrow" aria-hidden="true">›</span>
+    </a></li>
 </ul>
 {% endblock %}

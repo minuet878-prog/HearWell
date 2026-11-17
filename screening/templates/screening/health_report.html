@@ -12,8 +12,7 @@
 <article class="health-report">
 <h1 class="h3 mt-4">聽伴聽力報告</h1>
 {% if not has_records %}
-<p>還沒有可以放進報告的紀錄。</p>
-<a class="btn btn-primary btn-lg w-full" href="{% url 'questionnaire_list' %}">開始篩檢</a>
+{% include "screening/empty_state.html" with icon="report" title="還沒有報告" text="做完第一份問卷或記錄聽力圖，報告就會有內容，可以印出來給醫師看。" button="做第一份問卷" href=first_questionnaire_href %}
 {% else %}
 <div class="report-meta">
     <span>使用者：{{ user.username }}</span>

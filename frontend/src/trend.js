@@ -51,3 +51,14 @@ export function chartDays(points) {
   }
   return days.slice(-CHART_DAYS);
 }
+
+// #650 (spec #644 R2): the two chart days the fitting day falls between, the same day twice
+// when it is a record's day (the first and the last too); null without a day, or before the
+// first or after the last day the chart shows, so no line is drawn outside the chart. Dates are
+// YYYY/MM/DD, so they compare as text.
+export function fittingDays(days, fittedOn) {
+  if (!fittedOn || fittedOn < days[0].date || fittedOn > days.at(-1).date) return null;
+  const after = days.findIndex((day) => day.date >= fittedOn);
+  if (days[after].date === fittedOn) return [fittedOn, fittedOn];
+  return [days[after - 1].date, days[after].date];
+}

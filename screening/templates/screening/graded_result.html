@@ -6,7 +6,9 @@
     {# Readability batch 3 (the owner's B6 A): where this score sits, on white under the level; out of 看完整說明, where the text-heavy pages tidy-up had put it. #}
     {% if score_bar %}{% include "screening/score_bar.html" with bar=score_bar %}{% endif %}
     {% if result.since_last %}
+    {# #646 (spec #644 H2, the #645 mockup's A): the label first, the sentence under it. #}
     <div class="result-since-last">
+        <p class="change-label">{{ result.since_last.label }}</p>
         <p>{{ result.since_last.text }}</p>
         {% if result.since_last.level_change %}<p>{{ result.since_last.level_change }}</p>{% endif %}
     </div>

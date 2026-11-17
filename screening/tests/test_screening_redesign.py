@@ -78,7 +78,8 @@ class CatalogueTests(ScreeningPagesMixin, TestCase):
         cards = dict(CARD.findall(self.catalogue()))
         today = timezone.localdate().strftime("%Y/%m/%d")
         thi = cards[self.answer_url("thi")]
-        last = f'<span class="inline-block max-w-full">上次 {today}</span>'
+        # #649: then its level, the lowest with every answer 0.
+        last = f'<span class="inline-block max-w-full">上次 {today}・無障礙或輕微障礙</span>'
         self.assertIn(f"<span>25 題・約 5 分鐘・{last}</span>", thi)
         self.assertIn("<span>7 題・約 2 分鐘</span>", cards[self.answer_url("ioi-ha")])
         self.assertNotIn("card-tag", self.catalogue())
