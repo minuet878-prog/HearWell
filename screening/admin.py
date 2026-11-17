@@ -5,6 +5,7 @@ from .models import (
     Answer,
     Feedback,
     GuestMonth,
+    ImportFailureMonth,
     Question,
     QuestionLog,
     QuestionLogMonth,
@@ -166,6 +167,18 @@ class QuestionLogMonthAdmin(ViewOnlyAdmin):
 class GuestMonthAdmin(ViewOnlyAdmin):
     # Spec #492 (#500): the owner reads whether going without an account brings more people in.
     list_display = ("month_label", "completed", "saved_password", "saved_google", "saved_line")
+    ordering = ("-month",)
+
+    @admin.display(description="月份", ordering="month")
+    def month_label(self, counts):
+        return str(counts)
+
+
+@admin.register(ImportFailureMonth)
+class ImportFailureMonthAdmin(ViewOnlyAdmin):
+    # Spec #702 Q14 (#708): the owner reads which PDFs 從 iPhone 匯入 cannot read, to know what
+    # to support next.
+    list_display = ("month_label", "not_a_pdf", "not_apple", "layout", "cross_check")
     ordering = ("-month",)
 
     @admin.display(description="月份", ordering="month")

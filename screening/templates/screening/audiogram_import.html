@@ -3,7 +3,16 @@
 {% block body %}
 <h1 class="h3 mt-4">從 iPhone 匯入</h1>
 {# Spec #702 (#703 mockup 4A): what could not be read goes first, with the file again below it. #}
-{% if unreadable %}<div class="alert alert-warning" role="alert">這份 PDF 讀不出來。請確認是「健康」app 的聽力測試結果；也可以照著 PDF 自己把數字標上去。</div>{% endif %}
+{% if unreadable %}
+<div class="alert alert-warning" role="alert">這份 PDF 讀不出來。請確認是「健康」app 的聽力測試結果；也可以照著 PDF 自己把數字標上去。</div>
+<p><a class="btn btn-primary btn-lg w-full" href="{% url 'audiogram_new' %}">自己標</a></p>
+<p class="field-help">或換一份 PDF：</p>
+{% elif already %}
+<div class="tip-box" role="status">這份已經匯入過了。</div>
+<p class="mt-3"><a class="btn btn-primary btn-lg w-full" href="{% url 'audiogram_detail' already.id %}">看那張聽力圖</a></p>
+{% elif not_saved %}
+<div class="alert alert-warning" role="alert">沒有存到，請重新選一次 PDF。</div>
+{% endif %}
 <p>先在 iPhone 的「健康」app 把聽力測試存成 PDF，再回來選這個檔案。</p>
 {# #703 mockup 2A: the steps first, the file at the bottom where they end. #}
 <ol class="step-list" role="list">

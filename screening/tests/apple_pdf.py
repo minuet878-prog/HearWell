@@ -44,8 +44,14 @@ def apple_pdf(
     exported_on="2026年11月17日",
     stars=True,
     source="來源：Apple聽力測試",
+    congested=False,
+    loud_noise=False,
+    printed=None,
+    extra=None,
 ):
-    """The PDF's bytes. right and left: dB HL at FREQUENCIES."""
+    """The PDF's bytes. right and left: dB HL at FREQUENCIES, where each curve is drawn.
+    printed: {ear: values} printed beside the points instead, None for a point left without
+    one; extra: (ear, frequency, words) printed beside that point as well. Both make bad files."""
     out = io.BytesIO()
     page = canvas.Canvas(out, pagesize=(595.28, 841.89))
 
@@ -88,7 +94,11 @@ def apple_pdf(
         )
     for frequency, label in ((125, "125 Hz"), (250, "250 Hz"), (500, "500 Hz"), (1000, "1 kHz")):
         text(x_of(frequency), 270, label, GREY, font="Helvetica", centred=True)
-    for values, colour, nudge in ((right, RIGHT_RED, 7), (left, LEFT_BLUE, -16)):
+    printed = {"right": right, "left": left} | (printed or {})
+    for ear, values, colour, nudge in (
+        ("right", right, RIGHT_RED, 7),
+        ("left", left, LEFT_BLUE, -16),
+    ):
         points = [(x_of(f), y_of(db)) for f, db in zip(FREQUENCIES, values, strict=True)]
         page.setStrokeColorRGB(*colour)
         path = page.beginPath()
@@ -96,12 +106,16 @@ def apple_pdf(
         for point in points[1:]:
             path.lineTo(*point)
         page.drawPath(path, stroke=1, fill=0)
-        for (x, y), db in zip(points, values, strict=True):
-            text(
-                x, y + nudge, f"{db}{'*' if stars else ''}", colour, font="Helvetica", centred=True
-            )
-    text(36, 240, "鼻塞：否")
-    text(36, 228, "最近曾暴露於大聲噪音：否")
+        for (x, y), db in zip(points, printed[ear], strict=True):
+            if db is None:
+                continue
+            label = f"{db}*" if stars else str(db)
+            text(x, y + nudge, label, colour, font="Helvetica", centred=True)
+        if extra and extra[0] == ear:
+            x, y = points[FREQUENCIES.index(extra[1])]
+            text(x, y - nudge, extra[2], colour, font="Helvetica", centred=True)
+    text(36, 240, f"鼻塞：{'是' if congested else '否'}")
+    text(36, 228, f"最近曾暴露於大聲噪音：{'是' if loud_noise else '否'}")
     page.showPage()
     page.save()
     return out.getvalue()

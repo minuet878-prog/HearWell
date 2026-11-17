@@ -1,3 +1,4 @@
+from datetime import date
 from urllib.parse import urlsplit
 
 from django.contrib import messages
@@ -28,6 +29,7 @@ from screening.models import (
     AudiogramSource,
     Conduction,
     Ear,
+    count_import_failure,
 )
 from screening.views.common import RECENT_SHOWN, health_data_page, older_fold, safe_next
 
@@ -112,8 +114,11 @@ def audiogram_import(request):
     upload = request.FILES.get("pdf")
     try:
         test = read(upload.read(MAX_BYTES + 1) if upload else b"")
-    except CannotRead:
+    except CannotRead as error:
+        count_import_failure(error.reason)
         return _import_page(request, unreadable=True)
+    if kept := _imported_before(request.user, test.tested_on, test.points):
+        return _import_page(request, already=kept)
     points = [
         AudiogramPoint(
             ear=p["ear"], conduction=Conduction.AIR, frequency=p["frequency"], db=p["db"]
@@ -136,8 +141,20 @@ def audiogram_import(request):
                 for right, left in zip(*_by_ear(points), strict=True)
             ],
             "reading": signing.dumps(reading, salt=IMPORT_SALT),
+            "reminders": test,
         },
     )
+
+
+def _imported_before(user, tested_on, points):
+    """Spec #702 Q10: the audiogram this person already imported from the same test (same day,
+    the same 16 values), or None."""
+    wanted = {(p["ear"], p["frequency"], p["db"]) for p in points}
+    same_day = user.audiograms.filter(entry=AudiogramEntry.APPLE_PDF, tested_on=tested_on)
+    for audiogram in same_day.prefetch_related("points"):
+        if {(p.ear, p.frequency, p.db) for p in audiogram.points.all()} == wanted:
+            return audiogram
+    return None
 
 
 def _by_ear(points):
@@ -148,11 +165,17 @@ def _by_ear(points):
     ]
 
 
-def _import_page(request, unreadable=False):
+def _import_page(request, unreadable=False, already=None, not_saved=False):
+    # Spec #702 (#703 mockup 4A): whatever happened says so at the top, the file again below.
     return render(
         request,
         "screening/audiogram_import.html",
-        {"steps": IMPORT_STEPS, "unreadable": unreadable},
+        {
+            "steps": IMPORT_STEPS,
+            "unreadable": unreadable,
+            "already": already,
+            "not_saved": not_saved,
+        },
     )
 
 
@@ -165,14 +188,18 @@ def audiogram_import_save(request):
         reading = signing.loads(
             request.POST.get("reading", ""), salt=IMPORT_SALT, max_age=IMPORT_GOOD_FOR
         )
+    # Too old (an expiry is a bad signature too), changed, or another person's: nothing saved.
     except signing.BadSignature:
-        return redirect("audiogram_import")
+        return _import_page(request, not_saved=True)
     if reading["user"] != request.user.pk:
-        return redirect("audiogram_import")
+        return _import_page(request, not_saved=True)
+    tested_on = date.fromisoformat(reading["tested_on"])
+    if kept := _imported_before(request.user, tested_on, reading["points"]):
+        return redirect("audiogram_detail", kept.id)
     with transaction.atomic():
         audiogram = Audiogram.objects.create(
             user=request.user,
-            tested_on=reading["tested_on"],
+            tested_on=tested_on,
             source=AudiogramSource.SELF_TEST,
             entry=AudiogramEntry.APPLE_PDF,
         )

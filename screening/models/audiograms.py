@@ -1,6 +1,9 @@
 from django.conf import settings
 from django.db import models
+from django.db.models import F
+from django.utils import timezone
 
+from screening.apple_hearing_test import Unreadable
 from screening.audiogram import APPLE_DB_MIN, interpret
 
 
@@ -96,3 +99,29 @@ class AudiogramPoint(models.Model):
 
     def __str__(self):
         return f"{self.ear} {self.conduction} {self.frequency} Hz: {self.db}"
+
+
+class ImportFailureMonth(models.Model):
+    # 匯入失敗月計數 (spec #702 Q14, ticket #708): how many PDFs 從 iPhone 匯入 could not read each
+    # month, by reason, so the owner knows what to support next. Only the month and the counts:
+    # no account, file or anything on it, so it is not in 下載我的資料 and stays when an account
+    # is deleted. Field names other than month are Unreadable's values.
+    month = models.DateField("月份", unique=True)  # the month's first day, Taipei time
+    not_a_pdf = models.PositiveIntegerField(Unreadable.NOT_A_PDF.label, default=0)
+    not_apple = models.PositiveIntegerField(Unreadable.NOT_APPLE.label, default=0)
+    layout = models.PositiveIntegerField(Unreadable.LAYOUT.label, default=0)
+    cross_check = models.PositiveIntegerField(Unreadable.CROSS_CHECK.label, default=0)
+
+    class Meta:
+        verbose_name = verbose_name_plural = "匯入失敗月計數"
+
+    def __str__(self):
+        return f"{self.month.year}/{self.month.month:02d}"
+
+
+def count_import_failure(reason):
+    """Add one to this month's count of reason, as the guests' month counts do."""
+    month = timezone.localdate().replace(day=1)
+    ImportFailureMonth.objects.get_or_create(month=month)
+    # F(): added in the database, so two failures at the same moment both count.
+    ImportFailureMonth.objects.filter(month=month).update(**{reason: F(reason) + 1})

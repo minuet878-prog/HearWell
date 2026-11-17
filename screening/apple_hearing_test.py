@@ -55,6 +55,11 @@ class CannotRead(Exception):
 class AppleHearingTest:
     tested_on: date
     points: list  # 16 air points: {"ear", "frequency", "db"}
+    # Only for the preview's reminders (spec #702 Q11), never saved: a value marked * (background
+    # noise may have hidden quieter tones), and 鼻塞 or 最近曾暴露於大聲噪音 answered 是.
+    noise_marked: bool = False
+    congested: bool = False
+    loud_noise: bool = False
 
 
 @dataclass(frozen=True)
@@ -103,7 +108,21 @@ def _test(page, chars, lines):
             if abs(db - (zero - y) / per_db) > CROSS_CHECK_DB:
                 raise CannotRead(Unreadable.CROSS_CHECK)
             points.append({"ear": ear, "frequency": frequency, "db": db})
-    return AppleHearingTest(tested_on=tested_on, points=points)
+    return AppleHearingTest(
+        tested_on=tested_on,
+        points=points,
+        noise_marked=any(word.text.endswith("*") and _ear_of(word.colour) for word in words),
+        congested=_answered_yes(lines, "鼻塞"),
+        loud_noise=_answered_yes(lines, "最近曾暴露於大聲噪音"),
+    )
+
+
+def _answered_yes(lines, question):
+    """Whether the line asking question answers 是 after it."""
+    for line in lines:
+        if question in line:
+            return "是" in line[line.index(question) + len(question) :]
+    return False
 
 
 def _walk(item):

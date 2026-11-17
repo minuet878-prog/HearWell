@@ -242,3 +242,145 @@ class ImportEntryTests(TestCase):
         button = self._after_record(card, reverse("audiogram_new") + "?next=/")
         self.assertIn("btn-outline-primary", button)
         self.assertLess(card.index("從 iPhone 匯入"), card.index("還沒，看要去哪裡檢查"))
+
+
+UNREADABLE = (
+    "這份 PDF 讀不出來。請確認是「健康」app 的聽力測試結果；也可以照著 PDF 自己把數字標上去。"
+)
+NOT_SAVED = "沒有存到，請重新選一次 PDF。"
+ALREADY = "這份已經匯入過了。"
+NOISE = "測試時周圍有點吵，有些點可能比實際差。"
+CONGESTED = "鼻塞時測的，結果可能偏差。"
+LOUD = "剛聽過大聲音，結果可能偏差。"
+
+
+class ImportEdgeCaseTests(TestCase):
+    """Spec #702 acceptance 5-7, 9, 24 (ticket #708); messages on the import page itself, the
+    file again under them (#703 mockup 4A)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = consented_user(username="王大明")
+        cls.other = consented_user(username="王二明")
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    _main = AudiogramImportTests._main
+    _reading = AudiogramImportTests._reading
+
+    def _post(self, data, name="聽力測試.pdf"):
+        upload = SimpleUploadedFile(name, data, "application/pdf")
+        return self.client.post(reverse("audiogram_import"), {"pdf": upload})
+
+    def _counts(self):
+        from screening.models import ImportFailureMonth
+
+        month = ImportFailureMonth.objects.get()
+        return {f: getattr(month, f) for f in ("not_a_pdf", "not_apple", "layout", "cross_check")}
+
+    def test_each_unreadable_file_says_so_and_is_counted(self):
+        missing = (*RIGHT[:7], None)
+        off = (RIGHT[0] + 10, *RIGHT[1:])
+        files = (
+            (b"%PDF" + b"0" * MAX_BYTES, "not_a_pdf"),
+            ("不是 PDF".encode(), "not_a_pdf"),
+            (apple_pdf(source="Source: Apple Hearing Test"), "not_apple"),
+            (apple_pdf(printed={"right": missing}), "layout"),
+            (apple_pdf(printed={"right": off}), "cross_check"),
+        )
+        for data, _ in files:
+            main = self._main(self._post(data))
+            with self.subTest(main=main[:60]):
+                self.assertIn(UNREADABLE, main)
+                # 自己標 right under the message, then the file once more.
+                self.assertLess(main.index(UNREADABLE), main.index(">自己標</a>"))
+                self.assertIn(f'href="{reverse("audiogram_new")}"', main)
+                self.assertLess(main.index(">自己標</a>"), main.index('type="file"'))
+                self.assertNotIn("存下來", main)
+        self.assertEqual(
+            self._counts(), {"not_a_pdf": 2, "not_apple": 1, "layout": 1, "cross_check": 1}
+        )
+        self.assertEqual(Audiogram.objects.count(), 0)
+
+    def test_the_same_test_again_links_to_the_one_kept(self):
+        """Same person, imported, same day, same 16 values: no second one, from either page."""
+        preview = self._post(apple_pdf())
+        reading = self._reading(preview)
+        self.client.post(reverse("audiogram_import_save"), {"reading": reading})
+        kept = Audiogram.objects.get()
+        main = self._main(self._post(apple_pdf()))
+        self.assertIn(ALREADY, main)
+        self.assertRegex(
+            main,
+            rf'<a [^>]*href="{reverse("audiogram_detail", args=[kept.id])}"[^>]*>看那張聽力圖</a>',
+        )
+        self.assertNotIn("存下來", main)
+        self.assertIn('type="file"', main)
+        response = self.client.post(reverse("audiogram_import_save"), {"reading": reading})
+        self.assertRedirects(response, reverse("audiogram_detail", args=[kept.id]))
+        self.assertEqual(Audiogram.objects.count(), 1)
+
+    def test_another_day_or_value_is_not_the_same(self):
+        for data in (
+            apple_pdf(),
+            apple_pdf(tested_at=datetime(2026, 11, 11, 9)),
+            apple_pdf(right=(12, *RIGHT[1:])),
+        ):
+            preview = self._post(data)
+            self.client.post(reverse("audiogram_import_save"), {"reading": self._reading(preview)})
+        self.assertEqual(Audiogram.objects.count(), 3)
+
+    def test_a_preview_too_old_changed_or_someone_elses_saves_nothing(self):
+        import time
+        from unittest import mock
+
+        with mock.patch("django.core.signing.time.time", return_value=time.time() - 31 * 60):
+            old = self._reading(self._post(apple_pdf()))
+        mine = self._reading(self._post(apple_pdf()))
+        changed = mine[:-3] + ("AAA" if not mine.endswith("AAA") else "BBB")
+        self.client.force_login(self.other)
+        theirs = self._reading(self._post(apple_pdf()))
+        self.client.force_login(self.user)
+        for name, reading in (("old", old), ("changed", changed), ("theirs", theirs)):
+            with self.subTest(name):
+                response = self.client.post(reverse("audiogram_import_save"), {"reading": reading})
+                main = self._main(response)
+                self.assertIn(NOT_SAVED, main)
+                self.assertIn('type="file"', main)
+        self.assertFalse(Audiogram.objects.filter(user=self.user).exists())
+
+    def test_the_preview_reminds_only_of_what_the_pdf_says(self):
+        """Spec #702 acceptance 5: one sentence each, only when so; nothing of it is saved."""
+        main = self._main(self._post(apple_pdf(stars=True, congested=True, loud_noise=True)))
+        for words in (NOISE, CONGESTED, LOUD):
+            self.assertIn(words, main)
+        main = self._main(self._post(apple_pdf(stars=False)))
+        for words in (NOISE, CONGESTED, LOUD):
+            self.assertNotIn(words, main)
+
+
+class ImportFailureMonthAdminTests(TestCase):
+    """Spec #702 acceptance 24: the owner reads each month's reasons, and only reads them."""
+
+    def test_the_owner_reads_each_reason_and_cannot_change_them(self):
+        from screening.models import ImportFailureMonth, User
+
+        october = ImportFailureMonth.objects.create(month=date(2026, 10, 1), layout=3)
+        self.client.force_login(User.objects.create_superuser(username="owner", password="pw"))
+        page = self.client.get(reverse("admin:screening_importfailuremonth_changelist"))
+        content = page.content.decode()
+        for heading in (
+            "月份",
+            "檔案太大或不是 PDF",
+            "不是 Apple 聽力測試",
+            "版面認不得",
+            "交叉驗證不符",
+        ):
+            self.assertIn(heading, content)
+        self.assertIn(">2026/10<", content)
+        add = reverse("admin:screening_importfailuremonth_add")
+        delete = reverse("admin:screening_importfailuremonth_delete", args=[october.pk])
+        self.assertEqual(self.client.get(add).status_code, 403)
+        self.assertEqual(self.client.post(delete, {"post": "yes"}).status_code, 403)
+        self.assertTrue(ImportFailureMonth.objects.filter(pk=october.pk).exists())

@@ -9,6 +9,8 @@ from screening.models.audiograms import (
     AudiogramSource,
     Conduction,
     Ear,
+    ImportFailureMonth,
+    count_import_failure,
 )
 from screening.models.feedback import (
     FEEDBACK_MAX_LENGTH,
