@@ -101,6 +101,33 @@ paths:
           description: Invalid points or date; nothing changed
         '404':
           description: Not this user's audiogram
+  /api/guest-counts/:
+    post:
+      operationId: guest_counts_create
+      description: |-
+        Adds one to this month's column of the 訪客月計數 that a page names (spec #677): a
+        clinic card's landing page, once it has opened in a browser. Anyone, signed in or not,
+        and nothing about them is kept: no session is read (so no CSRF), and no limit (the
+        grill's Q15: a flood only makes the number wrong).
+      tags:
+      - guest-counts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GuestCount'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GuestCount'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GuestCount'
+        required: true
+      responses:
+        '204':
+          description: Counted
+        '400':
+          description: Not a kind a page may count
   /api/guest-scores/:
     post:
       operationId: guest_scores_create
@@ -451,6 +478,14 @@ components:
       - answers
       - just_finished
       - questionnaire
+    GuestCount:
+      type: object
+      description: 'Which column of the 訪客月計數 a page adds one to (spec #677).'
+      properties:
+        kind:
+          $ref: '#/components/schemas/KindEnum'
+      required:
+      - kind
     GuestLevel:
       type: object
       properties:
@@ -498,6 +533,14 @@ components:
       required:
       - left
       - right
+    KindEnum:
+      enum:
+      - clinic_elder
+      - clinic_family
+      type: string
+      description: |-
+        * `clinic_elder` - clinic_elder
+        * `clinic_family` - clinic_family
     Level:
       type: object
       properties:

@@ -4356,6 +4356,32 @@
     font-weight: 400;
   }
 
+  /* #659 (the #657 mockup's C): the email 重測提醒 once on, a green line with its tick (the
+     success green, ADR 0007). */
+  .reminder-on {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    margin: 0 0 0.75rem;
+    padding: 0.6rem 0.8rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-normal-bg);
+    color: var(--color-normal);
+    font-weight: 700;
+  }
+
+  .reminder-on svg {
+    flex: none;
+    width: 1.4rem;
+    height: 1.4rem;
+    margin-top: 0.1rem;
+    fill: none;
+    stroke: var(--color-normal);
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
   /* Spec #505 (the #507 mockup 5): a way to sign in a row, its mark in a circle on the left,
      name and state in the middle, the one thing to do with it on the right; at large text sizes
      the action drops under the words. */
@@ -4872,6 +4898,37 @@
     font-size: var(--text-button);
     font-weight: 700;
     overflow-wrap: anywhere;
+  }
+
+  /* #661 (the #657 mockup's result page B): the email 重測提醒 under the 現在這一步, white in a
+     pale blue frame, so it reads as its own box beside the card above it. */
+  .result-reminder {
+    margin-top: 1rem;
+    padding: 1rem 1.125rem;
+    border: 2px solid var(--color-brand-soft);
+    border-radius: var(--radius-large);
+    background-color: #fff;
+  }
+
+  .result-reminder-title {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin: 0 0 0.25rem;
+    color: var(--color-heading);
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .result-reminder-title svg {
+    flex: none;
+    width: 1.4rem;
+    height: 1.4rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 
   .result-list {
@@ -7240,6 +7297,187 @@
 
     .simulator-switch button[aria-pressed="false"]:hover {
       background-color: rgb(255 255 255 / 0.24);
+    }
+  }
+}
+
+/* 診間小卡 print page (spec #677; the #678 mockup's C for the card, P for the page). The card is
+   sized for paper: mm for its box and pt for its words, the sizes the owner saw on the mockup and
+   printed; they do not follow the page's text size, which a sheet of fixed cards cannot. */
+@layer components {
+  .clinic-cards-choices {
+    display: flex;
+    margin: 0.5rem 0 1rem;
+    border: 2px solid var(--color-primary);
+    border-radius: var(--radius-pill);
+    overflow: hidden;
+  }
+
+  .clinic-cards-choice {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--spacing-touch);
+    padding: 0.25rem 0.75rem;
+    color: var(--color-primary);
+    font-weight: 700;
+    text-align: center;
+    text-decoration: none;
+  }
+
+  .clinic-cards-choice[aria-current="page"] {
+    background-color: var(--color-primary);
+    color: #fff;
+  }
+
+  .clinic-cards-choice:focus-visible {
+    outline: 3px solid var(--color-heading);
+    outline-offset: -5px;
+  }
+
+  .clinic-cards-phone-note {
+    display: none;
+  }
+
+  /* One A4 sheet: 2 columns of 90 mm by 5 rows of 55 mm, centred on the paper. */
+  .clinic-cards-sheet {
+    display: grid;
+    grid-template-columns: repeat(2, 90mm);
+    grid-template-rows: repeat(5, 55mm);
+    justify-content: center;
+    align-content: center;
+    width: 210mm;
+    height: 297mm;
+    margin: 0 auto;
+    background-color: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .clinic-card {
+    display: flex;
+    gap: 3mm;
+    width: 90mm;
+    height: 55mm;
+    padding: 4mm;
+    overflow: hidden;
+    /* The cutting line: pale grey, printed as it is. */
+    border: 0.15mm solid #bbb;
+    color: #1a1a1a;
+    font-size: 11pt;
+    line-height: 1.35;
+  }
+
+  .clinic-card p {
+    margin: 0;
+  }
+
+  .clinic-card-words {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: space-between;
+    min-width: 0;
+  }
+
+  .clinic-card-brand {
+    display: flex;
+    align-items: center;
+    gap: 1.5mm;
+    color: var(--color-primary);
+    font-size: 12pt;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+
+  .clinic-card-brand-tint {
+    color: var(--color-gradient-end);
+  }
+
+  .clinic-card-logo {
+    flex: none;
+    width: 6.5mm;
+    height: 6.5mm;
+  }
+
+  .clinic-card-title {
+    color: var(--color-primary);
+    font-size: 16pt;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  .clinic-card-free {
+    align-self: flex-start;
+    padding: 0.3mm 2mm;
+    border: 0.4mm solid var(--color-primary);
+    border-radius: 2mm;
+    color: var(--color-primary);
+    font-weight: 700;
+  }
+
+  .clinic-card-scan {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 28mm;
+    text-align: center;
+  }
+
+  .clinic-card-qr {
+    width: 28mm;
+  }
+
+  .clinic-card-qr svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    shape-rendering: crispEdges;
+  }
+
+  .clinic-card-camera {
+    font-size: 10pt;
+  }
+
+  .clinic-card-address {
+    font-size: 10pt;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+  }
+
+  /* Narrower than the sheet and its 16px sides, 826px (a phone): one card shows what is printed;
+     printing wants a computer. */
+  @media screen and (max-width: 52em) {
+    .clinic-cards-phone-note {
+      display: block;
+    }
+
+    .clinic-cards-sheet {
+      display: block;
+      width: auto;
+      height: auto;
+      box-shadow: none;
+    }
+
+    .clinic-cards-sheet .clinic-card:not(:first-child) {
+      display: none;
+    }
+  }
+
+  /* A 320px phone is narrower than a 90 mm card. */
+  @media screen and (max-width: 23.75em) {
+    .clinic-cards-sheet {
+      zoom: 0.8;
+    }
+  }
+
+  /* On paper: the sheet alone. The page's 0 margin is set on the page itself (clinic_cards.html),
+     over the 1.5cm every other printed page keeps. */
+  @media print {
+    .clinic-cards-sheet {
+      box-shadow: none;
     }
   }
 }

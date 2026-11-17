@@ -6,7 +6,12 @@ import calendar
 from dataclasses import dataclass
 from datetime import date
 
-from screening.audiogram import assessment_estimate, recommends_fitting_assessment
+from screening.audiogram import (
+    FittingAdvice,
+    assessment_estimate,
+    fitting_advice,
+    readable_for_aid_wearer,
+)
 from screening.models import AidAndSubsidy, AidLevel, Audiogram, Certificate, Submission, Subsidy
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 
@@ -37,6 +42,10 @@ SUBSIDY_STOPS = frozenset({"form-9", "notice", "form-25", "payout"})
 CERTIFICATE_UNFOLDS = frozenset({Certificate.YES, Certificate.APPLYING})
 # Bought paying otherwise, as 配戴之後 asks (spec #291 acceptance 15).
 BOUGHT_OTHERWISE = frozenset({"form-25", "payout"})
+# The results that suggest no assessment yet, so the route waits (spec #693).
+WAITING_ADVICE = frozenset(
+    {FittingAdvice.NORMAL, FittingAdvice.TRACK, FittingAdvice.QUESTIONNAIRE_FIRST}
+)
 REAPPLY_MONTHS = 48  # 身障補助 again 4 years on; #284 leaves out under-12s' 2 years
 
 
@@ -64,15 +73,18 @@ class FittingState:
     latest: Submission | None  # the newest submission of an offered questionnaire
     audiogram: Audiogram | None  # the newest audiogram, its points prefetched
     wearing: bool
-    fitting: bool | None  # recommends_fitting_assessment; None without an audiogram too
+    advice: FittingAdvice | None  # 建議評估選配 (fitting_advice); None without an audiogram
     threshold: dict | None  # assessment_estimate, without an audiogram None
+    # 資料不足: the latest audiogram cannot tell whether to suggest an assessment. Shown even
+    # when another stop comes first (wearing), but then it is not the 目前這一站.
+    insufficient: bool
     done: frozenset  # the 已完成 stops' slugs
     not_applicable: frozenset  # the 不適用 stops' slugs, which 您在這裡 passes by
     stop: str | None  # one of STOPS; None when no stop applies
     today: date  # the day the route is judged on, for its dated rules
     aid: AidAndSubsidy | None  # the user's 助聽器與補助資料, None before they answer any
-    # Q7: within the normal range, not wearing hearing aids, the route waits until the user
-    # starts on a stop; the 照顧旅程's 目前不需要 is the same (ADR 0044).
+    # Q7 (spec #693): not wearing hearing aids and no assessment to suggest yet, the route
+    # waits until the user starts on a stop; the 照顧旅程's 目前不需要 is part of it (ADR 0067).
     waiting: bool
     subsidy_shown: bool  # the 補助站 on the route (subsidy_stops_shown)
 
@@ -116,36 +128,51 @@ class FittingState:
             return None
         return add_months(self.aid.fitted_on, REAPPLY_MONTHS)
 
-    @property
-    def insufficient(self):
-        # 資料不足: the latest audiogram cannot tell whether to suggest an assessment. Shown
-        # even when another stop comes first (wearing), but then it is not the 目前這一站.
-        return self.audiogram is not None and self.fitting is None
 
-
-def fitting_state(user, today):
-    audiogram = user.audiograms.prefetch_related("points").first()
-    latest = (
+def latest_submission(user):
+    """The newest submission of an offered questionnaire, None before one."""
+    return (
         user.submissions.defined()
         .select_related("questionnaire")
         .order_by("-created_at", "-id")
         .first()
     )
+
+
+def wearing_hearing_aids(latest, aid):
+    """Whether the user wears hearing aids, from their latest_submission and their
+    AidAndSubsidy (None before any)."""
     # IOI-HA saves no wearing answer, but only people wearing hearing aids take it (#220 M16).
-    wearing = latest is not None and (
+    answered = latest is not None and (
         latest.wearing_hearing_aid is True or latest.questionnaire.code == IOI_HA
     )
-    aid = AidAndSubsidy.for_user(user)
     # A fitting date the user filled in counts as wearing them too (#284 default 3).
-    wearing = wearing or _fitted(aid)
-    fitting = threshold = None
+    return answered or _fitted(aid)
+
+
+def fitting_state(user, today):
+    audiogram = user.audiograms.prefetch_related("points").first()
+    latest = latest_submission(user)
+    aid = AidAndSubsidy.for_user(user)
+    wearing = wearing_hearing_aids(latest, aid)
+    advice = threshold = None
+    insufficient = False
     if audiogram is not None:
         points = list(audiogram.points.all())
-        fitting = recommends_fitting_assessment(points)
+        # Imported here: main_flow imports this module for add_months.
+        from screening.main_flow import get_user_state
+
+        advice = fitting_advice(points, get_user_state(user, today).life_impact)
         threshold = assessment_estimate(points)
+        # Someone wearing hearing aids is not judged by 建議評估選配, so their audiogram tells
+        # as it did before it (spec #693 acceptance 12).
+        if wearing:
+            insufficient = not readable_for_aid_wearer(points)
+        else:
+            insufficient = advice == FittingAdvice.UNKNOWN
     viewed = set(user.guide_views.values_list("chapter", flat=True))
     done = viewed & DONE_BY_VIEWING
-    if fitting is not None:
+    if audiogram is not None and not insufficient:
         done.add(AUDIOGRAM)  # an audiogram that can tell; one missing a frequency is not done
     if aid is not None and aid.certificate in CERTIFICATE_DONE:
         done.add("assessment")
@@ -164,17 +191,19 @@ def fitting_state(user, today):
     done -= not_applicable  # a stop is never both: 不適用 wins (#291 review)
     if not shown:
         done -= SUBSIDY_STOPS  # folded away, a 補助站 is neither done nor here
-    # Q7: within the normal range, the route waits until the user starts on a stop.
-    started = bool(viewed) or (aid is not None and not aid.unanswered)
-    waiting = not wearing and fitting is False and not started
+    # Q7: not suggested an assessment (spec #693), the route waits until the user starts on a
+    # stop; only an answer on the route starts it, a chapter viewed does not (spec #693 Q9).
+    started = aid is not None and not aid.unanswered
+    waiting = not wearing and advice in WAITING_ADVICE and not started
     passed = done | not_applicable | (frozenset() if shown else SUBSIDY_STOPS)
     stop = _stop(wearing, passed, waiting)
     return FittingState(
         latest,
         audiogram,
         wearing,
-        fitting,
+        advice,
         threshold,
+        insufficient,
         frozenset(done),
         not_applicable,
         stop,

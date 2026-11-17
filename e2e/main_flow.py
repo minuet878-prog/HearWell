@@ -6,12 +6,14 @@ Not named test_*.py, so the normal test run skips it; run it by name after build
 
 import base64
 import calendar
+import json
 import os
 import re
 from contextlib import contextmanager, nullcontext
 from datetime import date, datetime, timedelta
 from itertools import combinations, pairwise
 from math import log2
+from statistics import median
 from typing import ClassVar
 from unittest.mock import patch
 from urllib.parse import parse_qsl, urlparse
@@ -20,7 +22,7 @@ from zoneinfo import ZoneInfo
 from django.conf import settings
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.core.management import call_command
-from django.test import Client
+from django.test import Client, override_settings
 from django.utils import timezone
 from playwright.sync_api import expect, sync_playwright
 
@@ -45,12 +47,14 @@ from screening.models import (
     AudiogramPoint,
     Category,
     Feedback,
+    GuestMonth,
     GuideChapterView,
     NormGroup,
     Question,
     Questionnaire,
     ReportComparison,
     ReportShare,
+    RetestReminder,
     Submission,
     User,
 )
@@ -80,17 +84,40 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
 ARTIFACTS = settings.BASE_DIR / "e2e-artifacts"
 QUESTION_COUNT = 10
+# A class longer than this on CI has its tests dealt out across the machines: one process runs a
+# class from start to end, so WhiteCardRuleTest (273 s on CI) alone held up its machine.
+SPLIT_SECONDS = 100
 
 
 def load_tests(loader, tests, pattern):
-    """CI's two e2e machines: E2E_SHARD=1/2 runs every other test class from the first, 2/2 the
-    rest. Without it (a local run) every class runs. unittest calls this when loading the module.
+    """CI's e2e machines: E2E_SHARD=1/3 runs the first machine's share of the tests.
+
+    Without it (a local run) every test runs. unittest calls this when loading the module.
+    Each class counts as its seconds in e2e/durations.json (a class missing there counts as the
+    median one; e2e/update_durations.py rewrites it); one over SPLIT_SECONDS becomes a piece per
+    machine. Longest first, each goes to the machine with the fewest seconds so far, so each
+    machine also starts its longest first and none is left to run alone at the end.
     """
     if not (shard := os.environ.get("E2E_SHARD")):
         return tests
     number, total = map(int, shard.split("/"))
-    classes = [suite for suite in tests if suite.countTestCases()]
-    return loader.suiteClass(classes[number - 1 :: total])
+    seconds = json.loads((settings.BASE_DIR / "e2e" / "durations.json").read_text())
+    usual = median(seconds.values())
+    pieces = []
+    for suite in tests:
+        if not (cases := list(suite)):
+            continue
+        time = seconds.get(type(cases[0]).__name__, usual)
+        if time > SPLIT_SECONDS:
+            pieces += [(time / total, cases[k::total]) for k in range(total)]
+        else:
+            pieces.append((time, cases))
+    machines = [[0, []] for _ in range(total)]
+    for time, cases in sorted(pieces, key=lambda piece: piece[0], reverse=True):
+        machine = min(machines, key=lambda m: m[0])
+        machine[0] += time
+        machine[1] += cases
+    return loader.suiteClass(machines[number - 1][1])
 
 
 def type_audiogram_date(main, year, month, day):
@@ -171,6 +198,14 @@ class OnAPhone:
 
     def main(self):
         return self.page.get_by_role("main")
+
+    def click_mid_screen(self, locator, **options):
+        """Clicks locator in the screen's middle. A plain click scrolls it only as far as the
+        screen's foot, and that scroll brings up 回到頂端 or the tab bar there a frame later: on
+        a slow CI they come between the press and the release, which lands on them, and the click
+        is lost without an error (CI run 43984356597)."""
+        locator.evaluate("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })")
+        locator.click(**options)
 
     def double_text(self, on=True):
         """Sets the page's text to 200%, or (on=False) back to its usual size. Not add_style_tag:
@@ -1574,8 +1609,9 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         expect(self.main().locator("#result-score")).to_contain_text("總分 20 分")
         expect(self.main().locator(".result-banner")).to_contain_text("輕度到中度影響")
         # HHIE-S 輕度到中度影響's steps (ticket #157), since #461 step 1 under the level and the
-        # others behind 看完整說明: the guide link, then the retest. The report is left to the
-        # list rows, as this step's words do not mention it (result page tidy-up).
+        # others behind 看完整說明: the check, then the retest. The report is left to the list
+        # rows, as this step's words do not mention it (result page tidy-up); since spec #693
+        # no link to the hearing-aid guide.
         expect(self.main().locator(".result-one-line")).to_contain_text(
             "聽力問題已經慢慢影響您的社交活動與情緒"
         )
@@ -1586,7 +1622,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         expect(folded.locator(".score-bar")).to_have_count(0)
         self.main().locator(".result-details > summary").click()
         expect(folded).to_contain_text("建議前往醫院耳鼻喉科進行聽力相關檢查")
-        expect(folded.get_by_role("link", name="看助聽器選配與補助")).to_be_visible()
+        expect(folded.get_by_role("link", name="看助聽器選配與補助")).to_have_count(0)
         expect(folded.get_by_role("link", name="看／印聽力報告")).to_have_count(0)
         expect(folded).to_contain_text("半年後再做一次，時間到了首頁會提醒您。")
         # Ticket #158: 20 of 40 sits halfway along the bar, inside the 輕度到中度 segment
@@ -2420,6 +2456,52 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                     self.page = family.new_page()
                     self.page.goto(f"{self.live_server_url}{path}")
                     self.assert_fits_a_phone_at_double_text_size(path)
+
+    # #659 (spec #656 acceptance 40): the account settings' email 重測提醒 in each of its states,
+    # a long address included, 320px wide at 200% text.
+    def test_account_retest_reminder_fits_a_phone_at_double_text_size(self):
+        self.open(320, 640)
+        section = "#retest-reminder"
+        with self.saving_artifacts():
+            for state, words in (
+                ("no email", "補上 email"),
+                ("off", "打開提醒"),
+                ("on", "關掉提醒"),
+                ("on and due", "您現在就可以再做一次"),
+            ):
+                with self.subTest(state=state):
+                    if state == "off":
+                        User.objects.filter(pk=self.user.pk).update(
+                            email="wang.daughter.reminder.address@example.com"
+                        )
+                    elif state == "on":
+                        RetestReminder.objects.create(
+                            user=self.user, enabled=True, enabled_on=date(2026, 11, 16)
+                        )
+                    elif state == "on and due":
+                        self.user.submissions.update(
+                            created_at=datetime.now(ZoneInfo("Asia/Taipei")) - timedelta(days=200)
+                        )
+                    self.page.goto(f"{self.live_server_url}/account")
+                    expect(self.page.locator(section)).to_contain_text(words)
+                    self.assert_fits_a_phone_at_double_text_size(state)
+
+    # #662 (spec #656 acceptance 40): an email's cancel link, opened without signing in, and the
+    # 已取消 page its button leads to, a long account name included, 320px wide at 200% text.
+    def test_reminder_cancel_pages_fit_a_phone_at_double_text_size(self):
+        owner = User.objects.create_user(username="wang_family_father_hearing_account")
+        reminder = RetestReminder.objects.create(
+            user=owner, enabled=True, enabled_on=date(2026, 11, 16)
+        )
+        self.open(320, 640, signed_in=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/reminder/cancel/{reminder.cancel_token}")
+            expect(self.main()).to_contain_text(owner.username)
+            self.assert_fits_a_phone_at_double_text_size("cancel")
+            self.main().get_by_role("button", name="取消提醒").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/reminder/cancelled")
+            expect(self.main()).to_contain_text("已取消")
+            self.assert_fits_a_phone_at_double_text_size("cancelled")
 
     # #198 (#183 story 121, ADR 0006): the phone blocks change colour when hovered and pressed,
     # and never move. #303: the account's link rows are link cards now, which move like any other.
@@ -3537,7 +3619,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             self.page.goto(f"{self.live_server_url}/guide")
             expect(self.here()).to_contain_text("配戴助聽器之後")
             self.here().get_by_label("這副助聽器哪一天開始戴？").fill(fitted_on.isoformat())
-            self.here().get_by_role("button", name="儲存").click()
+            self.click_mid_screen(self.here().get_by_role("button", name="儲存"))
 
             # 8 二十五號表: at least a month on, dated. Answered 完成了 at the foot of its
             # chapter, then on the route 修改 to 還沒 and 完成了 again.
@@ -3567,7 +3649,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             form_25.get_by_role("button", name="還沒").click()
             expect(self.here()).to_contain_text("二十五號表")
             expect(self.here().locator(".route-answer")).to_have_text("二十五號表還沒完成")
-            self.here().get_by_role("button", name="完成了").click()
+            self.click_mid_screen(self.here().get_by_role("button", name="完成了"))
 
             # 9 等待補助發放: here, asking nothing and never 已完成; the eight before it done.
             expect(self.here()).to_contain_text("等待補助發放")
@@ -6919,7 +7001,9 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
     # A4: a text link's underline thickens under a mouse, and a light blue shows behind its
     # words while it is pressed.
     def test_text_links_thicken_when_hovered_and_tint_when_pressed(self):
-        record = self.submission(self.hhie_s, [2] * 10)
+        # 無／極輕微影響: its folded step links 記錄聽力圖 (spec #693 left the other levels' folds
+        # without a link).
+        record = self.submission(self.hhie_s, [0] * 10)
         self.open()
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
@@ -8643,7 +8727,16 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             address = account.get_by_role("link", name="hearwellweb@gmail.com")
             self.assertEqual(address.count(), 1)
             self.assert_flat(address)
-            links = self.main().get_by_role("link").filter(has_not_text="hearwellweb@gmail.com")
+            # #660: this account has no email, so the email row and the reminder offer 補上, two
+            # outline buttons to the same page rather than list rows.
+            add_email = self.main().locator('a[href="/account/email"]')
+            self.assertEqual(add_email.count(), 2)
+            links = (
+                self.main()
+                .get_by_role("link")
+                .filter(has_not_text="hearwellweb@gmail.com")
+                .filter(has_not_text="補上")
+            )
             self.assertEqual(
                 [link.get_attribute("href") for link in links.all()],
                 [
@@ -12231,7 +12324,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
         self.sign_in(consented_user(username="speech_banana_reminder_e2e"))
 
     def page_for(self, db, size=LayoutOnAPhone.PHONE, java_script_enabled=True):
-        """Both ears flat at db, so each ear's PTA is db: over 25 dB is the guide's condition."""
+        """Both ears flat at db, so each ear's PTA is db: over 40 dB is the guide's condition."""
         audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 9, 1))
         AudiogramPoint.objects.bulk_create(
             AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=db)
@@ -12265,7 +12358,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
     # Acceptance 1: under the chart, and the chart itself says nothing of alarms.
     def test_the_reminders_are_under_the_chart_and_no_alarm_is_on_it(self):
         with self.saving_artifacts():
-            self.page_for(40)
+            self.page_for(45)
             plot = self.page.locator(".audiogram-plot")
             plot.locator("svg").wait_for()
             self.assert_the_reminders_show()
@@ -12280,7 +12373,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
     # The ticket's 不用 React: with no JavaScript the chart is gone and all of this still shows.
     def test_without_javascript_the_reminders_and_the_way_on_still_show(self):
         with self.saving_artifacts():
-            self.page_for(40, java_script_enabled=False)
+            self.page_for(45, java_script_enabled=False)
             expect(self.page.locator(".audiogram-plot")).to_have_count(0)
             self.assert_the_reminders_show()
             expect(
@@ -12291,7 +12384,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
     # Acceptance 2: over the condition the card leads to the guide, and the way back to this one.
     def test_the_guide_card_and_the_way_back_lead_where_they_say(self):
         with self.saving_artifacts():
-            audiogram = self.page_for(40)
+            audiogram = self.page_for(45)
             self.guide_card().click()
             self.page.wait_for_url("**/guide")
             self.page.go_back()
@@ -12311,7 +12404,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
     # on 320 they all double, the page does not scroll sideways, and the way on is big enough.
     def test_the_words_follow_the_text_size_on_a_narrow_phone(self):
         with self.saving_artifacts():
-            self.page_for(40, (320, 640))
+            self.page_for(45, (320, 640))
             reminder, alarm, source = (
                 self.words(text) for text in (self.REMINDER, self.ALARM, self.SOURCE)
             )
@@ -13428,7 +13521,7 @@ class FamilyAdjustingTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
         with self.saving_artifacts():
             self.open(self.PATH, signed_in=False)
             self.group().get_by_label(self.UNUSED.label).check()
-            self.live().get_by_role("link", name="怎麼跟聽損的家人說話").click()
+            self.click_mid_screen(self.live().get_by_role("link", name="怎麼跟聽損的家人說話"))
             expect(self.page).to_have_url(f"{self.live_server_url}/family/talk")
 
             self.page.goto(f"{self.live_server_url}{self.PATH}")
@@ -13892,6 +13985,8 @@ class WearMotionTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
     DOME = 10
     ARROW = 15
     HOOK_ON_ARROW = 14
+    # Any day will do; the page's clock starts here and is paused later on.
+    CLOCK = datetime(2026, 1, 1, 8, 0)
     # Where a piece is on the page, so scrolling to the button does not count as moving.
     WHERE = """el => {
         const box = el.getBoundingClientRect();
@@ -13914,6 +14009,10 @@ class WearMotionTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
     def test_push_in_plays_once_and_stops_on_the_reviewed_drawing(self):
         with self.saving_artifacts():
             self.open(self.PATH, signed_in=False)
+            # The page's own clock, so each press can be read with time held still: the dome
+            # waits at its start for 360 ms, and a busy machine once read it 530 ms late.
+            self.page.clock.install(time=self.CLOCK)
+            self.page.reload()
             self.pick()
             self.assertEqual(self.live().get_by_role("button").count(), len(self.TITLES))
             for title in self.TITLES:
@@ -13934,12 +14033,14 @@ class WearMotionTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
             before.get_by_role("checkbox").focus()
             self.page.keyboard.press("Tab")
             expect(button).to_be_focused()
+            self.page.clock.pause_at(self.CLOCK + timedelta(hours=1))
             self.page.keyboard.press("Enter")
             start = dome.evaluate(self.WHERE)
             self.assertNotEqual(start, drawn)
             # Acceptance 7: the thin tube goes with the dome.
             self.assertNotEqual(tube.bounding_box(), tube_drawn)
             expect(arrow).to_be_hidden()
+            self.page.clock.resume()
             # On its way: neither where it started nor where it is drawn.
             self.page.wait_for_function(
                 """([el, start, drawn]) => {
@@ -13959,6 +14060,7 @@ class WearMotionTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
             expect(button).to_be_focused()
             self.assertNotEqual(self.style(button, "boxShadow"), "none")
 
+            self.page.clock.pause_at(self.CLOCK + timedelta(hours=2))
             self.page.keyboard.press("Space")
             self.assertEqual(dome.evaluate(self.WHERE), start)
             expect(button).to_have_accessible_name("再看一次：推進耳塞")
@@ -15964,7 +16066,7 @@ class AudiogramReadingTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServ
                     self.open_step(3, width)
                     if double:
                         self.double_text()
-                    self.main().get_by_text(self.TABLE).click()
+                    self.click_mid_screen(self.main().get_by_text(self.TABLE))
                     expect(self.reading()).to_have_text("點一下圖來標記")
                     top = self.chart_top()
                     for name, value, rows in longest:
@@ -15986,6 +16088,15 @@ class AudiogramReadingTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServ
                         lines = [text for text, _ in self.lines(self.reading())]
                         self.assertFalse(any(re.search(r"^(Hz|dB)", line) for line in lines))
                         self.assertEqual(self.chart_top(), top)
+
+    # CI run 43984356597: a press held as long as a slow CI's still opens the table at 200% text,
+    # far enough down for 回到頂端 to come up as the page scrolls to it.
+    def test_table_opens_with_a_slow_press_at_double_text_size(self):
+        self.open_step(3)
+        with self.saving_artifacts():
+            self.double_text()
+            self.click_mid_screen(self.main().get_by_text(self.TABLE), delay=100)
+            expect(self.main().get_by_label("左耳骨導 4000 Hz", exact=True)).to_be_visible()
 
     # Acceptance 40: the confirm step's read-only chart has no reading.
     def test_confirm_step_has_no_reading(self):
@@ -17233,3 +17344,188 @@ class AppleHearingTestImportTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLi
             expect(self.main().get_by_role("link", name="修改這張")).to_have_count(0)
             audiogram = self.user.audiograms.get()
             self.assertEqual((audiogram.source, audiogram.entry), ("self_test", "apple_pdf"))
+
+
+class ClinicCardArrivalTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Spec #677 acceptance 7-9 (ADR 0066): a clinic card's address, opened in a browser, lands on
+    its card's page with a clean address, and that card's column of the 訪客月計數 goes up by one,
+    once: reloading the page counts nothing more."""
+
+    # Each card, its landing, its column, and what that page shows (acceptance 1).
+    CARDS = (
+        ("/c/e", "/questionnaire_list", "clinic_elder", "您目前的實際年齡？"),
+        ("/c/f", "/family", "clinic_family", "家人專區"),
+    )
+
+    def counted(self, column):
+        month = GuestMonth.objects.filter(month=timezone.localdate().replace(day=1)).first()
+        return getattr(month, column) if month else 0
+
+    def wait_until_counted(self, column, expected):
+        # The page sends the count after it opens; give it up to 5 seconds to arrive.
+        for _ in range(50):
+            if self.counted(column) == expected:
+                return
+            self.page.wait_for_timeout(100)
+        self.assertEqual(self.counted(column), expected, column)
+
+    def test_each_card_lands_clean_and_counts_once(self):
+        with self.saving_artifacts():
+            for card, landing, column, shown in self.CARDS:
+                with self.subTest(card=card):
+                    self.open(card, signed_in=False)
+                    expect(self.page).to_have_url(f"{self.live_server_url}{landing}")
+                    expect(self.main()).to_contain_text(shown)
+                    self.wait_until_counted(column, 1)
+                    self.page.reload()
+                    self.page.wait_for_load_state("load")
+                    # Long enough for a second count to have arrived, had the page sent one.
+                    self.page.wait_for_timeout(1000)
+                    self.assertEqual(self.counted(column), 1, f"{card} after a reload")
+            self.assertEqual(
+                list(GuestMonth.objects.values_list("completed", "saved_password")), [(0, 0)]
+            )
+
+
+@override_settings(SITE_URL="https://tingpal.tw")
+class ClinicCardPrintTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Spec #677 acceptance 20-22 (the #678 mockup's C and P): printed, the page is one A4 sheet
+    of 10 cards of 90 x 55 mm, the QR codes at least 2.5 cm, nothing else on the paper; on a
+    phone at 200% text it fits without scrolling sideways."""
+
+    MM = 96 / 25.4  # CSS pixels in a millimetre
+
+    def test_printed_it_is_one_a4_sheet_of_ten_real_size_cards(self):
+        with self.saving_artifacts():
+            self.open("/clinic-cards", self.DESKTOP, signed_in=False)
+            self.page.emulate_media(media="print")
+            # The heading, the two choices and the printing tips stay on screen.
+            expect(self.page.get_by_role("heading", name="列印診間小卡")).to_be_hidden()
+            expect(self.page.get_by_role("navigation", name="卡種")).to_be_hidden()
+            expect(self.page.get_by_text("列印要點")).to_be_hidden()
+            sheet = self.page.locator(".clinic-cards-sheet").bounding_box()
+            self.assertAlmostEqual(sheet["width"] / self.MM, 210, delta=0.3)
+            self.assertAlmostEqual(sheet["height"] / self.MM, 297, delta=0.3)
+            cards = self.page.locator(".clinic-card")
+            expect(cards).to_have_count(10)
+            for number, card in enumerate(cards.all(), start=1):
+                box = card.bounding_box()
+                with self.subTest(card=number):
+                    self.assertAlmostEqual(box["width"] / self.MM, 90, delta=0.3)
+                    self.assertAlmostEqual(box["height"] / self.MM, 55, delta=0.3)
+                    # Inside the sheet, which is the paper.
+                    self.assertGreaterEqual(box["x"], sheet["x"])
+                    self.assertGreaterEqual(box["y"], sheet["y"])
+                    self.assertLessEqual(box["x"] + box["width"], sheet["x"] + sheet["width"])
+                    self.assertLessEqual(box["y"] + box["height"], sheet["y"] + sheet["height"])
+            # Two columns by five rows, each card ringed by a pale grey line to cut along.
+            boxes = [card.bounding_box() for card in cards.all()]
+            self.assertEqual(len({round(box["x"]) for box in boxes}), 2)
+            self.assertEqual(len({round(box["y"]) for box in boxes}), 5)
+            first = cards.first
+            for side in ("Top", "Right", "Bottom", "Left"):
+                with self.subTest(line=side):
+                    self.assertEqual(self.style(first, f"border{side}Style"), "solid")
+                    self.assertGreater(float(self.style(first, f"border{side}Width")[:-2]), 0)
+                    self.assertEqual(self.style(first, f"border{side}Color"), "rgb(187, 187, 187)")
+            codes = self.page.locator(".clinic-card-qr svg")
+            expect(codes).to_have_count(10)
+            for qr in codes.all():
+                box = qr.bounding_box()
+                self.assertGreaterEqual(box["width"] / self.MM, 25)
+                self.assertGreaterEqual(box["height"] / self.MM, 25)
+            # Acceptance 23: white, no colour behind the words, each at least 4.5:1 on it.
+            self.assertEqual(self.style(first, "backgroundColor"), "rgba(0, 0, 0, 0)")
+            self.assertEqual(self.style(first, "backgroundImage"), "none")
+            sheet = self.page.locator(".clinic-cards-sheet")
+            sheet_colour = self.style(sheet, "backgroundColor")
+            self.assertEqual(sheet_colour, "rgb(255, 255, 255)")
+            # The sheet itself: white, with no image over it (cross review, third round).
+            self.assertEqual(self.style(sheet, "backgroundImage"), "none")
+            parts = ("brand", "brand-tint", "title", "free", "sees", "camera", "address")
+            # Every box from the words out to the sheet: no colour and no image behind them, so
+            # the sheet's white is what the words stand on (cross review, second round).
+            behind = """el => {
+                const found = [];
+                for (let box = el; !box.classList.contains("clinic-cards-sheet");
+                     box = box.parentElement) {
+                    const style = getComputedStyle(box);
+                    found.push([style.backgroundColor, style.backgroundImage]);
+                }
+                return found;
+            }"""
+            clear = ("rgba(0, 0, 0, 0)", "rgb(255, 255, 255)")
+            for part in parts:
+                with self.subTest(part=part):
+                    for colour, image in first.locator(f".clinic-card-{part}").evaluate(behind):
+                        self.assertIn(colour, clear)
+                        self.assertEqual(image, "none")
+                    colour = self.style(first.locator(f".clinic-card-{part}"), "color")
+                    ratio = StyleInBrowserTest.lowest_contrast(colour, sheet_colour)
+                    self.assertGreaterEqual(ratio, 4.5)
+            # The QR code's dark squares, black on the white page.
+            squares = self.style(first.locator(".clinic-card-qr .qrline"), "stroke")
+            self.assertGreaterEqual(StyleInBrowserTest.lowest_contrast(squares, sheet_colour), 4.5)
+            # The browser's own print: exactly one A4 page.
+            pdf = self.page.pdf(prefer_css_page_size=True)
+            self.assertEqual(len(re.findall(rb"/Type\s*/Page\b", pdf)), 1)
+            # A4 is 595 x 842 points.
+            width, height = map(
+                float, re.search(rb"/MediaBox \[0 0 ([\d.]+) ([\d.]+)\]", pdf).groups()
+            )
+            self.assertAlmostEqual(width, 595.3, delta=1)
+            self.assertAlmostEqual(height, 841.9, delta=1.5)
+
+    def test_printed_the_owners_words_keep_their_lines_inside_the_card(self):
+        # Acceptance 25 (#682): each line the owner wrote stays one line, nothing cut or outside.
+        # Written without spaces: self.lines (LINES) reads a line's words without them.
+        lines = {
+            "elder": {
+                "title": ["花3分鐘，看看", "聽力對生活的影響"],
+                "sees": ["回答10題，", "馬上看到結果和建議"],
+                "free": ["不用註冊・免費"],
+                "camera": ["用手機相機掃"],
+            },
+            "family": {
+                "title": ["陪家人一起", "面對聽力問題"],
+                "sees": ["怎麼跟他說話、陪他看診、", "助聽器怎麼照顧"],
+                "free": ["不用註冊・免費"],
+                "camera": ["用手機相機掃"],
+            },
+        }
+        with self.saving_artifacts():
+            for card, parts in lines.items():
+                self.open(f"/clinic-cards?card={card}", self.DESKTOP, signed_in=False)
+                self.page.emulate_media(media="print")
+                first = self.page.locator(".clinic-card").first
+                edge = first.bounding_box()
+                for part, expected in parts.items():
+                    with self.subTest(card=card, part=part):
+                        words = first.locator(f".clinic-card-{part}")
+                        self.assertEqual([text for text, _ in self.lines(words)], expected)
+                for part in ("brand", "title", "free", "sees", "qr", "camera", "address"):
+                    with self.subTest(card=card, inside=part):
+                        box = first.locator(f".clinic-card-{part}").bounding_box()
+                        self.assertGreaterEqual(box["x"], edge["x"])
+                        self.assertGreaterEqual(box["y"], edge["y"])
+                        self.assertLessEqual(box["x"] + box["width"], edge["x"] + edge["width"])
+                        self.assertLessEqual(box["y"] + box["height"], edge["y"] + edge["height"])
+
+    def test_a_window_a_little_wider_than_a_phone_does_not_scroll_sideways(self):
+        # Cross review of spec #677 (acceptance 21-22): the A4 sheet and its 16px sides need
+        # about 826px; between that and 800px the sheet showed whole and scrolled sideways.
+        with self.saving_artifacts():
+            for width in (801, 810, 825, 840):
+                with self.subTest(width=width):
+                    self.open("/clinic-cards", (width, 900), signed_in=False)
+                    scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
+                    self.assertLessEqual(scroll_width, width)
+
+    def test_it_fits_a_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            for width in (320, 390):
+                with self.subTest(width=width):
+                    self.open("/clinic-cards", (width, 844), signed_in=False)
+                    self.assert_fits_a_phone_at_double_text_size("clinic cards", width)
+                    # One card shows what is printed; the rest wait for a computer.
+                    expect(self.page.locator(".clinic-card:visible")).to_have_count(1)

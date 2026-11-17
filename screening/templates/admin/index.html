@@ -1,0 +1,6 @@
+{% extends "admin/index.html" %}
+{# The owner's way to the clinic cards' print page (spec #677): no page of the site links to it. #}
+{% block content %}
+<p><a href="{% url 'clinic_cards' %}">列印診間小卡</a></p>
+{{ block.super }}
+{% endblock %}

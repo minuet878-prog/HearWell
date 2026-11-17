@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('screening', '0039_audiogram_source_and_entry'),
+        ('screening', '0041_audiogram_source_and_entry'),
     ]
 
     operations = [

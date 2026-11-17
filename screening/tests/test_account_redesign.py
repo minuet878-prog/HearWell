@@ -25,6 +25,7 @@ PRIVACY_SECTIONS = [
     ("line-title", "用 LINE 登入時"),  # spec #506
     ("google-title", "用 Google 登入時"),  # spec #505
     ("password-reset-title", "忘記密碼時"),  # #526
+    ("retest-reminder-title", "email 重測提醒"),  # spec #656
     ("question-log-title", "問答小助手的提問紀錄"),
     ("feedback-title", "意見回饋"),  # spec #633
     ("storage-title", "存放在哪裡、保存多久"),
@@ -59,7 +60,8 @@ class AccountSettingsTests(TestCase):
         group = main[main.index("家人與資料</h2>") : main.index("刪除帳號")]
         titles = re.findall(r'<span class="link-card-title">([^<]+)</span>', group)
 
-        self.assertEqual(headings, ["我的帳號", "家人與資料"])
+        # #659: the email 重測提醒 under the account (the #657 mockup).
+        self.assertEqual(headings, ["我的帳號", "email 重測提醒", "家人與資料"])
         self.assertEqual(
             titles,
             [

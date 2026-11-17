@@ -28,6 +28,9 @@ from screening.scoring import get_advice
 from screening.tests import test_answering, test_continue_notice, test_history
 from screening.tests.helpers import consented_user, fake_definition, register
 
+# Spec #693: HHIE-S's advice ends with what the score cannot tell, as HHIA-S's.
+LIMITS = "這份問卷反映您感受到的生活影響，不能判定聽損程度，也不能單憑分數決定是否需要助聽器。"
+
 
 class CopyTests(TestCase):
     LONG_QUESTION = "這是一題為了測試截斷而刻意寫得很長的題目，超過三十個字之後也必須完整顯示嗎？"
@@ -43,14 +46,15 @@ class CopyTests(TestCase):
             "與家人之間常常因為聽不清楚或是電視聲音等而產生爭吵、在多人且吵雜的"
             "社交環境當中會因為聽不清楚而導致社交上的窘迫及退縮，許多聽力衰退"
             "帶來的問題是微妙且和緩的，但經過此次篩檢能夠讓您體認到聽力對自身生"
-            "活的影響，建議前往醫院耳鼻喉科進行聽力相關檢查及詢問相關專業意見。"
+            "活的影響，建議前往醫院耳鼻喉科進行聽力相關檢查及詢問相關專業意見。 " + LIMITS
         ),
         "severe": (
             "聽力問題已經嚴重影響到您的生活了，許多人常常會忽視這一塊，聽不到這件事"
             "情往往已經十分嚴重了才會發現，若您尚未採取任何行動建議立即前往醫院耳鼻"
-            "喉科尋求專業建議，並且考慮配戴助聽器。聽力喪失影響的並不只是聽不聽得到，"
+            "喉科尋求專業建議，並做聽力檢查；有 AirPods Pro 的話，也可以先用 iPhone 做聽力"
+            "自我測試。聽力喪失影響的並不只是聽不聽得到，"
             "無形中也會增加社交活動的壓力（例如因為聽不清楚常會在聊天的過程中退縮、"
-            "裝作聽得懂等），這些壓力以及情緒的低落會增加長者的認知負擔。"
+            "裝作聽得懂等），這些壓力以及情緒的低落會增加長者的認知負擔。 " + LIMITS
         ),
     }
 
@@ -507,7 +511,14 @@ class RedesignLayoutTests(TestCase):
         journey_js = "screening/frontend/care-journey.js"
         expected = {
             reverse("index"): [*every, *signed_in, notice[0], journey_js, *notice[1:]],
-            reverse("questionnaire_list"): [*every, *signed_in, *notice],
+            # And the elder clinic card's landing counts its mark (spec #677).
+            reverse("questionnaire_list"): [
+                *every,
+                *signed_in,
+                notice[0],
+                "screening/frontend/arrival-count.js",
+                *notice[1:],
+            ],
             # The inline one hides the form before it is drawn (spec phase5_answer_flash.md).
             reverse("screening", args=[self.questionnaire.id]): [
                 *every,

@@ -99,7 +99,7 @@
     {% include "screening/guide/life_impact_result.html" %}
 </section>
 {% endif %}
-{# The one judgement besides the threshold (ADR 0017): either ear over the normal limit. #}
+{# The one judgement besides the threshold: 建議評估選配 (ADR 0067, in place of ADR 0017's). #}
 {# The bars only draw the numbers written beside them (#260), so screen readers skip them; the line labels are read, as the sentences may not say 25. #}
 <section aria-labelledby="fitting-title">
     <h3 id="fitting-title" class="guide-hearing-subhead">要不要找聽力師評估</h3>
@@ -119,10 +119,9 @@
     {% endif %}
     {% if wearing %}
     <p class="mb-0">您已在使用助聽器，換新機與再次申請補助的規定見九號表章節。<a href="{% url 'guide_chapter' 'form-9' %}#reapply">看再次申請的規定</a></p>
-    {% elif fitting %}
-    <p class="mb-0">您有一耳以上的四頻平均超過 25 dB HL，建議找聽力師評估選配助聽器。<a href="{% url 'guide_chapter' 'before-you-go' %}">去之前要準備什麼</a></p>
-    {% elif fitting is False %}
-    <p class="mb-0">您兩耳的四頻平均都在 25 dB HL 以內。如果您仍覺得聽不清楚，建議安排聽力評估。</p>
+    {# 建議評估選配 (ADR 0067): the owner's words for each result in spec #693, picked by the view from scoring.py. #}
+    {% elif fitting_words %}
+    <p class="mb-0">{{ fitting_words.0 }}{% if fitting_words.1 %}<a href="{{ fitting_words.1.1 }}">{{ fitting_words.1.0 }}</a>{% endif %}</p>
     {% else %}
     <p class="mb-0">這張聽力圖缺少頻率，資料不足，無法判斷。請確認 500、1000、2000、4000 Hz 都有記錄。<a href="{% url 'audiogram_edit' audiogram.pk %}">修改這張聽力圖</a></p>
     {% endif %}

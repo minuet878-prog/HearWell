@@ -3,6 +3,7 @@
 from datetime import date, datetime
 
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from screening.care_journey import (
@@ -18,14 +19,18 @@ from screening.fitting_route import fitting_state
 from screening.models import (
     AidAndSubsidy,
     AidLevel,
+    Audiogram,
+    Category,
     Certificate,
     GuideChapterView,
+    Question,
     Questionnaire,
     Submission,
     Subsidy,
 )
 from screening.questionnaires import hhia_s, hhie_s, ioi_ha, thi
-from screening.tests import test_guide_summary
+from screening.scoring import LIFE_IMPACT_BUTTON
+from screening.tests import test_fitting_advice, test_guide_summary
 from screening.tests.helpers import consented_user
 
 TODAY = date(2026, 11, 12)
@@ -172,13 +177,6 @@ class FittingStepsTests(CareJourneyTestCase):
         journey = self.journey()
         self.assertEqual(self.states(), [DONE, DONE, NOT_NEEDED, NOT_NEEDED, CURRENT])
         self.assertEqual(journey.current, 5)
-
-    def test_reading_a_chapter_brings_step_3_back(self):
-        # Spec #453 acceptance 8, like the route's 等本人開始.
-        self.answer()
-        self.make(NORMAL, NORMAL)
-        GuideChapterView.objects.create(user=self.user, chapter="types-and-prices")
-        self.assertEqual(self.states(), [DONE, DONE, CURRENT, LATER, LATER])
 
     def test_wearing_without_an_audiogram_or_a_date_asks_for_the_date(self):
         # Spec #453 acceptance 9: from step 3 on, step 2 left unticked.
@@ -417,3 +415,165 @@ class StepAboutTests(CareJourneyTestCase):
                 "時間到了，這裡會出現「再做一次」的按鈕。",
             ],
         )
+
+
+class ViewingDoesNotStartRouteJourneyTests(CareJourneyTestCase):
+    """#695 (spec #693 acceptance 10 to 12): within the normal range steps 3 and 4 are
+    目前不需要 until the user answers a question on the route; reading chapters is not enough."""
+
+    def setUp(self):
+        super().setUp()
+        self.answer()
+        self.make(NORMAL, NORMAL)
+
+    def test_reading_chapters_keeps_steps_3_and_4_not_needed(self):
+        # Acceptance 10.
+        for chapter in ("before-you-go", "types-and-prices"):
+            GuideChapterView.objects.create(user=self.user, chapter=chapter)
+        self.assertEqual(self.states(), [DONE, DONE, NOT_NEEDED, NOT_NEEDED, CURRENT])
+
+    def test_answering_a_route_question_brings_steps_3_and_4_back(self):
+        # Acceptance 11: the route goes on from the first stop not done.
+        AidAndSubsidy.objects.create(user=self.user, certificate=Certificate.APPLYING)
+        journey = self.journey()
+        self.assertEqual(self.states(), [DONE, DONE, CURRENT, LATER, LATER])
+        self.assertEqual(journey.card.title, "去找聽力師之前")
+
+    def test_wearing_and_reading_chapters_still_needs_step_3(self):
+        # Acceptance 12, in part: someone wearing hearing aids is not waited on, as before.
+        self.answer(wearing=True)
+        GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
+        self.assertEqual(self.states(), [DONE, DONE, CURRENT, LATER, LATER])
+
+
+class FittingAdviceJourneyTests(test_fitting_advice.LifeImpactTestCase):
+    """#697 (spec #693, ADR 0067): steps 3 and 4 by 建議評估選配, 目前不需要 only for normal and
+    track, 之後 while a questionnaire is wanted first."""
+
+    MILD_EAR = (30, 30, 30, 30)
+
+    def setUp(self):
+        self.user = consented_user(username="advice_journey", birth_year=1950)
+
+    make = test_guide_summary.GuideSummaryTests.make
+
+    def states(self):
+        return [step.state for step in care_journey(self.user, TODAY).steps]
+
+    def record(self, scores, wearing=None):
+        submission = test_fitting_advice.record(self.user, scores, on=date(2026, 11, 1))
+        Submission.objects.filter(pk=submission.pk).update(wearing_hearing_aid=wearing)
+
+    def test_mild_with_life_impact_makes_step_3_current(self):
+        # Spec #693 acceptance 6.
+        self.make(self.MILD_EAR, NORMAL)
+        self.record(test_fitting_advice.MILD_SCORES)
+        self.assertEqual(self.states(), [DONE, DONE, CURRENT, LATER, LATER])
+
+    def test_tracked_steps_3_and_4_are_not_needed(self):
+        # Spec #693 acceptance 7.
+        self.make(self.MILD_EAR, NORMAL)
+        self.record(test_fitting_advice.NORMAL_SCORES)
+        self.assertEqual(self.states(), [DONE, DONE, NOT_NEEDED, NOT_NEEDED, CURRENT])
+
+    def test_a_questionnaire_first_leaves_steps_3_and_4_later_and_step_1_current(self):
+        # Spec #693 acceptance 8.
+        self.make(self.MILD_EAR, NORMAL)
+        journey = care_journey(self.user, TODAY)
+        self.assertEqual(journey.current, 1)
+        self.assertEqual(self.states(), [CURRENT, DONE, LATER, LATER, LATER])
+
+    def test_wearing_needs_step_3_whatever_the_advice(self):
+        # Spec #693 acceptance 12: as before, from step 3 on.
+        self.make(self.MILD_EAR, NORMAL)
+        self.record(test_fitting_advice.NORMAL_SCORES, wearing=True)
+        self.assertEqual(self.states(), [DONE, DONE, CURRENT, LATER, LATER])
+
+
+class SelfReview693UnreadableLifeImpactTests(test_fitting_advice.LifeImpactTestCase):
+    """The self review on #693: the latest life-impact record 無法判讀 (a total off the
+    thresholds table) leaves step 1 the 現在這一步, to be done again, whatever the hearing (the
+    owner, 2026-11-17); 上次結果 still shows that record."""
+
+    MILD_EAR = (30, 30, 30, 30)
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        # An 11th item makes four on every item 44, over the table's 40: 無法判讀.
+        Question.objects.create(
+            questionnaire=Questionnaire.objects.get(code=hhie_s.CODE),
+            question_text="假題11",
+            question_number=11,
+            category=Category.SOCIAL,
+        )
+        # IOI-HA has seven items, which the home page's pages read.
+        Question.objects.filter(questionnaire__code=ioi_ha.CODE, question_number__gt=7).delete()
+
+    def setUp(self):
+        self.user = consented_user(username="unreadable_journey", birth_year=1950)
+        self.unreadable = test_fitting_advice.record(self.user, (4,) * 11)
+
+    make = test_guide_summary.GuideSummaryTests.make
+
+    def journey(self):
+        return care_journey(self.user, TODAY)
+
+    def test_the_record_is_unreadable(self):
+        self.assertEqual(self.unreadable.result.level["level"], "unknown")
+
+    def test_mild_hearing_makes_step_1_current_with_its_button(self):
+        self.make(self.MILD_EAR, NORMAL)
+        journey = self.journey()
+        self.assertEqual(journey.current, 1)
+        self.assertEqual(
+            [step.state for step in journey.steps], [CURRENT, DONE, LATER, LATER, LATER]
+        )
+        self.assertIsNone(journey.steps[0].done_on)
+        self.assertEqual(journey.card.button[0], LIFE_IMPACT_BUTTON)
+
+    def test_whatever_the_hearing_step_1_is_current(self):
+        for right in (None, NORMAL, PTA_55):
+            with self.subTest(right=right):
+                Audiogram.objects.filter(user=self.user).delete()
+                if right is not None:
+                    self.make(right, NORMAL)
+                self.assertEqual(self.journey().current, 1)
+                self.assertEqual(self.journey().steps[0].state, CURRENT)
+
+    def test_the_last_result_tile_still_shows_the_record(self):
+        self.assertEqual(self.journey().last_result, self.unreadable)
+
+    def test_the_home_page_opens_on_step_1(self):
+        self.make(self.MILD_EAR, NORMAL)
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("index"))
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn('<span class="journey-tile-score">44 <small>分</small></span>', content)
+        self.assertIn(f">{LIFE_IMPACT_BUTTON}</a>", content)
+
+    def test_the_result_page_opens(self):
+        # Its 建議下一步 is the 照顧旅程's card (next_step), so the same cause.
+        self.make(self.MILD_EAR, NORMAL)
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("result", args=[self.unreadable.pk]))
+        self.assertEqual(response.status_code, 200)
+
+
+class CrossReview693WearingAudiogramJourneyTests(test_fitting_advice.LifeImpactTestCase):
+    """The cross review on #693, acceptance 12: wearing hearing aids, one ear 30 dB HL and the
+    other without 4000 Hz, no life-impact record: step 2 is done, as before spec #693."""
+
+    def setUp(self):
+        self.user = consented_user(username="wearing_audiogram_journey", birth_year=1950)
+        audiogram = self.make((30, 30, 30, 30), NORMAL)
+        audiogram.points.filter(ear="left", frequency=4000).delete()
+        AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1))
+
+    make = test_guide_summary.GuideSummaryTests.make
+
+    def test_step_2_is_done_with_the_audiogram_s_date(self):
+        journey = care_journey(self.user, TODAY)
+        self.assertEqual(journey.steps[1].state, DONE)
+        self.assertEqual(journey.steps[1].done_on, date(2026, 10, 1))

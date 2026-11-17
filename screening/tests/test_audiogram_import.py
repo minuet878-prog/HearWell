@@ -80,7 +80,14 @@ class AudiogramImportTests(TestCase):
         steps = re.findall(r"<li>(.*?)</li>", main.split('class="step-list"')[1], re.S)
         self.assertEqual(len(steps), 6)
         # Each step's drawing frames what that step taps.
-        framed = ("「瀏覽」", "「聽力」", "「聽力測試結果」", "「輸出 PDF」", "「儲存到檔案」", "選檔案")
+        framed = (
+            "「瀏覽」",
+            "「聽力」",
+            "「聽力測試結果」",
+            "「輸出 PDF」",
+            "「儲存到檔案」",
+            "選檔案",
+        )
         for number, (step, tapped) in enumerate(zip(steps, framed, strict=True), 1):
             with self.subTest(step=number):
                 drawing = re.search(r'<svg class="import-drawing"[^>]*>', step)

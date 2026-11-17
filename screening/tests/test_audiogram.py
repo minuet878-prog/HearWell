@@ -1748,8 +1748,8 @@ class AudiogramSourceMigrationTests(TransactionTestCase):
     """Spec #702 acceptance 14: every audiogram from before counts as an exam marked by hand,
     its date and points as they were."""
 
-    before = (("screening", "0038_feedbacknotice"),)
-    after = (("screening", "0039_audiogram_source_and_entry"),)
+    before = (("screening", "0040_retestreminder"),)
+    after = (("screening", "0041_audiogram_source_and_entry"),)
 
     def tearDown(self):
         executor = MigrationExecutor(connection)

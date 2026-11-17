@@ -16,6 +16,7 @@ from screening.api.serializers import (
     AudiogramCreateSerializer,
     AudiogramSerializer,
     GuestAnswersSerializer,
+    GuestCountSerializer,
     GuestScoreSerializer,
     QuestionnaireDetailSerializer,
     QuestionnaireSerializer,
@@ -175,6 +176,29 @@ class GuestScoreThrottle(SimpleRateThrottle):
 
 IMPORTED_STAYS = "從 iPhone 匯入的聽力圖不能修改，可以刪掉重新匯入"
 GUEST_LIMIT = "剛才做了很多次，請過一小時再試。您的作答沒有不見。"
+
+
+class GuestCount(GenericAPIView):
+    """Adds one to this month's column of the 訪客月計數 that a page names (spec #677): a
+    clinic card's landing page, once it has opened in a browser. Anyone, signed in or not,
+    and nothing about them is kept: no session is read (so no CSRF), and no limit (the
+    grill's Q15: a flood only makes the number wrong)."""
+
+    serializer_class = GuestCountSerializer
+    authentication_classes = ()
+    permission_classes = ()
+
+    @extend_schema(
+        responses={
+            204: OpenApiResponse(description="Counted"),
+            400: OpenApiResponse(description="Not a kind a page may count"),
+        },
+    )
+    def post(self, request):
+        serializer = GuestCountSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        count_guest(serializer.validated_data["kind"])
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class GuestScore(GenericAPIView):

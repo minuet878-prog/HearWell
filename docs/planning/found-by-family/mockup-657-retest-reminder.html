@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#657 設計圖：email 重測提醒</title>
+<style>
+  /* Values from frontend/src/site.css; the frames copy #634's mockup. No JavaScript: nothing reacts. */
+  :root { --primary:#1f4e8c; --heading:#212529; --body:#343a40; --muted:#4a5460; --border:#ced4da; --input:#6c757d; --line:#e3e7ec; --surface:#f4f6f8; --soft:#eef3fa; --selected:#e8eef7; --normal:#14573c; --normal-bg:#e3f4ec; --severe:#8f2a12; --severe-bg:#feece7; --mark:#ffd166; }
+  * { box-sizing:border-box; }
+  html { font-size:18px; }
+  body { margin:0; padding:16px; font-family:"Noto Sans TC",-apple-system,"PingFang TC",sans-serif; line-height:1.5; color:var(--body); background:#e8ebf0; }
+  h1 { font-size:1.5rem; margin:0 0 .25rem; color:var(--heading); }
+  .intro, .topic { max-width:1240px; margin:0 auto 16px; }
+  .intro ul { margin:.25rem 0; padding-left:1.2rem; }
+  .intro a { color:var(--primary); font-weight:700; }
+  .topic { background:#fff; border-radius:12px; padding:16px; margin-top:28px; }
+  .topic > h2 { font-size:1.35rem; margin:0 0 .25rem; color:var(--heading); border-left:6px solid var(--primary); padding-left:.6rem; }
+  .topic > h3 { font-size:1.2rem; margin:1.75rem 0 .25rem; color:var(--heading); }
+  .topic > p { margin:.25rem 0 .75rem; }
+  .row { display:flex; flex-wrap:wrap; gap:24px; justify-content:center; align-items:flex-start; }
+  .col { width:377px; }
+  .col.w320 { width:322px; }
+  .col.wide { width:620px; }
+  .col h3 { font-size:1.15rem; margin:0 0 .25rem; color:var(--heading); }
+  .col .why { margin:0 0 .5rem; min-height:6em; }
+  .col .why.s { min-height:3em; }
+  .pick { display:inline-block; background:var(--primary); color:#fff; border-radius:6px; padding:0 .5rem; font-weight:700; margin-right:.35rem; }
+  .now { background:#5f6b7a; }
+  .rec { display:inline-block; background:var(--mark); color:#000; border-radius:4px; padding:0 .4rem; font-weight:700; }
+  .phone { width:377px; border:1px solid #8a96a8; background:#fff; position:relative; overflow:hidden; }
+  .phone.w320 { width:322px; }
+  .phone.big { font-size:2rem; }
+  .cut { text-align:center; color:#6b7684; font-size:1rem; padding:.4rem 0; background:repeating-linear-gradient(135deg,#fff 0 8px,#f1f3f6 8px 16px); border-bottom:1px dashed #8a96a8; }
+  .cut.b { border-bottom:0; border-top:1px dashed #8a96a8; }
+  .page { padding:1rem 16px 1.5rem; }
+  .page h4 { font-size:1.5rem; margin:.25rem 0 .75rem; color:var(--heading); }
+  .page h5 { font-size:1.25rem; margin:1.5rem 0 .5rem; color:var(--heading); }
+  .page h5:first-child { margin-top:.25rem; }
+  .page p { margin:.5rem 0; }
+  .owner { border:2px dashed #8a96a8; border-radius:.78rem; padding:.6rem .9rem; color:#5f6b7a; background:#fafbfc; font-size:1rem; }
+  .tbd { color:#5f6b7a; font-size:.8rem; font-weight:400; }
+  label, .lbl { display:block; font-weight:700; color:var(--heading); margin:1rem 0 .3rem; }
+  .help { color:var(--muted); font-size:1rem; margin:.3rem 0 0; }
+  .in { display:block; width:100%; border:2px solid var(--input); border-radius:.78rem; padding:.6rem .8rem; background:#fff; color:var(--body); min-height:3.1rem; overflow-wrap:anywhere; }
+  .in.bad { border-color:var(--severe); }
+  .err { color:var(--severe); font-weight:700; margin:.3rem 0 0; }
+  .btn { display:flex; align-items:center; justify-content:center; min-height:3.1rem; padding:.5rem 1.25rem; border-radius:.78rem; font-weight:700; font-size:1.11rem; background:var(--primary); color:#fff; border:2px solid var(--primary); text-align:center; margin-top:1rem; }
+  .btn.o { background:#fff; color:var(--primary); }
+  .btn.sm { display:inline-flex; min-height:2.75rem; padding:.3rem 1rem; font-size:1rem; margin:0; }
+  .done { display:flex; align-items:center; gap:.6rem; background:var(--normal-bg); color:var(--normal); border-radius:.78rem; padding:1rem; font-size:1.3rem; font-weight:700; }
+  .done.s { font-size:1rem; padding:.6rem .8rem; }
+  .done svg { width:2rem; height:2rem; flex:none; fill:none; stroke:var(--normal); stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; }
+  .done.s svg { width:1.4rem; height:1.4rem; }
+  .bad-box { background:var(--severe-bg); color:var(--severe); border-radius:.78rem; padding:.875rem 1rem; font-weight:700; }
+  .bad-box span { display:block; color:var(--body); font-weight:400; }
+  .lnk { color:var(--primary); font-weight:700; text-decoration:underline; text-underline-offset:.2em; }
+  .tlink { display:inline-flex; align-items:center; min-height:2.75rem; color:var(--primary); font-weight:700; text-decoration:underline; text-underline-offset:.2em; }
+  .tint { background:var(--surface); border-radius:.78rem; padding:.875rem 1rem; }
+  .ttl { color:var(--heading); font-weight:700; }
+  .note { font-size:1rem; }
+  .new { background:#fffbe8; outline:3px solid var(--mark); outline-offset:2px; border-radius:.78rem; }
+
+  /* 帳號設定 */
+  .srow { display:flex; flex-direction:column; justify-content:center; min-height:4.25rem; padding:.75rem 0; overflow-wrap:anywhere; }
+  .srow .k { font-size:1rem; }
+  .srow .v { color:var(--heading); font-weight:700; }
+  .srow.flex { flex-direction:row; align-items:center; gap:.75rem; flex-wrap:wrap; }
+  .srow.flex .grow { flex:1 1 10rem; min-width:0; }
+  .h { font-size:1.25rem; color:var(--heading); margin:1.5rem 0 .25rem; font-weight:700; }
+  .h:first-child { margin-top:.25rem; }
+  .card { display:flex; align-items:center; gap:.75rem; min-height:4rem; padding:.875rem 1rem; border:1px solid var(--line); border-radius:.78rem; margin:.5rem 0; color:var(--heading); font-weight:700; background:#fff; }
+  .card .ar { margin-left:auto; color:var(--primary); font-size:2rem; line-height:1; }
+  .ic { width:2.6rem; height:2.6rem; border-radius:.75rem; background:var(--selected); display:flex; align-items:center; justify-content:center; flex:none; }
+  .ic svg, .icn { width:1.5rem; height:1.5rem; fill:none; stroke:var(--primary); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  /* switch: a submit button that looks like the masking switch (#333) */
+  .sw { display:inline-flex; align-items:center; gap:.5rem; min-height:2.75rem; padding:.3rem .8rem; border:2px solid var(--input); border-radius:.78rem; background:#fff; color:var(--heading); font-weight:700; flex:none; }
+  .trk { position:relative; width:3rem; height:1.75rem; border-radius:999px; background:var(--input); flex:none; }
+  .trk::after { content:""; position:absolute; top:.25rem; left:.25rem; width:1.25rem; height:1.25rem; border-radius:50%; background:#fff; }
+  .sw.on .trk { background:var(--normal); }
+  .sw.on .trk::after { left:1.5rem; }
+  .cb { display:flex; gap:.6rem; align-items:flex-start; margin:.5rem 0; font-weight:700; color:var(--heading); }
+  .box { width:1.6rem; height:1.6rem; border:2px solid var(--input); border-radius:.3rem; flex:none; margin-top:.1rem; background:#fff; }
+
+  /* 結果頁 */
+  .banner { border-radius:.78rem; padding:1rem; background:#fff3cd; text-align:center; }
+  .banner .sc { margin:0; }
+  .banner .lv { font-size:1.6rem; font-weight:700; color:#6b4a00; margin:.1rem 0 0; }
+  .rnext { margin-top:1.25rem; padding:1rem 1.125rem; border-radius:1rem; background:var(--soft); }
+  .rnext .lab { margin:0; color:var(--primary); font-weight:700; }
+  .rnext .t { margin:.125rem 0 .75rem; color:var(--heading); font-size:1.11rem; font-weight:700; }
+  .rnext .btn { margin-top:0; }
+  .rmd { margin-top:1rem; padding:1rem 1.125rem; border-radius:1rem; border:2px solid var(--soft); background:#fff; }
+  .rmd .t { margin:0 0 .25rem; color:var(--heading); font-weight:700; display:flex; align-items:center; gap:.5rem; }
+  .fold { border-top:1px solid var(--line); border-bottom:1px solid var(--line); margin-top:1.25rem; }
+  .fold .sum { display:flex; align-items:center; min-height:3.5rem; color:var(--primary); font-weight:700; }
+  .fold .sum span { margin-left:auto; font-size:1.3rem; line-height:1; }
+  .fold .body { padding:0 0 1rem; }
+  .lrow { display:flex; align-items:center; gap:.75rem; min-height:4rem; padding:.75rem 0; border-bottom:1px solid var(--line); color:var(--heading); font-weight:700; }
+  .lrow .ar { margin-left:auto; color:var(--primary); font-size:2rem; line-height:1; }
+  .lrow .sub { display:block; color:var(--muted); font-weight:400; font-size:1rem; }
+
+  /* 信 */
+  .mail { width:560px; max-width:100%; border:1px solid #8a96a8; background:#fff; }
+  .mailhead { background:var(--surface); border-bottom:1px solid #8a96a8; padding:.6rem 1rem; font-size:1rem; }
+  .mailhead b { color:var(--heading); }
+  .mailhead .gm { float:right; color:var(--primary); font-weight:700; text-decoration:underline; }
+  .mailbody { padding:24px; font-size:1.125rem; line-height:1.7; color:var(--heading); }
+  .mailbody .brand { font-size:1.5rem; font-weight:700; color:var(--primary); margin:0 0 18px; }
+  .mailbody h4 { font-size:1.625rem; margin:0 0 14px; }
+  .mailbody p { margin:0 0 14px; }
+  .mailbtn { display:block; text-align:center; background:var(--primary); color:#fff; font-size:1.25rem; font-weight:700; padding:16px; border-radius:14px; margin:6px 0 18px; }
+  .mailfoot { margin:20px 0 0 !important; padding-top:12px; border-top:1px solid var(--line); font-size:1rem; color:var(--muted); }
+  .mailbody a.u { color:var(--primary); word-break:break-all; }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1>#657 設計圖：email 重測提醒</h1>
+  <p>規格 #656 的五個地方各自選：<a href="#settings">一、帳號設定的開關</a>　<a href="#email">二、補上 email</a>　<a href="#result">三、結果頁</a>　<a href="#cancel">四、取消頁</a>　<a href="#mail">五、提醒信</a></p>
+  <ul>
+    <li>手機框寬 375px（標「320」的是 320px），字級、顏色、間距照現在的網站。這一頁沒有 JavaScript，按了不會有反應。</li>
+    <li>灰底標籤「現在」是目前的樣子，藍底英文字母是可以選的做法，黃底「建議」是我建議的那一個；黃框是這次新加的東西。</li>
+    <li><strong>虛線框是您要寫的字</strong>（#658），我沒有代寫。標題、按鈕、錯誤訊息、狀態句是我擬的介面用字，標「暫定」，您可以順手改。</li>
+    <li><strong>2026-11-16 本人選定：帳號設定 C（狀態＋一顆按鈕）、補上 email 照畫的（只有一種）、結果頁 B（建議下一步下面一塊）、取消頁 B（寫出是哪個帳號）、提醒信 A（取消放在信尾）。</strong></li>
+    <li>所有按鈕都是一般的表單送出，關掉 JavaScript 照樣能用；開關不是「滑一下就存好」，而是按了送出、頁面重新出現新的狀態。</li>
+  </ul>
+</div>
+
+<!-- ============ 一、帳號設定 ============ -->
+<section class="topic" id="settings">
+  <h2>一、帳號設定的開關</h2>
+  <p>放在「我的帳號」下面，自成一段「email 重測提醒」（跟 email 在同一個畫面，看得到會寄到哪裡）。三種做法都是先寫用途、再一個動作；差別在按的東西長什麼樣子。下面先畫「有 email、還沒打開」的樣子。</p>
+  <div class="row">
+    <div class="col">
+      <h3><span class="pick now">現在</span></h3>
+      <p class="why">沒有提醒這一段；「我的帳號」下面直接接「登入方式」。</p>
+      <div class="phone"><div class="page">
+        <h4>帳號設定</h4>
+        <p class="h">我的帳號</p>
+        <div class="srow"><span class="k">使用者名稱</span><span class="v">wang_mama</span></div>
+        <div class="srow"><span class="k">電子郵件</span><span class="v">wang.daughter@gmail.com</span></div>
+        <div class="srow"><span class="k">出生年</span><span class="v">民國 45 年（1956）</span></div>
+        <p class="h">登入方式</p>
+        <div class="cut b">…登入方式、家人與資料…</div>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">A</span>開關</h3>
+      <p class="why">一列，左邊是名稱與用途，右邊一個像聽力圖「遮蔽」那樣的開關，按一下就送出。一眼看得出開或關。代價：長輩可能以為滑一下就好、不確定存了沒（按了頁面會重新出現，上面多一行「✓ 已開啟」）。</p>
+      <div class="phone"><div class="page">
+        <p class="h">我的帳號</p>
+        <div class="cut b" style="border-top:0">…使用者名稱、電子郵件、出生年…</div>
+        <div class="new" style="padding:.25rem .5rem; margin-top:.5rem">
+          <p class="h">email 重測提醒</p>
+          <div class="srow flex"><div class="grow"><span class="v">到期時寄信提醒我</span><br><span class="k">會寄到 wang.daughter@gmail.com</span></div>
+            <span class="sw"><span class="trk"></span>關</span></div>
+          <div class="owner">用途說明：email 會用來寄重測提醒、到期那天寄一封、可以隨時取消（#658）</div>
+        </div>
+        <p class="h">登入方式</p>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">B</span>勾選框＋儲存</h3>
+      <p class="why">跟一般表單一樣：先勾、再按「儲存」。代價：多一步；勾了忘記按儲存就沒存到。</p>
+      <div class="phone"><div class="page">
+        <p class="h">我的帳號</p>
+        <div class="cut b" style="border-top:0">…使用者名稱、電子郵件、出生年…</div>
+        <div class="new" style="padding:.25rem .5rem; margin-top:.5rem">
+          <p class="h">email 重測提醒</p>
+          <div class="owner">用途說明（#658）</div>
+          <div class="cb"><span class="box"></span><span>到期時寄信到 wang.daughter@gmail.com 提醒我</span></div>
+          <span class="btn sm o">儲存</span>
+        </div>
+        <p class="h">登入方式</p>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">C</span>狀態＋一顆按鈕 <span class="rec">建議</span></h3>
+      <p class="why">寫出現在的狀態（「沒有打開」），下面一顆寫明動作的按鈕「打開提醒」；打開後按鈕換成文字連結「關掉提醒」。跟「登入方式」的新增／移除同一種寫法，按鈕上的字就是會發生的事。代價：比開關多佔一行。</p>
+      <div class="phone"><div class="page">
+        <p class="h">我的帳號</p>
+        <div class="cut b" style="border-top:0">…使用者名稱、電子郵件、出生年…</div>
+        <div class="new" style="padding:.25rem .5rem; margin-top:.5rem">
+          <p class="h">email 重測提醒</p>
+          <div class="owner">用途說明（#658）</div>
+          <div class="srow"><span class="k">目前</span><span class="v">沒有打開</span></div>
+          <span class="btn o" style="margin-top:0">打開提醒</span>
+          <p class="help">會寄到 wang.daughter@gmail.com <span class="tbd">暫定</span></p>
+        </div>
+        <p class="h">登入方式</p>
+      </div></div>
+    </div>
+  </div>
+
+  <h3>其他狀態（照建議的 C 畫；選 A 或 B 的話同樣的字放進那個樣子）</h3>
+  <div class="row">
+    <div class="col">
+      <h3>已打開</h3>
+      <p class="why s">按「打開提醒」後回到這一段，上面多一行綠色「✓ 已開啟」。</p>
+      <div class="phone"><div class="page">
+        <p class="h">email 重測提醒</p>
+        <div class="done s"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>已開啟，到期會寄到 wang.daughter@gmail.com <span class="tbd">暫定</span></div>
+        <div class="srow"><span class="k">目前</span><span class="v">已打開（2026/11/16 起）</span></div>
+        <p class="help">下次篩檢 2027/05/16，那天早上 9 點寄信。<span class="tbd">暫定</span></p>
+        <span class="tlink">關掉提醒</span>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3>打開時已經到期</h3>
+      <p class="why s">上次做是 8 個月前：這一次不寄（Q6），所以直接請他現在做。</p>
+      <div class="phone"><div class="page">
+        <p class="h">email 重測提醒</p>
+        <div class="done s"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>已開啟，到期會寄到 wang.daughter@gmail.com</div>
+        <div class="tint" style="margin-top:.75rem"><span class="ttl">您現在就可以再做一次</span><br><span class="note">上一次是 2026/03/10，已經超過半年。這一次不另外寄信，做完之後，半年後會寄提醒給您。<span class="tbd">暫定</span></span>
+          <span class="btn" style="margin-top:.75rem">再做一次</span></div>
+        <div class="srow"><span class="k">目前</span><span class="v">已打開（2026/11/16 起）</span></div>
+        <span class="tlink">關掉提醒</span>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3>沒有 email</h3>
+      <p class="why s">打不開；同一段直接給「補上 email」（入口見二）。</p>
+      <div class="phone"><div class="page">
+        <p class="h">email 重測提醒</p>
+        <div class="owner">用途說明（#658）</div>
+        <div class="srow"><span class="k">目前</span><span class="v">沒有打開</span></div>
+        <p>您的帳號還沒有 email，要先補上才能收提醒。<span class="tbd">暫定</span></p>
+        <span class="btn o" style="margin-top:0">補上 email</span>
+      </div></div>
+    </div>
+  </div>
+
+  <h3>手機 320px 與字放大 200%（建議的 C）</h3>
+  <div class="row">
+    <div class="col w320">
+      <div class="phone w320"><div class="page">
+        <p class="h">email 重測提醒</p>
+        <div class="owner">用途說明（#658）</div>
+        <div class="srow"><span class="k">目前</span><span class="v">沒有打開</span></div>
+        <span class="btn o" style="margin-top:0">打開提醒</span>
+        <p class="help">會寄到 wang.daughter@gmail.com</p>
+      </div></div>
+    </div>
+    <div class="col">
+      <div class="phone big"><div class="page">
+        <p class="h">email 重測提醒</p>
+        <div class="srow"><span class="k">目前</span><span class="v">沒有打開</span></div>
+        <span class="btn o" style="margin-top:0">打開提醒</span>
+        <p class="help">會寄到 wang.daughter@gmail.com</p>
+      </div></div>
+      <p class="help">200% 時信箱會斷行，不會把頁面撐寬。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 二、補上 email ============ -->
+<section class="topic" id="email">
+  <h2>二、補上 email</h2>
+  <p>只有 email 是空的帳號才有入口。按了先到現有的「確認本人」頁（跟移除登入方式同一頁，這裡不重畫），確認後才到填 email 的頁面。只有一種合理的做法，畫出來給您看。</p>
+  <div class="row">
+    <div class="col">
+      <h3>入口：「我的帳號」的 email 那一列</h3>
+      <p class="why s">現在寫「未填」和「要修改請寫信」；改成同一列右邊一顆「補上」。出生年沒填照舊寫信。</p>
+      <div class="phone"><div class="page">
+        <p class="h">我的帳號</p>
+        <div class="srow"><span class="k">使用者名稱</span><span class="v">wang_baba</span></div>
+        <div class="srow flex new" style="padding:.5rem"><div class="grow"><span class="k">電子郵件</span><br><span class="v">未填</span></div><span class="btn sm o">補上</span></div>
+        <div class="srow"><span class="k">出生年</span><span class="v">民國 42 年（1953）</span></div>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3>補 email 頁（確認本人之後）</h3>
+      <p class="why s">一個欄位、一顆按鈕；寫清楚只能補一次。</p>
+      <div class="phone"><div class="page">
+        <h4>補上 email</h4>
+        <p>補上之後可以收重測提醒，忘記密碼時也能寄重設密碼信給您。補上以後要修改，請寫信給我們。<span class="tbd">暫定</span></p>
+        <label>電子郵件</label>
+        <div class="in">wang.daughter@gmail.com</div>
+        <p class="help">請再看一次有沒有打錯，網站不會寄信確認。<span class="tbd">暫定</span></p>
+        <span class="btn">儲存</span>
+        <span class="tlink">取消，回帳號設定</span>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3>填錯</h3>
+      <p class="why s">框變紅、字留著，跟其他表單一樣。</p>
+      <div class="phone"><div class="page">
+        <h4>補上 email</h4>
+        <label>電子郵件</label>
+        <div class="in bad">wang.daughter@gmail</div>
+        <p class="err">⚠ 請輸入正確的電子郵件格式</p>
+        <span class="btn">儲存</span>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 三、結果頁 ============ -->
+<section class="topic" id="result">
+  <h2>三、結果頁（HHIE-S／HHIA-S，已登入）</h2>
+  <p>現在「半年後再做一次，時間到了首頁會提醒您。」是收在「看完整說明」裡的最後一段，第一眼看不到。三種放法：</p>
+  <div class="row">
+    <div class="col">
+      <h3><span class="pick now">現在</span></h3>
+      <p class="why">分數、一句話、建議下一步，下面是摺起來的完整說明和幾列連結。</p>
+      <div class="phone"><div class="page">
+        <div class="banner"><p class="sc">總分 14 分（滿分 40）</p><p class="lv">輕度到中度影響</p></div>
+        <p>聽力問題已經慢慢影響您的社交活動與情緒…</p>
+        <div class="rnext"><p class="lab">建議您下一步</p><p class="t">記錄聽力圖</p><span class="btn">記錄聽力圖</span></div>
+        <div class="fold"><div class="sum">看完整說明<span>＋</span></div></div>
+        <div class="lrow">分享給家人<span class="ar">›</span></div>
+        <div class="lrow">印聽力報告給醫師看<span class="ar">›</span></div>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">A</span>放在摺疊裡</h3>
+      <p class="why">打開「看完整說明」，在「半年後再做一次」那段下面放按鈕。最貼近原本那句話。代價：要先打開摺疊才看得到，幾乎沒人會看到。</p>
+      <div class="phone"><div class="page">
+        <div class="cut" style="margin:-1rem -16px 0">…分數、建議下一步…</div>
+        <div class="fold" style="margin-top:.5rem"><div class="sum">收起完整說明<span>－</span></div>
+          <div class="body"><p>…</p><p>半年後再做一次，時間到了首頁會提醒您。</p>
+            <div class="new" style="padding:.5rem">
+              <div class="owner">用途說明（#658）</div>
+              <span class="btn sm o" style="margin-top:.5rem">也用 email 提醒我</span>
+            </div></div></div>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">B</span>建議下一步下面一塊 <span class="rec">建議</span></h3>
+      <p class="why">在藍色「建議您下一步」下面、摺疊上面，一塊白底藍框：月曆圖示＋「半年後再做一次」＋用途＋外框按鈕。第一眼滑一下就看得到；按鈕是外框，頁面上的實心按鈕還是只有一顆（ADR 0043）。代價：結果頁多一塊。</p>
+      <div class="phone"><div class="page">
+        <div class="cut" style="margin:-1rem -16px 0">…分數、一句話…</div>
+        <div class="rnext"><p class="lab">建議您下一步</p><p class="t">記錄聽力圖</p><span class="btn">記錄聽力圖</span></div>
+        <div class="rmd new">
+          <p class="t"><svg class="icn" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>半年後再做一次</p>
+          <p class="note" style="margin:.25rem 0">下次建議 2027/05/16。<span class="tbd">暫定</span></p>
+          <div class="owner">用途說明（#658）</div>
+          <span class="btn o" style="margin-top:.75rem">到期時寄 email 提醒我</span>
+          <p class="help">會寄到 wang.daughter@gmail.com</p>
+        </div>
+        <div class="fold"><div class="sum">看完整說明<span>＋</span></div></div>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">C</span>連結清單多一列</h3>
+      <p class="why">「分享給家人」那幾列最上面多一列「到期時寄 email 提醒我」，按了在原頁打開。最省空間。代價：看起來像「換到別頁」的連結，不像會直接打開提醒；也看不到用途說明。</p>
+      <div class="phone"><div class="page">
+        <div class="cut" style="margin:-1rem -16px 0">…分數、建議下一步…</div>
+        <div class="fold"><div class="sum">看完整說明<span>＋</span></div></div>
+        <div class="lrow new" style="padding-left:.5rem"><span>到期時寄 email 提醒我<span class="sub">半年後再做一次，會寄到 wang.daughter@gmail.com</span></span><span class="ar">›</span></div>
+        <div class="lrow">分享給家人<span class="ar">›</span></div>
+        <div class="lrow">印聽力報告給醫師看<span class="ar">›</span></div>
+      </div></div>
+    </div>
+  </div>
+
+  <h3>其他狀態（照建議的 B）</h3>
+  <div class="row">
+    <div class="col">
+      <h3>按了之後／本來就開著</h3>
+      <p class="why s">回到結果頁同一個位置，只剩一行綠色狀態，不再問。</p>
+      <div class="phone"><div class="page">
+        <div class="rmd">
+          <p class="t"><svg class="icn" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>半年後再做一次</p>
+          <div class="done s"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>已開啟，2027/05/16 會寄到 wang.daughter@gmail.com <span class="tbd">暫定</span></div>
+        </div>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3>沒有 email</h3>
+      <p class="why s">不能直接打開，連到帳號設定先補 email。</p>
+      <div class="phone"><div class="page">
+        <div class="rmd">
+          <p class="t"><svg class="icn" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>半年後再做一次</p>
+          <p class="note">想在到期時收到 email 提醒，要先在帳號設定補上 email。<span class="tbd">暫定</span></p>
+          <span class="tlink">到帳號設定補上 email</span>
+        </div>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3>THI、IOI-HA、訪客</h3>
+      <p class="why s">沒有這一塊，跟現在一樣。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 四、取消頁 ============ -->
+<section class="topic" id="cancel">
+  <h2>四、取消頁、已取消頁、連結無效頁</h2>
+  <p>按信裡的「取消提醒」打開，不用登入。打開時還沒取消，要按按鈕才取消（郵件掃描會先點連結）。這三頁沒有底部分頁列以外的導覽；頁尾照舊。</p>
+  <div class="row">
+    <div class="col">
+      <h3><span class="pick">A</span>只有按鈕</h3>
+      <p class="why">標題、一句話、一顆按鈕。最短。代價：同一個信箱有爸媽兩個帳號時，看不出取消的是哪一個。</p>
+      <div class="phone"><div class="page">
+        <h4>取消 email 重測提醒</h4>
+        <div class="owner">說明按下去會怎樣（#658）</div>
+        <span class="btn">取消提醒</span>
+        <span class="tlink">不取消，回首頁</span>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">B</span>寫出是哪個帳號 <span class="rec">建議</span></h3>
+      <p class="why">多一行「帳號：wang_baba」，跟信裡寫的使用者名稱對得起來；同一個信箱有兩個帳號時知道在取消誰。代價：多一行。</p>
+      <div class="phone"><div class="page">
+        <h4>取消 email 重測提醒</h4>
+        <div class="tint"><span class="k note">帳號</span><br><span class="ttl">wang_baba</span></div>
+        <div class="owner" style="margin-top:.75rem">說明按下去會怎樣（#658）</div>
+        <span class="btn">取消提醒</span>
+        <span class="tlink">不取消，回首頁</span>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3>已取消頁</h3>
+      <p class="why">按了之後。已經取消過的再按一次也是這頁。</p>
+      <div class="phone"><div class="page">
+        <div class="done"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>已取消</div>
+        <div class="owner" style="margin-top:.75rem">取消後的說明，例如想再收可以到帳號設定打開（#658）</div>
+        <span class="btn o">回首頁</span>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3>連結無效頁</h3>
+      <p class="why">代碼錯、帳號已刪、關掉又打開後的舊信。看不出帳號存不存在。</p>
+      <div class="phone"><div class="page">
+        <h4>這個連結已經不能用了</h4>
+        <div class="owner">說明（例如：可能是比較舊的信；要關掉提醒，請登入後到帳號設定）（#658）</div>
+        <span class="btn o">回首頁</span>
+      </div></div>
+    </div>
+  </div>
+  <h3>字放大 200%（建議的 B）</h3>
+  <div class="row">
+    <div class="col">
+      <div class="phone big"><div class="page">
+        <h4>取消 email 重測提醒</h4>
+        <div class="tint"><span class="note">帳號</span><br><span class="ttl">wang_baba</span></div>
+        <span class="btn">取消提醒</span>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 五、提醒信 ============ -->
+<section class="topic" id="mail">
+  <h2>五、重測提醒信</h2>
+  <p>版面照重設密碼信：只有文字、不放圖片（有些信箱會擋圖），一顆大按鈕「再做一次」。信裡只有使用者名稱，沒有分數、分級。灰色那條是 Gmail 自己畫的，因為信件帶了一鍵取消標頭，Gmail 會在寄件人旁邊放「取消訂閱」。差別在取消連結放哪裡。</p>
+  <div class="row">
+    <div class="col wide">
+      <h3><span class="pick">A</span>取消放在信尾 <span class="rec">建議</span></h3>
+      <p class="why s">跟一般的信一樣，取消在最下面的灰字區；不會跟「再做一次」搶，也不會誤按。</p>
+      <div class="mail">
+        <div class="mailhead"><b>聽伴</b> &lt;noreply@tingpal.tw&gt; <span class="gm">取消訂閱</span><br>主旨：<span class="owner" style="display:inline-block;padding:0 .4rem">主旨（#658）</span></div>
+        <div class="mailbody">
+          <p class="brand">聽伴</p>
+          <p>wang_baba 您好：</p>
+          <div class="owner">內文：可以再做一次的提醒（#658）。不寫分數、分級。</div>
+          <span class="mailbtn" style="margin-top:14px">再做一次</span>
+          <p>按鈕按不了的話，把這個網址複製到瀏覽器打開：<br><a class="u">https://tingpal.tw/questionnaire/1</a> <span class="tbd">網址暫定</span></p>
+          <p class="mailfoot">您在聽伴打開了 email 重測提醒，所以收到這封信。不想再收到：<a class="u">取消提醒</a><br>聽伴 聽力自我照護・tingpal.tw <span class="tbd">暫定</span></p>
+        </div>
+      </div>
+    </div>
+    <div class="col wide">
+      <h3><span class="pick">B</span>取消放在按鈕下面</h3>
+      <p class="why s">一打開就看得到怎麼取消。代價：兩個連結靠得近，長輩可能誤按取消（不過取消頁還要再按一次，按錯也不會馬上取消）。</p>
+      <div class="mail">
+        <div class="mailhead"><b>聽伴</b> &lt;noreply@tingpal.tw&gt; <span class="gm">取消訂閱</span><br>主旨：<span class="owner" style="display:inline-block;padding:0 .4rem">主旨（#658）</span></div>
+        <div class="mailbody">
+          <p class="brand">聽伴</p>
+          <p>wang_baba 您好：</p>
+          <div class="owner">內文（#658）</div>
+          <span class="mailbtn" style="margin-top:14px">再做一次</span>
+          <p>不想再收到這種提醒：<a class="u">取消提醒</a></p>
+          <p>按鈕按不了的話，把這個網址複製到瀏覽器打開：<br><a class="u">https://tingpal.tw/questionnaire/1</a></p>
+          <p class="mailfoot">聽伴 聽力自我照護・tingpal.tw</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="help" style="text-align:center">純文字版（給不顯示 HTML 的信箱）內容一樣，按鈕換成網址。</p>
+</section>
+
+</body>
+</html>

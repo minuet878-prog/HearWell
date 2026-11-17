@@ -6,6 +6,7 @@ from .views import (
     accounts,
     answering,
     audiograms,
+    clinic_cards,
     confirm_identity,
     crawlers,
     export,
@@ -17,6 +18,7 @@ from .views import (
     monitoring,
     my_hearing,
     qa_assistant,
+    reminders,
     reports,
     results,
     sign_in,
@@ -26,6 +28,11 @@ from .views import (
 
 urlpatterns = [
     path("", home.index, name="index"),
+    # 小卡網址 (spec #677, ADR 0066): printed in the clinic cards' QR codes, kept forever.
+    path("c/e", clinic_cards.card_address, {"card": "elder"}, name="clinic_card_elder"),
+    path("c/f", clinic_cards.card_address, {"card": "family"}, name="clinic_card_family"),
+    # Where the owner prints them (spec #677): open to anyone, linked from the admin only.
+    path("clinic-cards", clinic_cards.print_page, name="clinic_cards"),
     # The 公開頁面 for search engines (spec #583); Django marks the sitemap itself noindex.
     path(
         "sitemap.xml",
@@ -98,6 +105,10 @@ urlpatterns = [
     path("my_data/download", export.download_my_data, name="download_my_data"),
     path("account", accounts.account_settings, name="account_settings"),
     path("account/delete", accounts.delete_account, name="delete_account"),
+    path("account/email", accounts.add_email, name="add_email"),
+    path("reminder", reminders.retest_reminder, name="retest_reminder"),
+    path("reminder/cancel/<str:token>", reminders.reminder_cancel, name="reminder_cancel"),
+    path("reminder/cancelled", reminders.reminder_cancelled, name="reminder_cancelled"),
     path("account/confirm", confirm_identity.confirm_identity, name="confirm_identity"),
     path("account/sign-in-methods/google/add", sign_in_methods.google_add, name="google_add"),
     path("account/sign-in-methods/line/add", sign_in_methods.line_add, name="line_add"),

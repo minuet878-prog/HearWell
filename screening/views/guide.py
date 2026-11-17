@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
 
 from screening import assessment_hospitals, device_centres, models
+from screening.audiogram import FittingAdvice, over_mild
 from screening.fitting_route import (
     AUDIOGRAM,
     SUBSIDY_STOPS,
@@ -22,6 +23,15 @@ from screening.journey_todos import stop_todos
 from screening.main_flow import get_user_state
 from screening.models import Ear, Questionnaire
 from screening.questionnaires.ssq12_tw import CODE as SSQ12
+from screening.scoring import (
+    FITTING_ADVICE_BEFORE_YOU_GO,
+    FITTING_ADVICE_MILD_IMPACT,
+    FITTING_ADVICE_NORMAL,
+    FITTING_ADVICE_OVER_MILD,
+    FITTING_ADVICE_QUESTIONNAIRE_FIRST,
+    FITTING_ADVICE_TRACK,
+    LIFE_IMPACT_BUTTON,
+)
 from screening.views.answering import list_order, wearing_follow_ups
 from screening.views.common import form_address, health_data_page, safe_next
 
@@ -164,6 +174,7 @@ def _guide_page(request, edit=None, question=None, done_now=None):
         context["wearing"] = state.wearing
         if state.audiogram is not None:
             context |= _guide_audiogram(state)
+            context["fitting_words"] = _fitting_words(state, request.user, today)
     context["route"] = route = _route(state, request.user, edit, question)
     # #596 (ADR 0063): the 補助站 folded into a line under the route, signed out too.
     context["subsidy_folded"] = state is None or not state.subsidy_shown
@@ -179,6 +190,29 @@ def _guide_page(request, edit=None, question=None, done_now=None):
     return response
 
 
+def _fitting_words(state, user, today):
+    """要不要找聽力師評估's sentence by 建議評估選配 (ADR 0067) and its link (text, url) or None;
+    None for 無法判斷, which the page words with its audiogram's edit link."""
+    if state.advice == FittingAdvice.RECOMMEND:
+        # Of the two 建議 wordings, the one for an ear over 40 dB HL (spec #693).
+        ptas = (state.threshold["right"]["pta"], state.threshold["left"]["pta"])
+        words = FITTING_ADVICE_OVER_MILD if over_mild(ptas) else FITTING_ADVICE_MILD_IMPACT
+        before_you_go = reverse("guide_chapter", args=["before-you-go"])
+        return words, (FITTING_ADVICE_BEFORE_YOU_GO, before_you_go)
+    if state.advice == FittingAdvice.QUESTIONNAIRE_FIRST:
+        # Imported here: care_journey imports this module for here_stop.
+        from screening.care_journey import first_questionnaire_url
+
+        # The questionnaire the 照顧旅程's step 1 asks for (spec #693).
+        link = (LIFE_IMPACT_BUTTON, first_questionnaire_url(user, today))
+        return FITTING_ADVICE_QUESTIONNAIRE_FIRST, link
+    if state.advice == FittingAdvice.TRACK:
+        return FITTING_ADVICE_TRACK, None
+    if state.advice == FittingAdvice.NORMAL:
+        return FITTING_ADVICE_NORMAL, None
+    return None
+
+
 def _percent(ratio):
     # 43.125 and 52.5 and 100, as the worked steps write them.
     return format(ratio.normalize(), "f")
@@ -191,7 +225,6 @@ def _guide_audiogram(state):
     context = {
         "audiogram": state.audiogram,
         "ears": ears,
-        "fitting": state.fitting,
         "threshold": estimate,
     }
     if estimate["ratio"] is not None:

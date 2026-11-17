@@ -139,7 +139,6 @@ class GradedResultPageTests(TestCase):
         for piece in (
             steps[1]["text"],
             steps[2]["text"],
-            "看助聽器選配與補助",
             get_advice("mild_to_moderate", hhie_s.CODE),
             "情緒分數：",
             "助聽器：沒戴",
@@ -149,14 +148,6 @@ class GradedResultPageTests(TestCase):
         self.assertNotIn(steps[0]["text"], fold)
         self.assertNotIn('<div class="score-bar"', fold)
         self.assertEqual(main.count('<div class="score-bar"'), 1)
-
-    def test_step_one_keeps_its_link(self):
-        # HHIE-S 顯著影響's step 1 links to the guide: the link stays with its sentence.
-        main = self.main(self.hhie_s([4] * 8 + [0, 0], (2026, 11, 12)))  # 32
-        step = hhie_s.NEXT_STEPS["severe"][0]
-        one_line = main[main.index('<p class="result-one-line">') : main.index("result-next-label")]
-        self.assertIn(step["text"], one_line)
-        self.assertIn(f'href="{reverse("guide")}">看助聽器選配與補助</a>', one_line)
 
     def test_suggesting_sharing_or_printing_leaves_its_row_out(self):
         # Within the normal range the journey counts down: it suggests sharing, then printing

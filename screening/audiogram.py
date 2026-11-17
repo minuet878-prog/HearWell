@@ -5,8 +5,11 @@ Ported from the standalone audiogram tool; no Django code here.
 
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
+from enum import StrEnum
 from itertools import pairwise
 from math import log2
+
+from screening.scoring import UNKNOWN
 
 AIR_FREQUENCIES = (250, 500, 1000, 2000, 3000, 4000, 6000, 8000)
 BONE_FREQUENCIES = (500, 1000, 2000, 4000)
@@ -19,12 +22,13 @@ DB_STEP = 5
 DB_MAX = {"air": 120, "bone": 80}
 
 NORMAL_LIMIT = 25  # dB HL; applies to both air and bone conduction averages
+MILD_LIMIT = 40  # dB HL; 輕度's upper limit, over it 建議評估選配 needs no questionnaire
 AIR_BONE_GAP = 15  # dB; a gap this large or larger is significant
 
 # Upper limit (inclusive) of each degree, checked in order.
 DEGREES = (
     (NORMAL_LIMIT, "正常"),
-    (40, "輕度"),
+    (MILD_LIMIT, "輕度"),
     (55, "中度"),
     (70, "中重度"),
     (90, "重度"),
@@ -157,13 +161,55 @@ def assessment_estimate(points):
     }
 
 
-def recommends_fitting_assessment(points):
-    """Whether to suggest an audiologist's hearing-aid assessment (grill Q3, ADR 0017): either
-    ear's PTA over the normal limit. None when an unknown ear could still decide it."""
+class FittingAdvice(StrEnum):
+    """建議評估選配's five results (GLOSSARY, ADR 0067)."""
+
+    RECOMMEND = "recommend"
+    TRACK = "track"  # 輕度, the latest life-impact record 無／極輕微影響
+    NORMAL = "normal"
+    QUESTIONNAIRE_FIRST = "questionnaire-first"  # 輕度 without a life-impact record
+    UNKNOWN = "unknown"  # an ear without a PTA could change the result
+
+
+def _mild_advice(life_impact):
+    # 輕度 by the latest life-impact record's level, not by a score of its own (spec #693); a
+    # 無法判讀 one tells nothing of the impact, so it counts as none (the owner, 2026-11-17).
+    level = None if life_impact is None else life_impact.result.level["level"]
+    if level in (None, UNKNOWN["level"]):
+        return FittingAdvice.QUESTIONNAIRE_FIRST
+    if level == "normal":
+        return FittingAdvice.TRACK
+    return FittingAdvice.RECOMMEND
+
+
+def over_mild(ptas):
+    """Either ear's PTA over 40 dB HL (中度 on), alone enough for 建議評估選配's 建議; an ear
+    without a PTA is not."""
+    return any(p is not None and p > MILD_LIMIT for p in ptas)
+
+
+def fitting_advice(points, life_impact):
+    """Whether to suggest an audiologist's hearing-aid assessment (ADR 0067, spec #693): either
+    ear's PTA over 40 dB HL (中度 on), or the worse ear 輕度 and the latest life-impact record
+    (HHIE-S or HHIA-S, None before one) graded other than 無／極輕微影響. Someone wearing
+    hearing aids is not judged by it; that is the caller's to leave out."""
     ptas = [r["pta"] for r in interpret(points).values()]
-    if any(p is not None and p > NORMAL_LIMIT for p in ptas):
-        return True
-    return None if None in ptas else False
+    known = [p for p in ptas if p is not None]
+    if over_mild(known):
+        return FittingAdvice.RECOMMEND
+    mild = any(p > NORMAL_LIMIT for p in known)
+    advice = _mild_advice(life_impact) if mild else FittingAdvice.NORMAL
+    # An ear without a PTA could still be over 40, unless the other already recommends.
+    if None in ptas and advice != FittingAdvice.RECOMMEND:
+        return FittingAdvice.UNKNOWN
+    return advice
+
+
+def readable_for_aid_wearer(points):
+    """Whether an audiogram can tell for someone wearing hearing aids, whom fitting_advice does
+    not judge: either ear's PTA over 25 dB HL, or both ears' known, as before spec #693."""
+    ptas = [r["pta"] for r in interpret(points).values()]
+    return any(p is not None and p > NORMAL_LIMIT for p in ptas) or None not in ptas
 
 
 def _compare_rows(new, old, frequencies):

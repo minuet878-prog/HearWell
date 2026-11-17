@@ -588,8 +588,9 @@ class PrivacyPageT361Tests(TestCase):
         # #471 (mockup #470 privacy B): the open sections' titles and the folded rows' titles,
         # each kind alike; all are level 2.
         classes = {anchor: kind for anchor, kind, _ in self._headings()}
-        # #400 the question log, #526 忘記密碼時, #505 Google, #506 LINE, #641 意見回饋.
-        self.assertEqual(len(classes), 17)
+        # #400 the question log, #526 忘記密碼時, #505 Google, #506 LINE, #641 意見回饋, #664 email
+        # 重測提醒.
+        self.assertEqual(len(classes), 18)
         open_ones = {classes.pop("highlights-title"), classes.pop("contact-title")}
         self.assertEqual(open_ones, {"h4"})
         self.assertEqual(set(classes.values()), {"fold-row-title"})
@@ -678,11 +679,11 @@ class VpsPrivacyTests(TestCase):
 # The highlight naming the 重設密碼信 (#526), on the privacy notice's top and the consent page.
 RESET_HIGHLIGHT = highlight("忘記密碼時")
 # Its line under 會交給誰, word for word as the owner approved it on 2026-11-13, with 不會 in
-# <strong> as Sentry's.
+# <strong> as Sentry's; #664 (spec #656) added the email 重測提醒.
 RESEND_RECIPIENT = (
-    "<li>Resend（寄信服務，資料存放在美國）：只在您申請重設密碼時，經手收件信箱和信的內容"
-    "（使用者名稱、重設連結），保存 30 天後自動刪除。<strong>不會</strong>拿到您的出生年、"
-    "作答或分數。</li>"
+    "<li>Resend（寄信服務，資料存放在美國）：只在您申請重設密碼、或打開 email 重測提醒時，"
+    "經手收件信箱和信的內容（使用者名稱、重設連結或提醒信的連結），保存 30 天後自動刪除。"
+    "<strong>不會</strong>拿到您的出生年、作答或分數。</li>"
 )
 
 
@@ -707,7 +708,9 @@ class PasswordResetPrivacyTests(TestCase):
         section = self._section("password-reset-title", "question-log-title")
         for words in (
             "忘記密碼時",
-            "只有您自己申請時才寄，網站不寄其他信。",
+            # #664 (spec #656) replaced 「網站不寄其他信」 with the email 重測提醒
+            # (test_reminder_privacy).
+            "只有您自己申請時才寄。",
             "信裡有您的使用者名稱和設新密碼的連結",
             "Resend（資料存放在美國）",
             "保存 30 天後自動刪除",
@@ -720,7 +723,10 @@ class PasswordResetPrivacyTests(TestCase):
 
     def test_where_it_is_kept_says_the_reset_email_goes_to_the_united_states(self):
         storage = self._section("storage-title", "recipients-title")
-        self.assertIn("重設密碼信會傳到美國的寄信服務 Resend，保存 30 天後自動刪除。", storage)
+        # #664 (spec #656) added the 重測提醒信.
+        self.assertIn(
+            "重設密碼信和重測提醒信會傳到美國的寄信服務 Resend，保存 30 天後自動刪除。", storage
+        )
 
     def test_who_receives_it_adds_resend_after_vultr_and_sentry(self):
         self.assertIn(RESEND_RECIPIENT, self.main)

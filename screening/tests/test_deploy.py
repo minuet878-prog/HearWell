@@ -52,7 +52,7 @@ print(json.dumps({
 }))
 """
 
-    def _run(self, args, debug, module="config.settings", hsts="3600", drop=()):
+    def _run(self, args, debug, module="config.settings", hsts="3600", drop=(), blank=()):
         env = {
             **os.environ,
             "DJANGO_SETTINGS_MODULE": module,
@@ -64,9 +64,12 @@ print(json.dumps({
             # A made-up key: these tests never send an email (spec #355).
             "RESEND_API_KEY": "re_test_only",
             "DEFAULT_FROM_EMAIL": "noreply@tingpal.tw",
+            "SITE_URL": "https://tingpal.test",
         }
         for name in drop:
             env.pop(name)
+        # Set but empty, for names that may or may not be in the environment.
+        env.update(dict.fromkeys(blank, ""))
         env.pop("SECURE_HSTS_SECONDS", None)
         if hsts is not None:
             env["SECURE_HSTS_SECONDS"] = hsts
@@ -127,6 +130,23 @@ print(json.dumps({
                 error = json.loads(result.stdout.strip().splitlines()[-1])["error"]
                 self.assertIn(f"缺少 {name} 環境變數", error)
                 self.assertIn("部署平台", error)
+
+    # Spec #656: the 重測提醒信 is sent by a schedule, so its links come from SITE_URL alone.
+    def test_production_requires_the_site_url(self):
+        # Google's and LINE's keys off (the local .env may have them), so their own check for
+        # SITE_URL does not answer first.
+        blank = ("SITE_URL", "GOOGLE_CLIENT_ID", "LINE_CHANNEL_ID")
+        result = self._run(["-c", AllowedHostsTests.LOAD], debug=False, blank=blank)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        error = json.loads(result.stdout.strip().splitlines()[-1])["error"]
+        self.assertIn("缺少 SITE_URL 環境變數", error)
+        self.assertIn("部署平台", error)
+
+    def test_development_needs_no_site_url(self):
+        blank = ("SITE_URL", "GOOGLE_CLIENT_ID", "LINE_CHANNEL_ID")
+        result = self._run(["-c", AllowedHostsTests.LOAD], debug=True, hsts=None, blank=blank)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("error", json.loads(result.stdout.strip().splitlines()[-1]))
 
     # Spec #355: on the developer's computer the email is printed in the terminal, never sent.
     def test_development_prints_email_in_the_terminal(self):
@@ -243,6 +263,7 @@ else:
             "SECURE_HSTS_SECONDS": "3600",
             "RESEND_API_KEY": "re_test_only",
             "DEFAULT_FROM_EMAIL": "noreply@tingpal.tw",
+            "SITE_URL": "https://tingpal.test",
         }
         env.pop("ALLOWED_HOSTS", None)
         if hosts is not None:

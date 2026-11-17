@@ -172,6 +172,7 @@ class GradedResult(Result):
         }
 
     def page_context(self):
+        from screening.care_journey import WHERE_TO_TEST
         from screening.models import Questionnaire
         from screening.questionnaires import hhia_s, hhie_s, ssq12_tw
         from screening.scoring import get_advice, max_score
@@ -184,9 +185,9 @@ class GradedResult(Result):
         next_steps = definition.next_steps.get(level, ())
         # The 2026-11-14 walkthrough (mockup 3A): a guest sees the step that says to have the
         # hearing checked outside the fold, in place of the 照顧旅程 card's advice. It is the
-        # reviewed step carrying the guide's link; the fold then leaves it out.
+        # reviewed step marked HEARING_CHECK; the fold then leaves it out.
         advice_step = (
-            next((step for step in next_steps if step.get("second_url") == "guide"), None)
+            next((step for step in next_steps if step.get("hearing_check")), None)
             if self.is_guest
             else None
         )
@@ -197,6 +198,7 @@ class GradedResult(Result):
             "score_bar": score_bar(definition, self.total, level),
             "next_steps": next_steps,
             "advice_step": advice_step,
+            "where_to_test": WHERE_TO_TEST,
             "fold_steps": [step for step in next_steps[1:] if step is not advice_step],
             # A guest's save card (spec #492); "" for a level it has no sentence for.
             "save_reason": definition.save_reasons.get(level, ""),
