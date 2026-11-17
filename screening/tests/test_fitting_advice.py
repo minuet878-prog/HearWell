@@ -97,6 +97,14 @@ class FittingAdviceJudgmentTests(LifeImpactTestCase):
                     self.assertEqual(fitting_advice(points(worse, 10), life_impact), advice)
                     self.assertEqual(fitting_advice(points(25, worse), life_impact), advice)
 
+    def test_a_mild_loss_with_an_unreadable_record_asks_for_the_questionnaire_again(self):
+        # 無法判讀 (a score off the thresholds table) tells nothing of the life impact, so it
+        # counts as no record, not as one that recommends (the owner, 2026-11-17).
+        unreadable = mock.Mock(**{"result.level": {"level": "unknown"}})
+        self.assertEqual(
+            fitting_advice(points(30, 10), unreadable), FittingAdvice.QUESTIONNAIRE_FIRST
+        )
+
     def test_both_ears_within_25_are_normal_whatever_the_questionnaire(self):
         for life_impact in (None, self.normal, self.severe):
             with self.subTest(life_impact=life_impact):
