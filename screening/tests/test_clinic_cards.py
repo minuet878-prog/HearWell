@@ -314,6 +314,8 @@ class PrintPageReachTests(TestCase):
         self.client.force_login(User.objects.create_superuser(username="owner", password="pw"))
         self.assertContains(self.client.get("/admin/"), f'href="{PRINT_PAGE}"')
 
+    # Its own SITE_URL: without one no QR code is drawn (acceptance 17), and CI sets none.
+    @override_settings(SITE_URL="https://tingpal.tw")
     def test_every_card_says_only_its_words_with_its_own_code(self):
         # Acceptance 15 (cross review, second round): each of the 10 cards of both kinds, read
         # as its words alone, is the logo's 聽伴, the owner's words and tingpal.tw, nothing
