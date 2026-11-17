@@ -365,3 +365,43 @@ class FittingAdviceRouteTests(test_fitting_advice.LifeImpactTestCase):
             with self.subTest(ears=ears):
                 self.assertFalse(state.waiting)
                 self.assertEqual(state.stop, "after-fitting")
+
+
+class CrossReview693WearingAudiogramTests(test_fitting_advice.LifeImpactTestCase):
+    """The cross review on #693, acceptance 12: someone wearing hearing aids has the audiogram
+    stop done as before spec #693, an ear over 25 dB HL or both ears' PTA known, whatever an
+    ear without a PTA and the life-impact record could make of 建議評估選配."""
+
+    def setUp(self):
+        self.user = consented_user(username="wearing_audiogram_user")
+        audiogram = self.make((30, 30, 30, 30), (20, 20, 20, 20))
+        audiogram.points.filter(ear="left", frequency=4000).delete()
+
+    make = test_guide_summary.GuideSummaryTests.make
+
+    def assert_audiogram_done(self):
+        state = fitting_state(self.user, TODAY)
+        self.assertTrue(state.wearing)
+        self.assertIn(AUDIOGRAM, state.done)
+        self.assertFalse(state.insufficient)
+        self.assertEqual(state.stop, "after-fitting")
+
+    def test_a_fitting_date_and_no_life_impact_record(self):
+        AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1))
+        self.assert_audiogram_done()
+
+    def test_the_latest_life_impact_record_answered_wearing_them_and_not_affected(self):
+        # The same cause: 追蹤 not wearing them, so unknown with the ear without a PTA.
+        submission = test_fitting_advice.record(self.user, test_fitting_advice.NORMAL_SCORES)
+        Submission.objects.filter(pk=submission.pk).update(wearing_hearing_aid=True)
+        self.assert_audiogram_done()
+
+    def test_both_ears_within_25_and_one_unknown_still_has_too_little_data(self):
+        # As before: no ear over 25 dB HL, so the unknown one could still be.
+        self.user = consented_user(username="wearing_normal_user")
+        audiogram = self.make((20, 20, 20, 20), (20, 20, 20, 20))
+        audiogram.points.filter(ear="left", frequency=4000).delete()
+        AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1))
+        state = fitting_state(self.user, TODAY)
+        self.assertTrue(state.insufficient)
+        self.assertNotIn(AUDIOGRAM, state.done)

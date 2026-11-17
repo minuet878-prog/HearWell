@@ -6,7 +6,12 @@ import calendar
 from dataclasses import dataclass
 from datetime import date
 
-from screening.audiogram import FittingAdvice, assessment_estimate, fitting_advice
+from screening.audiogram import (
+    FittingAdvice,
+    assessment_estimate,
+    fitting_advice,
+    readable_for_aid_wearer,
+)
 from screening.models import AidAndSubsidy, AidLevel, Audiogram, Certificate, Submission, Subsidy
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 
@@ -70,6 +75,9 @@ class FittingState:
     wearing: bool
     advice: FittingAdvice | None  # 建議評估選配 (fitting_advice); None without an audiogram
     threshold: dict | None  # assessment_estimate, without an audiogram None
+    # 資料不足: the latest audiogram cannot tell whether to suggest an assessment. Shown even
+    # when another stop comes first (wearing), but then it is not the 目前這一站.
+    insufficient: bool
     done: frozenset  # the 已完成 stops' slugs
     not_applicable: frozenset  # the 不適用 stops' slugs, which 您在這裡 passes by
     stop: str | None  # one of STOPS; None when no stop applies
@@ -120,12 +128,6 @@ class FittingState:
             return None
         return add_months(self.aid.fitted_on, REAPPLY_MONTHS)
 
-    @property
-    def insufficient(self):
-        # 資料不足: the latest audiogram cannot tell whether to suggest an assessment. Shown
-        # even when another stop comes first (wearing), but then it is not the 目前這一站.
-        return self.advice == FittingAdvice.UNKNOWN
-
 
 def latest_submission(user):
     """The newest submission of an offered questionnaire, None before one."""
@@ -154,6 +156,7 @@ def fitting_state(user, today):
     aid = AidAndSubsidy.for_user(user)
     wearing = wearing_hearing_aids(latest, aid)
     advice = threshold = None
+    insufficient = False
     if audiogram is not None:
         points = list(audiogram.points.all())
         # Imported here: main_flow imports this module for add_months.
@@ -161,9 +164,15 @@ def fitting_state(user, today):
 
         advice = fitting_advice(points, get_user_state(user, today).life_impact)
         threshold = assessment_estimate(points)
+        # Someone wearing hearing aids is not judged by 建議評估選配, so their audiogram tells
+        # as it did before it (spec #693 acceptance 12).
+        if wearing:
+            insufficient = not readable_for_aid_wearer(points)
+        else:
+            insufficient = advice == FittingAdvice.UNKNOWN
     viewed = set(user.guide_views.values_list("chapter", flat=True))
     done = viewed & DONE_BY_VIEWING
-    if advice not in (None, FittingAdvice.UNKNOWN):
+    if audiogram is not None and not insufficient:
         done.add(AUDIOGRAM)  # an audiogram that can tell; one missing a frequency is not done
     if aid is not None and aid.certificate in CERTIFICATE_DONE:
         done.add("assessment")
@@ -194,6 +203,7 @@ def fitting_state(user, today):
         wearing,
         advice,
         threshold,
+        insufficient,
         frozenset(done),
         not_applicable,
         stop,

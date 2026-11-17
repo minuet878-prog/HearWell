@@ -557,3 +557,21 @@ class SelfReview693UnreadableLifeImpactTests(test_fitting_advice.LifeImpactTestC
         self.client.force_login(self.user)
         response = self.client.get(reverse("result", args=[self.unreadable.pk]))
         self.assertEqual(response.status_code, 200)
+
+
+class CrossReview693WearingAudiogramJourneyTests(test_fitting_advice.LifeImpactTestCase):
+    """The cross review on #693, acceptance 12: wearing hearing aids, one ear 30 dB HL and the
+    other without 4000 Hz, no life-impact record: step 2 is done, as before spec #693."""
+
+    def setUp(self):
+        self.user = consented_user(username="wearing_audiogram_journey", birth_year=1950)
+        audiogram = self.make((30, 30, 30, 30), NORMAL)
+        audiogram.points.filter(ear="left", frequency=4000).delete()
+        AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1))
+
+    make = test_guide_summary.GuideSummaryTests.make
+
+    def test_step_2_is_done_with_the_audiogram_s_date(self):
+        journey = care_journey(self.user, TODAY)
+        self.assertEqual(journey.steps[1].state, DONE)
+        self.assertEqual(journey.steps[1].done_on, date(2026, 10, 1))

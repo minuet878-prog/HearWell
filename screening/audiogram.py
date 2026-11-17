@@ -203,6 +203,13 @@ def fitting_advice(points, life_impact):
     return advice
 
 
+def readable_for_aid_wearer(points):
+    """Whether an audiogram can tell for someone wearing hearing aids, whom fitting_advice does
+    not judge: either ear's PTA over 25 dB HL, or both ears' known, as before spec #693."""
+    ptas = [r["pta"] for r in interpret(points).values()]
+    return any(p is not None and p > NORMAL_LIMIT for p in ptas) or None not in ptas
+
+
 def _compare_rows(new, old, frequencies):
     rows = []
     for frequency in frequencies:
