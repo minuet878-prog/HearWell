@@ -3,17 +3,21 @@ made-up PDFs drawn like the real one (apple_pdf.py)."""
 
 import json
 import re
+import time
 from datetime import date, datetime
 from io import StringIO
+from unittest import mock
 
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
+from screening.admin import ImportFailureMonthAdmin
 from screening.apple_hearing_test import MAX_BYTES
-from screening.models import Audiogram
+from screening.models import Audiogram, ImportFailureMonth, Unreadable, User
 from screening.tests import test_layout
 from screening.tests.apple_pdf import FREQUENCIES, LEFT, RIGHT, apple_pdf
 from screening.tests.helpers import consented_user
@@ -274,10 +278,10 @@ class ImportEdgeCaseTests(TestCase):
         return self.client.post(reverse("audiogram_import"), {"pdf": upload})
 
     def _counts(self):
-        from screening.models import ImportFailureMonth
-
         month = ImportFailureMonth.objects.get()
-        return {f: getattr(month, f) for f in ("not_a_pdf", "not_apple", "layout", "cross_check")}
+        # Counted in this month, Taipei time.
+        self.assertEqual(month.month, timezone.localdate().replace(day=1))
+        return {reason: getattr(month, reason) for reason in Unreadable.values}
 
     def test_each_unreadable_file_says_so_and_is_counted(self):
         missing = (*RIGHT[:7], None)
@@ -332,9 +336,6 @@ class ImportEdgeCaseTests(TestCase):
         self.assertEqual(Audiogram.objects.count(), 3)
 
     def test_a_preview_too_old_changed_or_someone_elses_saves_nothing(self):
-        import time
-        from unittest import mock
-
         with mock.patch("django.core.signing.time.time", return_value=time.time() - 31 * 60):
             old = self._reading(self._post(apple_pdf()))
         mine = self._reading(self._post(apple_pdf()))
@@ -348,24 +349,42 @@ class ImportEdgeCaseTests(TestCase):
                 main = self._main(response)
                 self.assertIn(NOT_SAVED, main)
                 self.assertIn('type="file"', main)
-        self.assertFalse(Audiogram.objects.filter(user=self.user).exists())
+        # Nobody's: not this person's, and not the other's either.
+        self.assertEqual(Audiogram.objects.count(), 0)
 
     def test_the_preview_reminds_only_of_what_the_pdf_says(self):
         """Spec #702 acceptance 5: one sentence each, only when so; nothing of it is saved."""
-        main = self._main(self._post(apple_pdf(stars=True, congested=True, loud_noise=True)))
-        for words in (NOISE, CONGESTED, LOUD):
-            self.assertIn(words, main)
-        main = self._main(self._post(apple_pdf(stars=False)))
-        for words in (NOISE, CONGESTED, LOUD):
-            self.assertNotIn(words, main)
+        for name, pdf, said in (
+            ("all", dict(stars=True, congested=True, loud_noise=True), {NOISE, CONGESTED, LOUD}),
+            ("none", dict(stars=False), set()),
+            ("asterisk", dict(stars=True), {NOISE}),
+            ("congested", dict(stars=False, congested=True), {CONGESTED}),
+            ("loud noise", dict(stars=False, loud_noise=True), {LOUD}),
+        ):
+            with self.subTest(name):
+                main = self._main(self._post(apple_pdf(**pdf)))
+                self.assertEqual({w for w in (NOISE, CONGESTED, LOUD) if w in main}, said)
+        preview = self._post(apple_pdf(stars=True, congested=True, loud_noise=True))
+        self.client.post(reverse("audiogram_import_save"), {"reading": self._reading(preview)})
+        out = StringIO()
+        call_command("dumpdata", "screening.audiogram", "screening.audiogrampoint", stdout=out)
+        for kept in ("noise", "congest", "loud"):
+            self.assertNotIn(kept, out.getvalue())
 
 
 class ImportFailureMonthAdminTests(TestCase):
     """Spec #702 acceptance 24: the owner reads each month's reasons, and only reads them."""
 
-    def test_the_owner_reads_each_reason_and_cannot_change_them(self):
-        from screening.models import ImportFailureMonth, User
+    def test_each_reason_has_its_count_and_its_column(self):
+        """A reason added to Unreadable needs its field here and its column in the admin."""
+        fields = {f.name: f.verbose_name for f in ImportFailureMonth._meta.fields}
+        self.assertEqual(
+            {name: fields[name] for name in Unreadable.values}, dict(Unreadable.choices)
+        )
+        self.assertEqual(set(fields) - {"id", "month"}, set(Unreadable.values))
+        self.assertEqual(ImportFailureMonthAdmin.list_display[1:], tuple(Unreadable.values))
 
+    def test_the_owner_reads_each_reason_and_cannot_change_them(self):
         october = ImportFailureMonth.objects.create(month=date(2026, 10, 1), layout=3)
         self.client.force_login(User.objects.create_superuser(username="owner", password="pw"))
         page = self.client.get(reverse("admin:screening_importfailuremonth_changelist"))
@@ -379,8 +398,14 @@ class ImportFailureMonthAdminTests(TestCase):
         ):
             self.assertIn(heading, content)
         self.assertIn(">2026/10<", content)
+        self.assertIn('<td class="field-layout">3</td>', content)
         add = reverse("admin:screening_importfailuremonth_add")
+        change = reverse("admin:screening_importfailuremonth_change", args=[october.pk])
+        self.assertEqual(
+            self.client.post(change, {"month": "2026-10-01", "layout": 0}).status_code, 403
+        )
         delete = reverse("admin:screening_importfailuremonth_delete", args=[october.pk])
         self.assertEqual(self.client.get(add).status_code, 403)
         self.assertEqual(self.client.post(delete, {"post": "yes"}).status_code, 403)
-        self.assertTrue(ImportFailureMonth.objects.filter(pk=october.pk).exists())
+        october.refresh_from_db()
+        self.assertEqual(october.layout, 3)

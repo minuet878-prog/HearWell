@@ -141,7 +141,10 @@ def audiogram_import(request):
                 for right, left in zip(*_by_ear(points), strict=True)
             ],
             "reading": signing.dumps(reading, salt=IMPORT_SALT),
-            "reminders": test,
+            # Spec #702 Q11: only for the reminders, never saved.
+            "noise_marked": test.noise_marked,
+            "congested": test.congested,
+            "loud_noise": test.loud_noise,
         },
     )
 

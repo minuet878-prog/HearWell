@@ -3,7 +3,6 @@ from django.db import models
 from django.db.models import F
 from django.utils import timezone
 
-from screening.apple_hearing_test import Unreadable
 from screening.audiogram import APPLE_DB_MIN, interpret
 
 
@@ -99,6 +98,15 @@ class AudiogramPoint(models.Model):
 
     def __str__(self):
         return f"{self.ear} {self.conduction} {self.frequency} Hz: {self.db}"
+
+
+class Unreadable(models.TextChoices):
+    """Why 從 iPhone 匯入 could not read a PDF (spec #702 Q14); ImportFailureMonth counts each."""
+
+    NOT_A_PDF = "not_a_pdf", "檔案太大或不是 PDF"
+    NOT_APPLE = "not_apple", "不是 Apple 聽力測試"
+    LAYOUT = "layout", "版面認不得"
+    CROSS_CHECK = "cross_check", "交叉驗證不符"
 
 
 class ImportFailureMonth(models.Model):

@@ -16,11 +16,11 @@ from dataclasses import dataclass
 from datetime import date
 from itertools import pairwise
 
-from django.db import models
 from pdfminer.high_level import extract_pages
 from pdfminer.layout import LTChar, LTCurve
 
 from screening.audiogram import AIR_FREQUENCIES
+from screening.models.audiograms import Unreadable
 
 MAX_BYTES = 2 * 1024 * 1024
 EAR_COLOURS = {"right": (1.0, 0.18, 0.33), "left": (0.0, 0.53, 1.0)}
@@ -34,15 +34,6 @@ CROSS_CHECK_DB = 2  # the 2026-11-17 sample was off by 1.1 dB at most
 TEST_DATE = re.compile(r"(\d{4})年(\d{1,2})月(\d{1,2})日\s*(?:上午|下午)")
 VALUE = re.compile(r"(-?\d+)\*?")
 TICK = re.compile(r"(-?\d+)(?:分貝)?")
-
-
-class Unreadable(models.TextChoices):
-    """Why a PDF could not be read; the monthly failure counts (#708) keep one per reason."""
-
-    NOT_A_PDF = "not_a_pdf", "檔案太大或不是 PDF"
-    NOT_APPLE = "not_apple", "不是 Apple 聽力測試"
-    LAYOUT = "layout", "版面認不得"
-    CROSS_CHECK = "cross_check", "交叉驗證不符"
 
 
 class CannotRead(Exception):

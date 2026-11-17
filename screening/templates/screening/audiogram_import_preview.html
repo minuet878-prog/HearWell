@@ -22,11 +22,11 @@
     </tbody>
 </table>
 {# Spec #702 Q11: a sentence for each the PDF marks, none of which is saved. #}
-{% if reminders.noise_marked or reminders.congested or reminders.loud_noise %}
+{% if noise_marked or congested or loud_noise %}
 <div class="tip-box">
-    {% if reminders.noise_marked %}<p>測試時周圍有點吵，有些點可能比實際差。</p>{% endif %}
-    {% if reminders.congested %}<p>鼻塞時測的，結果可能偏差。</p>{% endif %}
-    {% if reminders.loud_noise %}<p>剛聽過大聲音，結果可能偏差。</p>{% endif %}
+    {% if noise_marked %}<p>測試時周圍有點吵，有些點可能比實際差。</p>{% endif %}
+    {% if congested %}<p>鼻塞時測的，結果可能偏差。</p>{% endif %}
+    {% if loud_noise %}<p>剛聽過大聲音，結果可能偏差。</p>{% endif %}
 </div>
 {% endif %}
 <form method="post" action="{% url 'audiogram_import_save' %}" class="mt-4">

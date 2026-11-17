@@ -10,6 +10,7 @@ from screening.models.audiograms import (
     Conduction,
     Ear,
     ImportFailureMonth,
+    Unreadable,
     count_import_failure,
 )
 from screening.models.feedback import (

@@ -6,7 +6,7 @@
 {% if unreadable %}
 <div class="alert alert-warning" role="alert">這份 PDF 讀不出來。請確認是「健康」app 的聽力測試結果；也可以照著 PDF 自己把數字標上去。</div>
 <p><a class="btn btn-primary btn-lg w-full" href="{% url 'audiogram_new' %}">自己標</a></p>
-<p class="field-help">或換一份 PDF：</p>
+<p class="mb-1">或換一份 PDF：</p>
 {% elif already %}
 <div class="tip-box" role="status">這份已經匯入過了。</div>
 <p class="mt-3"><a class="btn btn-primary btn-lg w-full" href="{% url 'audiogram_detail' already.id %}">看那張聽力圖</a></p>
