@@ -24,6 +24,9 @@ THRESHOLDS = (
     (40, "顯著影響", "severe"),
 )
 
+# Spec #693: a severe score sends one to a hearing check, in the advice and the first next step.
+_SEVERE_CHECK = "並做聽力檢查；有 AirPods Pro 的話，也可以先用 iPhone 做聽力自我測試。"
+
 _LEVEL_ADVICE = {
     "normal": (
         "您的聽覺自覺障礙程度為無或是僅有輕微障礙，聽力的部分並未明顯影響"
@@ -40,7 +43,7 @@ _LEVEL_ADVICE = {
     "severe": (
         "聽力問題已經嚴重影響到您的生活了，許多人常常會忽視這一塊，聽不到這件事"
         "情往往已經十分嚴重了才會發現，若您尚未採取任何行動建議立即前往醫院耳鼻"
-        "喉科尋求專業建議，並做聽力檢查；有 AirPods Pro 的話，也可以先用 iPhone 做聽力自我測試。"
+        f"喉科尋求專業建議，{_SEVERE_CHECK}"
         "聽力喪失影響的並不只是聽不聽得到，"
         "無形中也會增加社交活動的壓力（例如因為聽不清楚常會在聊天的過程中退縮、"
         "裝作聽得懂等），這些壓力以及情緒的低落會增加長者的認知負擔。"
@@ -89,8 +92,7 @@ NEXT_STEPS = {
         {
             "text": (
                 "聽力問題已經嚴重影響到您的生活了，若您尚未採取任何行動，"
-                "建議立即前往醫院耳鼻喉科尋求專業建議，"
-                "並做聽力檢查；有 AirPods Pro 的話，也可以先用 iPhone 做聽力自我測試。"
+                f"建議立即前往醫院耳鼻喉科尋求專業建議，{_SEVERE_CHECK}"
             ),
             **HEARING_CHECK,
         },
