@@ -24,7 +24,9 @@ from screening.views.common import form_page
 # or LINE, which makes nothing before the name page (spec #505, #506). The 運作檢查 shows no one's
 # data and answers the same for everyone (spec #561). 意見回饋 is open to everyone and kept apart
 # from any account (spec #633, ADR 0064), so it is the same before agreeing; 關於聽伴 shows only
-# the privacy notice's highlights (#640).
+# the privacy notice's highlights (#640). A 小卡網址 only sends the scan on to its landing page,
+# which the gate then guards as it would anyway, and the cards' print page shows only the cards
+# (spec #677).
 OPEN_PAGES = {
     "index",
     "privacy",
@@ -65,6 +67,9 @@ OPEN_PAGES = {
     "feedback",
     "feedback_sent",
     "about",
+    "clinic_card_elder",
+    "clinic_card_family",
+    "clinic_cards",
 }
 
 

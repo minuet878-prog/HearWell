@@ -9,7 +9,12 @@ from screening.models.feedback import (
     FeedbackNotice,
     purge_feedback,
 )
-from screening.models.guest_counts import GuestMonth, count_guest, count_guest_saved
+from screening.models.guest_counts import (
+    PAGE_COUNT_COLUMNS,
+    GuestMonth,
+    count_guest,
+    count_guest_saved,
+)
 from screening.models.guide import GuideChapterView
 from screening.models.hearing_aids import (
     AidAndSubsidy,

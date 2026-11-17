@@ -40,6 +40,7 @@ export default defineConfig({
         "guest-home": "src/guest-home-main.js",
         "guest-ask": "src/guest-ask-main.js",
         "wear-motion": "src/wear-motion-main.js",
+        "arrival-count": "src/arrival-count-main.js",
       },
       output: { entryFileNames: "[name].js", assetFileNames: "[name][extname]" },
     },

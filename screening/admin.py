@@ -165,7 +165,16 @@ class QuestionLogMonthAdmin(ViewOnlyAdmin):
 @admin.register(GuestMonth)
 class GuestMonthAdmin(ViewOnlyAdmin):
     # Spec #492 (#500): the owner reads whether going without an account brings more people in.
-    list_display = ("month_label", "completed", "saved_password", "saved_google", "saved_line")
+    # The two clinic cards' columns (spec #677): how many scans reached their landing page.
+    list_display = (
+        "month_label",
+        "completed",
+        "saved_password",
+        "saved_google",
+        "saved_line",
+        "clinic_elder",
+        "clinic_family",
+    )
     ordering = ("-month",)
 
     @admin.display(description="月份", ordering="month")
