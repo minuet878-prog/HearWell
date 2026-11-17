@@ -6,7 +6,8 @@ from datetime import date
 from django.test import TestCase
 from django.urls import reverse
 
-from screening.models import Audiogram
+from screening.care_journey import DONE, care_journey
+from screening.models import Audiogram, AudiogramPoint, AudiogramSource
 from screening.tests import test_guide, test_guide_summary
 from screening.tests.helpers import consented_user, route_stops
 
@@ -33,7 +34,7 @@ class SelfTestAssessmentTests(TestCase):
 
     def self_test(self, right, left, tested_on):
         audiogram = self.make(right, left, tested_on=tested_on)
-        Audiogram.objects.filter(pk=audiogram.pk).update(source="self_test")
+        Audiogram.objects.filter(pk=audiogram.pk).update(source=AudiogramSource.SELF_TEST)
         return audiogram
 
     def page(self):
@@ -86,7 +87,20 @@ class SelfTestAssessmentTests(TestCase):
         self.assertIn("估算未達門檻", stops["assessment"])
 
     def test_a_self_test_still_completes_the_audiogram_stop(self):
-        """Acceptance 18: 照顧旅程 step 2 and the route's first stop, whatever the source."""
+        """Acceptance 18: 照顧旅程 step 2 and the route's first stop are done, and 建議評估選配
+        (spec #693's rule) reads the self test, whatever the source."""
         self.self_test(PTA_60, PTA_60, date(2026, 10, 1))
         stops = dict(route_stops(self.page()))
         self.assertIn("已完成", stops["audiogram"])
+        self.assertEqual(care_journey(self.user, date(2026, 11, 17)).steps[1].state, DONE)
+        text = test_guide.text_of(self.client.get(reverse("guide")))
+        self.assertIn("您有一耳以上的四頻平均超過 40 dB HL，建議找聽力師評估選配助聽器。", text)
+
+    def test_an_older_exam_too_incomplete_to_estimate_says_only_that(self):
+        """No 「依您…的聽力檢查估算」 after 「兩耳都要有四頻平均」: nothing was estimated."""
+        exam = self.make(PTA_60, PTA_60, tested_on=date(2024, 5, 3))
+        AudiogramPoint.objects.filter(audiogram=exam, ear="left", frequency=4000).delete()
+        self.self_test(PTA_30, PTA_30, date(2026, 10, 1))
+        part = _threshold_part(test_guide.text_of(self.client.get(reverse("guide"))))
+        self.assertIn("兩耳都要有四頻平均，才能估算鑑定門檻。", part)
+        self.assertNotIn("聽力檢查估算", part)

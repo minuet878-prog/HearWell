@@ -82,7 +82,9 @@ class FittingState:
     audiogram: Audiogram | None  # the newest audiogram, its points prefetched
     wearing: bool
     advice: FittingAdvice | None  # 建議評估選配 (fitting_advice); None without an audiogram
-    threshold: dict | None  # assessment_estimate, without an audiogram None
+    # assessment_estimate of the newest audiogram, for its ears' 四頻平均 on the 選配 meters;
+    # the 身障鑑定門檻 reads `assessment` (an exam's). Without an audiogram None.
+    threshold: dict | None
     # 資料不足: the latest audiogram cannot tell whether to suggest an assessment. Shown even
     # when another stop comes first (wearing), but then it is not the 目前這一站.
     insufficient: bool
