@@ -136,10 +136,11 @@ def _quota_used_up(error):
     if error.status_code != 429:
         return False
     try:
-        name = error.response.json().get("name")
+        body = error.response.json()
     except ValueError:  # not Resend's JSON (cross review, Codex 4): that one failed, no more
         return False
-    return name in QUOTA_USED_UP
+    # JSON but no object, such as null or a list (Codex's second look at 4): no name either.
+    return isinstance(body, dict) and body.get("name") in QUOTA_USED_UP
 
 
 def _failed(record, today):

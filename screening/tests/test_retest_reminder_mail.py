@@ -83,14 +83,17 @@ def resend_429(name):
 
 
 class PlainTooManyBackend(EmailBackend):
-    """A 429 for plain@example.com without Resend's JSON, as a proxy in between can answer."""
+    """A 429 for plain@example.com without Resend's JSON object, as a proxy in between can
+    answer: `body` is what it says."""
+
+    body = b"<html><body>Too Many Requests</body></html>"
 
     def send_messages(self, messages):
         if messages[0].to[0] == "plain@example.com":
             response = requests.Response()
             response.status_code = 429
             response.headers["Content-Type"] = "text/html"
-            response._content = b"<html><body>Too Many Requests</body></html>"
+            response._content = PlainTooManyBackend.body
             raise AnymailAPIError("Resend API response 429", status_code=429, response=response)
         return super().send_messages(messages)
 
@@ -547,6 +550,20 @@ class FailedSendTests(ReminderMailTestCase):
     @override_settings(EMAIL_BACKEND=f"{__name__}.PlainTooManyBackend")
     def test_a_429_without_resend_s_words_fails_that_one_and_the_others_go(self):
         # Cross review (Codex 4): no JSON to name the limit, so not the quota.
+        self.fails_alone(b"<html><body>Too Many Requests</body></html>")
+
+    # Codex's second look at 4: JSON, but not an object to find a name in.
+    @override_settings(EMAIL_BACKEND=f"{__name__}.PlainTooManyBackend")
+    def test_a_429_of_json_null_fails_that_one_and_the_others_go(self):
+        self.fails_alone(b"null")
+
+    @override_settings(EMAIL_BACKEND=f"{__name__}.PlainTooManyBackend")
+    def test_a_429_of_a_json_list_fails_that_one_and_the_others_go(self):
+        self.fails_alone(b'["rate_limit_exceeded"]')
+
+    def fails_alone(self, body):
+        PlainTooManyBackend.body = body
+        self.addCleanup(setattr, PlainTooManyBackend, "body", PlainTooManyBackend.body)
         self.person("plain", email="plain@example.com", answered_on=date(2026, 5, 15))
         self.person("goes", email="goes@example.com")
         with self.assertLogs(COMMAND_LOGGER, "ERROR"):
