@@ -235,8 +235,11 @@ class QrCodeTests(TestCase):
                 self.assertContains(response, f"<title>QR code：{address}</title>", count=10)
 
     def test_opened_from_another_address_it_still_holds_the_live_sites(self):
-        response = self.client.get(PRINT_PAGE, HTTP_HOST="localhost")
-        self.assertEqual(self.drawings(response), [qr_drawing("https://tingpal.tw/c/e")] * 10)
+        for card, path in (("elder", "/c/e"), ("family", "/c/f")):
+            with self.subTest(card=card):
+                response = self.client.get(PRINT_PAGE, {"card": card}, HTTP_HOST="localhost")
+                drawn = [qr_drawing(f"https://tingpal.tw{path}")] * 10
+                self.assertEqual(self.drawings(response), drawn)
 
     def test_each_code_has_its_white_border(self):
         # Acceptance 21: version 2 is 25 squares a side; 4 white squares round it make 33.
@@ -255,11 +258,15 @@ class QrCodeTests(TestCase):
 
     @override_settings(SITE_URL="https://staging.example.test")
     def test_the_codes_follow_the_live_sites_address_set(self):
-        # Acceptance 16 (cross review): the address comes from SITE_URL, not a fixed one.
-        address = "https://staging.example.test/c/f"
-        response = self.client.get(PRINT_PAGE, {"card": "family"})
-        self.assertEqual(self.drawings(response), [qr_drawing(address)] * 10)
-        self.assertContains(response, f"<title>QR code：{address}</title>", count=10)
+        # Acceptance 16 (cross review): the address comes from SITE_URL, not a fixed one, for
+        # both cards, opened from that site or from another address.
+        for card, path in (("elder", "/c/e"), ("family", "/c/f")):
+            address = f"https://staging.example.test{path}"
+            for host in ("testserver", "localhost"):
+                with self.subTest(card=card, host=host):
+                    response = self.client.get(PRINT_PAGE, {"card": card}, HTTP_HOST=host)
+                    self.assertEqual(self.drawings(response), [qr_drawing(address)] * 10)
+                    self.assertContains(response, f"<title>QR code：{address}</title>", count=10)
 
     @override_settings(SITE_URL="")
     def test_without_the_live_sites_address_it_says_so_and_draws_none(self):

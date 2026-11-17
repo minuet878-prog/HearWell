@@ -17280,8 +17280,23 @@ class ClinicCardPrintTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             sheet_colour = self.style(self.page.locator(".clinic-cards-sheet"), "backgroundColor")
             self.assertEqual(sheet_colour, "rgb(255, 255, 255)")
             parts = ("brand", "brand-tint", "title", "free", "sees", "camera", "address")
+            # Every box from the words out to the sheet: no colour and no image behind them, so
+            # the sheet's white is what the words stand on (cross review, second round).
+            behind = """el => {
+                const found = [];
+                for (let box = el; !box.classList.contains("clinic-cards-sheet");
+                     box = box.parentElement) {
+                    const style = getComputedStyle(box);
+                    found.push([style.backgroundColor, style.backgroundImage]);
+                }
+                return found;
+            }"""
+            clear = ("rgba(0, 0, 0, 0)", "rgb(255, 255, 255)")
             for part in parts:
                 with self.subTest(part=part):
+                    for colour, image in first.locator(f".clinic-card-{part}").evaluate(behind):
+                        self.assertIn(colour, clear)
+                        self.assertEqual(image, "none")
                     colour = self.style(first.locator(f".clinic-card-{part}"), "color")
                     ratio = StyleInBrowserTest.lowest_contrast(colour, sheet_colour)
                     self.assertGreaterEqual(ratio, 4.5)
