@@ -511,7 +511,14 @@ class RedesignLayoutTests(TestCase):
         journey_js = "screening/frontend/care-journey.js"
         expected = {
             reverse("index"): [*every, *signed_in, notice[0], journey_js, *notice[1:]],
-            reverse("questionnaire_list"): [*every, *signed_in, *notice],
+            # And the elder clinic card's landing counts its mark (spec #677).
+            reverse("questionnaire_list"): [
+                *every,
+                *signed_in,
+                notice[0],
+                "screening/frontend/arrival-count.js",
+                *notice[1:],
+            ],
             # The inline one hides the form before it is drawn (spec phase5_answer_flash.md).
             reverse("screening", args=[self.questionnaire.id]): [
                 *every,

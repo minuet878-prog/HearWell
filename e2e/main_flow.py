@@ -6,12 +6,14 @@ Not named test_*.py, so the normal test run skips it; run it by name after build
 
 import base64
 import calendar
+import json
 import os
 import re
 from contextlib import contextmanager, nullcontext
 from datetime import date, datetime, timedelta
 from itertools import combinations, pairwise
 from math import log2
+from statistics import median
 from typing import ClassVar
 from unittest.mock import patch
 from urllib.parse import parse_qsl, urlparse
@@ -20,7 +22,7 @@ from zoneinfo import ZoneInfo
 from django.conf import settings
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.core.management import call_command
-from django.test import Client
+from django.test import Client, override_settings
 from django.utils import timezone
 from playwright.sync_api import expect, sync_playwright
 
@@ -45,6 +47,7 @@ from screening.models import (
     AudiogramPoint,
     Category,
     Feedback,
+    GuestMonth,
     GuideChapterView,
     NormGroup,
     Question,
@@ -79,6 +82,40 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
 ARTIFACTS = settings.BASE_DIR / "e2e-artifacts"
 QUESTION_COUNT = 10
+# A class longer than this on CI has its tests dealt out across the machines: one process runs a
+# class from start to end, so WhiteCardRuleTest (273 s on CI) alone held up its machine.
+SPLIT_SECONDS = 100
+
+
+def load_tests(loader, tests, pattern):
+    """CI's e2e machines: E2E_SHARD=1/3 runs the first machine's share of the tests.
+
+    Without it (a local run) every test runs. unittest calls this when loading the module.
+    Each class counts as its seconds in e2e/durations.json (a class missing there counts as the
+    median one; e2e/update_durations.py rewrites it); one over SPLIT_SECONDS becomes a piece per
+    machine. Longest first, each goes to the machine with the fewest seconds so far, so each
+    machine also starts its longest first and none is left to run alone at the end.
+    """
+    if not (shard := os.environ.get("E2E_SHARD")):
+        return tests
+    number, total = map(int, shard.split("/"))
+    seconds = json.loads((settings.BASE_DIR / "e2e" / "durations.json").read_text())
+    usual = median(seconds.values())
+    pieces = []
+    for suite in tests:
+        if not (cases := list(suite)):
+            continue
+        time = seconds.get(type(cases[0]).__name__, usual)
+        if time > SPLIT_SECONDS:
+            pieces += [(time / total, cases[k::total]) for k in range(total)]
+        else:
+            pieces.append((time, cases))
+    machines = [[0, []] for _ in range(total)]
+    for time, cases in sorted(pieces, key=lambda piece: piece[0], reverse=True):
+        machine = min(machines, key=lambda m: m[0])
+        machine[0] += time
+        machine[1] += cases
+    return loader.suiteClass(machines[number - 1][1])
 
 
 def type_audiogram_date(main, year, month, day):
@@ -157,6 +194,14 @@ class OnAPhone:
 
     def main(self):
         return self.page.get_by_role("main")
+
+    def click_mid_screen(self, locator, **options):
+        """Clicks locator in the screen's middle. A plain click scrolls it only as far as the
+        screen's foot, and that scroll brings up 回到頂端 or the tab bar there a frame later: on
+        a slow CI they come between the press and the release, which lands on them, and the click
+        is lost without an error (CI run 43984356597)."""
+        locator.evaluate("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })")
+        locator.click(**options)
 
     def double_text(self, on=True):
         """Sets the page's text to 200%, or (on=False) back to its usual size. Not add_style_tag:
@@ -3523,7 +3568,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             self.page.goto(f"{self.live_server_url}/guide")
             expect(self.here()).to_contain_text("配戴助聽器之後")
             self.here().get_by_label("這副助聽器哪一天開始戴？").fill(fitted_on.isoformat())
-            self.here().get_by_role("button", name="儲存").click()
+            self.click_mid_screen(self.here().get_by_role("button", name="儲存"))
 
             # 8 二十五號表: at least a month on, dated. Answered 完成了 at the foot of its
             # chapter, then on the route 修改 to 還沒 and 完成了 again.
@@ -3553,7 +3598,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             form_25.get_by_role("button", name="還沒").click()
             expect(self.here()).to_contain_text("二十五號表")
             expect(self.here().locator(".route-answer")).to_have_text("二十五號表還沒完成")
-            self.here().get_by_role("button", name="完成了").click()
+            self.click_mid_screen(self.here().get_by_role("button", name="完成了"))
 
             # 9 等待補助發放: here, asking nothing and never 已完成; the eight before it done.
             expect(self.here()).to_contain_text("等待補助發放")
@@ -13414,7 +13459,7 @@ class FamilyAdjustingTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
         with self.saving_artifacts():
             self.open(self.PATH, signed_in=False)
             self.group().get_by_label(self.UNUSED.label).check()
-            self.live().get_by_role("link", name="怎麼跟聽損的家人說話").click()
+            self.click_mid_screen(self.live().get_by_role("link", name="怎麼跟聽損的家人說話"))
             expect(self.page).to_have_url(f"{self.live_server_url}/family/talk")
 
             self.page.goto(f"{self.live_server_url}{self.PATH}")
@@ -15950,7 +15995,7 @@ class AudiogramReadingTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServ
                     self.open_step(3, width)
                     if double:
                         self.double_text()
-                    self.main().get_by_text(self.TABLE).click()
+                    self.click_mid_screen(self.main().get_by_text(self.TABLE))
                     expect(self.reading()).to_have_text("點一下圖來標記")
                     top = self.chart_top()
                     for name, value, rows in longest:
@@ -15972,6 +16017,15 @@ class AudiogramReadingTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServ
                         lines = [text for text, _ in self.lines(self.reading())]
                         self.assertFalse(any(re.search(r"^(Hz|dB)", line) for line in lines))
                         self.assertEqual(self.chart_top(), top)
+
+    # CI run 43984356597: a press held as long as a slow CI's still opens the table at 200% text,
+    # far enough down for 回到頂端 to come up as the page scrolls to it.
+    def test_table_opens_with_a_slow_press_at_double_text_size(self):
+        self.open_step(3)
+        with self.saving_artifacts():
+            self.double_text()
+            self.click_mid_screen(self.main().get_by_text(self.TABLE), delay=100)
+            expect(self.main().get_by_label("左耳骨導 4000 Hz", exact=True)).to_be_visible()
 
     # Acceptance 40: the confirm step's read-only chart has no reading.
     def test_confirm_step_has_no_reading(self):
@@ -17186,3 +17240,188 @@ class NarrowOverflowsT668Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveS
                     self.double_text(on=False)
                     for side in ("paddingLeft", "paddingRight"):
                         self.assertEqual(self.style(block, side), "20.25px", f"{width}px")
+
+
+class ClinicCardArrivalTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Spec #677 acceptance 7-9 (ADR 0066): a clinic card's address, opened in a browser, lands on
+    its card's page with a clean address, and that card's column of the 訪客月計數 goes up by one,
+    once: reloading the page counts nothing more."""
+
+    # Each card, its landing, its column, and what that page shows (acceptance 1).
+    CARDS = (
+        ("/c/e", "/questionnaire_list", "clinic_elder", "您目前的實際年齡？"),
+        ("/c/f", "/family", "clinic_family", "家人專區"),
+    )
+
+    def counted(self, column):
+        month = GuestMonth.objects.filter(month=timezone.localdate().replace(day=1)).first()
+        return getattr(month, column) if month else 0
+
+    def wait_until_counted(self, column, expected):
+        # The page sends the count after it opens; give it up to 5 seconds to arrive.
+        for _ in range(50):
+            if self.counted(column) == expected:
+                return
+            self.page.wait_for_timeout(100)
+        self.assertEqual(self.counted(column), expected, column)
+
+    def test_each_card_lands_clean_and_counts_once(self):
+        with self.saving_artifacts():
+            for card, landing, column, shown in self.CARDS:
+                with self.subTest(card=card):
+                    self.open(card, signed_in=False)
+                    expect(self.page).to_have_url(f"{self.live_server_url}{landing}")
+                    expect(self.main()).to_contain_text(shown)
+                    self.wait_until_counted(column, 1)
+                    self.page.reload()
+                    self.page.wait_for_load_state("load")
+                    # Long enough for a second count to have arrived, had the page sent one.
+                    self.page.wait_for_timeout(1000)
+                    self.assertEqual(self.counted(column), 1, f"{card} after a reload")
+            self.assertEqual(
+                list(GuestMonth.objects.values_list("completed", "saved_password")), [(0, 0)]
+            )
+
+
+@override_settings(SITE_URL="https://tingpal.tw")
+class ClinicCardPrintTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Spec #677 acceptance 20-22 (the #678 mockup's C and P): printed, the page is one A4 sheet
+    of 10 cards of 90 x 55 mm, the QR codes at least 2.5 cm, nothing else on the paper; on a
+    phone at 200% text it fits without scrolling sideways."""
+
+    MM = 96 / 25.4  # CSS pixels in a millimetre
+
+    def test_printed_it_is_one_a4_sheet_of_ten_real_size_cards(self):
+        with self.saving_artifacts():
+            self.open("/clinic-cards", self.DESKTOP, signed_in=False)
+            self.page.emulate_media(media="print")
+            # The heading, the two choices and the printing tips stay on screen.
+            expect(self.page.get_by_role("heading", name="列印診間小卡")).to_be_hidden()
+            expect(self.page.get_by_role("navigation", name="卡種")).to_be_hidden()
+            expect(self.page.get_by_text("列印要點")).to_be_hidden()
+            sheet = self.page.locator(".clinic-cards-sheet").bounding_box()
+            self.assertAlmostEqual(sheet["width"] / self.MM, 210, delta=0.3)
+            self.assertAlmostEqual(sheet["height"] / self.MM, 297, delta=0.3)
+            cards = self.page.locator(".clinic-card")
+            expect(cards).to_have_count(10)
+            for number, card in enumerate(cards.all(), start=1):
+                box = card.bounding_box()
+                with self.subTest(card=number):
+                    self.assertAlmostEqual(box["width"] / self.MM, 90, delta=0.3)
+                    self.assertAlmostEqual(box["height"] / self.MM, 55, delta=0.3)
+                    # Inside the sheet, which is the paper.
+                    self.assertGreaterEqual(box["x"], sheet["x"])
+                    self.assertGreaterEqual(box["y"], sheet["y"])
+                    self.assertLessEqual(box["x"] + box["width"], sheet["x"] + sheet["width"])
+                    self.assertLessEqual(box["y"] + box["height"], sheet["y"] + sheet["height"])
+            # Two columns by five rows, each card ringed by a pale grey line to cut along.
+            boxes = [card.bounding_box() for card in cards.all()]
+            self.assertEqual(len({round(box["x"]) for box in boxes}), 2)
+            self.assertEqual(len({round(box["y"]) for box in boxes}), 5)
+            first = cards.first
+            for side in ("Top", "Right", "Bottom", "Left"):
+                with self.subTest(line=side):
+                    self.assertEqual(self.style(first, f"border{side}Style"), "solid")
+                    self.assertGreater(float(self.style(first, f"border{side}Width")[:-2]), 0)
+                    self.assertEqual(self.style(first, f"border{side}Color"), "rgb(187, 187, 187)")
+            codes = self.page.locator(".clinic-card-qr svg")
+            expect(codes).to_have_count(10)
+            for qr in codes.all():
+                box = qr.bounding_box()
+                self.assertGreaterEqual(box["width"] / self.MM, 25)
+                self.assertGreaterEqual(box["height"] / self.MM, 25)
+            # Acceptance 23: white, no colour behind the words, each at least 4.5:1 on it.
+            self.assertEqual(self.style(first, "backgroundColor"), "rgba(0, 0, 0, 0)")
+            self.assertEqual(self.style(first, "backgroundImage"), "none")
+            sheet = self.page.locator(".clinic-cards-sheet")
+            sheet_colour = self.style(sheet, "backgroundColor")
+            self.assertEqual(sheet_colour, "rgb(255, 255, 255)")
+            # The sheet itself: white, with no image over it (cross review, third round).
+            self.assertEqual(self.style(sheet, "backgroundImage"), "none")
+            parts = ("brand", "brand-tint", "title", "free", "sees", "camera", "address")
+            # Every box from the words out to the sheet: no colour and no image behind them, so
+            # the sheet's white is what the words stand on (cross review, second round).
+            behind = """el => {
+                const found = [];
+                for (let box = el; !box.classList.contains("clinic-cards-sheet");
+                     box = box.parentElement) {
+                    const style = getComputedStyle(box);
+                    found.push([style.backgroundColor, style.backgroundImage]);
+                }
+                return found;
+            }"""
+            clear = ("rgba(0, 0, 0, 0)", "rgb(255, 255, 255)")
+            for part in parts:
+                with self.subTest(part=part):
+                    for colour, image in first.locator(f".clinic-card-{part}").evaluate(behind):
+                        self.assertIn(colour, clear)
+                        self.assertEqual(image, "none")
+                    colour = self.style(first.locator(f".clinic-card-{part}"), "color")
+                    ratio = StyleInBrowserTest.lowest_contrast(colour, sheet_colour)
+                    self.assertGreaterEqual(ratio, 4.5)
+            # The QR code's dark squares, black on the white page.
+            squares = self.style(first.locator(".clinic-card-qr .qrline"), "stroke")
+            self.assertGreaterEqual(StyleInBrowserTest.lowest_contrast(squares, sheet_colour), 4.5)
+            # The browser's own print: exactly one A4 page.
+            pdf = self.page.pdf(prefer_css_page_size=True)
+            self.assertEqual(len(re.findall(rb"/Type\s*/Page\b", pdf)), 1)
+            # A4 is 595 x 842 points.
+            width, height = map(
+                float, re.search(rb"/MediaBox \[0 0 ([\d.]+) ([\d.]+)\]", pdf).groups()
+            )
+            self.assertAlmostEqual(width, 595.3, delta=1)
+            self.assertAlmostEqual(height, 841.9, delta=1.5)
+
+    def test_printed_the_owners_words_keep_their_lines_inside_the_card(self):
+        # Acceptance 25 (#682): each line the owner wrote stays one line, nothing cut or outside.
+        # Written without spaces: self.lines (LINES) reads a line's words without them.
+        lines = {
+            "elder": {
+                "title": ["花3分鐘，看看", "聽力對生活的影響"],
+                "sees": ["回答10題，", "馬上看到結果和建議"],
+                "free": ["不用註冊・免費"],
+                "camera": ["用手機相機掃"],
+            },
+            "family": {
+                "title": ["陪家人一起", "面對聽力問題"],
+                "sees": ["怎麼跟他說話、陪他看診、", "助聽器怎麼照顧"],
+                "free": ["不用註冊・免費"],
+                "camera": ["用手機相機掃"],
+            },
+        }
+        with self.saving_artifacts():
+            for card, parts in lines.items():
+                self.open(f"/clinic-cards?card={card}", self.DESKTOP, signed_in=False)
+                self.page.emulate_media(media="print")
+                first = self.page.locator(".clinic-card").first
+                edge = first.bounding_box()
+                for part, expected in parts.items():
+                    with self.subTest(card=card, part=part):
+                        words = first.locator(f".clinic-card-{part}")
+                        self.assertEqual([text for text, _ in self.lines(words)], expected)
+                for part in ("brand", "title", "free", "sees", "qr", "camera", "address"):
+                    with self.subTest(card=card, inside=part):
+                        box = first.locator(f".clinic-card-{part}").bounding_box()
+                        self.assertGreaterEqual(box["x"], edge["x"])
+                        self.assertGreaterEqual(box["y"], edge["y"])
+                        self.assertLessEqual(box["x"] + box["width"], edge["x"] + edge["width"])
+                        self.assertLessEqual(box["y"] + box["height"], edge["y"] + edge["height"])
+
+    def test_a_window_a_little_wider_than_a_phone_does_not_scroll_sideways(self):
+        # Cross review of spec #677 (acceptance 21-22): the A4 sheet and its 16px sides need
+        # about 826px; between that and 800px the sheet showed whole and scrolled sideways.
+        with self.saving_artifacts():
+            for width in (801, 810, 825, 840):
+                with self.subTest(width=width):
+                    self.open("/clinic-cards", (width, 900), signed_in=False)
+                    scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
+                    self.assertLessEqual(scroll_width, width)
+
+    def test_it_fits_a_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            for width in (320, 390):
+                with self.subTest(width=width):
+                    self.open("/clinic-cards", (width, 844), signed_in=False)
+                    self.assert_fits_a_phone_at_double_text_size("clinic cards", width)
+                    # One card shows what is printed; the rest wait for a computer.
+                    expect(self.page.locator(".clinic-card:visible")).to_have_count(1)

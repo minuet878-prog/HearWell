@@ -518,6 +518,11 @@ NOT_PAGES = {
     "report_share_create",
     "report_share_cancel",
     "download_my_data",
+    # A 小卡網址 only sends the scan on to its landing page (spec #677).
+    "clinic_card_elder",
+    "clinic_card_family",
+    # The cards' print page has no footer, only the sheet to print (spec #677).
+    "clinic_cards",
 }
 
 
