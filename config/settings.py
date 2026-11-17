@@ -298,3 +298,16 @@ if sentry_dsn:
     from config import monitoring
 
     monitoring.init(sentry_dsn)
+
+# CODING_STANDARDS 4: the site's own logs on this machine (stderr: the VPS's journal) keep an
+# error's type and where it happened, not its words; a mail service's name the address. Sentry
+# still gets all of it, through config.monitoring._scrub.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"without_error_words": {"()": "config.monitoring.WithoutErrorWords"}},
+    "handlers": {
+        "stderr": {"class": "config.monitoring.StderrHandler", "formatter": "without_error_words"}
+    },
+    "loggers": {"screening": {"handlers": ["stderr"]}},
+}

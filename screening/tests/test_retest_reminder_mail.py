@@ -4,6 +4,7 @@ send_retest_reminders on the day a life-impact record falls due again."""
 import json
 import re
 import uuid
+from contextlib import redirect_stderr
 from datetime import date, datetime, timedelta
 from io import StringIO
 from unittest.mock import patch
@@ -602,6 +603,22 @@ class FailedSendSentryTests(ReminderMailTestCase):
         self.assertEqual(event["logentry"]["message"], "A retest reminder could not be sent")
         self.assertEqual(event["exception"]["values"][-1]["type"], "OSError")
         self.assertNotIn(email.split("@")[0], json.dumps(event, default=str))
+
+    @override_settings(EMAIL_BACKEND=f"{__name__}.RefusingBackend")
+    def test_the_local_log_has_the_error_without_the_address(self):
+        # CODING_STANDARDS 4 (cross review): this machine's log, stderr (the VPS's journal),
+        # keeps the fixed message, the error's type and where; Sentry still gets it, stack too.
+        self.person("refused", email="refused-secret@example.com")
+        with redirect_stderr(StringIO()) as local:
+            self.run_on(DUE_ON)
+        self.assertIn("A retest reminder could not be sent", local.getvalue())
+        self.assertIn("Traceback", local.getvalue())
+        self.assertIn("OSError", local.getvalue())
+        self.assertNotIn("refused-secret", local.getvalue())
+        sentry_sdk.flush()
+        (event,) = [env.get_event() for env in self.transport.envelopes if env.get_event()]
+        self.assertEqual(event["logentry"]["message"], "A retest reminder could not be sent")
+        self.assertTrue(event["exception"]["values"][-1]["stacktrace"]["frames"])
 
 
 class MonthCountTests(ReminderMailTestCase):

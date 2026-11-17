@@ -1,3 +1,7 @@
+import logging
+import sys
+import traceback
+
 import sentry_sdk
 
 
@@ -30,3 +34,25 @@ def init(dsn, transport=None):
         auto_session_tracking=False,  # errors only, no usage data per request
         before_send=_scrub,
     )
+
+
+class WithoutErrorWords(logging.Formatter):
+    """settings.LOGGING's: an error's type and where it happened, without its words (they can
+    hold an email), as _scrub sends it to Sentry."""
+
+    def formatException(self, exc_info):
+        kind, _, trace = exc_info
+        where = "".join(traceback.format_tb(trace))
+        return f"Traceback (most recent call last):\n{where}{kind.__qualname__}"
+
+
+class StderrHandler(logging.StreamHandler):
+    """To stderr as it is when each line is written, like Python's own last-resort handler, where
+    the site's logs went before settings.LOGGING."""
+
+    def __init__(self, level=logging.NOTSET):
+        logging.Handler.__init__(self, level)
+
+    @property
+    def stream(self):
+        return sys.stderr
