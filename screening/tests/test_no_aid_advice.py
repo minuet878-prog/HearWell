@@ -92,18 +92,29 @@ class NoAidAdviceResultTests(TestCase):
                 self.assertLess(main.rindex("</details>"), main.index(note))
 
 
+def save_card(html):
+    """The guest save card's own HTML, from its opening div to the one that closes it."""
+    start = html.index('<div class="result-next" data-guest-save-card>')
+    depth = 0
+    for tag in re.finditer(r"<div\b|</div>", html[start:]):
+        depth += 1 if tag.group() == "<div" else -1
+        if depth == 0:
+            return html[start : start + tag.end()]
+    raise AssertionError("the save card is not closed")
+
+
 class NoAidAdviceGuestTests(test_guest_save.GuestSaveTestCase):
     def guest(self, code, level):
         questionnaire = self.hhie_s if code == hhie_s.CODE else self.hhia_s
         return self.guest_html(SCORES[level], questionnaire)
 
     def test_the_save_card_promises_the_next_step_by_the_audiogram(self):
-        # Acceptance 4.
+        # Acceptance 4 (cross review: said in the card, not anywhere on the page).
         for code in CODES:
             for level, reason in SAVE_REASONS.items():
                 with self.subTest(questionnaire=code, level=level):
                     html = self.guest(code, level)
-                    self.assertIn(reason, html)
+                    self.assertIn(f'<p class="mb-2">{reason}</p>', save_card(html))
                     self.assertNotIn("助聽器選配", html)
 
     def test_the_advice_links_to_where_to_have_the_hearing_checked(self):
