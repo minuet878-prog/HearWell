@@ -20,7 +20,7 @@ from zoneinfo import ZoneInfo
 from django.conf import settings
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.core.management import call_command
-from django.test import Client
+from django.test import Client, override_settings
 from django.utils import timezone
 from playwright.sync_api import expect, sync_playwright
 
@@ -17223,3 +17223,53 @@ class ClinicCardArrivalTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
             self.assertEqual(
                 list(GuestMonth.objects.values_list("completed", "saved_password")), [(0, 0)]
             )
+
+
+@override_settings(SITE_URL="https://tingpal.tw")
+class ClinicCardPrintTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Spec #677 acceptance 20-22 (the #678 mockup's C and P): printed, the page is one A4 sheet
+    of 10 cards of 90 x 55 mm, the QR codes at least 2.5 cm, nothing else on the paper; on a
+    phone at 200% text it fits without scrolling sideways."""
+
+    MM = 96 / 25.4  # CSS pixels in a millimetre
+
+    def test_printed_it_is_one_a4_sheet_of_ten_real_size_cards(self):
+        with self.saving_artifacts():
+            self.open("/clinic-cards", self.DESKTOP, signed_in=False)
+            self.page.emulate_media(media="print")
+            expect(self.page.locator(".clinic-cards-intro")).to_be_hidden()
+            sheet = self.page.locator(".clinic-cards-sheet").bounding_box()
+            self.assertAlmostEqual(sheet["width"] / self.MM, 210, delta=0.3)
+            self.assertAlmostEqual(sheet["height"] / self.MM, 297, delta=0.3)
+            cards = self.page.locator(".clinic-card")
+            expect(cards).to_have_count(10)
+            for number, card in enumerate(cards.all(), start=1):
+                box = card.bounding_box()
+                with self.subTest(card=number):
+                    self.assertAlmostEqual(box["width"] / self.MM, 90, delta=0.3)
+                    self.assertAlmostEqual(box["height"] / self.MM, 55, delta=0.3)
+                    # Inside the sheet, which is the paper.
+                    self.assertGreaterEqual(box["x"], sheet["x"])
+                    self.assertGreaterEqual(box["y"], sheet["y"])
+                    self.assertLessEqual(box["x"] + box["width"], sheet["x"] + sheet["width"])
+                    self.assertLessEqual(box["y"] + box["height"], sheet["y"] + sheet["height"])
+            for qr in self.page.locator(".clinic-card-qr svg").all():
+                self.assertGreaterEqual(qr.bounding_box()["width"] / self.MM, 25)
+            # The browser's own print: exactly one A4 page.
+            pdf = self.page.pdf(prefer_css_page_size=True)
+            self.assertEqual(len(re.findall(rb"/Type\s*/Page\b", pdf)), 1)
+            # A4 is 595 x 842 points.
+            width, height = map(
+                float, re.search(rb"/MediaBox \[0 0 ([\d.]+) ([\d.]+)\]", pdf).groups()
+            )
+            self.assertAlmostEqual(width, 595.3, delta=1)
+            self.assertAlmostEqual(height, 841.9, delta=1.5)
+
+    def test_it_fits_a_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            for width in (320, 390):
+                with self.subTest(width=width):
+                    self.open("/clinic-cards", (width, 844), signed_in=False)
+                    self.assert_fits_a_phone_at_double_text_size("clinic cards", width)
+                    # One card shows what is printed; the rest wait for a computer.
+                    expect(self.page.locator(".clinic-card:visible")).to_have_count(1)

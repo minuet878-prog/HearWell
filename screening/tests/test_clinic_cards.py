@@ -1,8 +1,11 @@
 """診間小卡 (spec #677, ADR 0066): the two card addresses printed in the QR codes, kept forever,
 each landing on its card's page with the card's mark; the landing page counts the scan."""
 
+import re
+
+import segno
 from django.db import connection
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.test.utils import CaptureQueriesContext
 
 from screening.models import GuestMonth, User
@@ -135,3 +138,112 @@ class LandingPageTests(TestCase):
                     response = self.client.get(landing)
                     self.assertEqual(response.status_code, 200)
                     self.assertContains(response, ARRIVAL_SCRIPT)
+
+
+PRINT_PAGE = "/clinic-cards"
+
+
+class PrintPageTests(TestCase):
+    """Acceptance 14-19 (the #678 mockup's C and P): a sheet of 10 cards of one kind, the QR
+    codes pointing at the live site's card address."""
+
+    def cards(self, response):
+        return re.findall(r'<div class="clinic-card" data-card="(\w+)"', response.content.decode())
+
+    def test_a_guest_opens_a_sheet_of_ten_elder_cards(self):
+        response = self.client.get(PRINT_PAGE)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.cards(response), ["elder"] * 10)
+
+    def test_the_family_card_fills_the_sheet_when_chosen(self):
+        self.assertEqual(
+            self.cards(self.client.get(PRINT_PAGE, {"card": "family"})), ["family"] * 10
+        )
+
+    def test_a_card_it_does_not_know_is_the_elder_card(self):
+        for card in ("other", ""):
+            with self.subTest(card=card):
+                response = self.client.get(PRINT_PAGE, {"card": card})
+                self.assertEqual(self.cards(response), ["elder"] * 10)
+
+    def test_the_two_choices_on_top_switch_without_javascript(self):
+        # The mockup's P: two links, the one shown marked as the current choice.
+        page = self.client.get(PRINT_PAGE, {"card": "family"}).content.decode()
+        choices = re.findall(r'<a class="clinic-cards-choice"([^>]*)>([^<]+)</a>', page)
+        self.assertEqual(
+            choices,
+            [
+                (' href="/clinic-cards?card=elder"', "長輩卡"),
+                (' href="/clinic-cards?card=family" aria-current="page"', "家屬卡"),
+            ],
+        )
+
+
+def qr_drawing(address):
+    """The squares of a QR code holding address, as the print page should draw it."""
+    code = segno.make(address, error="m", micro=False)
+    return re.search(r'class="qrline"[^>]* d="([^"]+)"', code.svg_inline(border=4)).group(1)
+
+
+@override_settings(SITE_URL="https://tingpal.tw")
+class QrCodeTests(TestCase):
+    """Acceptance 16, 17 and 24: each card's QR code holds the live site's 小卡網址, drawn here."""
+
+    def drawings(self, response):
+        # The dark squares' path; the white border is a path of its own.
+        return re.findall(r'class="qrline"[^>]* d="([^"]+)"', response.content.decode())
+
+    def test_each_card_holds_its_address_on_the_live_site(self):
+        for card, address in (
+            ("elder", "https://tingpal.tw/c/e"),
+            ("family", "https://tingpal.tw/c/f"),
+        ):
+            with self.subTest(card=card):
+                response = self.client.get(PRINT_PAGE, {"card": card})
+                self.assertEqual(self.drawings(response), [qr_drawing(address)] * 10)
+                # Read out as what it opens.
+                self.assertContains(response, f"<title>QR code：{address}</title>", count=10)
+
+    def test_opened_from_another_address_it_still_holds_the_live_sites(self):
+        response = self.client.get(PRINT_PAGE, HTTP_HOST="localhost")
+        self.assertEqual(self.drawings(response), [qr_drawing("https://tingpal.tw/c/e")] * 10)
+
+    @override_settings(SITE_URL="")
+    def test_without_the_live_sites_address_it_says_so_and_draws_none(self):
+        response = self.client.get(PRINT_PAGE)
+        self.assertEqual(self.drawings(response), [])
+        self.assertContains(response, "沒有設定正式網址，印出來的 QR code 不能用")
+
+
+class PrintPageReachTests(TestCase):
+    """Acceptance 14, 15, 18 and 19: who opens the print page, how the owner finds it, and what a
+    card never says."""
+
+    def test_open_before_agreeing_to_the_privacy_notice(self):
+        self.client.force_login(User.objects.create_user(username="pat", password="x"))
+        self.assertEqual(self.client.get(PRINT_PAGE).status_code, 200)
+
+    def test_kept_out_of_search_and_the_sitemap(self):
+        self.assertEqual(self.client.get(PRINT_PAGE)["X-Robots-Tag"], "noindex")
+        self.assertFalse(is_public(PRINT_PAGE))
+        self.assertNotIn(PRINT_PAGE, self.client.get("/sitemap.xml").content.decode())
+
+    def test_no_page_of_the_site_links_to_it(self):
+        for page in ("/", "/learn", "/family", "/about", "/privacy", "/questionnaire_list"):
+            with self.subTest(page=page):
+                self.assertNotContains(self.client.get(page), PRINT_PAGE)
+
+    def test_the_admins_home_links_to_it(self):
+        self.client.force_login(User.objects.create_superuser(username="owner", password="pw"))
+        self.assertContains(self.client.get("/admin/"), f'href="{PRINT_PAGE}"')
+
+    def test_a_card_has_the_logo_and_the_address_but_no_name_or_workplace(self):
+        page = self.client.get(PRINT_PAGE).content.decode()
+        card = page[page.index('<div class="clinic-card"') :]
+        card = card[: card.index('<div class="clinic-card"', 1)]
+        self.assertIn('class="clinic-card-logo"', card)
+        self.assertIn("聽<span", card)
+        self.assertIn('<p class="clinic-card-address">tingpal.tw</p>', card)
+        for kept_off in ("執業聽力師", "審定", "醫院", "診所"):
+            with self.subTest(kept_off=kept_off):
+                self.assertNotIn(kept_off, card)
