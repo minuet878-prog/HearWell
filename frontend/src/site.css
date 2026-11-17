@@ -6606,12 +6606,13 @@
 @layer components {
   /* A single thing to tap in a colour block (ADR 0043): pale blue, no frame; only its button,
      or its rows when it recommends two, can be pressed.
-     #668 (the owner's pick A): where the block is under 12rem wide (a 320px phone at 200%
-     text), its sides drop to 0.5rem, so a date like 2026/05/01, which cannot break, fits its
-     words. A padding's 100% is the width the block fills; less 12rem and scaled up, it is below
+     #668 (the owner's pick A): a date like 2026/05/01 cannot break, and with the usual sides
+     it needs the block about 8.5rem wide (the date about 6.25rem, the sides 2.25rem). Under
+     9rem (a 320px phone at 200% text, not a 390px one) the sides drop to 0.5rem so it fits the
+     words. A padding's 100% is the width the block fills; less 9rem and scaled up, it is below
      0 there, so the lower bound, and above 1.125rem everywhere else, so the usual sides. */
   .recommended-block {
-    padding: 1rem clamp(0.5rem, (100% - 12rem) * 100, 1.125rem);
+    padding: 1rem clamp(0.5rem, (100% - 9rem) * 100, 1.125rem);
     border-radius: var(--radius-large);
     background-color: var(--color-brand-soft);
     color: var(--color-heading);

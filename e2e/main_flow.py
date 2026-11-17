@@ -17090,14 +17090,14 @@ class NarrowOverflowsT668Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveS
                             self.assertLessEqual(
                                 edge["x"] + edge["width"], chart["x"] + chart["width"], said
                             )
-            # Acceptance 4: at the usual size the first point is 16px in from the chart's edge, as
-            # before.
-            for width in (320, 390):
-                with self.subTest(code=code, width=width, size="usual"):
-                    self.open(f"/my_hearing?questionnaire={code}", (width, 844))
-                    expect(self.page.locator(".recharts-wrapper")).to_be_visible()
-                    first = self.page.locator(".trend-dot").first
-                    self.assertEqual(float(first.get_attribute("data-cx")), 16)
+                # Acceptance 4: at the usual size the first point is 16px in from the chart's
+                # edge, as before.
+                for width in (320, 390):
+                    with self.subTest(code=code, width=width, size="usual"):
+                        self.open(f"/my_hearing?questionnaire={code}", (width, 844))
+                        expect(self.page.locator(".recharts-wrapper")).to_be_visible()
+                        first = self.page.locator(".trend-dot").first
+                        self.assertEqual(float(first.get_attribute("data-cx")), 16)
 
     def test_the_recommended_date_stays_inside_its_words(self):
         # Acceptance 3: HHIE-S 200 days ago, so it is recommended (retest due) with 上次 and its
@@ -17113,9 +17113,14 @@ class NarrowOverflowsT668Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveS
                     facts = self.main().locator(".recommended-block .recommended-facts")
                     expect(facts).to_contain_text(f"上次 {old:%Y/%m/%d}")
                     words_end, room_end = facts.locator(".inline-block").evaluate(self.WORDS_END)
+                    # Half a pixel for sub-pixel rounding of the text's box.
                     self.assertLessEqual(words_end, room_end + 0.5, f"{width}px")
-                    # Acceptance 4: at the usual size the block keeps its 1.125rem sides.
-                    self.double_text(on=False)
+                    # Acceptance 4: the block keeps its 1.125rem sides where the date fits: at
+                    # 390px even at 200% (40.5px), and at the usual size (20.25px).
                     block = self.main().locator(".recommended-block")
+                    if width == 390:
+                        for side in ("paddingLeft", "paddingRight"):
+                            self.assertEqual(self.style(block, side), "40.5px", "390px at 200%")
+                    self.double_text(on=False)
                     for side in ("paddingLeft", "paddingRight"):
                         self.assertEqual(self.style(block, side), "20.25px", f"{width}px")
