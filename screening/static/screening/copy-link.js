@@ -43,15 +43,15 @@
   }
 
   const linkButton = document.getElementById("copy-link");
-  if (linkButton && !("withoutShareSheet" in linkButton.dataset && navigator.share)) {
+  const withoutShareSheet = linkButton && "withoutShareSheet" in linkButton.dataset;
+  if (linkButton && !(withoutShareSheet && navigator.share)) {
     const address = document.getElementById("share-url");
     if (address) address.hidden = true;
-    const withoutShareSheet = "withoutShareSheet" in linkButton.dataset;
     if (!navigator.share && !withoutShareSheet) {
       linkButton.classList.replace("btn-outline-primary", "btn-primary");
     }
-    const words = linkButton.dataset.text ?? linkButton.dataset.url;
-    showCopyButton(linkButton, words, document.getElementById("copy-status"), () => {
+    const toCopy = linkButton.dataset.text ?? linkButton.dataset.url;
+    showCopyButton(linkButton, toCopy, document.getElementById("copy-status"), () => {
       if (address) address.hidden = false;
     });
   }

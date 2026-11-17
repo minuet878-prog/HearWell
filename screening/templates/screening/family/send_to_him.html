@@ -6,6 +6,8 @@
         <p class="font-bold mb-1">會傳出這段話</p>
         <p class="wrap-anywhere">{{ send.message }}<br>{{ send.address }}</p>
     </div>
-    <p class="mb-0"><button id="share-button" type="button" class="btn {% if outline %}btn-outline-primary{% else %}btn-primary{% endif %} btn-lg w-full send-to-him-button" data-text="{{ send.text }}" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>傳給他做篩檢</button><button id="copy-link" type="button" class="btn {% if outline %}btn-outline-primary{% else %}btn-primary{% endif %} btn-lg w-full send-to-him-button" data-text="{{ send.text }}" data-without-share-sheet hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>複製訊息</button></p>
+    {% with style=outline|yesno:"btn-outline-primary,btn-primary" %}
+    <p class="mb-0"><button id="share-button" type="button" class="btn {{ style }} btn-lg w-full send-to-him-button" data-text="{{ send.text }}" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>傳給他做篩檢</button><button id="copy-link" type="button" class="btn {{ style }} btn-lg w-full send-to-him-button" data-text="{{ send.text }}" data-without-share-sheet hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>複製訊息</button></p>
+    {% endwith %}
     <p id="copy-status" class="visually-hidden" aria-live="polite"></p>
 </section>

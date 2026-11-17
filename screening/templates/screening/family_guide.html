@@ -48,22 +48,7 @@
     <h2 class="h4 mt-6">確定聽力不好之後</h2>
     <ul class="list-unstyled family-entries">
         {# #487 (the #485 mockup ⑤): first of its group, so the family hears it before reading how to talk. #}
-        <li><a class="link-card action-card" href="{% url 'hearing_loss_simulator' %}">
-            {% include "screening/action_icon.html" with icon="sound" %}
-            <span class="link-card-body">
-                <span class="link-card-title">先聽聽看他聽到的聲音</span>
-                <span>選程度，聽同一句話怎麼變</span>
-            </span>
-            <span class="link-card-arrow" aria-hidden="true">›</span>
-        </a></li>
-        <li><a class="link-card action-card" href="{% url 'family_talk' %}">
-            {% include "screening/action_icon.html" with icon="family" %}
-            <span class="link-card-body">
-                <span class="link-card-title">怎麼跟他說話</span>
-                <span>情境題與溝通重點</span>
-            </span>
-            <span class="link-card-arrow" aria-hidden="true">›</span>
-        </a></li>
+        {% include "screening/family/listen_and_talk_rows.html" %}
         <li><a class="link-card action-card" href="{% url 'family_visits' %}">
             {% include "screening/action_icon.html" with icon="clipboard" %}
             <span class="link-card-body">

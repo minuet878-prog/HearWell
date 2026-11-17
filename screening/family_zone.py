@@ -316,6 +316,9 @@ class FamilyQuestionPage:
     # The 蛤 page only: the heading and lead above its rows to the simulator and to how to talk.
     listen_heading: str = ""
     listen_lead: str = ""
+    # 傳給他's heading, and True for the outline button of a page whose main way on is elsewhere.
+    send_heading: str = ""
+    send_outline: bool = False
 
 
 # One source for all three, opened on 2026-11-17 (its old asha.org address leads there).
@@ -420,6 +423,9 @@ HUH_PAGE = FamilyQuestionPage(
     checked_on=FAMILY_QUESTION_CHECKED_ON,
     listen_heading="聽聽他聽到的聲音",
     listen_lead="戴上耳機，聽聽看聽損的人聽到的家常話。您會比較知道，為什麼大聲重講不一定有用。",
+    # Grill Q6: the simulator is the main way on, so 傳給他 is the outline kind under 也.
+    send_heading="也可以先在家做個簡單的篩檢",
+    send_outline=True,
 )
 
 # 傳給他 (spec #655, #674): the owner's words (#671, family-pages-skeleton.md). One message for
@@ -430,8 +436,6 @@ SEND_MESSAGE = (
     "做完會看到結果和建議，有空可以做做看。"
 )
 SEND_HEADING = "先在家做個簡單的篩檢"
-# The 蛤 page's 傳給他 comes after the simulator's way, so it says 也 (grill Q6, #671).
-SEND_HEADING_TOO = "也可以先在家做個簡單的篩檢"
 SEND_LEAD = (
     "篩檢是回答幾個生活中聽的問題，大約 3 分鐘、不用註冊。"
     "它不能取代聽力檢查，但可以幫他看看聽力對生活的影響，結果也會建議下一步。"

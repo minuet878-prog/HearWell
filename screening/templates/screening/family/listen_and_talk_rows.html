@@ -1,0 +1,17 @@
+{# The zone's rows to the hearing loss simulator and to how to talk: on the zone's home (#487) and on the 蛤 page (spec #655, #675). #}
+<li><a class="link-card action-card" href="{% url 'hearing_loss_simulator' %}">
+    {% include "screening/action_icon.html" with icon="sound" %}
+    <span class="link-card-body">
+        <span class="link-card-title">先聽聽看他聽到的聲音</span>
+        <span>選程度，聽同一句話怎麼變</span>
+    </span>
+    <span class="link-card-arrow" aria-hidden="true">›</span>
+</a></li>
+<li><a class="link-card action-card" href="{% url 'family_talk' %}">
+    {% include "screening/action_icon.html" with icon="family" %}
+    <span class="link-card-body">
+        <span class="link-card-title">怎麼跟他說話</span>
+        <span>情境題與溝通重點</span>
+    </span>
+    <span class="link-card-arrow" aria-hidden="true">›</span>
+</a></li>

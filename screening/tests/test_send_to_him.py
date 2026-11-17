@@ -3,6 +3,9 @@ from html import unescape
 
 from django.test import TestCase
 
+from screening.models import User
+from screening.tests.helpers import consented_user
+
 # The owner's words (#671, family-pages-skeleton.md): the one message every 傳給他 sends, and the
 # lead above it the owner chose for the reluctant page too (2026-11-17, same as page one).
 MESSAGE = (
@@ -80,6 +83,27 @@ class ReluctantPageSendTests(TestCase):
         section = self.content.index('<section class="send-to-him"')
         self.assertLess(situations, section)
         self.assertLess(section, closing)
+
+
+class SignedInOpensTheSentAddressTests(TestCase):
+    """Acceptance 22's second half: someone signed in who opens the sent address reaches the
+    questionnaires too. One who has not agreed to the privacy notice yet is asked first, as on
+    every such page, and comes back to the address with its mark."""
+
+    def test_a_signed_in_user_who_agreed_reaches_the_questionnaires(self):
+        self.client.force_login(consented_user(username="sent_agreed"))
+        response = self.client.get("/questionnaire_list?via=send")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "screening/frontend/arrival-count.js")
+
+    def test_one_who_has_not_agreed_yet_is_asked_first_and_comes_back(self):
+        self.client.force_login(User.objects.create_user(username="sent_not_yet"))
+        response = self.client.get("/questionnaire_list?via=send")
+        self.assertRedirects(
+            response,
+            "/consent?next=/questionnaire_list%3Fvia%3Dsend",
+            fetch_redirect_response=False,
+        )
 
 
 class WhereSendToHimIsNotTests(TestCase):

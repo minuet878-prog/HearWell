@@ -21,7 +21,7 @@ def doors(content):
             kind,
             *[
                 " ".join(unescape(re.sub(r"<[^>]+>", " ", part)).split())
-                for part in re.findall(r'<span class="link-card-(?:title|note)">(.*?)</span>', body)
+                for part in re.findall(r'<span(?: class="link-card-title")?>([^<]*)</span>', body)
             ],
         )
         for href, kind, body in found

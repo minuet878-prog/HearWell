@@ -161,6 +161,11 @@ class FamilyPageChecks:
         self.assertIsNotNone(send)
         self.assertIn(f"會傳出這段話 {MESSAGE} {ADDRESS}", text(send))
         self.assertIn(LEAD, text(send))
+        # Acceptance 18: every page sends the same one text, shared or copied.
+        for button in ("share-button", "copy-link"):
+            with self.subTest(button=button):
+                found = re.search(rf'<button id="{button}"([^>]*)>', send)
+                self.assertIn(f'data-text="{MESSAGE}\n{ADDRESS}"', unescape(found.group(1)))
 
     def test_the_parts_come_in_order(self):
         order = [
@@ -176,6 +181,12 @@ class FamilyPageChecks:
 
 class SignsPageTests(FamilyPageChecks, TestCase):
     page = SIGNS
+
+    def test_no_score_and_no_verdict(self):
+        # Acceptance 2 (ADR 0017): it lists what to watch for and judges nobody.
+        for word in ("分數", "level-badge", "可能有聽損", "有聽損嗎", "您的家人"):
+            with self.subTest(word=word):
+                self.assertNotIn(word, self.main)
 
     def test_the_tip_comes_before_the_first_group(self):
         # The owner's 若有以下狀況 speaks of what follows (2026-11-17).
@@ -199,6 +210,7 @@ class LoudTvPageTests(FamilyPageChecks, TestCase):
         send = block(self.main)
         self.assertNotIn("btn-primary", self.main.replace(send, ""))
         self.assertRegex(send, r"<h2[^>]*>先在家做個簡單的篩檢</h2>")
+        self.assertIn("btn-primary", send)
 
 
 class HuhPageTests(FamilyPageChecks, TestCase):

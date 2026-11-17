@@ -29,7 +29,6 @@ from screening.family_zone import (
     RELUCTANT_SITUATIONS,
     RELUCTANT_SOURCES,
     SEND_HEADING,
-    SEND_HEADING_TOO,
     SEND_LEAD,
     SEND_MESSAGE,
     SIGNS_PAGE,
@@ -65,7 +64,7 @@ def family_talk(request):
     )
 
 
-def send_to_him(request, heading=SEND_HEADING):
+def send_to_him_context(request, heading=SEND_HEADING):
     """What 傳給他 shows and sends (spec #655): the owner's message and, after it, the address of
     the wizard's age step with its mark (grill Q5, Q10). The mark is the same for everyone, so
     nothing in the address tells who sent it or to whom. The address takes the scheme the page
@@ -80,7 +79,7 @@ def send_to_him(request, heading=SEND_HEADING):
     }
 
 
-def family_question_page(request, page, send_heading=SEND_HEADING, outline=False):
+def family_question_page(request, page):
     # Spec #655 (#675): open without logging in (CODING_STANDARDS.md 2), the same words for
     # everyone; it reads no records.
     return render(
@@ -91,8 +90,8 @@ def family_question_page(request, page, send_heading=SEND_HEADING, outline=False
             "urgent": qa_content.BY_CODE[qa_content.URGENT_CODE],
             "sources": page.sources,
             "checked_on": page.checked_on,
-            "send": send_to_him(request, send_heading),
-            "outline": outline,
+            "send": send_to_him_context(request, page.send_heading or SEND_HEADING),
+            "outline": page.send_outline,
         },
     )
 
@@ -106,8 +105,7 @@ def family_loud_tv(request):
 
 
 def family_huh(request):
-    # Grill Q6: the simulator is the main way on, so 傳給他 is the outline kind under 也.
-    return family_question_page(request, HUH_PAGE, SEND_HEADING_TOO, outline=True)
+    return family_question_page(request, HUH_PAGE)
 
 
 def family_reluctant(request):
@@ -120,7 +118,7 @@ def family_reluctant(request):
             "situations": RELUCTANT_SITUATIONS,
             "sources": RELUCTANT_SOURCES,
             "checked_on": RELUCTANT_CHECKED_ON,
-            "send": send_to_him(request),
+            "send": send_to_him_context(request),
         },
     )
 

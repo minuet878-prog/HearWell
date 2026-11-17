@@ -15539,8 +15539,12 @@ class GuestHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             ):
                 with self.subTest(text=text):
                     expect(tile).to_contain_text(text)
-            # On top, above the page's title, and inside a phone's width.
-            self.assertLess(tile.bounding_box()["y"], self.main().locator("h1").bounding_box()["y"])
+            # On top, above the two doors (spec #655 acceptance 13), and inside a phone's width.
+            first_door = self.main().locator(".home-door").first
+            self.assertLess(
+                tile.bounding_box()["y"] + tile.bounding_box()["height"],
+                first_door.bounding_box()["y"],
+            )
             self.assertLessEqual(self.page.evaluate("document.documentElement.scrollWidth"), 412)
             tile.click()
             expect(self.page).to_have_url(re.compile(r"/guest/result/hhie-s$"))
