@@ -2764,10 +2764,12 @@
   /* A grid of two (or more, on wider screens) so five questionnaires take three rows on a phone
      instead of five (text-heavy pages tidy-up); the topic on top, its code small underneath. At
      double text size the columns drop to one rather than widen the page. #465 (the #464 mockup
-     D1 A): pale grey tiles, the current one the tab bar's pale blue pill in a 2px blue frame. */
+     D1 A): pale grey tiles, the current one the tab bar's pale blue pill in a 2px blue frame.
+     #668: never narrower than the row, as .records-switch: 9rem at 200% is wider than a 320px
+     phone. */
   .history-tabs {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 9rem), 1fr));
     gap: 0.5rem;
     margin: 0.5rem 0 1.5rem;
   }
@@ -6603,9 +6605,14 @@
    answer page without the phone's tab bar, its intro folded under the buttons. */
 @layer components {
   /* A single thing to tap in a colour block (ADR 0043): pale blue, no frame; only its button,
-     or its rows when it recommends two, can be pressed. */
+     or its rows when it recommends two, can be pressed.
+     #668 (the owner's pick A): a date like 2026/05/01 cannot break, and with the usual sides
+     it needs the block about 8.5rem wide (the date about 6.25rem, the sides 2.25rem). Under
+     9rem (a 320px phone at 200% text, not a 390px one) the sides drop to 0.5rem so it fits the
+     words. A padding's 100% is the width the block fills; less 9rem and scaled up, it is below
+     0 there, so the lower bound, and above 1.125rem everywhere else, so the usual sides. */
   .recommended-block {
-    padding: 1rem 1.125rem;
+    padding: 1rem clamp(0.5rem, (100% - 9rem) * 100, 1.125rem);
     border-radius: var(--radius-large);
     background-color: var(--color-brand-soft);
     color: var(--color-heading);
