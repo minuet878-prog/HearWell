@@ -6,12 +6,14 @@ Not named test_*.py, so the normal test run skips it; run it by name after build
 
 import base64
 import calendar
+import json
 import os
 import re
 from contextlib import contextmanager, nullcontext
 from datetime import date, datetime, timedelta
 from itertools import combinations, pairwise
 from math import log2
+from statistics import median
 from typing import ClassVar
 from unittest.mock import patch
 from urllib.parse import parse_qsl, urlparse
@@ -81,17 +83,40 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
 ARTIFACTS = settings.BASE_DIR / "e2e-artifacts"
 QUESTION_COUNT = 10
+# A class longer than this on CI has its tests dealt out across the machines: one process runs a
+# class from start to end, so WhiteCardRuleTest (273 s on CI) alone held up its machine.
+SPLIT_SECONDS = 100
 
 
 def load_tests(loader, tests, pattern):
-    """CI's two e2e machines: E2E_SHARD=1/2 runs every other test class from the first, 2/2 the
-    rest. Without it (a local run) every class runs. unittest calls this when loading the module.
+    """CI's e2e machines: E2E_SHARD=1/3 runs the first machine's share of the tests.
+
+    Without it (a local run) every test runs. unittest calls this when loading the module.
+    Each class counts as its seconds in e2e/durations.json (a class missing there counts as the
+    median one; e2e/update_durations.py rewrites it); one over SPLIT_SECONDS becomes a piece per
+    machine. Longest first, each goes to the machine with the fewest seconds so far, so each
+    machine also starts its longest first and none is left to run alone at the end.
     """
     if not (shard := os.environ.get("E2E_SHARD")):
         return tests
     number, total = map(int, shard.split("/"))
-    classes = [suite for suite in tests if suite.countTestCases()]
-    return loader.suiteClass(classes[number - 1 :: total])
+    seconds = json.loads((settings.BASE_DIR / "e2e" / "durations.json").read_text())
+    usual = median(seconds.values())
+    pieces = []
+    for suite in tests:
+        if not (cases := list(suite)):
+            continue
+        time = seconds.get(type(cases[0]).__name__, usual)
+        if time > SPLIT_SECONDS:
+            pieces += [(time / total, cases[k::total]) for k in range(total)]
+        else:
+            pieces.append((time, cases))
+    machines = [[0, []] for _ in range(total)]
+    for time, cases in sorted(pieces, key=lambda piece: piece[0], reverse=True):
+        machine = min(machines, key=lambda m: m[0])
+        machine[0] += time
+        machine[1] += cases
+    return loader.suiteClass(machines[number - 1][1])
 
 
 def type_audiogram_date(main, year, month, day):
