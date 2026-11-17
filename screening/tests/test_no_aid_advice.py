@@ -14,7 +14,7 @@ from screening.tests.helpers import consented_user, submission_with_answers
 
 # The owner's wording in spec #693, written out so a changed definition fails.
 GUIDE = "看助聽器選配與補助"
-CHECK = "並做聽力檢查；有 AirPods Pro 的話，也可以先用 iPhone 做聽力自我檢測。"
+CHECK = "並做聽力檢查；有 AirPods Pro 的話，也可以先用 iPhone 做聽力自我測試。"
 LIMITS = "這份問卷反映您感受到的生活影響，不能判定聽損程度，也不能單憑分數決定是否需要助聽器。"
 SEVERE_STEP = (
     "聽力問題已經嚴重影響到您的生活了，若您尚未採取任何行動，"
