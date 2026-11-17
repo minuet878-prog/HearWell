@@ -9,6 +9,8 @@ from enum import StrEnum
 from itertools import pairwise
 from math import log2
 
+from screening.scoring import UNKNOWN
+
 AIR_FREQUENCIES = (250, 500, 1000, 2000, 3000, 4000, 6000, 8000)
 BONE_FREQUENCIES = (500, 1000, 2000, 4000)
 PTA_FREQUENCIES = (500, 1000, 2000, 4000)
@@ -170,9 +172,10 @@ class FittingAdvice(StrEnum):
 def _mild_advice(life_impact):
     # 輕度 by the latest life-impact record's level, not by a score of its own (spec #693); a
     # 無法判讀 one tells nothing of the impact, so it counts as none (the owner, 2026-11-17).
-    if life_impact is None or life_impact.result.level["level"] == "unknown":
+    level = None if life_impact is None else life_impact.result.level["level"]
+    if level in (None, UNKNOWN["level"]):
         return FittingAdvice.QUESTIONNAIRE_FIRST
-    if life_impact.result.level["level"] == "normal":
+    if level == "normal":
         return FittingAdvice.TRACK
     return FittingAdvice.RECOMMEND
 
