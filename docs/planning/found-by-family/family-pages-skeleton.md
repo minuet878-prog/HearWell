@@ -126,3 +126,11 @@
 10. **出處**（定稿）與**本頁資料查核於**：
     > Communication Health Support Association（美國聽語協會 ASHA 支持）〈Worried About Hearing Loss? Take the Self-Test〉，https://helpingyoucommunicate.org/article/worried-about-hearing-loss-take-the-self-test
     > 本頁資料查核於：2026-11-17（上線時再確認一次）
+
+## 長輩不肯去怎麼說（加上傳給他，#674）
+
+2026-11-17 本人選定：跟頁面一一樣，放在情況選單之後、「這些是一般性的建議……」之前，原本的內文不動。
+
+- 小標：先在家做個簡單的篩檢
+- 下面一段：同頁面一（「篩檢是回答幾個生活中聽的問題……」）
+- 灰框「會傳出這段話」＋預設訊息與網址，實心按鈕「傳給他做篩檢」（沒有分享選單時「複製訊息」）

@@ -146,6 +146,18 @@ def audiogram_step(page, live_server_url, step):
         page.get_by_role("main").get_by_role("button", name=AUDIOGRAM_FORWARD).click()
 
 
+def signed_in_without_records(test, username):
+    """Spec #655 (#673): the session cookie of a new account with no records, whose home is the
+    空狀態首頁 a visitor saw before the two doors took its place."""
+    client = Client()
+    client.force_login(consented_user(username=username))
+    return {
+        "name": settings.SESSION_COOKIE_NAME,
+        "value": client.cookies[settings.SESSION_COOKIE_NAME].value,
+        "url": test.live_server_url,
+    }
+
+
 # #314: each questionnaire's summary row on the report (#471: each part's, the audiogram's too).
 REPORT_FOLDS = "details.report-fold > summary"
 
@@ -2548,8 +2560,10 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
     # phase9_ui_refresh_4a_home.md acceptance 8: the visitor's steps stack on a phone. #471
     # (mockup #458 ⑪): three numbered steps in the 空狀態首頁's dashed box since.
     def test_home_steps_stack_on_a_phone(self):
-        # #159: this fixture user has records, so check signed out.
-        self.open(320, 640, signed_in=False)
+        # #159: this fixture user has records, so another without (since spec #655 a visitor's
+        # home is the two doors).
+        self.cookie = signed_in_without_records(self, "steps_stack_e2e")
+        self.open(320, 640)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
             steps = self.page.locator(".empty-preview .step-list > li")
@@ -2563,11 +2577,14 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
 
     # phase9_ui_refresh_4a_home.md review 1: at 200% text the steps still fit a phone
     def test_home_steps_fit_a_phone_at_double_text_size(self):
-        self.open(320, 640, signed_in=False)
+        self.cookie = signed_in_without_records(self, "steps_fit_e2e")
+        self.open(320, 640)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
             self.page.add_style_tag(content="html { font-size: 225% !important; }")  # 2 x 112.5%
-            for step in self.page.locator(".empty-preview .step-list > li").all():
+            steps = self.page.locator(".empty-preview .step-list > li")
+            expect(steps).to_have_count(3)  # none would pass the loop below without checking
+            for step in steps.all():
                 box = step.bounding_box()
                 self.assertLessEqual(box["x"] + box["width"], 320)
 
@@ -4246,8 +4263,8 @@ class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
     def test_new_visitor_walks_from_the_home_card_to_the_zone(self):
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
-            # #471 (mockup #458 ⑪): a text link in the visitor's 空狀態首頁.
-            self.main().get_by_role("link", name="我是家人", exact=True).click()
+            # Spec #655 (#673): the visitor's home has a door to the zone, not a text link.
+            self.main().get_by_role("link", name=re.compile("^我擔心家人的聽力")).click()
             expect(self.page).to_have_url(f"{self.live_server_url}/family")
             expect(self.main().get_by_role("heading", level=1)).to_have_text("家人專區")
             current = self.page.get_by_role("navigation", name="主要導覽").locator(
@@ -4822,12 +4839,13 @@ class GettingOnTheHomeScreenTest(SavesFailureArtifacts, StaticLiveServerTestCase
         self.page.goto(f"{self.live_server_url}/")
         return self.page.locator("main .home-links").get_by_role("link", name=self.TITLE)
 
-    def test_phone_browser_shows_it_under_the_start_button_and_it_opens_the_steps(self):
+    def test_phone_browser_shows_it_under_the_doors_and_it_opens_the_steps(self):
         card = self.open_home(390)
         with self.saving_artifacts():
             expect(card).to_be_visible()
-            start = self.page.get_by_role("main").get_by_role("link", name="開始篩檢")
-            self.assertGreater(card.bounding_box()["y"], start.bounding_box()["y"])
+            # Spec #655 (#673): under the two doors, which took 開始篩檢's place.
+            last_door = self.page.locator("main .home-door").last
+            self.assertGreater(card.bounding_box()["y"], last_door.bounding_box()["y"])
             card.click()
             expect(self.page).to_have_url(f"{self.live_server_url}/add_to_home")
 
@@ -4836,7 +4854,7 @@ class GettingOnTheHomeScreenTest(SavesFailureArtifacts, StaticLiveServerTestCase
             with self.subTest(width=width, standalone=standalone):
                 card = self.open_home(width, standalone=standalone)
                 with self.saving_artifacts():
-                    expect(self.page.get_by_role("link", name="開始篩檢").first).to_be_visible()
+                    expect(self.page.locator("main .home-door").first).to_be_visible()
                     expect(card).to_have_count(0)
 
     def measure_bird(self, name):
@@ -5999,9 +6017,10 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     # Brand refresh: the first-visit home's start button sends out one ring, inside ADR 0006's
     # four seconds. #471 (mockup #458 ⑪): the swaying illustration went with the old visitor
     # home. Reduced motion keeps it still (test_reduced_motion_keeps_the_header_still counts
-    # every animation on "/").
+    # every animation on "/"). Since spec #655 (#673) the button is only on a signed-in user's
+    # 空狀態首頁 (this user has no records); a visitor has the two doors, which do not move.
     def test_first_visit_home_start_button_rings_once(self):
-        self.open(signed_in=False, motion=True)
+        self.open(motion=True)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
             main = self.page.get_by_role("main")
@@ -6024,6 +6043,19 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.assertEqual(self.style(start, "borderTopLeftRadius"), self.BUTTON_RADIUS)
             self.assertIn("data:image/svg+xml", self.mask(start, "::before"))
             self.assertGreaterEqual(self.text_contrast(start), 4.5)
+
+    def test_visitor_home_doors_stay_still_and_login_is_a_text_link(self):
+        self.open(signed_in=False, motion=True)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            main = self.page.get_by_role("main")
+            self.assertEqual(
+                self.page.evaluate(
+                    "() => document.getAnimations()"
+                    ".filter(a => a.effect.target.closest('main')).length"
+                ),
+                0,
+            )
             login = main.get_by_role("link", name="我已經有帳號，登入")
             self.assertEqual(self.style(login, "backgroundImage"), "none")
             self.assertEqual(self.style(login, "textDecorationLine"), "underline")
@@ -6328,9 +6360,10 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             for other in others.all():
                 self.assertEqual(self.style(other, "backgroundColor"), "rgba(0, 0, 0, 0)")
 
-            # #159: the step numbers are the new-user home's own elements, so check them signed out
-            # (#471: in the 空狀態首頁's dashed box).
-            self.open(signed_in=False)
+            # #159: the step numbers are the new-user home's own elements (#471: in the 空狀態首頁's
+            # dashed box), a signed-in user's without records since spec #655's two doors.
+            self.cookie = signed_in_without_records(self, "step_numbers_e2e")
+            self.open()
             self.page.goto(f"{self.live_server_url}/")
             number = self.page.locator(".empty-preview .step-list-number").first
             self.assertEqual(
@@ -6617,10 +6650,14 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.page.mouse.up()
 
         with self.saving_artifacts():
-            self.open(motion=True, signed_in=False)
+            # Spec #655 (#673): the dashed box is a signed-in user's without records now.
+            with_records = self.cookie
+            self.cookie = signed_in_without_records(self, "boxes_still_e2e")
+            self.open(motion=True)
             for path, selector in home_cases:
                 with self.subTest(box=selector):
                     check(path, selector)
+            self.cookie = with_records
             self.open(motion=True)
             for path, selector in cases:
                 with self.subTest(box=selector):
@@ -7692,9 +7729,11 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     # line on their left since ADR 0043. #471 (mockup #458 ⑪): three steps in the 空狀態首頁's
     # dashed box, the result example gone. #499: registering is the last step since.
     def test_first_visit_home_blocks_are_flat(self):
+        # Spec #655 (#673): the steps are a signed-in user's without records; a visitor has doors.
+        self.cookie = signed_in_without_records(self, "blocks_flat_e2e")
         with self.saving_artifacts():
-            self.visit(False, "/")
-            for text in ("回答問題", "馬上看到結果", "想保存再註冊"):
+            self.visit(True, "/")
+            for text in ("回答問題", "馬上看到結果", "首頁一次告訴您"):
                 with self.subTest(step=text):
                     self.assert_unlined(self.main().get_by_role("listitem").filter(has_text=text))
             self.assert_flat(self.main().locator("p").filter(has_text="設計與審定"))
@@ -11122,7 +11161,8 @@ class HomeConsentT360Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
     def test_first_visit_title_is_a_page_title(self):
         for width in (390, 1024):
             with self.subTest(width=width), self.saving_artifacts():
-                self.visit(False, "/", width=width)
+                # Spec #655 (#673): a signed-in user's 空狀態首頁; a visitor's has two doors.
+                self.visit(True, "/", width=width)
                 title = self.main().get_by_role("heading", level=1, name="從一份問卷開始")
                 size = float(self.style(title, "fontSize").removesuffix("px"))
                 self.assertAlmostEqual(size, 28, delta=0.1)
@@ -12367,7 +12407,8 @@ class FamilyScenarioTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
         first, second, _ = self.SCENARIO.options
         with self.saving_artifacts():
             self.open("/", signed_in=False)
-            self.main().get_by_role("link", name=re.compile("我是家人")).click()
+            # Spec #655 (#673): the visitor's door to the zone.
+            self.main().get_by_role("link", name=re.compile("^我擔心家人的聽力")).click()
             expect(self.page).to_have_url(f"{self.live_server_url}/family")
             self.main().get_by_role("navigation", name="專區內容").get_by_role(
                 "link", name=re.compile("怎麼跟他說話")
@@ -15436,7 +15477,8 @@ class GuestWithoutJavaScriptTest(SavesFailureArtifacts, OnAPhone, StaticLiveServ
 
 
 class GuestHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
-    """#499 (#492 acceptance 1 and 21): 開始篩檢 on the logged-out home opens the wizard's age step;
+    """#499 (#492 acceptance 1 and 21): the way to screening on the logged-out home (the door
+    我想了解自己的聽力 since spec #655, #673) opens the wizard's age step;
     after answering, the home shows that result on top, the whole tile a link to its page."""
 
     fixtures = ("questions_fixture.json",)
@@ -15466,7 +15508,7 @@ class GuestHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
             expect(self.main().locator("#guest-home")).to_be_hidden()
-            self.main().get_by_role("link", name="開始篩檢").click()
+            self.main().get_by_role("link", name=re.compile("^我想了解自己的聽力")).click()
             expect(self.page).to_have_url(f"{self.live_server_url}/questionnaire_list")
             self.main().get_by_role("group", name="您目前的實際年齡？").get_by_label(
                 "65 歲以上", exact=True
@@ -17397,3 +17439,89 @@ class ClinicCardPrintTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
                     self.assert_fits_a_phone_at_double_text_size("clinic cards", width)
                     # One card shows what is printed; the rest wait for a computer.
                     expect(self.page.locator(".clinic-card:visible")).to_have_count(1)
+
+
+class FamilyDoorsAndSendTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """Spec #655 (#673, #674) in a browser: the two doors go to their pages and a press counts;
+    the address 傳給他 sends counts once and loses its mark; 長輩不肯去怎麼說 with 傳給他 fits a
+    phone at 200% and, without JavaScript, shows the message and the address with no button."""
+
+    fixtures = ("questions_fixture.json",)
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def open_context(self, javascript=True):
+        self.context = self.browser.new_context(
+            **{**self.playwright.devices["Pixel 7"], "viewport": {"width": 390, "height": 844}},
+            java_script_enabled=javascript,
+        )
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def count(self, column):
+        row = GuestMonth.objects.first()
+        return getattr(row, column) if row else 0
+
+    def wait_for_count(self, column, value):
+        # The press is sent as the page moves on; give the request a moment to arrive.
+        for _ in range(50):
+            if self.count(column) == value:
+                return
+            self.page.wait_for_timeout(100)
+        self.assertEqual(self.count(column), value, column)
+
+    def test_each_door_goes_to_its_page_and_its_press_counts(self):
+        # Acceptance 12 and 23.
+        self.open_context()
+        with self.saving_artifacts():
+            for door, address, column in (
+                ("我想了解自己的聽力", "/questionnaire_list", "door_self"),
+                ("我擔心家人的聽力", "/family", "door_family"),
+            ):
+                with self.subTest(door=door):
+                    self.page.goto(f"{self.live_server_url}/")
+                    self.main().get_by_role("link", name=re.compile(f"^{door}")).click()
+                    expect(self.page).to_have_url(f"{self.live_server_url}{address}")
+                    self.wait_for_count(column, 1)
+
+    def test_the_sent_address_counts_once_and_loses_its_mark(self):
+        # Acceptance 22, 24 and 25.
+        self.open_context()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire_list?via=send")
+            expect(self.main().get_by_role("group", name="您目前的實際年齡？")).to_be_visible()
+            expect(self.page).to_have_url(f"{self.live_server_url}/questionnaire_list")
+            self.wait_for_count("send_opened", 1)
+            self.page.reload()
+            self.page.wait_for_load_state("load")
+            self.page.wait_for_timeout(500)
+            self.assertEqual(self.count("send_opened"), 1)
+
+    def test_the_reluctant_page_fits_a_phone_at_double_text_size(self):
+        self.open_context()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/family/reluctant")
+            self.assert_fits_a_phone_at_double_text_size("reluctant", width=390)
+
+    def test_without_javascript_the_message_and_address_are_there_to_copy(self):
+        # Acceptance 20.
+        self.open_context(javascript=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/family/reluctant")
+            box = self.main().locator(".send-to-him .tip-box")
+            expect(box).to_contain_text("分享你一個聽力自我篩檢")
+            expect(box).to_contain_text(f"{self.live_server_url}/questionnaire_list?via=send")
+            for name in ("傳給他做篩檢", "複製訊息"):
+                with self.subTest(name=name):
+                    expect(self.main().get_by_role("button", name=name)).to_be_hidden()
