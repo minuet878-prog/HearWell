@@ -12,12 +12,14 @@ from screening.audiogram import (
     SPEECH_BANANA,
     SPEECH_BANANA_CHECKED_ON,
     SPEECH_GROUPS,
+    FittingAdvice,
     air_marks,
     compare,
-    recommends_fitting_assessment,
+    fitting_advice,
     speech_banana,
 )
 from screening.audiogram_thumbnail import thumbnail
+from screening.main_flow import get_user_state
 from screening.models import Ear
 from screening.views.common import RECENT_SHOWN, health_data_page, older_fold, safe_next
 
@@ -81,6 +83,13 @@ def _own_audiogram(request, audiogram_id):
     return get_object_or_404(request.user.audiograms.prefetch_related("points"), pk=audiogram_id)
 
 
+def _fitting_guide(audiogram, points):
+    # ADR 0067: the guide only when this audiogram's 建議評估選配 is 建議, judged with its owner's
+    # latest life-impact record (spec #693 acceptance 15), whoever is looking.
+    life_impact = get_user_state(audiogram.user, timezone.localdate()).life_impact
+    return fitting_advice(points, life_impact) == FittingAdvice.RECOMMEND
+
+
 @login_required
 @health_data_page
 def audiogram_detail(request, audiogram_id):
@@ -95,8 +104,7 @@ def audiogram_detail(request, audiogram_id):
         context["latest_tested_on"] = rows[0][1]
     if len(ids) > 1:
         context["compare_with"] = ids[here + 1] if here + 1 < len(ids) else ids[here - 1]
-    # #230: link the guide when either ear's PTA is over 25 dB; not when that is unknown.
-    context["fitting_guide"] = recommends_fitting_assessment(context["points"])
+    context["fitting_guide"] = _fitting_guide(audiogram, context["points"])
     # #440: the speech banana only reads air conduction, so bone alone has nothing to show.
     context["has_air_marks"] = any(air_marks(context["points"], ear) for ear in Ear)
     return render(request, "screening/audiogram_detail.html", context)
@@ -143,7 +151,7 @@ def audiogram_speech_banana(request, audiogram_id):
             "audiogram": audiogram,
             "data": data,
             "checked_on": SPEECH_BANANA_CHECKED_ON,
-            "fitting_guide": recommends_fitting_assessment(points),
+            "fitting_guide": _fitting_guide(audiogram, points),
         },
     )
 

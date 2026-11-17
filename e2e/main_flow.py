@@ -12214,7 +12214,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
         self.sign_in(consented_user(username="speech_banana_reminder_e2e"))
 
     def page_for(self, db, size=LayoutOnAPhone.PHONE, java_script_enabled=True):
-        """Both ears flat at db, so each ear's PTA is db: over 25 dB is the guide's condition."""
+        """Both ears flat at db, so each ear's PTA is db: over 40 dB is the guide's condition."""
         audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 9, 1))
         AudiogramPoint.objects.bulk_create(
             AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=db)
@@ -12248,7 +12248,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
     # Acceptance 1: under the chart, and the chart itself says nothing of alarms.
     def test_the_reminders_are_under_the_chart_and_no_alarm_is_on_it(self):
         with self.saving_artifacts():
-            self.page_for(40)
+            self.page_for(45)
             plot = self.page.locator(".audiogram-plot")
             plot.locator("svg").wait_for()
             self.assert_the_reminders_show()
@@ -12263,7 +12263,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
     # The ticket's 不用 React: with no JavaScript the chart is gone and all of this still shows.
     def test_without_javascript_the_reminders_and_the_way_on_still_show(self):
         with self.saving_artifacts():
-            self.page_for(40, java_script_enabled=False)
+            self.page_for(45, java_script_enabled=False)
             expect(self.page.locator(".audiogram-plot")).to_have_count(0)
             self.assert_the_reminders_show()
             expect(
@@ -12274,7 +12274,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
     # Acceptance 2: over the condition the card leads to the guide, and the way back to this one.
     def test_the_guide_card_and_the_way_back_lead_where_they_say(self):
         with self.saving_artifacts():
-            audiogram = self.page_for(40)
+            audiogram = self.page_for(45)
             self.guide_card().click()
             self.page.wait_for_url("**/guide")
             self.page.go_back()
@@ -12294,7 +12294,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
     # on 320 they all double, the page does not scroll sideways, and the way on is big enough.
     def test_the_words_follow_the_text_size_on_a_narrow_phone(self):
         with self.saving_artifacts():
-            self.page_for(40, (320, 640))
+            self.page_for(45, (320, 640))
             reminder, alarm, source = (
                 self.words(text) for text in (self.REMINDER, self.ALARM, self.SOURCE)
             )

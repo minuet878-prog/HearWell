@@ -273,8 +273,8 @@ class SpeechBananaPageTests(TestCase):
             with self.subTest(ear=ear):
                 audiogram = self._make((ear, "air", 1000, 40, False))
                 self.assertEqual(self._banana_links(audiogram), [self._url(audiogram)])
-        # Beside the guide it stays a list row with its line under it.
-        audiogram = self._make(*self._ears((500, 40), (1000, 40), (2000, 40), (4000, 40)))
+        # Beside the guide (over 40 dB HL, ADR 0067) it stays a list row with its line under it.
+        audiogram = self._make(*self._ears((500, 45), (1000, 45), (2000, 45), (4000, 45)))
         self.assertIn((self._url(audiogram), *self.CARD), self._cards(audiogram))
 
     def test_no_card_with_only_bone_marks(self):
@@ -416,7 +416,8 @@ class SpeechBananaPageTests(TestCase):
         return [(href, button, label) for label, href, button in cards], audiogram
 
     def test_over_the_existing_limit_the_foot_has_the_guide_card_and_the_way_back(self):
-        cards, _ = self._footer(*self._ears((500, 40), (1000, 40), (2000, 40), (4000, 40)))
+        # Over 40 dB HL recommends without a questionnaire (ADR 0067).
+        cards, _ = self._footer(*self._ears((500, 45), (1000, 45), (2000, 45), (4000, 45)))
         self.assertEqual(
             cards, [(reverse("guide"), "看助聽器選配與補助", "依您的聽力圖整理下一步")]
         )
@@ -431,8 +432,9 @@ class SpeechBananaPageTests(TestCase):
         self.assertEqual(cards, [])
 
     def test_how_much_is_hard_to_hear_does_not_change_the_foot(self):
-        # #436 story 38. Flat 30 dB: PTA 30, over the limit, and every group with a mark is heard.
-        cards, audiogram = self._footer(*self._ears((500, 30), (1000, 30), (2000, 30), (4000, 30)))
+        # #436 story 38. Flat 41 dB: PTA 41, over 40 (ADR 0067), and every group with a mark is
+        # heard.
+        cards, audiogram = self._footer(*self._ears((500, 41), (1000, 41), (2000, 41), (4000, 41)))
         self.assertEqual([title for _, title, _ in cards], ["看助聽器選配與補助"])
         self.assertNotIn("hard", self._statuses(audiogram))
         # A steep drop past 2000 Hz: PTA 22.5, under the limit, with groups 4 to 6 hard to hear.

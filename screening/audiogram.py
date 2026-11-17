@@ -157,15 +157,6 @@ def assessment_estimate(points):
     }
 
 
-def recommends_fitting_assessment(points):
-    """Whether to suggest an audiologist's hearing-aid assessment (grill Q3, ADR 0017): either
-    ear's PTA over the normal limit. None when an unknown ear could still decide it."""
-    ptas = [r["pta"] for r in interpret(points).values()]
-    if any(p is not None and p > NORMAL_LIMIT for p in ptas):
-        return True
-    return None if None in ptas else False
-
-
 class FittingAdvice(StrEnum):
     """建議評估選配's five results (GLOSSARY, ADR 0067)."""
 
