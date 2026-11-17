@@ -297,6 +297,153 @@ RELUCTANT_SOURCES = (
 )
 RELUCTANT_CHECKED_ON = date(2026, 11, 6)
 
+
+# Spec #655 (#675): the three family pages that answer what families ask most, each in the
+# owner's words (#671, family-pages-skeleton.md): a heading, an opening, a 提示框, parts of a
+# heading and a list (grill Q1: a list to read, nothing to tick), the Q&A assistant's urgent box,
+# then 傳給他 (and on the 蛤 page, first, the way to the simulator and to how to talk).
+@dataclass(frozen=True)
+class FamilyQuestionPage:
+    title: str
+    intro: str
+    tip: str
+    # True: the 提示框 comes before the parts (the signs page's 若有以下狀況 speaks of them).
+    tip_first: bool
+    # (heading, items) pairs.
+    parts: tuple
+    sources: tuple
+    checked_on: date
+    # The 蛤 page only: the heading and lead above its rows to the simulator and to how to talk.
+    listen_heading: str = ""
+    listen_lead: str = ""
+    # 傳給他's heading, and True for the outline button of a page whose main way on is elsewhere.
+    send_heading: str = ""
+    send_outline: bool = False
+
+
+# One source for all three, opened on 2026-11-17 (its old asha.org address leads there). Each page
+# has its own checked date (spec #655), so checking one again leaves the others' as they were.
+FAMILY_QUESTION_SOURCES = (
+    (
+        "Communication Health Support Association（美國聽語學會 ASHA 支持）"
+        "〈Worried About Hearing Loss? Take the Self-Test〉",
+        "https://helpingyoucommunicate.org/article/worried-about-hearing-loss-take-the-self-test",
+    ),
+)
+SIGNS_CHECKED_ON = date(2026, 11, 17)
+LOUD_TV_CHECKED_ON = date(2026, 11, 17)
+HUH_CHECKED_ON = date(2026, 11, 17)
+
+SIGNS_PAGE = FamilyQuestionPage(
+    title="怎麼知道爸媽的聽力變差了",
+    intro="聽力通常是慢慢變差的，長輩自己常常沒發現，反而是家人先注意到。"
+    "下面是日常生活裡常見的情況，可以對照看看。",
+    tip="若有以下狀況的話，請儘早就醫進行聽力檢查確認",
+    tip_first=True,
+    parts=(
+        (
+            "看電視與聽收音機",
+            (
+                "電視機的聲音需要開得很大聲才聽得清楚，有時甚至影響到家人",
+                "在沒有字幕的狀況下容易無法理解電視內容",
+            ),
+        ),
+        (
+            "講電話",
+            (
+                "講電話都要開很大聲或是擴音",
+                "由於手機是經過數位轉化的聲音，聽損會讓這樣的聲音更加聽不清楚",
+            ),
+        ),
+        (
+            "吃飯聊天與聚會",
+            (
+                "聊天時常會有發呆加入不了的狀況(因為聽不清楚話題)",
+                "吃飯聚會是一個充滿噪音的場合，有聽損的長輩容易被噪音影響",
+            ),
+        ),
+        (
+            "在家裡（門鈴、電話鈴、叫名字）",
+            (
+                "門鈴、電話響了常常沒聽到，要家人提醒才知道",
+                "從另一個房間或從背後叫他，常常沒有反應（看不到說話的人，只能靠耳朵）",
+                "微波爐、熱水壺、洗衣機「嗶嗶」的提示聲常常沒注意到"
+                "（這類高音的聲音通常最先聽不到）",
+                "家人說話時，要看著對方的臉才比較聽得懂（無意中在看嘴型幫忙）",
+            ),
+        ),
+    ),
+    sources=FAMILY_QUESTION_SOURCES,
+    checked_on=SIGNS_CHECKED_ON,
+)
+
+LOUD_TV_PAGE = FamilyQuestionPage(
+    title="爸媽看電視開很大聲，怎麼辦？",
+    intro="長輩把電視開很大聲，常常不是愛吵，而是開小聲聽不清楚。先了解為什麼，再一起想辦法。",
+    tip="這些方法只能讓看電視輕鬆一點，不能改善聽力；"
+    "如果開了字幕、坐近了還是常聽不清楚，請儘早就醫進行聽力檢查確認。",
+    tip_first=False,
+    parts=(
+        (
+            "開大聲還是聽不清楚？",
+            (
+                "開大聲只能讓聲音變大，不一定變清楚；所以常常開得很大聲，還是聽不懂在說什麼。",
+                "電視節目常有背景音樂和音效，蓋過說話的聲音，聽損的人更難分辨。",
+                "聽力是慢慢變差的，自己不容易察覺，會覺得是電視的聲音太小。",
+            ),
+        ),
+        (
+            "在家可以先試試",
+            (
+                "開字幕：大部分電視和網路影音都可以開中文字幕，邊看邊讀比較不吃力。",
+                "坐近一點、面向電視，並把冷氣、電扇、抽油煙機等其他聲音關小。",
+            ),
+        ),
+    ),
+    sources=FAMILY_QUESTION_SOURCES,
+    checked_on=LOUD_TV_CHECKED_ON,
+)
+
+HUH_PAGE = FamilyQuestionPage(
+    title="跟他講話，他一直說「蛤」？",
+    intro="長輩一直說「蛤」，很多時候是聽到聲音、卻聽不清楚在說什麼。"
+    "這頁說明可能的原因，也帶您聽聽看他聽到的聲音。",
+    tip="一直「蛤」不一定是聽力退化，耳垢太多、感冒耳朵悶住也可能；"
+    "常常這樣的話，請儘早就醫進行聽力檢查確認。",
+    tip_first=False,
+    parts=(
+        (
+            "為什麼聽得到、聽不清楚？",
+            (
+                "說話裡的子音（像「ㄙ、ㄘ、ㄈ、ㄒ」）多半是高音，聽不到就像字少了一半："
+                "知道有人在說話，卻拼不出意思。",
+                "電視、炒菜、好幾個人同時說話，聲音混在一起，聽損的人很難挑出要聽的那一句。",
+                "從背後、隔一個房間或戴口罩說話，少了嘴型和表情幫忙，就更容易聽錯。",
+            ),
+        ),
+    ),
+    sources=FAMILY_QUESTION_SOURCES,
+    checked_on=HUH_CHECKED_ON,
+    listen_heading="聽聽他聽到的聲音",
+    listen_lead="戴上耳機，聽聽看聽損的人聽到的家常話。您會比較知道，為什麼大聲重講不一定有用。",
+    # Grill Q6: the simulator is the main way on, so 傳給他 is the outline kind under 也.
+    send_heading="也可以先在家做個簡單的篩檢",
+    send_outline=True,
+)
+
+# 傳給他 (spec #655, #674): the owner's words (#671, family-pages-skeleton.md). One message for
+# every page that has it (grill Q9); the address of the wizard's age step follows it. The heading
+# and the lead above the message box, as on page one, the owner also chose for the reluctant page.
+SEND_MESSAGE = (
+    "分享你一個聽力自我篩檢，回答幾個問題大約 3 分鐘，不用註冊。"
+    "做完會看到結果和建議，有空可以做做看。"
+)
+SEND_HEADING = "先在家做個簡單的篩檢"
+SEND_LEAD = (
+    "篩檢是回答幾個生活中聽的問題，大約 3 分鐘、不用註冊。"
+    "它不能取代聽力檢查，但可以幫他看看聽力對生活的影響，結果也會建議下一步。"
+)
+
 # Drafts for the owner's review (#430, batch-2-wording.md section 1), from the guide's
 # 去找聽力師之前 chapter. Its one sentence on the printed report is an item here, and its questions,
 # in the reader's own voice there, speak of 他 here (Q17).

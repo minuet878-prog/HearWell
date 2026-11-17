@@ -468,6 +468,8 @@ class RedesignLayoutTests(TestCase):
                 [
                     *every,
                     "screening/frontend/guest-home.js",
+                    # Spec #655 (#673): the two doors' press count, for someone not signed in.
+                    "screening/frontend/door-count.js",
                     wave,
                     play_in_view,
                     smooth,
@@ -559,15 +561,14 @@ class PageFlowTests(TestCase):
     # As changed by phase9_ui_refresh_3_structure.md 4.4, phase9_ui_refresh_4a_home.md 4.1,
     # spec #148 (ticket #150, the account step) and #471 (mockup #458 ⑪: the visitor sees the
     # 空狀態首頁, the steps in its dashed box before the start button).
+    # Spec #655 (#673): a visitor's home is the two doors, then what stays below them.
     HOME_ORDER = (
-        "從一份問卷開始",
-        "聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。",
-        "做完第一份問卷，這裡會排出您的照顧旅程",
-        "回答問題，大約 3 分鐘。",
-        "馬上看到結果分級和建議。",
-        "想保存再註冊，不註冊也看得到結果。",
-        "開始篩檢",
+        "我想了解自己的聽力",
+        "大約 3 分鐘，不用註冊",
+        "我擔心家人的聽力",
+        "看看可以怎麼幫他",
         HINT,
+        "了解助聽器選配與補助",
         "內容由台灣執業聽力師設計與審定。",
     )
 
@@ -625,7 +626,7 @@ class PageFlowTests(TestCase):
         self.assertNotIn("7–10 年", main)
         # #499 (spec #492): straight to a guest's wizard, no account first.
         start = reverse("questionnaire_list")
-        self.assertRegex(main, rf'<a[^>]*href="{re.escape(start)}"[^>]*>\s*開始篩檢')
+        self.assertRegex(main, rf'<a[^>]*href="{re.escape(start)}" data-door="door_self">')
 
     def test_home_has_no_missing_features(self):
         # HHIE-S is allowed since phase9_ui_refresh_4a_home.md (result preview, trust block).

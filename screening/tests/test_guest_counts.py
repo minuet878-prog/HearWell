@@ -181,6 +181,10 @@ class OnlyTheCountsTests(GuestCountTestCase):
                 "clinic_elder",
                 "clinic_family",
                 "reminders_sent",  # spec #656 Q11: 重測提醒信 sent
+                # The two doors and opens from 傳給他 (spec #655 acceptance 28).
+                "door_self",
+                "door_family",
+                "send_opened",
             },
         )
 
@@ -206,7 +210,9 @@ class OnlyTheCountsTests(GuestCountTestCase):
         months = re.findall(r'<th class="field-month_label"><a [^>]*>([^<]+)</a></th>', page)
         self.assertEqual(months, ["2026/11", "2026/10"])
         headings = ("月份", "訪客完成", "保存（帳號密碼）", "保存（Google）", "保存（LINE）")
-        for heading in (*headings, "小卡：長輩卡", "小卡：家屬卡", "寄出提醒信"):
+        cards = ("小卡：長輩卡", "小卡：家屬卡")
+        doors = ("門：了解自己", "門：擔心家人", "從傳給他打開")
+        for heading in (*headings, *cards, "寄出提醒信", *doors):
             with self.subTest(heading=heading):
                 self.assertIn(heading, page)
         october = page[page.index(">2026/10<") :]
@@ -221,6 +227,9 @@ class OnlyTheCountsTests(GuestCountTestCase):
                 ("clinic_elder", "0"),
                 ("clinic_family", "0"),
                 ("reminders_sent", "7"),
+                ("door_self", "0"),
+                ("door_family", "0"),
+                ("send_opened", "0"),
             ],
         )
 

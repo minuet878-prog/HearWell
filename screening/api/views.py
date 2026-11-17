@@ -179,8 +179,9 @@ GUEST_LIMIT = "剛才做了很多次，請過一小時再試。您的作答沒�
 
 
 class GuestCount(GenericAPIView):
-    """Adds one to this month's column of the 訪客月計數 that a page names (spec #677): a
-    clinic card's landing page, once it has opened in a browser. Anyone, signed in or not,
+    """Adds one to this month's column of the 訪客月計數 that a page names: a clinic card's
+    landing page, once it has opened in a browser (spec #677); a door pressed on the signed-out
+    home, or the address 傳給他 sent, opened in a browser (spec #655). Anyone, signed in or not,
     and nothing about them is kept: no session is read (so no CSRF), and no limit (the
     grill's Q15: a flood only makes the number wrong)."""
 

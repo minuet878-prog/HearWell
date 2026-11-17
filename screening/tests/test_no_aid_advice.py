@@ -152,7 +152,8 @@ class NoAidAdviceEducationTests(TestCase):
     def test_the_home_page_links_to_the_guide_and_the_family_zone(self):
         main = self.main("index")
         self.assertIn(f'<a href="{reverse("guide")}">了解助聽器選配與補助</a>', main)
-        self.assertIn(f'<a href="{reverse("family_guide")}">我是家人</a>', main)
+        # Spec #655 (#673): the door 我擔心家人的聽力 took 我是家人's place.
+        self.assertIn(f'href="{reverse("family_guide")}" data-door="door_family"', main)
 
     def test_the_learn_tab_links_to_the_guide_and_the_family_zone(self):
         main = self.main("learn")

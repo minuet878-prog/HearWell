@@ -67,6 +67,10 @@ urlpatterns = [
     path("family", home.family_guide, name="family_guide"),
     path("family/talk", family.family_talk, name="family_talk"),
     path("family/reluctant", family.family_reluctant, name="family_reluctant"),
+    # Spec #655 (#675): the three pages for what families ask most.
+    path("family/signs", family.family_signs, name="family_signs"),
+    path("family/loud-tv", family.family_loud_tv, name="family_loud_tv"),
+    path("family/huh", family.family_huh, name="family_huh"),
     path("family/hearing-aids", family.family_hearing_aids, name="family_hearing_aids"),
     path("family/visits", family.family_visits, name="family_visits"),
     path("family/visits/subsidy", family.family_subsidy_check, name="family_subsidy_check"),

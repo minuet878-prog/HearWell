@@ -21,6 +21,11 @@ class GuestMonth(models.Model):
     clinic_family = models.PositiveIntegerField("小卡：家屬卡", default=0)
     # Spec #656 Q11: 重測提醒信 sent, not guests', but counted per month here all the same.
     reminders_sent = models.PositiveIntegerField("寄出提醒信", default=0)
+    # 兩個門 and 傳給他 (spec #655, #672): presses of each door on the signed-out home, and opens
+    # in a browser of the address 傳給他 sends.
+    door_self = models.PositiveIntegerField("門：了解自己", default=0)
+    door_family = models.PositiveIntegerField("門：擔心家人", default=0)
+    send_opened = models.PositiveIntegerField("從傳給他打開", default=0)
 
     class Meta:
         verbose_name = verbose_name_plural = "訪客月計數"
@@ -29,8 +34,8 @@ class GuestMonth(models.Model):
         return f"{self.month.year}/{self.month.month:02d}"
 
 
-# The columns a page may add one to through the API, each named as its column (spec #677).
-PAGE_COUNT_COLUMNS = ("clinic_elder", "clinic_family")
+# The columns a page may add one to through the API, each named as its column (specs #677, #655).
+PAGE_COUNT_COLUMNS = ("clinic_elder", "clinic_family", "door_self", "door_family", "send_opened")
 
 
 # The 保存 column of how an account was registered: the provider of the sign-in method it was

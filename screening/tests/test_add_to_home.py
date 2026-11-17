@@ -142,15 +142,15 @@ class NewUserHomePromptTests(TestCase):
         return self.client.get(reverse("index")).content.decode()
 
     def test_visitor_sees_the_prompt(self):
-        # #471 (mockup #458 ⑪): in the visitor's row of text links under the start button, with
-        # the 空狀態首頁's words; pwa-nav.js hides it inside the home-screen app.
+        # #471 (mockup #458 ⑪): in the visitor's row of text links, under the two doors since
+        # spec #655 (#673); pwa-nav.js hides it inside the home-screen app.
         content = self._home()
         links = re.search(r'<ul class="home-links" role="list">(.*?)</ul>', content, re.S)
         self.assertIn(
             f'<li data-hide-in-app><a href="{reverse("add_to_home")}">加到手機主畫面</a></li>',
             links.group(1),
         )
-        self.assertGreater(links.start(), content.index(">開始篩檢</a>"))
+        self.assertGreater(links.start(), content.rindex("home-door"))
 
     def test_returning_user_keeps_only_the_card_in_their_list(self):
         user = consented_user(username="prompt_returning")

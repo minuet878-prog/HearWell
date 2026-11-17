@@ -1,0 +1,36 @@
+{% extends "screening/layout.html" %}
+{% load static %}
+
+{% block extra_head %}
+<script defer src="{% static 'screening/share-button.js' %}"></script>
+{% endblock %}
+
+{% block body %}
+{# Spec #655 (#675, the #669 mockup's 3-1 A, 3-2 and 3-3 A): one of the three pages for what families ask most, in the owner's words (family_zone.py). Only the zone's own pieces: each part a heading and a list (grill Q1: to read, nothing to tick), a 提示框, the Q&A assistant's urgent box, 傳給他, the closing words and the sources. #}
+<article class="family-guide wrap-anywhere">
+<h1 class="h3 mt-4">{{ page.title }}</h1>
+<p>{{ page.intro }}</p>
+{% if page.tip_first %}<p class="tip-box">{{ page.tip }}</p>{% endif %}
+{% for heading, items in page.parts %}
+<section class="family-part" aria-labelledby="part-{{ forloop.counter }}">
+    <h2 id="part-{{ forloop.counter }}" class="h4 mt-6">{{ heading }}</h2>
+    {# The zone's own bulleted list, as 長輩不肯去怎麼說's things to say. #}
+    <ul class="pick-explain-list">{% for item in items %}<li>{{ item }}</li>{% endfor %}</ul>
+</section>
+{% endfor %}
+{% if not page.tip_first %}<p class="tip-box">{{ page.tip }}</p>{% endif %}
+{% include "screening/qa/urgent_box.html" %}
+{% if page.listen_heading %}
+{# The 蛤 page (grill Q6): the simulator first, then how to talk, as the zone's own rows. #}
+<h2 class="h4 mt-6">{{ page.listen_heading }}</h2>
+<p>{{ page.listen_lead }}</p>
+<ul class="list-unstyled family-entries">
+    {% include "screening/family/listen_and_talk_rows.html" %}
+</ul>
+{% endif %}
+{% include "screening/family/send_to_him.html" %}
+<p class="mt-6">這些是一般性的建議，不能取代醫師或聽力師的診斷。有任何疑問，請和您的醫師或聽力師討論。</p>
+<p class="mb-6"><a class="btn btn-outline-primary btn-lg w-full" href="{% url 'family_guide' %}">回到家人專區</a></p>
+{% include "screening/family/sources.html" %}
+</article>
+{% endblock %}

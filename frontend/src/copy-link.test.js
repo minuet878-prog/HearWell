@@ -152,6 +152,63 @@ describe("family page copy button", () => {
   });
 });
 
+// Spec #655 (#674) acceptance 19: 傳給他's 複製訊息 copies the whole message and address the
+// page shows (data-text), only where the phone's share sheet is not, and keeps its own style.
+describe("send-to-him copy button", () => {
+  const TEXT = "分享你一個聽力自我篩檢。\nhttps://example.com/questionnaire_list?via=send";
+
+  function sendPage(style) {
+    document.body.innerHTML = `
+      <div><p>分享你一個聽力自我篩檢。<br>https://example.com/questionnaire_list?via=send</p></div>
+      <button id="copy-link" type="button" class="btn ${style} btn-lg" data-text="${TEXT}" data-without-share-sheet hidden>複製訊息</button>
+      <p id="copy-status" aria-live="polite"></p>`;
+    new Function(readFileSync(SCRIPT, "utf-8"))();
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.stubGlobal("isSecureContext", true);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: vi.fn(() => Promise.resolve()) },
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    delete navigator.clipboard;
+    delete navigator.share;
+    document.body.innerHTML = "";
+  });
+
+  it("copies the message and the address as one text and says ✓ 已複製", async () => {
+    sendPage("btn-primary");
+    expect(button().hidden).toBe(false);
+    await copy();
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(TEXT);
+    expect(button().textContent).toBe("已複製");
+    expect(button().classList.contains("is-copied")).toBe(true);
+    expect(button().querySelector("svg")).not.toBeNull();
+    await vi.advanceTimersByTimeAsync(100);
+    expect(status().textContent).toBe("已複製");
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(button().textContent).toBe("複製訊息");
+  });
+
+  it("keeps the outline style the page gave it", () => {
+    sendPage("btn-outline-primary");
+    expect(button().classList.contains("btn-outline-primary")).toBe(true);
+    expect(button().classList.contains("btn-primary")).toBe(false);
+  });
+
+  it("stays hidden where the phone's share sheet is", () => {
+    Object.defineProperty(navigator, "share", { configurable: true, value: vi.fn() });
+    sendPage("btn-primary");
+    expect(button().hidden).toBe(true);
+  });
+});
+
 // #580 (spec #576 acceptance 21 to 24): 複製信箱 beside the contact address, in the footer of
 // every page and beside the account page's sentence; several on one page, each its own.
 describe("contact address copy buttons", () => {

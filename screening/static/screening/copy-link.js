@@ -8,6 +8,8 @@
 // copying is the way to send, so that button becomes the solid main one.
 // #361: the family page's 複製網址 (data-without-share-sheet) shows only where the phone's share
 // sheet is not; its address has no id="share-url" and stays on the page above the button.
+// 傳給他 (spec #655): its 複製訊息 is also data-without-share-sheet, and copies data-text, the
+// message with the address, which the page shows above it. It keeps the style its page gave it.
 // #580 (spec #576): 複製信箱 (data-copy, the address to copy) in every page's footer and beside
 // the account page's sentence; several on a page, each its own, saying 已複製 in the footer's
 // status area (data-copy-status). One the browser refuses goes away, so no button does
@@ -41,11 +43,15 @@
   }
 
   const linkButton = document.getElementById("copy-link");
-  if (linkButton && !("withoutShareSheet" in linkButton.dataset && navigator.share)) {
+  const withoutShareSheet = linkButton && "withoutShareSheet" in linkButton.dataset;
+  if (linkButton && !(withoutShareSheet && navigator.share)) {
     const address = document.getElementById("share-url");
     if (address) address.hidden = true;
-    if (!navigator.share) linkButton.classList.replace("btn-outline-primary", "btn-primary");
-    showCopyButton(linkButton, linkButton.dataset.url, document.getElementById("copy-status"), () => {
+    if (!navigator.share && !withoutShareSheet) {
+      linkButton.classList.replace("btn-outline-primary", "btn-primary");
+    }
+    const toCopy = linkButton.dataset.text ?? linkButton.dataset.url;
+    showCopyButton(linkButton, toCopy, document.getElementById("copy-status"), () => {
       if (address) address.hidden = false;
     });
   }

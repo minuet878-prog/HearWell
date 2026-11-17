@@ -30,6 +30,14 @@ describe("countArrival", () => {
     expect(window.location.pathname + window.location.search).toBe("/family");
   });
 
+  // Spec #655 (#674) acceptance 24: the address 傳給他 sends, opened in a browser.
+  it("counts an open of what 傳給他 sent once and takes its mark off the address", () => {
+    open("/questionnaire_list?via=send");
+    countArrival();
+    expect(sent()).toEqual([["/api/guest-counts/", "POST", { kind: "send_opened" }]]);
+    expect(window.location.pathname + window.location.search).toBe("/questionnaire_list");
+  });
+
   it("keeps the rest of the address", () => {
     open("/questionnaire_list?wizard=1&via=clinic-elder#top");
     countArrival();
@@ -45,7 +53,7 @@ describe("countArrival", () => {
   });
 
   it("sends nothing and leaves the address alone without a card's mark", () => {
-    for (const address of ["/family", "/questionnaire_list?via=send", "/family?via=clinic-other"]) {
+    for (const address of ["/family", "/questionnaire_list?via=sent", "/family?via=clinic-other"]) {
       open(address);
       countArrival();
       expect(window.location.pathname + window.location.search).toBe(address);
