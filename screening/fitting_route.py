@@ -127,21 +127,32 @@ class FittingState:
         return self.advice == FittingAdvice.UNKNOWN
 
 
-def fitting_state(user, today):
-    audiogram = user.audiograms.prefetch_related("points").first()
-    latest = (
+def latest_submission(user):
+    """The newest submission of an offered questionnaire, None before one."""
+    return (
         user.submissions.defined()
         .select_related("questionnaire")
         .order_by("-created_at", "-id")
         .first()
     )
+
+
+def wearing_hearing_aids(latest, aid):
+    """Whether the user wears hearing aids, from their latest_submission and their
+    AidAndSubsidy (None before any)."""
     # IOI-HA saves no wearing answer, but only people wearing hearing aids take it (#220 M16).
-    wearing = latest is not None and (
+    answered = latest is not None and (
         latest.wearing_hearing_aid is True or latest.questionnaire.code == IOI_HA
     )
-    aid = AidAndSubsidy.for_user(user)
     # A fitting date the user filled in counts as wearing them too (#284 default 3).
-    wearing = wearing or _fitted(aid)
+    return answered or _fitted(aid)
+
+
+def fitting_state(user, today):
+    audiogram = user.audiograms.prefetch_related("points").first()
+    latest = latest_submission(user)
+    aid = AidAndSubsidy.for_user(user)
+    wearing = wearing_hearing_aids(latest, aid)
     advice = threshold = None
     if audiogram is not None:
         points = list(audiogram.points.all())

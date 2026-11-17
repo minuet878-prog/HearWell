@@ -19,8 +19,9 @@ from screening.audiogram import (
     speech_banana,
 )
 from screening.audiogram_thumbnail import thumbnail
+from screening.fitting_route import latest_submission, wearing_hearing_aids
 from screening.main_flow import get_user_state
-from screening.models import Ear
+from screening.models import AidAndSubsidy, Ear
 from screening.views.common import RECENT_SHOWN, health_data_page, older_fold, safe_next
 
 
@@ -85,8 +86,12 @@ def _own_audiogram(request, audiogram_id):
 
 def _fitting_guide(audiogram, points):
     # ADR 0067: the guide only when this audiogram's 建議評估選配 is 建議, judged with its owner's
-    # latest life-impact record (spec #693 acceptance 15), whoever is looking.
-    life_impact = get_user_state(audiogram.user, timezone.localdate()).life_impact
+    # latest life-impact record (spec #693 acceptance 15), whoever is looking. Someone wearing
+    # hearing aids is not judged by it and always has the guide, as my guide keeps the route.
+    user = audiogram.user
+    if wearing_hearing_aids(latest_submission(user), AidAndSubsidy.for_user(user)):
+        return True
+    life_impact = get_user_state(user, timezone.localdate()).life_impact
     return fitting_advice(points, life_impact) == FittingAdvice.RECOMMEND
 
 

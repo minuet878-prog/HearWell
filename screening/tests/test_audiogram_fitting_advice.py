@@ -6,7 +6,8 @@ from datetime import date
 
 from django.urls import reverse
 
-from screening.models import Audiogram, AudiogramPoint
+from screening.models import AidAndSubsidy, Audiogram, AudiogramPoint, Submission
+from screening.questionnaires import hhie_s, ioi_ha
 from screening.tests import test_audiogram, test_fitting_advice, test_records_redesign
 from screening.tests.helpers import consented_user
 
@@ -96,4 +97,45 @@ class FittingAdviceAudiogramPageTests(test_fitting_advice.LifeImpactTestCase):
         self.record(test_fitting_advice.MILD_SCORES, user=self.other)
         self.assert_does_not_recommend(audiogram)
         self.record(test_fitting_advice.MILD_SCORES)
+        self.assert_recommends(audiogram)
+
+
+class SelfReview693WearingAudiogramPageTests(test_fitting_advice.LifeImpactTestCase):
+    """The self review on #693: someone wearing hearing aids sees the guide on both pages
+    whatever the advice, as my guide keeps the route for them; 'wearing' as the route judges it."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.user = consented_user(username="fitting_advice_wearing")
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    make = FittingAdviceAudiogramPageTests.make
+    main = FittingAdviceAudiogramPageTests.main
+    pages = FittingAdviceAudiogramPageTests.pages
+    assert_recommends = FittingAdviceAudiogramPageTests.assert_recommends
+    assert_does_not_recommend = FittingAdviceAudiogramPageTests.assert_does_not_recommend
+
+    def record(self, scores, wearing, code=hhie_s.CODE):
+        submission = test_fitting_advice.record(self.user, scores, code=code)
+        Submission.objects.filter(pk=submission.pk).update(wearing_hearing_aid=wearing)
+
+    def test_the_latest_record_answered_wearing_them_shows_the_guide(self):
+        # Within the normal range and 無／極輕微影響: 正常, yet wearing.
+        audiogram = self.make(20, 20)
+        self.record(test_fitting_advice.NORMAL_SCORES, wearing=False)
+        self.assert_does_not_recommend(audiogram)
+        self.record(test_fitting_advice.NORMAL_SCORES, wearing=True)
+        self.assert_recommends(audiogram)
+
+    def test_ioi_ha_as_the_latest_record_shows_the_guide(self):
+        audiogram = self.make(20, 20)
+        self.record((1,) * 7 + (0,) * 3, wearing=None, code=ioi_ha.CODE)
+        self.assert_recommends(audiogram)
+
+    def test_a_fitting_date_shows_the_guide(self):
+        audiogram = self.make(30, 10)  # 輕度 without a questionnaire: 先做問卷
+        AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 10, 1))
         self.assert_recommends(audiogram)
