@@ -10,7 +10,7 @@ from screening.models.feedback import (
     purge_feedback,
 )
 from screening.models.guest_counts import (
-    PAGE_COUNTED,
+    PAGE_COUNT_COLUMNS,
     GuestMonth,
     count_guest,
     count_guest_saved,

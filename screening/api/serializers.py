@@ -13,7 +13,7 @@ from screening.audiogram import (
 from screening.forms import AnswerFormSet, answer_choices, offers_not_applicable
 from screening.ioi_norm import TOKEN_ERROR, ioi_ha_norm
 from screening.models import (
-    PAGE_COUNTED,
+    PAGE_COUNT_COLUMNS,
     Answer,
     Audiogram,
     AudiogramPoint,
@@ -30,7 +30,7 @@ from screening.scoring import get_advice
 class GuestCountSerializer(serializers.Serializer):
     """Which column of the 訪客月計數 a page adds one to (spec #677)."""
 
-    kind = serializers.ChoiceField(choices=PAGE_COUNTED)
+    kind = serializers.ChoiceField(choices=PAGE_COUNT_COLUMNS)
 
 
 class QuestionnaireSummarySerializer(serializers.ModelSerializer):

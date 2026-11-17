@@ -28,7 +28,7 @@ class GuestMonth(models.Model):
 
 
 # The columns a page may add one to through the API, each named as its column (spec #677).
-PAGE_COUNTED = ("clinic_elder", "clinic_family")
+PAGE_COUNT_COLUMNS = ("clinic_elder", "clinic_family")
 
 
 # The 保存 column of how an account was registered: the provider of the sign-in method it was

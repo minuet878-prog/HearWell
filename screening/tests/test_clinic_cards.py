@@ -1,19 +1,17 @@
 """診間小卡 (spec #677, ADR 0066): the two card addresses printed in the QR codes, kept forever,
 each landing on its card's page with the card's mark; the landing page counts the scan."""
 
+from unittest.mock import patch
+
 from django.test import TestCase
-from django.utils import timezone
 
 from screening.models import GuestMonth, User
 from screening.public_pages import is_public
+from screening.tests import test_guest_counts
 from screening.tests.helpers import consented_user
 
 ELDER_CARD = "/c/e"
 FAMILY_CARD = "/c/f"
-
-
-def this_month():
-    return timezone.localdate().replace(day=1)
 
 
 class CardAddressTests(TestCase):
@@ -43,10 +41,14 @@ class CardAddressTests(TestCase):
 
     def test_anything_added_to_the_address_is_dropped(self):
         # Acceptance 3: only the fixed landing, whatever comes after the address.
-        response = self.client.get(ELDER_CARD, {"next": "https://example.com/", "via": "send"})
-        self.assertRedirects(
-            response, "/questionnaire_list?via=clinic-elder", fetch_redirect_response=False
-        )
+        for card, landing in (
+            (ELDER_CARD, "/questionnaire_list?via=clinic-elder"),
+            (FAMILY_CARD, "/family?via=clinic-family"),
+        ):
+            with self.subTest(card=card):
+                added = {"next": "https://example.com/", "via": "send"}
+                response = self.client.get(card, added)
+                self.assertRedirects(response, landing, fetch_redirect_response=False)
 
     def test_opening_the_address_counts_nothing(self):
         # Acceptance 4: a link preview fetches the address too; only the landing page counts.
@@ -78,13 +80,42 @@ class ScanCountTests(TestCase):
         return self.client.post(GUEST_COUNTS, {"kind": kind}, content_type="application/json")
 
     def counts(self):
-        return list(GuestMonth.objects.values_list("month", "clinic_elder", "clinic_family"))
+        # Every column, so one card adding to another's, or to the guests', shows.
+        return list(
+            GuestMonth.objects.values_list(
+                "month",
+                "completed",
+                "saved_password",
+                "saved_google",
+                "saved_line",
+                "clinic_elder",
+                "clinic_family",
+            )
+        )
 
     def test_each_card_adds_one_to_its_own_column_this_month(self):
         self.assertEqual(self.send("clinic_elder").status_code, 204)
         self.assertEqual(self.send("clinic_family").status_code, 204)
         self.assertEqual(self.send("clinic_family").status_code, 204)
-        self.assertEqual(self.counts(), [(this_month(), 1, 2)])
+        self.assertEqual(self.counts(), [(test_guest_counts.this_month(), 0, 0, 0, 0, 1, 2)])
+
+    def test_two_sent_at_the_same_moment_both_count(self):
+        # Acceptance 11: a second scan arrives after the first has found this month's row and
+        # before it adds its one; both must count, as two scans in the same moment would.
+        find_month = GuestMonth.objects.get_or_create
+        second = []
+
+        def second_scan_arrives(**fields):
+            found = find_month(**fields)
+            if not second:
+                second.append(None)  # before sending: the second scan finds the row as well
+                second[0] = self.send("clinic_elder")
+            return found
+
+        with patch.object(GuestMonth.objects, "get_or_create", side_effect=second_scan_arrives):
+            self.send("clinic_elder")
+        self.assertEqual(second[0].status_code, 204)
+        self.assertEqual(GuestMonth.objects.get().clinic_elder, 2)
 
     def test_a_kind_it_does_not_know_is_refused_and_adds_nothing(self):
         for kind in ("send", "completed", "", None):
