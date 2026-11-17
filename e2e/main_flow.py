@@ -16135,8 +16135,7 @@ class AudiogramMissedMarksTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
     def test_says_what_one_ear_is_missing_and_saves_as_usual(self):
         self.open("/audiograms/new")
         with self.saving_artifacts():
-            for name, value in (("民國年", "115"), ("月", "1"), ("日", "10")):
-                self.main().get_by_label(name, exact=True).fill(value)
+            type_audiogram_date(self.main(), "115", "1", "10")
             for _ in range(2):
                 self.main().get_by_role("button", name=AUDIOGRAM_FORWARD).click()
             # Acceptance 59: the same kind of box as 遮蔽's tip on the ear step.

@@ -163,6 +163,13 @@ class DownloadMyDataTests(TestCase):
             ],
         )
 
+    def test_a_self_test_says_so(self):
+        """Spec #702 acceptance 21: a self test is named as one."""
+        self._audiogram(self.user)
+        Audiogram.objects.update(source="self_test")
+        audiogram = self._download()["audiograms"][0]
+        self.assertEqual((audiogram["source"], audiogram["entry"]), ("自我測試", "自己標"))
+
     # 2
     def test_contains_nothing_of_other_users(self):
         self._hhie_s(self.user, 4, 4)

@@ -10,7 +10,7 @@
 {% block body %}
 {# wrap-anywhere: at 200% text on a phone the date cannot break and would widen the page (#204). #}
 {# Spec #702 (#703 mockup 6A): a self test is a test, not an exam, and says so in a grey tag. #}
-<h1 class="h3 mt-4 wrap-anywhere">{{ audiogram.tested_on|date:"Y/m/d" }} {% if audiogram.source == "self_test" %}測試的聽力圖 <span class="source-tag">自我測試</span>{% else %}檢查的聽力圖{% endif %}</h1>
+<h1 class="h3 mt-4 wrap-anywhere">{{ audiogram.tested_on|date:"Y/m/d" }} {% if audiogram.source == "self_test" %}測試的聽力圖 <span class="source-tag">{{ audiogram.get_source_display }}</span>{% else %}檢查的聽力圖{% endif %}</h1>
 {# #465 (the #464 mockup 3A): each ear a block in its degree's colour (L1, DEGREE_LEVELS) above the chart, with its four-frequency average; the rest waits in 看完整說明. #}
 <section class="audiogram-ear-blocks" aria-label="兩耳程度">
     {% for ear, label, result in ears %}

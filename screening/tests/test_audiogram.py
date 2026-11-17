@@ -215,6 +215,27 @@ class AudiogramApiTests(TestCase):
             (response.json()["source"], response.json()["entry"]), ("self_test", "manual")
         )
 
+    def test_reading_one_gives_its_source_and_entry(self):
+        """Spec #702 acceptance 22: reading any audiogram from the API gives both."""
+        audiogram_id = self._post(self._body(source="self_test")).json()["id"]
+        body = self.client.get(f"{self.URL}{audiogram_id}/").json()
+        self.assertEqual((body["source"], body["entry"]), ("self_test", "manual"))
+
+    def test_database_keeps_minus_twenty_and_refuses_below(self):
+        """Ticket #704: the floor drops to -20 for Apple PDF imports (spec #702 Q3); marking by
+        hand still stops at -10 (test_invalid_points_are_400_and_save_nothing)."""
+        from django.db import IntegrityError, transaction
+
+        Audiogram, AudiogramPoint = self._models()
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
+        AudiogramPoint.objects.create(
+            audiogram=audiogram, ear="right", conduction="air", frequency=8000, db=-20
+        )
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            AudiogramPoint.objects.create(
+                audiogram=audiogram, ear="left", conduction="air", frequency=8000, db=-21
+            )
+
     def test_same_key_different_source_is_409(self):
         key = str(uuid.uuid4())
         self.assertEqual(self._post(self._body(), key=key).status_code, 201)
@@ -406,14 +427,16 @@ class AudiogramPageTests(TestCase):
         points = _four(_air, "right", (40,) * 4)
         self_test = self._make(points)
         Audiogram.objects.filter(pk=self_test.pk).update(source="self_test")
-        response = self.client.get(reverse("audiogram_detail", args=[self_test.id]))
-        heading = re.search(r"<h1[^>]*>(.*?)</h1>", self._main(response), re.DOTALL)[1]
-        self.assertIn("2026/10/01 測試的聽力圖", heading)
-        self.assertIn('<span class="source-tag">自我測試</span>', heading)
+
+        def heading(audiogram):
+            response = self.client.get(reverse("audiogram_detail", args=[audiogram.id]))
+            return re.search(r"<h1[^>]*>(.*?)</h1>", self._main(response), re.DOTALL)[1]
+
+        self.assertIn("2026/10/01 測試的聽力圖", heading(self_test))
+        self.assertIn('<span class="source-tag">自我測試</span>', heading(self_test))
         exam = self._make(points, tested_on=date(2026, 9, 1))
+        self.assertIn("2026/09/01 檢查的聽力圖", heading(exam))
         response = self.client.get(reverse("audiogram_detail", args=[exam.id]))
-        heading = re.search(r"<h1[^>]*>(.*?)</h1>", self._main(response), re.DOTALL)[1]
-        self.assertIn("2026/09/01 檢查的聽力圖", heading)
         self.assertNotIn("自我測試", self._main(response))
 
     def test_detail_insufficient_and_missing_bone(self):
