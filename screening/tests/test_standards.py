@@ -82,10 +82,19 @@ OWNER_KEPT = {
     # Sized in AudiogramDemo.jsx, not site.css: screen readers skip the demo, which is there for
     # the finger and the symbol (owner's pick 2026-11-16, the #613 mockup's part five).
     ".audiogram-demo-chart text": "the audiogram demo's axis numbers (#611 K2)",
+    # Printed on a 9 x 5.5 cm card in pt, the sizes the owner saw and picked on the #678 mockup
+    # (C, 2026-11-17); paper does not follow a browser's text size (spec #677).
+    ".clinic-card": "a clinic card's words, 11pt on paper (#678 C)",
+    ".clinic-card-brand": "a clinic card's 聽伴 beside its logo, 12pt on paper (#678 C)",
+    ".clinic-card-camera": "a clinic card's line under its QR code, 10pt on paper (#678 C)",
+    ".clinic-card-address": "a clinic card's tingpal.tw, 10pt on paper (#678 C)",
 }
 SMALL_PRINT = SOURCES | OWNER_KEPT
 
-SIZE = re.compile(r"(\d*\.?\d+)(rem|em|%)")
+SIZE = re.compile(r"(\d*\.?\d+)(rem|em|%|pt)")
+# What 1 of each unit is in rem: pt is a size for paper (the clinic cards, spec #677), and 1rem
+# is the site's 18px, 13.5pt.
+IN_REM = {"rem": 1, "em": 1, "%": 1 / 100, "pt": 1 / 13.5}
 SMALL_KEYWORD = re.compile(r"\b(?:smaller|small|x-small|xx-small)\b")
 
 
@@ -97,8 +106,7 @@ def is_small(value, variables):
         for defined in variables.get(name, ())
     ]
     return any(
-        SMALL_KEYWORD.search(v)
-        or any(float(n) / (100 if unit == "%" else 1) < 1 for n, unit in SIZE.findall(v))
+        SMALL_KEYWORD.search(v) or any(float(n) * IN_REM[unit] < 1 for n, unit in SIZE.findall(v))
         for v in values
     )
 
@@ -189,6 +197,13 @@ class SmallPrintTests(SimpleTestCase):
                 (10, "small"),
             ],
         )
+
+    def test_a_small_printed_size_is_caught_too(self):
+        # pt, a size for paper (the clinic cards, spec #677): 1rem is 18px, 13.5pt.
+        css = """.card-line { font-size: 11pt; }
+.card-title { font-size: 16pt; }
+.card-edge { font-size: 13.5pt; }"""
+        self.assertEqual(small_font_sizes(css), [(1, ".card-line")])
 
 
 class CssDataUriTests(SimpleTestCase):

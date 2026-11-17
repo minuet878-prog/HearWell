@@ -17253,8 +17253,28 @@ class ClinicCardPrintTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
                     self.assertGreaterEqual(box["y"], sheet["y"])
                     self.assertLessEqual(box["x"] + box["width"], sheet["x"] + sheet["width"])
                     self.assertLessEqual(box["y"] + box["height"], sheet["y"] + sheet["height"])
+            # Two columns by five rows, each card ringed by a pale grey line to cut along.
+            boxes = [card.bounding_box() for card in cards.all()]
+            self.assertEqual(len({round(box["x"]) for box in boxes}), 2)
+            self.assertEqual(len({round(box["y"]) for box in boxes}), 5)
+            first = cards.first
+            for side in ("Top", "Right", "Bottom", "Left"):
+                with self.subTest(line=side):
+                    self.assertEqual(self.style(first, f"border{side}Style"), "solid")
+                    self.assertGreater(float(self.style(first, f"border{side}Width")[:-2]), 0)
+                    self.assertEqual(self.style(first, f"border{side}Color"), "rgb(187, 187, 187)")
             for qr in self.page.locator(".clinic-card-qr svg").all():
                 self.assertGreaterEqual(qr.bounding_box()["width"] / self.MM, 25)
+            # Acceptance 23: white, no colour behind the words, each at least 4.5:1 on it.
+            self.assertEqual(self.style(first, "backgroundColor"), "rgba(0, 0, 0, 0)")
+            self.assertEqual(self.style(first, "backgroundImage"), "none")
+            sheet_colour = self.style(self.page.locator(".clinic-cards-sheet"), "backgroundColor")
+            self.assertEqual(sheet_colour, "rgb(255, 255, 255)")
+            for part in ("brand", "title", "free", "sees", "camera", "address"):
+                with self.subTest(part=part):
+                    colour = self.style(first.locator(f".clinic-card-{part}"), "color")
+                    ratio = StyleInBrowserTest.lowest_contrast(colour, sheet_colour)
+                    self.assertGreaterEqual(ratio, 4.5)
             # The browser's own print: exactly one A4 page.
             pdf = self.page.pdf(prefer_css_page_size=True)
             self.assertEqual(len(re.findall(rb"/Type\s*/Page\b", pdf)), 1)

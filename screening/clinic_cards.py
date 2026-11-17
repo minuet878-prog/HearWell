@@ -10,13 +10,15 @@ class Card:
     address: str  # the URL name of its 小卡網址 (ADR 0066)
     title: tuple[str, ...]  # its lines
     sees: tuple[str, ...]  # what scanning it shows, its lines
+    free: str  # the boxed words: no account, no cost
+    camera: str  # the line under its QR code
 
 
 CARDS = {
-    "elder": Card(choice="長輩卡", address="clinic_card_elder", title=(), sees=()),
-    "family": Card(choice="家屬卡", address="clinic_card_family", title=(), sees=()),
+    "elder": Card(
+        choice="長輩卡", address="clinic_card_elder", title=(), sees=(), free="", camera=""
+    ),
+    "family": Card(
+        choice="家屬卡", address="clinic_card_family", title=(), sees=(), free="", camera=""
+    ),
 }
-
-# On both cards: the boxed words and the line under the QR code.
-FREE = ""
-CAMERA = ""

@@ -5,7 +5,7 @@ from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_GET
 
-from screening.clinic_cards import CAMERA, CARDS, FREE
+from screening.clinic_cards import CARDS
 
 # 診間小卡 (spec #677, ADR 0066): where each card's address lands, with the card's mark that the
 # landing page counts and then takes off. Fixed here, never read from the request, so an address
@@ -26,7 +26,9 @@ def card_address(request, card):
 @require_GET
 def print_page(request):
     """One A4 sheet of 10 cards of the kind chosen, the elder card unless the family card is."""
-    card = request.GET.get("card") if request.GET.get("card") in CARDS else "elder"
+    card = request.GET.get("card")
+    if card not in CARDS:
+        card = "elder"
     choices = [(key, each.choice) for key, each in CARDS.items()]
     return render(
         request,
@@ -35,8 +37,6 @@ def print_page(request):
             "card": card,
             "choices": choices,
             "words": CARDS[card],
-            "free": FREE,
-            "camera": CAMERA,
             "qr_code": qr_code(CARDS[card].address),
             "sheet": range(10),
         },

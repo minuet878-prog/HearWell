@@ -2,8 +2,10 @@
 each landing on its card's page with the card's mark; the landing page counts the scan."""
 
 import re
+from unittest.mock import patch
 
 import segno
+from django.conf import settings
 from django.db import connection
 from django.test import TestCase, override_settings
 from django.test.utils import CaptureQueriesContext
@@ -207,6 +209,21 @@ class QrCodeTests(TestCase):
     def test_opened_from_another_address_it_still_holds_the_live_sites(self):
         response = self.client.get(PRINT_PAGE, HTTP_HOST="localhost")
         self.assertEqual(self.drawings(response), [qr_drawing("https://tingpal.tw/c/e")] * 10)
+
+    def test_each_code_has_its_white_border(self):
+        # Acceptance 21: version 2 is 25 squares a side; 4 white squares round it make 33.
+        page = self.client.get(PRINT_PAGE).content.decode()
+        self.assertEqual(page.count('viewBox="0 0 33 33"'), 10)
+        self.assertEqual(page.count('<path fill="#fff" d="M0 0h33v33h-33z"/>'), 10)
+        self.assertEqual(re.findall(r'class="qrline"[^>]* d="(M4 4\.5)', page), ["M4 4.5"] * 10)
+
+    def test_drawn_here_by_segno_without_calling_out(self):
+        # Acceptance 24: segno is installed with the site, and nothing leaves the server.
+        requirements = (settings.BASE_DIR / "requirements.txt").read_text()
+        self.assertRegex(requirements, r"(?m)^segno==")
+        with patch("socket.socket.connect", side_effect=AssertionError("called out")):
+            response = self.client.get(PRINT_PAGE)
+        self.assertEqual(len(self.drawings(response)), 10)
 
     @override_settings(SITE_URL="")
     def test_without_the_live_sites_address_it_says_so_and_draws_none(self):

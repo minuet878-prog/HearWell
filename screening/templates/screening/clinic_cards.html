@@ -31,7 +31,7 @@
 </div>
 {# The logo's gradient and mask, once: an SVG fill prints, a CSS background (the header's logo) does not by default. #}
 <svg class="clinic-cards-defs" width="0" height="0" aria-hidden="true" focusable="false"><defs>
-<linearGradient id="clinic-card-brand" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1f4e8c"/><stop offset="1" stop-color="#1d6f99"/></linearGradient>
+<linearGradient id="clinic-card-brand" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color: var(--color-gradient-start)"/><stop offset="1" style="stop-color: var(--color-gradient-end)"/></linearGradient>
 <mask id="clinic-card-bird"><path fill="#fff" fill-rule="evenodd" d="M12 50c1-3 3-6 5-9 0-14 9-24 21-24a11 11 0 0 1 11 9l7 4-7 3c-2 11-10 17-21 17zM40 25a2.8 2.8 0 1 0 .01 0z"/><path fill="none" stroke="#000" stroke-width="3.9" stroke-linecap="round" stroke-linejoin="round" transform="translate(28 33.5) scale(.9) translate(-28.5 -35)" d="M22 33a6.5 6.5 0 0 1 13 0c0 4-4 5-4 8.5a3.3 3.3 0 0 1-6 2"/></mask>
 </defs></svg>
 {# One A4 sheet, 2 columns by 5 rows, a pale grey line round each card to cut along (the #678 mockup's C). #}
@@ -41,12 +41,12 @@
 <div class="clinic-card-words">
 <p class="clinic-card-brand"><svg class="clinic-card-logo" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><path fill="url(#clinic-card-brand)" d="M33 2c17 0 29 11 29 29 0 18-12 31-31 31C13 62 2 50 2 33 2 15 15 2 33 2z"/><rect width="64" height="64" fill="#fff" mask="url(#clinic-card-bird)"/></svg><span>聽<span class="clinic-card-brand-tint">伴</span></span></p>
 <p class="clinic-card-title">{% for line in words.title %}{{ line }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</p>
-<p class="clinic-card-free">{{ free }}</p>
+<p class="clinic-card-free">{{ words.free }}</p>
 <p class="clinic-card-sees">{% for line in words.sees %}{{ line }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</p>
 </div>
 <div class="clinic-card-scan">
 {% if qr_code %}<div class="clinic-card-qr">{{ qr_code }}</div>{% endif %}
-<p class="clinic-card-camera">{{ camera }}</p>
+<p class="clinic-card-camera">{{ words.camera }}</p>
 <p class="clinic-card-address">tingpal.tw</p>
 </div>
 </div>
