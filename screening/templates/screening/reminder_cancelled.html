@@ -1,0 +1,16 @@
+{% extends "screening/layout.html" %}
+
+{% block title %}已取消 email 重測提醒｜聽伴{% endblock %}
+
+{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block body %}
+{# #662 (spec #656 acceptance 33, 36), the #657 mockup's 已取消頁 in the feedback page's green box. The same after cancelling again. #}
+<div class="narrow-form">
+    <div class="guest-saved">
+        <h1 class="guest-saved-title"><span aria-hidden="true">✓ </span>已取消</h1>
+    </div>
+    {# #665: the owner's words (#658) after cancelling go here, e.g. turning it on again in the account settings. #}
+    <a class="btn btn-outline-primary btn-lg w-full" href="{% url 'index' %}">回首頁</a>
+</div>
+{% endblock %}
