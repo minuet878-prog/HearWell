@@ -1,0 +1,129 @@
+import logging
+from urllib.parse import quote, urlsplit
+
+from anymail.exceptions import AnymailAPIError
+from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
+from django.core.management.base import BaseCommand
+from django.db import transaction
+from django.template import loader
+from django.urls import reverse
+from django.utils import timezone
+
+from screening.forms import HELP_ADDRESS
+from screening.main_flow import get_user_state, retest_due_on
+from screening.models import RetestReminder, RetestReminderSent, count_guest
+
+logger = logging.getLogger(__name__)
+
+
+class QuotaUsedUp(Exception):
+    """Resend sends no more today: the rest wait for the next day's run, none counted as failed."""
+
+
+class Command(BaseCommand):
+    help = (
+        "Send each 重測提醒信 falling due today, the oldest first, at most "
+        "RETEST_REMINDER_DAILY_LIMIT (spec #656; run every day at 09:00 on the VPS)."
+    )
+
+    def handle(self, *args, **options):
+        today = timezone.localdate()
+        due = sorted(_due(today), key=lambda each: (each[1], each[0].pk))
+        sent = 0
+        for reminder, due_on, questionnaire in due[: settings.RETEST_REMINDER_DAILY_LIMIT]:
+            try:
+                sent += _send(reminder, due_on, questionnaire, today)
+            except QuotaUsedUp:
+                break
+        self.stdout.write(f"Sent {sent} retest reminder(s).")
+
+
+def _due(today):
+    """(reminder, due day, the questionnaire to do again) of each account to send to today (spec
+    #656 誰會收到)."""
+    reminders = (
+        # Not the admins: create_superuser makes staff too.
+        RetestReminder.objects.filter(enabled=True, user__is_active=True, user__is_staff=False)
+        .exclude(user__email="")
+        .select_related("user")
+    )
+    for reminder in reminders:
+        state = get_user_state(reminder.user, today)
+        if state.life_impact is None:
+            continue
+        due_on = retest_due_on(state.life_impact)  # the home page's 下次篩檢
+        # Already due when it was turned on: not this time (Q6).
+        if not reminder.enabled_on <= due_on <= today:
+            continue
+        record = RetestReminderSent.objects.filter(user=reminder.user, due_on=due_on).first()
+        if record is None or record.to_try_on(today):
+            # The home page's 再做一次 opens the same one.
+            yield reminder, due_on, state.retest_questionnaire
+
+
+def _send(reminder, due_on, questionnaire, today):
+    """1 when it went, 0 when it did not. The row stays locked while sending, so a run at the same
+    moment waits, then finds it sent."""
+    with transaction.atomic():
+        record, _ = RetestReminderSent.objects.select_for_update().get_or_create(
+            user=reminder.user, due_on=due_on
+        )
+        if not record.to_try_on(today):
+            return 0
+        record.attempts += 1
+        try:
+            _message(reminder, questionnaire).send()
+        except Exception as error:
+            # Resend's 429: the day's quota (or the rate) used up. Raised out of the transaction,
+            # so the row is as it was.
+            if isinstance(error, AnymailAPIError) and error.status_code == 429:
+                raise QuotaUsedUp from error
+            _failed(record, today)
+            return 0
+        record.sent_at = timezone.now()
+        record.save()
+        count_guest("reminders_sent")
+        return 1
+
+
+def _failed(record, today):
+    # A fixed message: the mail service's own words may hold the address (Sentry drops them).
+    logger.exception("A retest reminder could not be sent")
+    record.last_failed_on = today
+    record.save()
+
+
+def _message(reminder, questionnaire):
+    user = reminder.user
+    # The home page's 再做一次, through the consent page: it signs in first when needed (signed
+    # out, the address alone would open the guest version), then goes straight on.
+    retest_path = reverse("screening", args=[questionnaire.pk])
+    retest_url = f"{settings.SITE_URL}{reverse('consent')}?next={quote(retest_path)}"
+    cancel_url = settings.SITE_URL + reverse("reminder_cancel", args=[reminder.cancel_token])
+    context = {
+        "user": user,
+        "retest_url": retest_url,
+        "cancel_url": cancel_url,
+        "site_url": settings.SITE_URL,
+        "domain": urlsplit(settings.SITE_URL).netloc,
+    }
+    subject = "".join(
+        loader.render_to_string("screening/retest_reminder_subject.txt", context).splitlines()
+    )
+    message = EmailMultiAlternatives(
+        subject,
+        loader.render_to_string("screening/retest_reminder_email.txt", context),
+        settings.DEFAULT_FROM_EMAIL,
+        [user.email],
+        reply_to=[HELP_ADDRESS],
+        # RFC 8058: Gmail and Outlook show 取消訂閱 and POST to the cancel address themselves.
+        headers={
+            "List-Unsubscribe": f"<{cancel_url}>",
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
+    )
+    message.attach_alternative(
+        loader.render_to_string("screening/retest_reminder_email.html", context), "text/html"
+    )
+    return message

@@ -338,6 +338,7 @@ print(json.dumps({"active": sentry_sdk.get_client().is_active()}))
         # A made-up key: these tests never send an email (spec #355).
         env.setdefault("RESEND_API_KEY", "re_test_only")
         env.setdefault("DEFAULT_FROM_EMAIL", "noreply@tingpal.tw")
+        env.setdefault("SITE_URL", "https://tingpal.test")  # the 重測提醒信's links (spec #656)
         env.pop("SENTRY_DSN", None)
         if dsn is not None:
             env["SENTRY_DSN"] = dsn

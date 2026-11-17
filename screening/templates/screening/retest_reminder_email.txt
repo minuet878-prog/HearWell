@@ -1,0 +1,15 @@
+{% autoescape off %}{# #663 (spec #656 acceptance 27, the #657 mockup's 提醒信 A): the 重設密碼信's layout, the cancel link at the foot; no score or level. #665 puts the owner's words (#658) where the comments are. #}聽伴
+
+{{ user.username }} 您好：
+
+{# #665: the owner's body (#658). #}
+再做一次：
+{{ retest_url }}
+
+{# #665: the owner's foot line (#658), its 取消提醒 being this link. #}
+取消提醒：
+{{ cancel_url }}
+
+聽伴 聽力自我照護
+{{ site_url }}
+{% endautoescape %}

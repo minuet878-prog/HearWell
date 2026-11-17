@@ -10,6 +10,7 @@ from .models import (
     QuestionLogMonth,
     Questionnaire,
     RetestReminder,
+    RetestReminderSent,
     SignInMethod,
     Submission,
     User,
@@ -171,10 +172,24 @@ class RetestReminderAdmin(ViewOnlyAdmin):
     fields = ("user", "enabled", "enabled_on")
 
 
+@admin.register(RetestReminderSent)
+class RetestReminderSentAdmin(ViewOnlyAdmin):
+    # Spec #656 acceptance 45: which due days were sent, tried or given up (#663).
+    list_display = ("user", "due_on", "sent_at", "attempts", "last_failed_on")
+    ordering = ("-due_on",)
+
+
 @admin.register(GuestMonth)
 class GuestMonthAdmin(ViewOnlyAdmin):
     # Spec #492 (#500): the owner reads whether going without an account brings more people in.
-    list_display = ("month_label", "completed", "saved_password", "saved_google", "saved_line")
+    list_display = (
+        "month_label",
+        "completed",
+        "saved_password",
+        "saved_google",
+        "saved_line",
+        "reminders_sent",  # spec #656 Q11
+    )
     ordering = ("-month",)
 
     @admin.display(description="月份", ordering="month")
