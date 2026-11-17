@@ -86,8 +86,9 @@ def _own_audiogram(request, audiogram_id):
 
 def _fitting_guide(audiogram, points):
     # ADR 0067: the guide only when this audiogram's 建議評估選配 is 建議, judged with its owner's
-    # latest life-impact record (spec #693 acceptance 15), whoever is looking. Someone wearing
-    # hearing aids is not judged by it and always has the guide, as my guide keeps the route.
+    # latest life-impact record (spec #693 acceptance 15); only the owner opens it
+    # (_own_audiogram). Someone wearing hearing aids is not judged by it and always has the
+    # guide, as my guide keeps the route.
     user = audiogram.user
     if wearing_hearing_aids(latest_submission(user), AidAndSubsidy.for_user(user)):
         return True
