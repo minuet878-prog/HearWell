@@ -156,6 +156,29 @@ class FamilyPageChecks:
         self.assertIn(f'<li><a href="{SOURCE[1]}">{SOURCE[0]}</a></li>', self.main)
         self.assertIn(CHECKED, self.main)
 
+    def test_the_share_button_says_send_to_him_in_its_pages_style(self):
+        # Acceptance 3, 4 and 17: the button itself, its words and its kind.
+        found = re.findall(
+            r'<button id="share-button" type="button" class="([^"]+)"[^>]*>(.*?)</button>',
+            self.main,
+            re.S,
+        )
+        self.assertEqual(len(found), 1)
+        classes, label = found[0]
+        self.assertEqual(text(label), "傳給他做篩檢")
+        self.assertIn(self.style, classes.split())
+
+    def test_a_public_page_in_the_sitemap_with_its_line_preview(self):
+        # Acceptance 5, at the page: listed in the sitemap, no noindex, the confirmed title in
+        # the LINE preview (the shared checks in test_sitemap and test_line_preview cover it too).
+        response = self.client.get(self.page["path"])
+        self.assertNotIn("X-Robots-Tag", response)
+        self.assertRegex(response.content.decode(), r'<meta property="og:title" content="[^"]+">')
+        self.assertIn(
+            f"https://testserver{self.page['path']}",
+            self.client.get("/sitemap.xml").content.decode(),
+        )
+
     def test_send_to_him_with_the_owners_message_and_the_wizards_address(self):
         send = block(self.main)
         self.assertIsNotNone(send)
@@ -181,6 +204,7 @@ class FamilyPageChecks:
 
 class SignsPageTests(FamilyPageChecks, TestCase):
     page = SIGNS
+    style = "btn-primary"
 
     def test_no_score_and_no_verdict(self):
         # Acceptance 2 (ADR 0017): it lists what to watch for and judges nobody.
@@ -202,6 +226,7 @@ class SignsPageTests(FamilyPageChecks, TestCase):
 
 class LoudTvPageTests(FamilyPageChecks, TestCase):
     page = LOUD_TV
+    style = "btn-primary"
 
     def test_the_tip_comes_after_the_parts(self):
         self.assertGreater(self.main.index("tip-box"), self.main.rindex('class="family-part"'))
@@ -215,6 +240,7 @@ class LoudTvPageTests(FamilyPageChecks, TestCase):
 
 class HuhPageTests(FamilyPageChecks, TestCase):
     page = HUH
+    style = "btn-outline-primary"
 
     def test_the_tip_comes_after_the_reasons(self):
         self.assertGreater(self.main.index("tip-box"), self.main.index('class="family-part"'))

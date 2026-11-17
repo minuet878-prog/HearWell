@@ -136,7 +136,7 @@
 {% else %}
 {# Spec #655 (#673, the #669 mockup's A, grill Q3, Q4): someone not signed in first sees two doors, pale blue blocks one above the other, in the owner's words (#671). They take the place of the heading, the three-step preview, 開始篩檢 and 我是家人; the doors are plain links, and door-count.js counts a press. #}
 <h1 class="visually-hidden">聽伴</h1>
-<ul class="home-doors list-unstyled" role="list">
+<ul class="home-doors list-unstyled grid gap-3 m-0" role="list">
     <li><a class="link-card action-card home-door" href="{% url 'questionnaire_list' %}" data-door="door_self">
         {% include "screening/action_icon.html" with icon="clipboard" %}
         <span class="link-card-body">

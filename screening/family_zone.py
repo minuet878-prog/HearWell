@@ -321,7 +321,8 @@ class FamilyQuestionPage:
     send_outline: bool = False
 
 
-# One source for all three, opened on 2026-11-17 (its old asha.org address leads there).
+# One source for all three, opened on 2026-11-17 (its old asha.org address leads there). Each page
+# has its own checked date (spec #655), so checking one again leaves the others' as they were.
 FAMILY_QUESTION_SOURCES = (
     (
         "Communication Health Support Association（美國聽語學會 ASHA 支持）"
@@ -329,7 +330,9 @@ FAMILY_QUESTION_SOURCES = (
         "https://helpingyoucommunicate.org/article/worried-about-hearing-loss-take-the-self-test",
     ),
 )
-FAMILY_QUESTION_CHECKED_ON = date(2026, 11, 17)
+SIGNS_CHECKED_ON = date(2026, 11, 17)
+LOUD_TV_CHECKED_ON = date(2026, 11, 17)
+HUH_CHECKED_ON = date(2026, 11, 17)
 
 SIGNS_PAGE = FamilyQuestionPage(
     title="怎麼知道爸媽的聽力變差了",
@@ -371,7 +374,7 @@ SIGNS_PAGE = FamilyQuestionPage(
         ),
     ),
     sources=FAMILY_QUESTION_SOURCES,
-    checked_on=FAMILY_QUESTION_CHECKED_ON,
+    checked_on=SIGNS_CHECKED_ON,
 )
 
 LOUD_TV_PAGE = FamilyQuestionPage(
@@ -398,7 +401,7 @@ LOUD_TV_PAGE = FamilyQuestionPage(
         ),
     ),
     sources=FAMILY_QUESTION_SOURCES,
-    checked_on=FAMILY_QUESTION_CHECKED_ON,
+    checked_on=LOUD_TV_CHECKED_ON,
 )
 
 HUH_PAGE = FamilyQuestionPage(
@@ -420,7 +423,7 @@ HUH_PAGE = FamilyQuestionPage(
         ),
     ),
     sources=FAMILY_QUESTION_SOURCES,
-    checked_on=FAMILY_QUESTION_CHECKED_ON,
+    checked_on=HUH_CHECKED_ON,
     listen_heading="聽聽他聽到的聲音",
     listen_lead="戴上耳機，聽聽看聽損的人聽到的家常話。您會比較知道，為什麼大聲重講不一定有用。",
     # Grill Q6: the simulator is the main way on, so 傳給他 is the outline kind under 也.

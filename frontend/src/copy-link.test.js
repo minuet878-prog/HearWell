@@ -188,6 +188,10 @@ describe("send-to-him copy button", () => {
     await copy();
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(TEXT);
     expect(button().textContent).toBe("已複製");
+    expect(button().classList.contains("is-copied")).toBe(true);
+    expect(button().querySelector("svg")).not.toBeNull();
+    await vi.advanceTimersByTimeAsync(100);
+    expect(status().textContent).toBe("已複製");
     await vi.advanceTimersByTimeAsync(2000);
     expect(button().textContent).toBe("複製訊息");
   });

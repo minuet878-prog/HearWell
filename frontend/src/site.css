@@ -1459,12 +1459,6 @@
      a pale blue block (as a single clickable thing sits in a colour block), one above the other,
      the icon in a white circle. A mouse or a finger deepens the blue instead of turning it pale
      blue; at large text sizes the words drop under the icon as every action card's do. */
-  .home-doors {
-    display: grid;
-    gap: 0.75rem;
-    margin: 0;
-  }
-
   .home-doors > li > .link-card.home-door {
     min-height: 5.5rem;
     padding: 1rem;

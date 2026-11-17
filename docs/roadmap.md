@@ -163,7 +163,7 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   語言香蕉區（#436）的外框和六群代表點對照雅文基金會〈聽力圖和語言香蕉區〉海報，在 `screening/audiogram.py` 改，
   改完更新 `SPEECH_BANANA_CHECKED_ON`（頁面的「本頁資料查核於」）。
   家人專區（#426）`screening/family_zone.py`、`screening/subsidy_check.py`、`screening/family_deadlines.py` 的內容對照各自的出處，改完更新查核日期。
-  其中三個家屬頁面（#655：怎麼知道爸媽的聽力變差了、爸媽看電視開很大聲、他一直說「蛤」）共用一筆出處，改完更新 `FAMILY_QUESTION_CHECKED_ON`。
+  其中三個家屬頁面（#655：怎麼知道爸媽的聽力變差了、爸媽看電視開很大聲、他一直說「蛤」）共用一筆出處，各頁改完更新自己的 `SIGNS_CHECKED_ON`、`LOUD_TV_CHECKED_ON`、`HUH_CHECKED_ON`。
   關於聽伴（#640）的「誰做的」「內容怎麼查核」「不能取代檢查」還是不是現在的做法，改完更新 `ABOUT_CHECKED_ON`（`screening/views/home.py`）。
 
 ---

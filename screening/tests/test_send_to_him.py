@@ -95,6 +95,9 @@ class SignedInOpensTheSentAddressTests(TestCase):
         response = self.client.get("/questionnaire_list?via=send")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "screening/frontend/arrival-count.js")
+        # What the screening tab shows them: without a record, the wizard that picks one.
+        self.assertContains(response, "幫您找適合的問卷")
+        self.assertContains(response, "您最想了解什麼？")
 
     def test_one_who_has_not_agreed_yet_is_asked_first_and_comes_back(self):
         self.client.force_login(User.objects.create_user(username="sent_not_yet"))

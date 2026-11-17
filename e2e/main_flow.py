@@ -17606,6 +17606,13 @@ class FamilyDoorsAndSendTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
             self.page.wait_for_load_state("load")
             self.page.wait_for_timeout(500)
             self.assertEqual(self.count("send_opened"), 1)
+            # The address as passed on from the address bar, opened in another browser.
+            passed_on = self.page.url
+            self.open_context()
+            self.page.goto(passed_on)
+            self.page.wait_for_load_state("load")
+            self.page.wait_for_timeout(500)
+            self.assertEqual(self.count("send_opened"), 1)
 
     # Acceptance 7 (#675) and the reluctant page with 傳給他 (#674).
     PAGES = ("/family/reluctant", "/family/signs", "/family/loud-tv", "/family/huh")
@@ -17627,6 +17634,7 @@ class FamilyDoorsAndSendTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
                 with self.subTest(path=path):
                     self.page.goto(f"{self.live_server_url}{path}")
                     box = self.main().locator(".send-to-him .tip-box")
+                    expect(box).to_be_visible()
                     expect(box).to_contain_text("分享你一個聽力自我篩檢")
                     expect(box).to_contain_text(
                         f"{self.live_server_url}/questionnaire_list?via=send"
