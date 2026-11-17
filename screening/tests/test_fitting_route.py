@@ -6,7 +6,7 @@ from django.utils import timezone
 from screening.fitting_route import AUDIOGRAM, fitting_state
 from screening.models import AidAndSubsidy, Certificate, GuideChapterView, Questionnaire, Submission
 from screening.questionnaires import hhie_s, ioi_ha
-from screening.tests import test_guide_summary
+from screening.tests import test_fitting_advice, test_guide_summary
 from screening.tests.helpers import consented_user
 
 PTA_55 = test_guide_summary.PTA_55
@@ -88,12 +88,13 @@ class CurrentStopTests(TestCase):
         self.assertEqual(fitting_state(self.user, TODAY).threshold["status"], "uncertain")
         self.assertEqual(self.stop(), "before-you-go")
 
-    def test_an_ear_over_25_not_reaching_the_threshold_is_before_you_go(self):
-        self.make((30, 30, 30, 30), (20, 20, 20, 20))
+    def test_an_ear_over_40_not_reaching_the_threshold_is_before_you_go(self):
+        # Spec #693 (ADR 0067) in place of grill Q3's 25 dB HL.
+        self.make((45, 45, 45, 45), (20, 20, 20, 20))
         self.assertEqual(self.stop(), "before-you-go")
 
-    def test_one_ear_over_25_and_the_other_unknown_is_before_you_go(self):
-        audiogram = self.make((30, 30, 30, 30), (20, 20, 20, 20))
+    def test_one_ear_over_40_and_the_other_unknown_is_before_you_go(self):
+        audiogram = self.make((45, 45, 45, 45), (20, 20, 20, 20))
         audiogram.points.filter(ear="left", frequency=4000).delete()
         self.assertEqual(self.stop(), "before-you-go")
 
@@ -297,3 +298,70 @@ class ViewingDoesNotStartRouteTests(TestCase):
         state = fitting_state(self.user, TODAY)
         self.assertFalse(state.waiting)
         self.assertEqual(state.stop, "assessment")
+
+
+class FittingAdviceRouteTests(test_fitting_advice.LifeImpactTestCase):
+    """#697 (spec #693): the route waits while 建議評估選配 suggests no assessment yet, until an
+    answer on it; someone wearing hearing aids is not judged by it."""
+
+    MILD_EAR = (30, 30, 30, 30)
+    NORMAL_EAR = (20, 20, 20, 20)
+
+    def setUp(self):
+        self.user = consented_user(username="advice_route_user")
+
+    make = test_guide_summary.GuideSummaryTests.make
+
+    def record(self, scores, **fields):
+        submission = test_fitting_advice.record(self.user, scores)
+        Submission.objects.filter(pk=submission.pk).update(**fields)
+
+    def state(self):
+        return fitting_state(self.user, TODAY)
+
+    def test_mild_with_life_impact_goes_on_to_the_next_stop(self):
+        # Spec #693 acceptance 6: the route has its 您在這裡.
+        self.make(self.MILD_EAR, self.NORMAL_EAR)
+        self.record(test_fitting_advice.MILD_SCORES)
+        state = self.state()
+        self.assertFalse(state.waiting)
+        self.assertEqual(state.stop, "before-you-go")
+
+    def test_tracked_or_waiting_on_a_questionnaire_the_route_has_no_stop(self):
+        # Spec #693 acceptance 7 and 8: the audiogram stop done, no 您在這裡.
+        self.make(self.MILD_EAR, self.NORMAL_EAR)
+        for scores in (None, test_fitting_advice.NORMAL_SCORES):
+            if scores is not None:
+                self.record(scores)
+            state = self.state()
+            with self.subTest(scores=scores):
+                self.assertTrue(state.waiting)
+                self.assertIsNone(state.stop)
+                self.assertEqual(state.done, {AUDIOGRAM})
+
+    def test_an_answer_on_the_route_starts_it_when_tracked(self):
+        self.make(self.MILD_EAR, self.NORMAL_EAR)
+        self.record(test_fitting_advice.NORMAL_SCORES)
+        AidAndSubsidy.objects.create(user=self.user, certificate=Certificate.APPLYING)
+        state = self.state()
+        self.assertFalse(state.waiting)
+        self.assertEqual(state.stop, "before-you-go")
+
+    def test_an_ear_that_could_change_the_result_keeps_the_audiogram_stop(self):
+        audiogram = self.make(self.MILD_EAR, self.NORMAL_EAR)
+        audiogram.points.filter(ear="left", frequency=4000).delete()
+        state = self.state()
+        self.assertTrue(state.insufficient)
+        self.assertFalse(state.waiting)
+        self.assertEqual(state.stop, AUDIOGRAM)
+
+    def test_wearing_looks_on_from_after_fitting_whatever_the_advice(self):
+        # Spec #693 acceptance 12.
+        for ears in ((self.MILD_EAR, self.NORMAL_EAR), (self.NORMAL_EAR, self.NORMAL_EAR)):
+            self.user = consented_user(username=f"advice_wearing_{ears[0][0]}")
+            self.make(*ears)
+            self.record(test_fitting_advice.NORMAL_SCORES, wearing_hearing_aid=True)
+            state = self.state()
+            with self.subTest(ears=ears):
+                self.assertFalse(state.waiting)
+                self.assertEqual(state.stop, "after-fitting")

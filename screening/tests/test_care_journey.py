@@ -25,7 +25,7 @@ from screening.models import (
     Subsidy,
 )
 from screening.questionnaires import hhia_s, hhie_s, ioi_ha, thi
-from screening.tests import test_guide_summary
+from screening.tests import test_fitting_advice, test_guide_summary
 from screening.tests.helpers import consented_user
 
 TODAY = date(2026, 11, 12)
@@ -436,4 +436,48 @@ class ViewingDoesNotStartRouteJourneyTests(CareJourneyTestCase):
         # Acceptance 12, in part: someone wearing hearing aids is not waited on, as before.
         self.answer(wearing=True)
         GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
+        self.assertEqual(self.states(), [DONE, DONE, CURRENT, LATER, LATER])
+
+
+class FittingAdviceJourneyTests(test_fitting_advice.LifeImpactTestCase):
+    """#697 (spec #693, ADR 0067): steps 3 and 4 by 建議評估選配, 目前不需要 only for normal and
+    track, 之後 while a questionnaire is wanted first."""
+
+    MILD_EAR = (30, 30, 30, 30)
+
+    def setUp(self):
+        self.user = consented_user(username="advice_journey", birth_year=1950)
+
+    make = test_guide_summary.GuideSummaryTests.make
+
+    def states(self):
+        return [step.state for step in care_journey(self.user, TODAY).steps]
+
+    def record(self, scores, wearing=None):
+        submission = test_fitting_advice.record(self.user, scores, on=date(2026, 11, 1))
+        Submission.objects.filter(pk=submission.pk).update(wearing_hearing_aid=wearing)
+
+    def test_mild_with_life_impact_makes_step_3_current(self):
+        # Spec #693 acceptance 6.
+        self.make(self.MILD_EAR, NORMAL)
+        self.record(test_fitting_advice.MILD_SCORES)
+        self.assertEqual(self.states(), [DONE, DONE, CURRENT, LATER, LATER])
+
+    def test_tracked_steps_3_and_4_are_not_needed(self):
+        # Spec #693 acceptance 7.
+        self.make(self.MILD_EAR, NORMAL)
+        self.record(test_fitting_advice.NORMAL_SCORES)
+        self.assertEqual(self.states(), [DONE, DONE, NOT_NEEDED, NOT_NEEDED, CURRENT])
+
+    def test_a_questionnaire_first_leaves_steps_3_and_4_later_and_step_1_current(self):
+        # Spec #693 acceptance 8.
+        self.make(self.MILD_EAR, NORMAL)
+        journey = care_journey(self.user, TODAY)
+        self.assertEqual(journey.current, 1)
+        self.assertEqual(self.states(), [CURRENT, DONE, LATER, LATER, LATER])
+
+    def test_wearing_needs_step_3_whatever_the_advice(self):
+        # Spec #693 acceptance 12: as before, from step 3 on.
+        self.make(self.MILD_EAR, NORMAL)
+        self.record(test_fitting_advice.NORMAL_SCORES, wearing=True)
         self.assertEqual(self.states(), [DONE, DONE, CURRENT, LATER, LATER])

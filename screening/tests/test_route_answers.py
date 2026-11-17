@@ -234,7 +234,8 @@ class RouteQuestionTests(TestCase):
 
     def test_once_answered_the_estimate_below_the_threshold_is_left_out(self):
         self.user.audiograms.all().delete()
-        self.make((30, 30, 30, 30), (20, 20, 20, 20))
+        # Over 40 dB HL, so 建議評估選配 needs no questionnaire (spec #693).
+        self.make((45, 45, 45, 45), (20, 20, 20, 20))
         self.assertEqual(self.marks("assessment"), ["您在這裡", "估算未達門檻"])
         self.answer("applying")
         self.assertEqual(self.marks("assessment"), ["您在這裡", "估算未達門檻"])

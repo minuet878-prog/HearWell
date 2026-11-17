@@ -147,8 +147,9 @@ class GuideRouteTests(TestCase):
         self.assertIn("2026/10/01 的聽力圖", self.stop("audiogram"))
         self.assertEqual(sum(t.count(DONE) for t in tags.values()), 1)
 
-    def test_an_ear_over_25_is_here_at_before_you_go(self):
-        self.make((30, 30, 30, 30), (20, 20, 20, 20))
+    def test_an_ear_over_40_is_here_at_before_you_go(self):
+        # Spec #693 (ADR 0067) in place of 25 dB HL.
+        self.make((45, 45, 45, 45), (20, 20, 20, 20))
         tags = self.tags()
         self.assertEqual(tags["before-you-go"], [HERE])
         self.assertEqual(sum(t.count(HERE) for t in tags.values()), 1)

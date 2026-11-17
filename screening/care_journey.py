@@ -8,6 +8,7 @@ from datetime import date
 from django.urls import reverse
 from django.utils import timezone
 
+from screening.audiogram import FittingAdvice
 from screening.fitting_route import AUDIOGRAM, add_months, fitting_state
 from screening.journey_todos import step_todos
 from screening.main_flow import get_user_state, life_impact_questionnaire
@@ -38,6 +39,9 @@ CURRENT = "current"
 LATER = "later"
 NOT_NEEDED = "not-needed"  # 目前不需要, steps 3 and 4 only
 FITTING_STEPS = (3, 4)
+# 目前不需要 while the route waits on these (ADR 0067); waiting on a questionnaire first, the
+# steps are 之後, as whether they are needed is not known yet (spec #693 acceptance 8).
+NOT_NEEDED_ADVICE = frozenset({FittingAdvice.NORMAL, FittingAdvice.TRACK})
 WEARING_FROM = 3  # someone wearing hearing aids looks for the 現在這一步 from step 3 on
 LAST_STEP = 5
 FITTING_MONTHS = 3  # IOI-HA once hearing aids are worn 3 months (spec #453 Q8)
@@ -140,7 +144,7 @@ def care_journey(user, today):
     done = {number: day is not None for number, day in done_on.items()}
 
     def not_needed(number):
-        return route.waiting and number in FITTING_STEPS
+        return route.waiting and route.advice in NOT_NEEDED_ADVICE and number in FITTING_STEPS
 
     first = WEARING_FROM if route.wearing else 1
     current = next(

@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
 
 from screening import assessment_hospitals, device_centres, models
+from screening.audiogram import MILD_LIMIT, FittingAdvice
 from screening.fitting_route import (
     AUDIOGRAM,
     SUBSIDY_STOPS,
@@ -164,6 +165,12 @@ def _guide_page(request, edit=None, question=None, done_now=None):
         context["wearing"] = state.wearing
         if state.audiogram is not None:
             context |= _guide_audiogram(state)
+        if state.advice == FittingAdvice.QUESTIONNAIRE_FIRST:
+            # Imported here: care_journey imports this module for here_stop.
+            from screening.care_journey import first_questionnaire_url
+
+            # The questionnaire the 照顧旅程's step 1 asks for (spec #693).
+            context["life_impact_url"] = first_questionnaire_url(request.user, today)
     context["route"] = route = _route(state, request.user, edit, question)
     # #596 (ADR 0063): the 補助站 folded into a line under the route, signed out too.
     context["subsidy_folded"] = state is None or not state.subsidy_shown
@@ -191,7 +198,9 @@ def _guide_audiogram(state):
     context = {
         "audiogram": state.audiogram,
         "ears": ears,
-        "fitting": state.fitting,
+        "advice": state.advice,
+        # Of the two 建議 wordings, the one for an ear over 40 dB HL (spec #693).
+        "over_mild": any(e["pta"] is not None and e["pta"] > MILD_LIMIT for _, _, e in ears),
         "threshold": estimate,
     }
     if estimate["ratio"] is not None:

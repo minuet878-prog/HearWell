@@ -7,6 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening.audiogram import DB_MAX
+from screening.care_journey import care_journey
 from screening.models import (
     Answer,
     Audiogram,
@@ -240,7 +241,8 @@ NO_AUDIOGRAM = (
     "建議先做聽力檢查，再把聽力圖記錄下來，這裡就能整理下一步。"
 )
 FITTING_TITLE = "要不要找聽力師評估"
-RECOMMENDS = "您有一耳以上的四頻平均超過 25 dB HL，建議找聽力師評估選配助聽器。"
+# Spec #693 (ADR 0067) in place of #220's 「超過 25 dB HL」.
+RECOMMENDS = "您有一耳以上的四頻平均超過 40 dB HL，建議找聽力師評估選配助聽器。"
 BEFORE_YOU_GO = "去之前要準備什麼"
 WITHIN_NORMAL = "您兩耳的四頻平均都在 25 dB HL 以內。如果您仍覺得聽不清楚，建議安排聽力評估。"
 FITTING_INSUFFICIENT = (
@@ -253,6 +255,22 @@ HAS_CERTIFICATE = "如果您已經有身障證明，可以直接進行九號表�
 FORM_9_STEPS = "看九號表的流程"
 # 4 x 5 + 2 x 3 = 26: HHIE-S 顯著影響.
 SEVERE = [4, 4, 4, 4, 4, 2, 2, 2, 0, 0]
+# 10: 輕度到中度影響; 8: 無／極輕微影響, the highest score of it.
+MILD = [4, 4, 2, 0, 0, 0, 0, 0, 0, 0]
+SLIGHT = [4, 4, 0, 0, 0, 0, 0, 0, 0, 0]
+# Spec #693, the owner's words for 建議評估選配's other results (ADR 0067).
+MILD_WITH_IMPACT = (
+    "您的聽力圖是輕度聽力損失，問卷也顯示聽力已經影響生活，建議找聽力師評估選配助聽器。"
+)
+TRACK = (
+    "您的聽力圖是輕度聽力損失，目前對生活的影響不大，建議每年做一次聽力檢查追蹤。"
+    "如果開始覺得聽不清楚，可以找聽力師評估。"
+)
+QUESTIONNAIRE_FIRST = (
+    "您的聽力圖是輕度聽力損失。輕度要不要評估選配，要看聽力對生活的影響，先做一份生活影響問卷。"
+)
+DO_QUESTIONNAIRE = "去做問卷"
+HERE = '<span class="route-mark">您在這裡</span>'
 
 
 class GuideSummaryStatesTests(TestCase):
@@ -326,12 +344,14 @@ class GuideSummaryStatesTests(TestCase):
                 test_guide.assert_levels_without_skipping(self, levels)
                 self.assertGreaterEqual(levels.count(2), 1 + (records != "none"))
 
-    def test_an_ear_over_25_suggests_an_assessment(self):
-        self.make((30, 30, 30, 30), (20, 20, 20, 20))
+    def test_an_ear_over_40_suggests_an_assessment(self):
+        # Spec #693 acceptance 5: 41.25 dB HL, without a questionnaire.
+        self.make((40, 40, 40, 45), (20, 20, 20, 20))
         response = self.client.get(reverse("guide"))
         text = test_guide.text_of(response)
         self.assertIn(FITTING_TITLE, text)
         self.assertIn(RECOMMENDS, text)
+        self.assertNotIn(MILD_WITH_IMPACT, text)
         before = reverse("guide_chapter", args=["before-you-go"])
         self.assertContains(response, f'<a href="{before}">{BEFORE_YOU_GO}</a>')
         self.assertNotIn(NO_AUDIOGRAM, text)
@@ -404,7 +424,7 @@ class GuideSummaryStatesTests(TestCase):
         self.answer(wearing=False, day=2)
         self.make((30, 30, 30, 30), (20, 20, 20, 20))
         text = self.text()
-        self.assertIn(RECOMMENDS, text)
+        self.assertIn(MILD_WITH_IMPACT, text)
         self.assertNotIn(WEARING, text)
 
     def test_every_threshold_result_says_a_certificate_leads_straight_to_form_9(self):
@@ -439,7 +459,7 @@ class GuideSummaryStatesTests(TestCase):
         self.assertIn("您 2026/10/03 做的", text)
         self.assertIn("依您 2026/10/01 的聽力圖 ", text)
         self.assertIn("右耳四頻平均 30 dB HL 左耳四頻平均 20 dB HL", text)
-        self.assertIn(RECOMMENDS, text)
+        self.assertIn(MILD_WITH_IMPACT, text)
         self.assertNotIn(WEARING, text)
         self.assertNotIn("2026/10/09", text)
 
@@ -457,3 +477,75 @@ class GuideSummaryStatesTests(TestCase):
             self.answer(day=day)
             self.make(PTA_55, PTA_55, tested_on=date(2026, 10, day))
         self.assertEqual(queries(), two)
+
+
+class FittingAdviceGuideTests(TestCase):
+    """#697 (spec #693 acceptance 6-8, 12): 要不要找聽力師評估 by 建議評估選配's results; over
+    40 dB HL is GuideSummaryStatesTests' (acceptance 5)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        # GuideSummaryStatesTests' HHIE-S with ten items, for this class's own user.
+        GuideSummaryStatesTests.setUpTestData.__func__(cls)
+
+    setUp = GuideSummaryStatesTests.setUp
+    make = GuideSummaryTests.make
+    answer = GuideSummaryStatesTests.answer
+
+    def page(self):
+        response = self.client.get(reverse("guide"))
+        return response, test_guide.text_of(response)
+
+    def assert_before_you_go(self, response, shown=True):
+        before = reverse("guide_chapter", args=["before-you-go"])
+        link = f'<a href="{before}">{BEFORE_YOU_GO}</a>'
+        (self.assertContains if shown else self.assertNotContains)(response, link)
+
+    def test_mild_with_life_impact_recommends_and_the_route_is_here(self):
+        for scores in (MILD, SEVERE):
+            Answer.objects.filter(submission__user=self.user).delete()
+            Submission.objects.filter(user=self.user).delete()
+            self.answer(scores=scores)
+            self.make((30, 30, 30, 30), (20, 20, 20, 20))
+            response, text = self.page()
+            with self.subTest(scores=scores):
+                self.assertIn(MILD_WITH_IMPACT, text)
+                self.assertNotIn(RECOMMENDS, text)
+                self.assert_before_you_go(response)
+                self.assertContains(response, HERE)
+
+    def test_mild_without_life_impact_is_tracked_and_the_route_waits(self):
+        self.answer(scores=SLIGHT)
+        self.make((40, 40, 40, 40), (20, 20, 20, 20))
+        response, text = self.page()
+        self.assertIn(TRACK, text)
+        self.assertNotIn("建議找聽力師評估選配", text)
+        self.assertNotIn(BEFORE_YOU_GO, text)
+        self.assertNotContains(response, HERE)
+
+    def test_mild_without_a_questionnaire_links_to_the_one_step_1_asks_for(self):
+        self.make((30, 30, 30, 30), (20, 20, 20, 20))
+        response, text = self.page()
+        self.assertIn(QUESTIONNAIRE_FIRST, text)
+        step_1 = care_journey(self.user, timezone.localdate()).card.button
+        self.assertEqual(step_1[0], DO_QUESTIONNAIRE)
+        self.assertContains(response, f'<a href="{step_1[1]}">{DO_QUESTIONNAIRE}</a>')
+        self.assertNotIn(BEFORE_YOU_GO, text)
+        self.assertNotContains(response, HERE)
+
+    def test_wearing_points_to_reapplying_whatever_the_advice(self):
+        # Spec #693 acceptance 12: someone wearing hearing aids is not judged by it.
+        reapply = reverse("guide_chapter", args=["form-9"]) + "#reapply"
+        for scores, ears in ((SLIGHT, (30,) * 4), (MILD, (30,) * 4), (SLIGHT, (20,) * 4)):
+            Answer.objects.filter(submission__user=self.user).delete()
+            Submission.objects.filter(user=self.user).delete()
+            Audiogram.objects.filter(user=self.user).delete()
+            self.answer(scores=scores, wearing=True)
+            self.make(ears, (20, 20, 20, 20))
+            response, text = self.page()
+            with self.subTest(scores=scores, ears=ears):
+                self.assertIn(WEARING, text)
+                self.assertContains(response, f'<a href="{reapply}">{REAPPLY}</a>')
+                for wording in (TRACK, MILD_WITH_IMPACT, WITHIN_NORMAL):
+                    self.assertNotIn(wording, text)
+                self.assertContains(response, HERE)  # 配戴之後, as before
