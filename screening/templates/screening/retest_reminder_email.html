@@ -1,0 +1,22 @@
+{% comment %}
+#663 (spec #656 acceptance 27): the 重測提醒信, laid out as the 重設密碼信 (text only, every
+style inline), the cancel link at the foot (the #657 mockup's 提醒信 A). Only the username, no
+score or level. #665 puts the owner's words (#658) where the comments are.
+{% endcomment %}<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>聽伴</title>
+</head>
+<body style="margin:0;padding:0;background:#ffffff;">
+<div style="max-width:560px;margin:0 auto;padding:24px;font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif;font-size:1.125rem;line-height:1.7;color:#212529;">
+<p style="margin:0 0 18px;font-size:1.5rem;font-weight:700;color:#1f4e8c;">聽伴</p>
+<p style="margin:0 0 14px;">{{ user.username }} 您好：</p>
+{# #665: the owner's body (#658). #}
+<p style="margin:6px 0 18px;"><a href="{{ retest_url }}" style="display:block;text-align:center;background:#1f4e8c;color:#ffffff;font-size:1.25rem;font-weight:700;padding:16px;border-radius:14px;text-decoration:none;">再做一次</a></p>
+<p style="margin:0 0 14px;">按鈕按不了的話，把這個網址複製到瀏覽器打開：<br><a href="{{ retest_url }}" style="color:#1f4e8c;word-break:break-all;">{{ retest_url }}</a></p>
+<p style="margin:20px 0 0;padding-top:12px;border-top:1px solid #e3e7ec;font-size:1rem;color:#4a5460;">{# #665: the owner's foot line (#658), its 取消提醒 being this link. #}<a href="{{ cancel_url }}" style="color:#4a5460;">取消提醒</a><br>聽伴 聽力自我照護・{{ domain }}</p>
+</div>
+</body>
+</html>

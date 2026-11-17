@@ -28,7 +28,7 @@ from screening.models.qa_assistant import (
     purge_question_log,
 )
 from screening.models.questionnaires import Category, Question, Questionnaire, QuestionnaireQuerySet
-from screening.models.reminders import RetestReminder
+from screening.models.reminders import RetestReminder, RetestReminderSent
 from screening.models.sharing import (
     SHARE_DAYS,
     ReportShare,

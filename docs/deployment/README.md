@@ -16,6 +16,7 @@
 ## 排程
 
 - [意見回饋 90 天清除](feedback-purge.md)：在 VPS 的 02:30 清除服務多加一行 `purge_feedback`，本人照順序做（規格 #633）。
+- [重測提醒信 09:00 排程](retest-reminder-timer.md)：部署前確認 `SITE_URL`，再在 VPS 加每天台灣時間 09:00 跑 `send_retest_reminders` 的服務與 timer（`Persistent=true`），本人照順序做（規格 #656）。
 
 ## 搜尋引擎
 
@@ -29,7 +30,7 @@
 |---|---|
 | `GOOGLE_CLIENT_ID` | Google Auth Platform → 用戶端（Web application）的 Client ID |
 | `GOOGLE_CLIENT_SECRET` | 同一個用戶端的 Client secret（只在建立時顯示一次） |
-| `SITE_URL` | 網站的正式網址，結尾不加斜線，例如 `https://tingpal.tw`。有 `GOOGLE_CLIENT_ID` 卻沒設它，網站不會啟動 |
+| `SITE_URL` | 網站的正式網址，結尾不加斜線，例如 `https://tingpal.tw`。正式環境沒設它網站不會啟動（重測提醒信的連結也用它，規格 #656）；本機開發不用設，除非要測 Google 登入 |
 
 回呼網址由 `SITE_URL` 組成，不看請求的 Host 標頭。在 Google 後台「已授權的重新導向 URI」要填的就是：
 

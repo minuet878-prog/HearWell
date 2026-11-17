@@ -5,7 +5,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models, transaction
 
 from screening.models.hearing_aids import AidAndSubsidy
-from screening.models.reminders import RetestReminder
+from screening.models.reminders import RetestReminder, RetestReminderSent
 from screening.models.submissions import Answer
 
 # Privacy notice (spec phase7_consent_privacy.md). A major revision (what is collected, why,
@@ -69,6 +69,7 @@ class User(AbstractUser):
         self.guide_views.all().delete()
         self.todo_ticks.all().delete()
         RetestReminder.objects.filter(user=self).delete()  # email 重測提醒 (#659)
+        RetestReminderSent.objects.filter(user=self).delete()  # 重測提醒信 sent (#663)
         self.delete()
 
 

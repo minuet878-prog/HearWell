@@ -16,6 +16,8 @@ class GuestMonth(models.Model):
     saved_password = models.PositiveIntegerField("保存（帳號密碼）", default=0)
     saved_google = models.PositiveIntegerField("保存（Google）", default=0)
     saved_line = models.PositiveIntegerField("保存（LINE）", default=0)  # 0 until LINE (#506)
+    # Spec #656 Q11: 重測提醒信 sent, not guests', but counted per month here all the same.
+    reminders_sent = models.PositiveIntegerField("寄出提醒信", default=0)
 
     class Meta:
         verbose_name = verbose_name_plural = "訪客月計數"
