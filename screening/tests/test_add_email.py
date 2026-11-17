@@ -178,3 +178,12 @@ class AlreadyHasEmailTests(TestCase):
         page = self.client.get(reverse("account_settings"))
         self.assertNotContains(page, f'href="{ADD_EMAIL}"')
         self.assertIn(self.NOTE, test_layout._text(page.content.decode()))
+
+    def test_with_both_filled_in_it_does_not_say_to_write(self):
+        # 照舊 is #361 as it was (the owner's call on the cross review, Codex 6): said only
+        # while a detail is blank, not to change one filled in.
+        self.user.birth_year = 1950
+        self.user.save()
+        page = self.client.get(reverse("account_settings"))
+        self.assertNotContains(page, f'href="{ADD_EMAIL}"')
+        self.assertNotIn("要修改請寫信", test_layout._text(page.content.decode()))
