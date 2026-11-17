@@ -71,6 +71,8 @@ PAGE_NAMES = {
     "delete_account": "刪除帳號",
     "add_email": "補上 email",
     "confirm_identity": "確認本人",
+    "reminder_cancel": "取消重測提醒",
+    "reminder_cancelled": "取消重測提醒",
     "audiogram_list": "聽力圖",
     "audiogram_new": "記錄聽力圖",
     "audiogram_compare": "聽力圖比較",

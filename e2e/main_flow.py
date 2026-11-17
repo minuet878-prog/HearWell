@@ -8673,7 +8673,16 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             address = account.get_by_role("link", name="hearwellweb@gmail.com")
             self.assertEqual(address.count(), 1)
             self.assert_flat(address)
-            links = self.main().get_by_role("link").filter(has_not_text="hearwellweb@gmail.com")
+            # #660: this account has no email, so the email row and the reminder offer 補上, two
+            # outline buttons to the same page rather than list rows.
+            add_email = self.main().locator('a[href="/account/email"]')
+            self.assertEqual(add_email.count(), 2)
+            links = (
+                self.main()
+                .get_by_role("link")
+                .filter(has_not_text="hearwellweb@gmail.com")
+                .filter(has_not_text="補上")
+            )
             self.assertEqual(
                 [link.get_attribute("href") for link in links.all()],
                 [
