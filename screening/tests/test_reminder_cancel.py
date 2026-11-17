@@ -10,6 +10,13 @@ from screening.models import RetestReminder
 from screening.tests import test_layout
 from screening.tests.helpers import consented_user
 
+# The owner's words on the three pages, settled on 2026-11-17 (#658).
+CANCEL_WORDS = (
+    "按下「取消提醒」後，這個帳號就不會再收到重測提醒信。您的帳號和篩檢紀錄都不會受影響。"
+)
+CANCELLED_WORDS = "之後不會再寄重測提醒信給這個帳號。想再收到，可以登入後到帳號設定打開。"
+INVALID_WORDS = "這可能是比較舊的提醒信，或連結沒有複製完整。要關掉重測提醒，請登入後到帳號設定。"
+
 
 class ReminderCancelTests(TestCase):
     def setUp(self):
@@ -33,6 +40,9 @@ class ReminderCancelTests(TestCase):
         text = test_layout._text(response.content.decode())
         self.assertIn("取消 email 重測提醒", text)
         self.assertIn("帳號 wang_baba", text)
+        # Under the account, above the button.
+        self.assertLess(text.index("帳號 wang_baba"), text.index(CANCEL_WORDS))
+        self.assertLess(text.index(CANCEL_WORDS), text.index("取消提醒 不取消"))
         self.assertContains(
             response, '<button class="btn btn-primary btn-lg w-full" type="submit">'
         )
@@ -45,7 +55,9 @@ class ReminderCancelTests(TestCase):
     def test_the_button_turns_it_off_and_says_so(self):
         response = self.client.post(self._url(), follow=True)
         self.assertRedirects(response, reverse("reminder_cancelled"))
-        self.assertIn("已取消", test_layout._text(response.content.decode()))
+        text = test_layout._text(response.content.decode())
+        self.assertIn("已取消", text)
+        self.assertLess(text.index("✓ 已取消"), text.index(CANCELLED_WORDS))
         reminder = self._reminder()
         self.assertFalse(reminder.enabled)
         self.assertIsNone(reminder.enabled_on)
@@ -72,6 +84,7 @@ class ReminderCancelTests(TestCase):
                 with self.subTest(code=name, method=method):
                     response = getattr(self.client, method)(self._url(token))
                     self.assertContains(response, "這個連結已經不能用了", status_code=404)
+                    self.assertContains(response, INVALID_WORDS, status_code=404)
                     self.assertNotContains(response, "gone_mama", status_code=404)
                     # The footer's 意見回饋 link names the address it came from.
                     pages[name, method] = test_layout._main(response.content.decode())
