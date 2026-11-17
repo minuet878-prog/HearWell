@@ -2,7 +2,14 @@
 # Re-exports every name the single models.py had, so `screening.models.X` keeps working
 # (migration 0022 names screening.models._share_token and _share_expiry).
 from screening.models.accounts import CONSENT_VERSION, PRIVACY_UPDATED_ON, Consent, User
-from screening.models.audiograms import Audiogram, AudiogramPoint, Conduction, Ear
+from screening.models.audiograms import (
+    Audiogram,
+    AudiogramEntry,
+    AudiogramPoint,
+    AudiogramSource,
+    Conduction,
+    Ear,
+)
 from screening.models.feedback import (
     FEEDBACK_MAX_LENGTH,
     Feedback,

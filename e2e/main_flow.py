@@ -93,7 +93,9 @@ def load_tests(loader, tests, pattern):
 
 
 def type_audiogram_date(main, year, month, day):
-    """The audiogram's date, typed as on a report (the 2026-11-14 walkthrough, mockup 12A)."""
+    """The first step as an exam (spec #702, #703 mockup 5A), its date typed as on a report (the
+    2026-11-14 walkthrough, mockup 12A)."""
+    main.get_by_label("聽力檢查（醫院、診所、聽力所）").check()
     main.get_by_label("民國年").fill(year)
     main.get_by_label("月", exact=True).fill(month)
     main.get_by_label("日", exact=True).fill(day)
@@ -2272,7 +2274,7 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/audiograms/new")
             main = self.main()
-            expect(main.get_by_text("第 1 步／共 4 步：檢查日期", exact=True)).to_be_visible()
+            expect(main.get_by_text("第 1 步／共 4 步：哪一種、哪一天", exact=True)).to_be_visible()
             type_audiogram_date(main, "115", "10", "1")
             main.get_by_role("button", name="下一步：標右耳", exact=True).click()
             for ear, button in (("右耳", "右耳標完了，換左耳"), ("左耳", "左耳標完了，確認存檔")):
@@ -2285,7 +2287,8 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                 count = f"{ear}已標：氣導 4 個、骨導 0 個"
                 expect(main.locator(".audiogram-count")).to_have_text(count)
                 main.get_by_role("button", name=button, exact=True).click()
-            expect(main.get_by_text("檢查日期：2026/10/01", exact=True)).to_be_visible()
+            expect(main.get_by_text("哪一種：聽力檢查", exact=True)).to_be_visible()
+            expect(main.get_by_text("日期：2026/10/01", exact=True)).to_be_visible()
             expect(main.get_by_text("右耳：氣導 4 個、骨導 0 個", exact=True)).to_be_visible()
             expect(main.get_by_text("中度")).to_have_count(0)
             main.get_by_role("button", name="存檔", exact=True).click()
@@ -2355,7 +2358,7 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
         self.open(320, 640)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/audiograms/new")
-            for step in ("檢查日期", "標右耳", "標左耳", "確認存檔"):
+            for step in ("哪一種、哪一天", "標右耳", "標左耳", "確認存檔"):
                 with self.subTest(step=step):
                     expect(self.main()).to_contain_text(f"共 4 步：{step}")
                     for summary in self.main().locator("details > summary").all():
@@ -16560,7 +16563,7 @@ class EnterNextFieldTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
             day.fill("1")
             day.press("Enter")
             expect(day).to_be_focused()
-            expect(self.main().get_by_text("第 1 步／共 4 步：檢查日期")).to_be_visible()
+            expect(self.main().get_by_text("第 1 步／共 4 步：哪一種、哪一天")).to_be_visible()
 
 
 class AnswerReassuranceTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):

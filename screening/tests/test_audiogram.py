@@ -6,7 +6,8 @@ from pathlib import Path
 from unittest import mock
 
 from django.db import DatabaseError, connection
-from django.test import Client, SimpleTestCase, TestCase
+from django.db.migrations.executor import MigrationExecutor
+from django.test import Client, SimpleTestCase, TestCase, TransactionTestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
@@ -160,9 +161,9 @@ class AudiogramApiTests(TestCase):
     def setUp(self):
         self.client.force_login(self.user)
 
-    def _body(self, points=None, tested_on="2026-10-01"):
+    def _body(self, points=None, tested_on="2026-10-01", source="exam"):
         points = _four(_air, "right", (40, 45, 50, 55)) if points is None else points
-        return {"tested_on": tested_on, "points": points}
+        return {"tested_on": tested_on, "points": points, "source": source}
 
     def _post(self, body, key="__new__"):
         headers = {"Idempotency-Key": str(uuid.uuid4()) if key == "__new__" else key}
@@ -192,6 +193,32 @@ class AudiogramApiTests(TestCase):
         self.assertEqual(body["id"], audiogram.id)
         self.assertEqual(body["interpretation"]["right"]["pta"], 47.5)
         self.assertEqual(body["interpretation"]["right"]["degree"], "中度")
+
+    def test_source_is_required(self):
+        """Spec #702 acceptance 11: marking asks which kind it is, with nothing chosen for you."""
+        body = self._body()
+        del body["source"]
+        response = self._post(body)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["source"], ["請選擇這是哪一種"])
+        self.assertEqual(self._post(self._body(source="")).json()["source"], ["請選擇這是哪一種"])
+        self.assertNothingSaved()
+
+    def test_self_test_is_saved_as_marked_by_hand(self):
+        """Spec #702 acceptance 11, 22: the chosen source is kept; marking is the manual entry."""
+        response = self._post(self._body(source="self_test"))
+        self.assertEqual(response.status_code, 201)
+        Audiogram, _ = self._models()
+        audiogram = Audiogram.objects.get()
+        self.assertEqual((audiogram.source, audiogram.entry), ("self_test", "manual"))
+        self.assertEqual(
+            (response.json()["source"], response.json()["entry"]), ("self_test", "manual")
+        )
+
+    def test_same_key_different_source_is_409(self):
+        key = str(uuid.uuid4())
+        self.assertEqual(self._post(self._body(), key=key).status_code, 201)
+        self.assertEqual(self._post(self._body(source="self_test"), key=key).status_code, 409)
 
     def test_zero_and_minus_ten_are_kept(self):
         points = [_air("right", 500, 0), _air("right", 1000, -10)]
@@ -370,6 +397,24 @@ class AudiogramPageTests(TestCase):
         # The page content makes no diagnosis; the footer's disclaimer says it is not one.
         self.assertNotIn("診斷", self._main(response))
         self.assertContains(response, self.VIEW_JS)
+
+    def test_detail_marks_a_self_test(self):
+        """Spec #702 (ticket #704, #703 mockup 6A): a self test says so beside its heading in a
+        grey tag; an exam has no tag and keeps its heading."""
+        from screening.models import Audiogram
+
+        points = _four(_air, "right", (40,) * 4)
+        self_test = self._make(points)
+        Audiogram.objects.filter(pk=self_test.pk).update(source="self_test")
+        response = self.client.get(reverse("audiogram_detail", args=[self_test.id]))
+        heading = re.search(r"<h1[^>]*>(.*?)</h1>", self._main(response), re.DOTALL)[1]
+        self.assertIn("2026/10/01 測試的聽力圖", heading)
+        self.assertIn('<span class="source-tag">自我測試</span>', heading)
+        exam = self._make(points, tested_on=date(2026, 9, 1))
+        response = self.client.get(reverse("audiogram_detail", args=[exam.id]))
+        heading = re.search(r"<h1[^>]*>(.*?)</h1>", self._main(response), re.DOTALL)[1]
+        self.assertIn("2026/09/01 檢查的聽力圖", heading)
+        self.assertNotIn("自我測試", self._main(response))
 
     def test_detail_insufficient_and_missing_bone(self):
         points = [_air("right", f, 40) for f in (500, 1000, 4000)] + _four(_air, "left", (50,) * 4)
@@ -829,9 +874,30 @@ class AudiogramEditApiTests(TestCase):
         return f"/api/audiograms/{(audiogram or self.audiogram).id}/"
 
     def _put(self, body, audiogram=None):
+        # Marking always sends the source (spec #702); a test about something else leaves it as is.
+        body = {"source": "exam", **body}
         return self.client.put(
             self._url(audiogram), json.dumps(body), content_type="application/json"
         )
+
+    def test_source_can_be_changed(self):
+        """Spec #702 acceptance 12: 修改 changes the source; the points stay as they were."""
+        before = self._snapshot()
+        body = {"tested_on": "2026-01-10", "source": "self_test", "points": self._points()}
+        self.assertEqual(self._put(body).status_code, 200)
+        self.audiogram.refresh_from_db()
+        self.assertEqual(self.audiogram.source, "self_test")
+        self.assertEqual(self._snapshot(), before)
+
+    def test_source_is_required(self):
+        body = {"tested_on": "2026-01-10", "source": "", "points": self._points()}
+        response = self._put(body)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["source"], ["請選擇這是哪一種"])
+
+    def _points(self):
+        fields = ("ear", "conduction", "frequency", "db", "no_response", "masked")
+        return list(self.audiogram.points.values(*fields))
 
     def _snapshot(self, audiogram=None):
         from screening.models import Audiogram
@@ -974,6 +1040,8 @@ class AudiogramEditPageTests(TestCase):
         self.assertContains(response, f'data-audiogram-id="{audiogram.id}"')
         initial = self._initial(response)
         self.assertEqual(initial["tested_on"], "2026-01-10")
+        # Spec #702 acceptance 12: 修改 opens on the source chosen before.
+        self.assertEqual(initial["source"], "exam")
         self.assertCountEqual(
             initial["points"],
             [
@@ -1032,7 +1100,11 @@ class AudiogramEditPageTests(TestCase):
     def test_after_edit_detail_and_list_follow(self):
         first = self._make(_four(_air, "right", (40,) * 4), tested_on=date(2026, 1, 10))
         second = self._make(_four(_air, "right", (40,) * 4), tested_on=date(2026, 5, 1))
-        body = {"tested_on": "2026-09-10", "points": _four(_air, "right", (60,) * 4)}
+        body = {
+            "tested_on": "2026-09-10",
+            "source": "exam",
+            "points": _four(_air, "right", (60,) * 4),
+        }
         response = self.client.put(
             f"/api/audiograms/{first.id}/", json.dumps(body), content_type="application/json"
         )
@@ -1614,3 +1686,40 @@ class AudiogramPagesT365Test(TestCase):
         badge = r'\s*<span class="level-badge level-badge-{}">{}</span>'
         self.assertRegex(after, "右耳：" + badge.format("mild_to_moderate", "輕度"))
         self.assertRegex(after, "左耳：" + badge.format("unknown", "資料不足"))
+
+
+class AudiogramSourceMigrationTests(TransactionTestCase):
+    """Spec #702 acceptance 14: every audiogram from before counts as an exam marked by hand,
+    its date and points as they were."""
+
+    before = (("screening", "0038_feedbacknotice"),)
+    after = (("screening", "0039_audiogram_source_and_entry"),)
+
+    def tearDown(self):
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
+
+    def _apps(self, targets):
+        executor = MigrationExecutor(connection)
+        executor.migrate(list(targets))
+        return executor.loader.project_state(list(targets)).apps
+
+    def test_old_audiograms_are_exams_marked_by_hand(self):
+        apps = self._apps(self.before)
+        old_user = apps.get_model("screening", "User")
+        old_audiogram = apps.get_model("screening", "Audiogram")
+        old_point = apps.get_model("screening", "AudiogramPoint")
+        audiogram = old_audiogram.objects.create(
+            user=old_user.objects.create(username="before_704"), tested_on=date(2025, 5, 3)
+        )
+        old_point.objects.create(
+            audiogram=audiogram, ear="right", conduction="air", frequency=500, db=-10
+        )
+        new_audiogram = self._apps(self.after).get_model("screening", "Audiogram")
+        saved = new_audiogram.objects.get(pk=audiogram.pk)
+        self.assertEqual((saved.source, saved.entry), ("exam", "manual"))
+        self.assertEqual(saved.tested_on, date(2025, 5, 3))
+        self.assertEqual(
+            list(saved.points.values_list("ear", "conduction", "frequency", "db")),
+            [("right", "air", 500, -10)],
+        )

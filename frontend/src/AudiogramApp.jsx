@@ -14,8 +14,15 @@ const SENT_FOR = 600;
 const texts = (value) => (typeof value === "string" ? [value] : Object.values(value ?? {}).flatMap(texts));
 const NO_RESPONSE = "nr";
 // #199, #200 (spec #183 stories 80-93): one thing per step on one screen; only saving checks.
-const STEPS = ["檢查日期", "標右耳", "標左耳", "確認存檔"];
+const STEPS = ["哪一種、哪一天", "標右耳", "標左耳", "確認存檔"];
 const STEP_EAR = { 2: "right", 3: "left" };
+// Spec #702 (#703 mockup 5A): the owner's words for each source, and what the confirm step calls it.
+const SOURCES = [
+  ["exam", "聽力檢查（醫院、診所、聽力所）"],
+  ["self_test", "自我測試（手機、耳機、App）"],
+];
+const SOURCE_NAMES = { exam: "聽力檢查", self_test: "自我測試" };
+const SOURCE_REQUIRED = "請選擇這是哪一種";
 const EAR_STEP = { right: 2, left: 3 };
 const EAR_LABEL = { right: "右耳", left: "左耳" };
 const CONDUCTION_LABEL = { air: "氣導", bone: "骨導" };
@@ -120,6 +127,7 @@ export default function AudiogramApp({
   audiogramId,
   initialPoints = [],
   initialTestedOn = "",
+  initialSource = "",
   navigate = (url) => window.location.assign(url),
 }) {
   const [step, setStep] = useState(1);
@@ -136,6 +144,9 @@ export default function AudiogramApp({
   const [dragged, setDragged] = useState(null);
   const [screenReaderText, setScreenReaderText] = useState("");
   const [date, setDate] = useState(() => dateParts(initialTestedOn));
+  // Spec #702 acceptance 11, 12: which kind it is, nothing chosen until the user picks (or 修改
+  // opens on the saved one).
+  const [source, setSource] = useState(initialSource);
   const testedOn = isoDate(date);
   const thisYear = Number(today.slice(0, 4));
   const [errors, setErrors] = useState([]);
@@ -208,6 +219,7 @@ export default function AudiogramApp({
   async function save() {
     if (busy.current) return;
     const problems = [];
+    if (!source) problems.push(SOURCE_REQUIRED);
     if (Object.keys(points).length === 0) problems.push("請至少標記一個點");
     if (testedOn === "") problems.push("請填寫檢查日期");
     else if (testedOn === null) problems.push(WRONG_DATE);
@@ -225,7 +237,7 @@ export default function AudiogramApp({
       response = await fetch(editing ? `/api/audiograms/${audiogramId}/` : "/api/audiograms/", {
         method: editing ? "PUT" : "POST",
         headers,
-        body: JSON.stringify({ tested_on: testedOn, points: Object.values(points) }),
+        body: JSON.stringify({ tested_on: testedOn, source, points: Object.values(points) }),
       });
     } catch {
       // Network failure: the next attempt sends the same receipt number.
@@ -308,7 +320,21 @@ export default function AudiogramApp({
 
       {step === 1 && (
         <fieldset className="mb-4">
-          <legend className="form-label text-xl/normal font-bold">檢查日期</legend>
+          <legend className="form-label text-xl/normal font-bold">這是哪一種？</legend>
+          <div className="choice-group choice-stack">
+            {SOURCES.map(([value, label]) => (
+              <label key={value}>
+                <input type="radio" name="source" value={value} checked={source === value} onChange={() => setSource(value)} />
+                {label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+
+      {step === 1 && (
+        <fieldset className="mb-4">
+          <legend className="form-label text-xl/normal font-bold">日期</legend>
           {/* Each word and box its own piece, so at 200% text they wrap rather than run off a phone. */}
           <div className="date-parts">
             <span>民國</span>
@@ -426,7 +452,11 @@ export default function AudiogramApp({
       {step === 4 && (
         <>
           <p className="flex flex-wrap items-center justify-between gap-2">
-            <span className="font-bold">檢查日期：{testedOn ? testedOn.replaceAll("-", "/") : testedOn === null ? "日期不對" : "未填"}</span>
+            <span className="font-bold">哪一種：{SOURCE_NAMES[source] ?? "未選"}</span>
+            <button type="button" className="btn btn-link" onClick={() => goTo(1)}>改哪一種</button>
+          </p>
+          <p className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-bold">日期：{testedOn ? testedOn.replaceAll("-", "/") : testedOn === null ? "日期不對" : "未填"}</span>
             <button type="button" className="btn btn-link" onClick={() => goTo(1)}>改日期</button>
           </p>
           {/* Both ears, read only: nothing to mark with and no reading before saving. */}

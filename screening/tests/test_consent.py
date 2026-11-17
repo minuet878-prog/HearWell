@@ -481,6 +481,7 @@ class ApiGateTests(TestCase):
         self.user.give_consent()
         body = {
             "tested_on": "2026-10-01",
+            "source": "exam",
             "points": [
                 {"ear": "right", "conduction": "air", "frequency": f, "db": 40}
                 for f in (500, 1000, 2000, 4000)

@@ -168,6 +168,7 @@ def audiogram_edit(request, audiogram_id):
     audiogram = _own_audiogram(request, audiogram_id)
     initial = {
         "tested_on": audiogram.tested_on.isoformat(),
+        "source": audiogram.source,
         "points": _chart_points(audiogram.points.all()),
     }
     return render(

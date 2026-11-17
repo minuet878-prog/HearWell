@@ -248,15 +248,17 @@ def _point_set(points):
 
 def _same_audiogram(audiogram, data):
     saved = audiogram.points.values()
-    return audiogram.tested_on == data["tested_on"] and _point_set(saved) == _point_set(
-        data["points"]
+    return (
+        audiogram.tested_on == data["tested_on"]
+        and audiogram.source == data["source"]
+        and _point_set(saved) == _point_set(data["points"])
     )
 
 
 @transaction.atomic
 def _create_audiogram(user, data, key):
     audiogram = Audiogram.objects.create(
-        user=user, tested_on=data["tested_on"], idempotency_key=key
+        user=user, tested_on=data["tested_on"], source=data["source"], idempotency_key=key
     )
     AudiogramPoint.objects.bulk_create(
         AudiogramPoint(audiogram=audiogram, **point) for point in data["points"]
@@ -313,7 +315,8 @@ class AudiogramCreate(GenericAPIView):
 @transaction.atomic
 def _replace_audiogram(audiogram, data):
     audiogram.tested_on = data["tested_on"]
-    audiogram.save(update_fields=["tested_on"])
+    audiogram.source = data["source"]
+    audiogram.save(update_fields=["tested_on", "source"])
     audiogram.points.all().delete()
     AudiogramPoint.objects.bulk_create(
         AudiogramPoint(audiogram=audiogram, **point) for point in data["points"]

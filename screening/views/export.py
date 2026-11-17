@@ -109,6 +109,8 @@ def download_my_data(request):
         "audiograms": [
             {
                 "tested_on": audiogram.tested_on.isoformat(),
+                "source": audiogram.get_source_display(),
+                "entry": audiogram.get_entry_display(),
                 "created_at": _taipei(audiogram.created_at),
                 "points": [
                     {

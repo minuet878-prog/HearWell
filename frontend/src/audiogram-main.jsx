@@ -14,6 +14,7 @@ if (container) {
       audiogramId={container.dataset.audiogramId}
       initialPoints={saved?.points}
       initialTestedOn={saved?.tested_on}
+      initialSource={saved?.source}
     />,
   );
 }

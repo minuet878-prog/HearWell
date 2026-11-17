@@ -12,6 +12,8 @@ AIR_FREQUENCIES = (250, 500, 1000, 2000, 3000, 4000, 6000, 8000)
 BONE_FREQUENCIES = (500, 1000, 2000, 4000)
 PTA_FREQUENCIES = (500, 1000, 2000, 4000)
 DB_MIN = -10
+# Apple's Health PDF draws down to -20 (spec #702 Q3): only imported audiograms go below DB_MIN.
+APPLE_DB_MIN = -20
 DB_STEP = 5
 # The highest level each conduction can mark; a no-response point sits exactly here.
 DB_MAX = {"air": 120, "bone": 80}
