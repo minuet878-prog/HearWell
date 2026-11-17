@@ -121,6 +121,21 @@ class ReminderCancelTests(TestCase):
         self.assertFalse(self._reminder().enabled)
 
     # 39
+    # The footer's 意見回饋 link carries the page's address as its way back; the cancel page's
+    # address is its code, so like a shared report's it has none (#633 cross review P2).
+    def test_the_footer_feedback_link_never_carries_the_code(self):
+        token = self.reminder.cancel_token
+        for url in (self._url(), self._url("x" * 43)):
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertContains(
+                    response,
+                    f'href="{reverse("feedback")}?page=reminder_cancel"',
+                    status_code=response.status_code,
+                )
+                self.assertNotIn(token, response.content.decode().split("<footer")[1])
+                self.assertNotIn("x" * 43, response.content.decode().split("<footer")[1])
+
     def test_pages_not_cached_indexed_or_referred(self):
         responses = {
             "cancel": self.client.get(self._url()),
