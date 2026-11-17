@@ -2,7 +2,7 @@
 
 日期：2026-11-17。分支：`feat/633-about-feedback`，PR [#688](https://github.com/minuet878-prog/HearWell/pull/688)。規格 [#633](https://github.com/minuet878-prog/HearWell/issues/633)，票 #634（設計圖）、#635（本人寫字）、#636–#642（實作）、#643（本人上線後在正式站做）。
 
-狀態：2026-11-17 本人在本機實際操作後回覆「看過了，沒問題」，**驗收通過**（含「不一樣的地方」第 1 條代理擬的頁面名稱）。自動測試全過。上線後本人做 #643（驗收 43、50、51）。
+狀態：2026-11-17 本人在本機實際操作後回覆「看過了，沒問題」，**驗收通過**（含「不一樣的地方」第 1 條代理擬的頁面名稱）。自動測試全過。2026-11-17 上線，#643 本人在正式站驗收 43、50、51 通過（見最後一段）。
 
 - 本人在設計圖選定（2026-11-16，#634）：頁尾 A（兩排圖示）、回饋頁 A（先提醒再寫）、已送出頁 A、關於頁 A（四段攤開）、「了解」頁 A（接在最後一張）。
 - 本人寫的字（2026-11-16，#635）：一題一題選定，原文在 [#635 的留言](https://github.com/minuet878-prog/HearWell/issues/635#issuecomment-6920791719)。
@@ -61,11 +61,11 @@
 | 32–36 | 通知信一天一封、只有後台連結、寄失敗照樣存並送 Sentry（不含內容）、被擋的不寄 | ✅ 自動 | 頁面 `test_feedback.py`（`FeedbackNoticeTests`）、`test_monitoring.py` |
 | 37–40 | 後台清單、篩選搜尋、只有已處理可改、刪除與歷史紀錄 | ✅ 自動 | 頁面 `test_feedback_admin.py` |
 | 41–42 | 90 天清除（指令與打開清單） | ✅ 自動 | 頁面 `test_feedback_admin.py` |
-| 43 | VPS 02:30 排程加清除 | ⏳ 本人上線後 | [清單](../deployment/feedback-purge.md)，#643 |
+| 43 | VPS 02:30 排程加清除 | ✅ 本人 | 2026-11-17 加進 `hearwell-purge-question-log.service`，手動跑一次兩行都有（見最後一段） |
 | 44–47 | 隱私權說明的段落、天數與次數跟程式一致、忘記密碼那段仍正確、同意書第 8 版 | ✅ 自動 | 頁面 `test_feedback.py`（`FeedbackPrivacyTests`）、`test_consent.py`、`test_family_zone.py` |
 | 48 | 用本人的原文 | ✅ 自動 | 頁面 `test_feedback.py`（`OwnersWordsTests`）、`test_about.py`（`AboutWordsTests`） |
 | 49 | 照設計圖選定的排法 | ✅ 本人 | 2026-11-17 本機操作，下面的清單 |
-| 50–51 | 正式站收得到通知信、連送 6 次被擋 | ⏳ 本人上線後 | #643 |
+| 50–51 | 正式站收得到通知信、連送 6 次被擋 | ✅ 本人 | 2026-11-17（見最後一段） |
 
 ## 本人實際操作驗收（本機）
 
@@ -97,3 +97,28 @@ cd /Users/huangweizhe/HearWell/.claude/worktrees/about-feedback-grill && /Users/
 | e2e（本機，合併後） | 電腦負載 40 多，28 條逾時；逐條單獨重跑全過 |
 | CI（`2f3b8730`） | backend、frontend、e2e 全過 |
 | Ruff check／format | 全過 |
+
+## 上線（#643，2026-11-17）
+
+照 VPS 筆記「更新程式碼到最新 main」那張表，代理一步一步帶本人做：
+
+| 步驟 | 結果 |
+|---|---|
+| 隱私權說明日期 | 先開小 PR #692 改成 2026/11/17（上線日），CI 全綠後本人合併 |
+| VPS 現況 | `working tree clean`，停在 `4d2c3b86`（#628）；`git fetch` 後要帶上 93 個 commit 到 `6ba1a8dc` |
+| 預覽變動 | migration 只多 `0037_feedback`、`0038_feedbacknotice`；`requirements.txt` 沒變；`settings.py` 多 1 行 |
+| 備份 | `~/backups/hearwell-before-0037.dump`（約 100 KB，權限 600） |
+| 拉程式、安全檢查 | `git pull`；`check --deploy` no issues（1 silenced） |
+| 前端、靜態檔 | build 2.8 秒；collectstatic 871 copied、177 unmodified |
+| migration | `--plan` 只列兩條建表；`migrate` 兩個 OK；快取表已存在 |
+| 清除與問卷 | 提問紀錄、意見回饋各清 0 筆；問卷照舊 |
+| 重啟 | 等 `main`（`6ba1a8dc`）CI 全綠才重啟；`active (running) … 35ms ago` |
+| 從外面檢查（代理） | `/uptime-check`、`/about`、`/feedback`、`/feedback/sent`、`/privacy`、`/sitemap.xml` 都 200；關於頁可收錄、兩個回饋頁禁止收錄；隱私權說明「第 8 版，2026/11/17 更新」並有每小時 5 次；sitemap 有 `/about`；首頁頁尾有兩個新連結 |
+| 02:30 排程（驗收 43） | `hearwell-purge-question-log.service` 多一行 `purge_feedback`；手動跑一次：01:19:39 清提問紀錄、01:19:40 清意見回饋 |
+| 正式站送出（驗收 50、51） | 本人沒登入從頁尾送一則：收到回饋通知信；同一個網路連送，第 6 次被擋；後台看得到 5 則 |
+
+還沒做：
+
+- VPS 上的手動備份 `~/backups/hearwell-before-0037.dump` 等確認沒問題後由本人刪（檔名不符合自動刪除規則）。
+- VPS 顯示 `System restart required`，這次沒處理，另找時間照筆記「系統更新與重開機」做。
+

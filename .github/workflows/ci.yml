@@ -15,7 +15,36 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # A change to docs/ or GLOSSARY.md alone skips backend and e2e: no test reads those files except
+  # docs/api/ (test_api checks the schema there). GitHub and Render both count a skipped job as
+  # passed, so a docs PR still merges and deploys. Anything that cannot be compared runs them all.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if files="$(git diff --name-only "$BASE" HEAD)"; then
+            printf '%s\n' "$files"
+            if printf '%s\n' "$files" | grep -vE '^(docs/|GLOSSARY\.md$)' | grep -q . \
+              || printf '%s\n' "$files" | grep -q '^docs/api/'; then
+              echo code=true >> "$GITHUB_OUTPUT"
+            else
+              echo code=false >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo code=true >> "$GITHUB_OUTPUT"
+          fi
+
   backend:
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -51,9 +80,10 @@ jobs:
       - name: ruff format
         if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
         run: ruff format --check .
+      # The runner's 4 cores share out the test classes, each process with its own test database.
       - name: Django tests
         if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
-        run: python manage.py test --settings=config.test_settings
+        run: python manage.py test --settings=config.test_settings --parallel 4
       # The steps above install the dev list, which includes the production one, so a package
       # missing from requirements.txt would go unnoticed until Render. A fresh environment with
       # the production list only runs build.sh's check, then loads the app the way Render's
@@ -96,8 +126,15 @@ jobs:
 
   # A real browser walks the main flow against a live test server (spec phase6_e2e.md).
   # Not a required check yet: it becomes one after a week or two without flaky failures.
+  # Two machines each take half the test classes (E2E_SHARD, see load_tests in e2e/main_flow.py).
   e2e:
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ["1/2", "2/2"]
     services:
       postgres:
         image: postgres:18
@@ -133,10 +170,12 @@ jobs:
       # The runner's 4 cores share out the test classes, each process with its own live server
       # and test database. tblib carries a failure's traceback back to the main process.
       - name: End-to-end test
+        env:
+          E2E_SHARD: ${{ matrix.shard }}
         run: python manage.py test --settings=config.test_settings e2e.main_flow --parallel 4
       # Screenshot and trace of the failing moment; open the trace at https://trace.playwright.dev
       - uses: actions/upload-artifact@v7.0.2
         if: ${{ failure() }}
         with:
-          name: e2e-failure
+          name: e2e-failure-${{ strategy.job-index }}
           path: e2e-artifacts/
