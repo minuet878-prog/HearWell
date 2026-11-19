@@ -70,7 +70,7 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
     </noscript>
     {% endif %}
     {# Runs before the form is drawn, so the form never flashes up; module scripts run too late. #}
-    <script>
+    <script nonce="{{ request.csp_nonce }}">
         document.documentElement.classList.add("answer-loading");
         document.getElementById("answer-loading").textContent = "題目載入中…";
         // React not ready in 5 seconds (slow, or its file failed to load): give the form back,

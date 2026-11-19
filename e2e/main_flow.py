@@ -17245,3 +17245,66 @@ class FamilyDoorsAndSendTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
                     )
                     for name in ("傳給他做篩檢", "複製訊息"):
                         expect(self.main().get_by_role("button", name=name)).to_be_hidden()
+
+
+class ContentSecurityPolicyTest(SavesFailureArtifacts, StaticLiveServerTestCase):
+    """Security check 2026-11-19: with the Content-Security-Policy on, the pages that run inline
+    scripts (every page's head, the answer page, the guide's folds) and the React pages still
+    run all of theirs; a script the policy blocked would show as a violation here."""
+
+    fixtures = ("questions_fixture.json",)
+    WATCH = (
+        "window.cspViolations = [];"
+        "document.addEventListener('securitypolicyviolation', (event) =>"
+        " window.cspViolations.push(`${event.violatedDirective} ${event.blockedURI}`));"
+    )
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.context = self.browser.new_context()
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.context.add_init_script(self.WATCH)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def assert_no_violations(self, paths):
+        for path in paths:
+            with self.subTest(path=path):
+                self.page.goto(f"{self.live_server_url}{path}")
+                self.page.wait_for_load_state("networkidle")
+                self.assertEqual(self.page.evaluate("window.cspViolations"), [])
+
+    def test_a_visitors_pages(self):
+        hhie_s = Questionnaire.objects.get(code="hhie-s")
+        # The answer page's inline script took the loading state away: it ran.
+        self.page.goto(f"{self.live_server_url}/questionnaire/{hhie_s.id}")
+        expect(self.page.locator("html")).not_to_have_class(re.compile(r"\banswer-loading\b"))
+        self.assert_no_violations(
+            (
+                "/",
+                "/login",
+                "/register",
+                "/questionnaire_list",
+                f"/questionnaire/{hhie_s.id}",
+                "/learn/simulator",
+                "/family/hearing-aids",
+                "/qa",
+                "/admin/login/",
+            )
+        )
+
+    def test_a_signed_in_users_pages(self):
+        with self.saving_artifacts():
+            self.context.add_cookies([signed_in_without_records(self, "csp_user")])
+            self.assert_no_violations(("/", "/my_hearing", "/audiograms/new", "/account"))

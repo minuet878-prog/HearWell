@@ -83,6 +83,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "screening.middleware.ContentSecurityPolicyMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     # After WhiteNoise: static files (the stylesheet, images) are not pages and carry no noindex.
     "screening.middleware.NotIndexedMiddleware",
