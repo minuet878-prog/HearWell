@@ -61,7 +61,7 @@
 | 43–45 | 刪帳號一起刪、下載我的資料、後台只能看（兩筆對多筆查詢次數相同） | ✅ 自動 | `test_reminder_switch.py`（`ReminderDataTests`）；`test_retest_reminder_mail.py`（`DeletedAccountTests`、`SentAdminTests`） |
 | — | 首頁「下次篩檢」等於排程的到期日 | ✅ 自動 | `test_retest_reminder_mail.py`（`SameDueDayAsTheHomePageTests`） |
 | — | 照設計圖選定的排法、本人的字 | ✅ 本人 | 2026-11-17 本機操作，下面的清單 |
-| — | VPS 09:00 排程、正式站實收一封並取消 | ✅ 本人（隔天自動執行待確認） | 下面「上線後（#666）」 |
+| — | VPS 09:00 排程、正式站實收一封並取消 | ✅ 本人 | 下面「上線後（#666）」 |
 
 ## 本人實際操作驗收（本機）
 
@@ -94,5 +94,5 @@ cd /Users/huangweizhe/HearWell/.claude/worktrees/656-retest-reminder && /Users/h
 - 本人確認：信的寄件人、「minuet878 您好：」、定稿內文、「再做一次」、信尾與取消連結都對，沒有分數分級；「再做一次」打開 HHIA-S 作答頁；取消頁寫出帳號、按了 ✓ 已取消；帳號設定變「沒有打開」。VPS 上 `enabled: False`、`enabled_on: None`；再跑一次 `Sent 0`。
 - Gmail 寄件人旁**沒有**出現「取消訂閱」：Gmail 對寄信量少的新寄件人常不顯示；一鍵取消標頭由 `TheMailTests.test_one_click_cancel_headers`、`test_the_cancel_header_turns_the_reminder_off` 證明。
 - 測試帳號 `minuet878` 的兩筆紀錄時間留在 5/10、5/17（首頁會顯示已到期），沒有改回。
-- 待辦：2026-11-18 09:00 過後跑 `journalctl -u hearwell-retest-reminders.service --since yesterday --no-pager`，看到排程自己跑的 `Sent ... retest reminder(s).` 就關 #666。
+- 排程自己跑過（2026-11-19 本人在 VPS 查、代理在終端機核對）：`journalctl` 有 `Nov 18 01:00:24 ... Sent 0 retest reminder(s).`（台灣 11/18 09:00:24；沒有人到期，0 封正常）；`list-timers` 的下一次是 2026-11-19 01:00 UTC（台灣 09:00）。兩個設定檔內容與[排程清單](../deployment/retest-reminder-timer.md)一致。2026-11-19 關 #666。
 
