@@ -89,6 +89,19 @@ class SignInLimitTests(TestCase):
         self.assertContains(response, TOO_MANY)
         self.assertFalse(self._signed_in())
 
+    def test_the_admin_login_and_the_sites_share_the_username_count(self):
+        User.objects.create_superuser(username="site_admin", password=PASSWORD)
+        admin = reverse("admin:login")
+        for _ in range(3):
+            self._login(username="site_admin", password="wrong")
+        for _ in range(2):
+            self.client.post(admin, {"username": "site_admin", "password": "wrong"})
+        for url in (reverse("login"), admin):
+            with self.subTest(url):
+                response = self.client.post(url, {"username": "site_admin", "password": PASSWORD})
+                self.assertContains(response, TOO_MANY)
+                self.assertFalse(self._signed_in())
+
     def test_an_hour_later_the_address_works_again(self):
         for number in range(20):
             self._login(username=f"guess{number}", password="wrong")
