@@ -182,9 +182,18 @@ class ResetEmailTests(TestCase):
                 with self.subTest(version=version, words=words):
                     self.assertIn(words, text)
 
-    def test_the_link_is_on_the_address_the_page_was_opened_on(self):
+    @override_settings(SITE_URL="")
+    def test_without_a_site_url_the_link_is_on_the_address_the_page_was_opened_on(self):
         message = self._send(HTTP_HOST="localhost", secure=True)
         self.assertTrue(_reset_link(message).startswith("https://localhost/reset/"))
+
+    @override_settings(SITE_URL="https://tingpal.tw")
+    def test_with_a_site_url_the_link_is_on_it_whatever_the_host(self):
+        # Never from the request's Host header, like the sign-in callbacks and the reminders.
+        message = self._send(HTTP_HOST="localhost")
+        self.assertTrue(_reset_link(message).startswith("https://tingpal.tw/reset/"))
+        (html, _), *_ = message.alternatives
+        self.assertNotIn("localhost", message.body + html)
 
 
 class SetNewPasswordTests(TestCase):

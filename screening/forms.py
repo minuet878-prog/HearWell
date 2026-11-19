@@ -2,8 +2,10 @@ import hashlib
 import time
 import unicodedata
 from datetime import date
+from urllib.parse import urlsplit
 
 from django import forms
+from django.conf import settings
 from django.contrib.auth.forms import PasswordResetForm, SetPasswordForm, UserCreationForm
 from django.core.cache import caches
 from django.core.mail import EmailMultiAlternatives
@@ -255,6 +257,14 @@ class ForgotPasswordForm(NoLabelSuffix, PasswordResetForm):
         if email and attempts("email", email) >= RESETS_PER_EMAIL:
             raise forms.ValidationError(TOO_MANY_RESETS)
         return self.cleaned_data
+
+    def save(self, **options):
+        # The link's address from SITE_URL, never from the request's Host header, like the
+        # sign-in callbacks and the 重測提醒信; without it (development) the page's own address.
+        if settings.SITE_URL:
+            site = urlsplit(settings.SITE_URL)
+            options |= {"domain_override": site.netloc, "use_https": site.scheme == "https"}
+        return super().save(**options)
 
     def send_mail(
         self,
