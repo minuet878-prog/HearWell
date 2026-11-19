@@ -7,6 +7,7 @@ the dB scale in grey down the right edge, the test's date and 「來源：Apple�
 import io
 import math
 import re
+import zlib
 from datetime import datetime
 
 from reportlab.pdfbase import pdfmetrics
@@ -48,10 +49,13 @@ def apple_pdf(
     loud_noise=False,
     printed=None,
     extra=None,
+    scale=None,
 ):
     """The PDF's bytes. right and left: dB HL at FREQUENCIES, where each curve is drawn.
     printed: {ear: values} printed beside the points instead, None for a point left without
-    one; extra: (ear, frequency, words) printed beside that point as well. Both make bad files."""
+    one; extra: (ear, frequency, words) printed beside that point as well; scale: {dB: dB} the
+    grey scale's label for the first drawn at the second's height, a little further right so
+    the two stay apart. All three make bad files."""
     out = io.BytesIO()
     page = canvas.Canvas(out, pagesize=(595.28, 841.89))
 
@@ -85,9 +89,10 @@ def apple_pdf(
     for db in range(-20, 121, 10):
         label = f"{db}分貝" if db in (-20, 120) else str(db)
         # A 10 pt label's middle sits about 2.9 pt over its baseline.
+        height = (scale or {}).get(db, db)
         text(
-            509.3,
-            y_of(db) - 2.9,
+            509.3 + (30 if height != db else 0),
+            y_of(height) - 2.9,
             label,
             GREY,
             font="Helvetica" if db not in (-20, 120) else CHINESE,
@@ -118,4 +123,34 @@ def apple_pdf(
     text(36, 228, f"最近曾暴露於大聲噪音：{'是' if loud_noise else '否'}")
     page.showPage()
     page.save()
+    return out.getvalue()
+
+
+def unpacking_pdf(size):
+    """A one-page PDF a few hundred KB long whose page, unpacked, is size bytes of spaces."""
+    # A megabyte at a time, so making it does not take the memory reading it would.
+    packer = zlib.compressobj(9)
+    megabyte = b" " * 1024 * 1024
+    content = b"".join(packer.compress(megabyte) for _ in range(size // len(megabyte)))
+    content += packer.flush()
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R >>",
+        b"<< /Length %d /Filter /FlateDecode >>\nstream\n" % len(content)
+        + content
+        + b"\nendstream",
+    ]
+    out = io.BytesIO()
+    out.write(b"%PDF-1.4\n")
+    offsets = []
+    for number, body in enumerate(objects, 1):
+        offsets.append(out.tell())
+        out.write(b"%d 0 obj\n" % number + body + b"\nendobj\n")
+    table = out.tell()
+    out.write(b"xref\n0 %d\n0000000000 65535 f \n" % (len(objects) + 1))
+    for offset in offsets:
+        out.write(b"%010d 00000 n \n" % offset)
+    out.write(b"trailer\n<< /Size %d /Root 1 0 R >>\n" % (len(objects) + 1))
+    out.write(b"startxref\n%d\n%%%%EOF\n" % table)
     return out.getvalue()

@@ -3,7 +3,9 @@
 {% block body %}
 <h1 class="h3 mt-4">從 iPhone 匯入</h1>
 {# Spec #702 (#703 mockup 4A): what could not be read goes first, with the file again below it. #}
-{% if unreadable %}
+{% if too_many %}
+<div class="alert alert-warning" role="alert">試太多次了，請一小時後再試</div>
+{% elif unreadable %}
 <div class="alert alert-warning" role="alert">這份 PDF 讀不出來。請確認是「健康」app 的聽力測試結果；也可以照著 PDF 自己把數字標上去。</div>
 <p><a class="btn btn-primary btn-lg w-full" href="{% url 'audiogram_new' %}">自己標</a></p>
 <p class="mb-1">或換一份 PDF：</p>

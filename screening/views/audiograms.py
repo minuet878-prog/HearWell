@@ -24,6 +24,7 @@ from screening.audiogram import (
 )
 from screening.audiogram_thumbnail import thumbnail
 from screening.fitting_route import latest_submission, wearing_hearing_aids
+from screening.forms import add_attempt, attempts
 from screening.main_flow import get_user_state
 from screening.models import (
     AidAndSubsidy,
@@ -106,6 +107,7 @@ IMPORT_STEPS = (
 IMPORT_SALT = "screening.audiogram_import"
 # The preview's reading is signed for this person and kept good this long (spec #702).
 IMPORT_GOOD_FOR = 30 * 60
+IMPORTS_PER_HOUR = 20
 
 
 @login_required
@@ -116,6 +118,12 @@ def audiogram_import(request):
     PDF is read in memory and dropped, so its name and birthday are never kept."""
     if request.method == "GET":
         return _import_page(request)
+    # Each file is read in a process of its own: one account cannot keep the server busy. Only
+    # the account's hashed count is kept, for an hour.
+    account = str(request.user.pk)
+    if attempts("import", account) >= IMPORTS_PER_HOUR:
+        return _import_page(request, too_many=True)
+    add_attempt("import", account)
     upload = request.FILES.get("pdf")
     try:
         test = read(upload.read(MAX_BYTES + 1) if upload else b"")
@@ -173,7 +181,7 @@ def _by_ear(points):
     ]
 
 
-def _import_page(request, unreadable=False, already=None, not_saved=False):
+def _import_page(request, unreadable=False, already=None, not_saved=False, too_many=False):
     # Spec #702 (#703 mockup 4A): whatever happened says so at the top, the file again below.
     return render(
         request,
@@ -183,6 +191,7 @@ def _import_page(request, unreadable=False, already=None, not_saved=False):
             "unreadable": unreadable,
             "already": already,
             "not_saved": not_saved,
+            "too_many": too_many,
         },
     )
 

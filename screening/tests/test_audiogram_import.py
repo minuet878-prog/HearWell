@@ -9,6 +9,7 @@ from io import StringIO
 from unittest import mock
 
 from django.conf import settings
+from django.core.cache import caches
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.test import TestCase
@@ -21,6 +22,7 @@ from screening.models import Audiogram, ImportFailureMonth, Unreadable, User
 from screening.tests import test_layout
 from screening.tests.apple_pdf import FREQUENCIES, LEFT, RIGHT, apple_pdf
 from screening.tests.helpers import consented_user
+from screening.views.audiograms import IMPORTS_PER_HOUR
 
 WHO = "要存進「王大明」的紀錄"
 PDF_NAME = "PDF 上印的是 iPhone 主人的名字，不一定是做測試的人。"
@@ -332,6 +334,21 @@ class ImportEdgeCaseTests(TestCase):
             self._counts(), {"not_a_pdf": 2, "not_apple": 1, "layout": 1, "cross_check": 1}
         )
         self.assertEqual(Audiogram.objects.count(), 0)
+
+    def test_twenty_files_an_hour_then_a_wait(self):
+        """Reading a PDF takes a process of its own: one account cannot keep the server busy."""
+        caches["password_reset"].clear()
+        for _ in range(IMPORTS_PER_HOUR):
+            self.assertIn(UNREADABLE, self._main(self._post("不是 PDF".encode())))
+        main = self._main(self._post(apple_pdf()))
+        self.assertIn("試太多次了，請一小時後再試", main)
+        self.assertNotIn("存下來", main)
+        self.assertIn('type="file"', main)
+        # Not counted as a file it could not read: it was never read.
+        self.assertEqual(self._counts()["not_a_pdf"], IMPORTS_PER_HOUR)
+        # Someone else's hour is their own.
+        self.client.force_login(self.other)
+        self.assertIn("存下來", self._main(self._post(apple_pdf())))
 
     def test_the_same_test_again_links_to_the_one_kept(self):
         """Same person, imported, same day, same 16 values: no second one, from either page."""
