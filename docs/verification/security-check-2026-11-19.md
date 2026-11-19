@@ -66,10 +66,10 @@ Codex 複核：S1、S2 已修好；S3 第二次複核已修好（2026-11-19）�
 
 ## 本人驗收（本機，待做）
 
-在 worktree 開網站（`SITE_URL=` 讓確認信的連結指向本機，不指向正式站）：
+在 worktree 開網站（`SITE_URL` 設成本機，讓確認信的連結指向本機，不指向正式站；本機 `.env` 有 Google 登入金鑰，`SITE_URL` 不能留空）：
 
 ```
-cd /Users/huangweizhe/HearWell/.claude/worktrees/security-dependency-bumps && SITE_URL= /Users/huangweizhe/HearWell/py313/bin/python manage.py runserver 8001
+cd /Users/huangweizhe/HearWell/.claude/worktrees/security-dependency-bumps && SITE_URL=http://localhost:8001 /Users/huangweizhe/HearWell/py313/bin/python manage.py runserver 8001
 ```
 
 本機不真的寄信，確認信會印在跑網站的終端機裡。
