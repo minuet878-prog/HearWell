@@ -66,7 +66,7 @@
 | 24 | 多了 `segno`、不呼叫外部服務 | ✅ 自動 | 頁面 `test_drawn_here_by_segno_without_calling_out` |
 | 25 | 用本人的原文；沒定稿前不開工 | ✅ 自動＋紀錄 | 頁面 `CardWordsTests`；端對端 `test_printed_the_owners_words_keep_their_lines_inside_the_card`。#679 在 2026-11-17 08:07（台灣時間）關閉，#682 的 commit 在 09:35 之後 |
 | 26 | 照設計圖選定的排法 | ✅ 本人 | 2026-11-17 本機操作，下面的清單 |
-| 27–29 | 實機三種掃法、月計數增加、黑白印表機掃得到 | 🟡 部分（本人正式站） | #683：iPhone 相機、iPhone 的 LINE 兩張卡都對、月計數各加 2；Android 與黑白卡待補，見下方「上線後實機掃碼」 |
+| 27–29 | 實機三種掃法、月計數增加、黑白印表機掃得到 | ✅ 部分＋本人略過 | #683：iPhone 相機、iPhone 的 LINE 兩張卡都對、月計數各加 2；Android 與黑白卡本人 2026-11-19 決定略過，見下方「上線後實機掃碼」 |
 | 30 | 驗證紀錄逐條打勾、附交叉審查結果 | ✅ | 本文件 |
 | 31 | roadmap 第 6 項標成完成 | ✅ | `docs/roadmap.md` |
 
@@ -106,11 +106,12 @@ cd /Users/huangweizhe/HearWell/.claude/worktrees/677-clinic-cards && /Users/huan
 | 長輩卡 | iPhone 的 LINE 掃描 | 同上，在 LINE 裡打開 | ✅ |
 | 家屬卡 | iPhone 相機 | 家人專區首頁 | ✅ |
 | 家屬卡 | iPhone 的 LINE 掃描 | 同上，在 LINE 裡打開 | ✅ |
-| 長輩卡、家屬卡 | Android 相機 | — | ⏳ 本人沒有 Android 手機，決定借家人的補做 |
-| 黑白雷射印表機印的卡 | 任一手機 | — | ⏳ 還沒印，跟 Android 一起補做 |
+| 長輩卡、家屬卡 | Android 相機 | — | ➖ 本人沒有 Android 手機，2026-11-19 決定略過 |
+| 黑白雷射印表機印的卡 | 任一手機 | — | ➖ 2026-11-19 本人決定略過 |
 
-- 驗收 27：iPhone 相機與 LINE 掃描都打得開、落在對的頁面 ✅；Android 待補。
-- 驗收 28：掃完後台長輩卡 0 → 2、家屬卡 0 → 2，跟掃的次數一樣 ✅（Android 補做後再加）。
-- 驗收 29：待補。
+- 驗收 27：iPhone 相機與 LINE 掃描都打得開、落在對的頁面 ✅；Android 本人決定略過。
+- 驗收 28：掃完後台長輩卡 0 → 2、家屬卡 0 → 2，跟掃的次數一樣 ✅。
+- 驗收 29：本人決定略過；沒有用黑白雷射印表機實測過。
+- 2026-11-19 本人決定結案 #683。
 - 這 4 次是本人測試，看階段結束的數字時要扣掉（見 [階段結束時要回答的問題](../planning/found-by-family/phase-end-questions.md)）。
 
