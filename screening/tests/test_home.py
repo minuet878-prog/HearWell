@@ -10,7 +10,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from screening.questionnaires import hhia_s, hhie_s
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, without_nonce
 
 
 class VisitorHomeTestCase(TestCase):
@@ -76,7 +76,7 @@ class GuestHomeKeptResultTests(VisitorHomeTestCase):
         first = self.client.get(reverse("index"))
         self.client.cookies.clear()
         second = self.client.get(reverse("index"))
-        self.assertEqual(first.content, second.content)
+        self.assertEqual(without_nonce(first.content), without_nonce(second.content))
         self.assertNotIn("no-store", first.get("Cache-Control", ""))
 
     def test_signed_in_has_none(self):

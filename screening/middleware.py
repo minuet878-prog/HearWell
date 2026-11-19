@@ -1,3 +1,5 @@
+import secrets
+
 from django.contrib.auth.views import redirect_to_login
 from django.urls import reverse
 
@@ -27,7 +29,8 @@ from screening.views.common import form_page
 # the privacy notice's highlights (#640). A 小卡網址 only sends the scan on to its landing page,
 # which the gate then guards as it would anyway, and the cards' print page shows only the cards
 # (spec #677). Cancelling the email 重測提醒 from an email's link stops processing, and opens
-# without signing in (spec #656 acceptance 39).
+# without signing in (spec #656 acceptance 39). So does a 確認信's link (security check 2026-11-19),
+# which only confirms the email it was sent to.
 OPEN_PAGES = {
     "index",
     "privacy",
@@ -73,6 +76,7 @@ OPEN_PAGES = {
     "clinic_cards",
     "reminder_cancel",
     "reminder_cancelled",
+    "email_confirm",
 }
 
 
@@ -114,4 +118,31 @@ class NotIndexedMiddleware:
         # A public page that answered with anything but itself (an error) is not indexed either.
         if not (response.status_code == 200 and is_public(request.path)):
             response.setdefault("X-Robots-Tag", "noindex")
+        return response
+
+
+class ContentSecurityPolicyMiddleware:
+    """Security check 2026-11-19: a page runs only the site's own script files and the inline
+    scripts its templates wrote, each marked nonce="{{ request.csp_nonce }}" with this response's
+    own nonce, so a script slipped into a page some other way does not run. Styles stay open to
+    inline ones: the templates and the emails use style attributes, which a nonce cannot mark."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        request.csp_nonce = secrets.token_urlsafe(16)
+        response = self.get_response(request)
+        response["Content-Security-Policy"] = "; ".join(
+            (
+                "default-src 'self'",
+                f"script-src 'self' 'nonce-{request.csp_nonce}'",
+                "style-src 'self' 'unsafe-inline'",
+                # The stylesheet draws its small marks and arrows as data: images.
+                "img-src 'self' data:",
+                "object-src 'none'",
+                "base-uri 'self'",
+                "frame-ancestors 'none'",
+            )
+        )
         return response

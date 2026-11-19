@@ -26,8 +26,10 @@ def minimum_password_length():
 
 
 def consented_user(**kwargs):
-    """A user who has agreed to the current privacy notice, so health pages are open to them."""
-    user = models.User.objects.create_user(**kwargs)
+    """A user who has agreed to the current privacy notice, so health pages are open to them.
+    An email given counts as confirmed, as the ones kept before 確認信 came in do (migration 0044);
+    test_email_confirmation.unconfirmed_user makes one that is not."""
+    user = models.User.objects.create_user(**kwargs, confirmed_email=kwargs.get("email", ""))
     user.give_consent()
     return user
 
@@ -309,3 +311,11 @@ class FakeLine:
 
         with patch("screening.oidc.post_to_provider", side_effect=fake_post):
             return self.client.get(reverse("line_callback"), query)
+
+
+def without_nonce(content):
+    """A page without its Content-Security-Policy nonce, which each response has its own of,
+    for comparing two pages that should be the same."""
+    if isinstance(content, bytes):
+        content = content.decode()
+    return re.sub(r' nonce="[^"]*"', "", content)

@@ -9,6 +9,7 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.db.models import F
 from django.template import loader
 from django.urls import reverse
 from django.utils import timezone
@@ -64,11 +65,13 @@ class Command(BaseCommand):
 
 
 def _sendable():
-    """The reminders that may be sent: on, with an email, of an active account."""
+    """The reminders that may be sent: on, with a confirmed email, of an active account."""
     return (
         # Not the admins: create_superuser makes staff too.
         RetestReminder.objects.filter(enabled=True, user__is_active=True, user__is_staff=False)
         .exclude(user__email="")
+        # Only to an email its owner confirmed (security check 2026-11-19).
+        .filter(user__confirmed_email=F("user__email"))
         .select_related("user")
     )
 

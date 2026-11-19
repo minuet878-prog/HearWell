@@ -1,11 +1,14 @@
 import dataclasses
 import re
+from datetime import timedelta
 from unittest.mock import patch
 
+from django.core.cache import caches
 from django.test import Client, TestCase
 from django.urls import reverse
+from django.utils import timezone
 
-from screening.models import User
+from screening.models import QuestionLog, User
 from screening.qa_assistant import content
 from screening.tests import test_guide, test_pages, test_qa_pages
 from screening.tests.helpers import consented_user
@@ -135,6 +138,23 @@ class QaSearchTests(TestCase):
         self.assertNotIn("耳", values)
         main = self.assert_back_home_with(response, "請縮短到 200 字以內，現在是 201 字")
         self.assertNotIn("耳" * 201, main)
+
+    def test_thirty_an_hour_from_one_address_then_a_wait(self):
+        # Security check 2026-11-19: each question is kept for 90 days, so one address cannot
+        # fill the table. Not kept and not matched past the limit.
+        caches["password_reset"].clear()
+        for _ in range(30):
+            self.ask("耳機補助怎麼申請")
+        self.client = Client()  # another browser at the same address
+        self.assert_back_home_with(self.ask("耳鳴怎麼辦"), "試太多次了，請一小時後再試")
+        self.assertEqual(QuestionLog.objects.count(), 30)
+        # Another address is not held up, and this one is not after an hour.
+        self.ask("耳鳴怎麼辦", REMOTE_ADDR="198.51.100.1")
+        self.assertEqual(QuestionLog.objects.count(), 31)
+        later = timezone.now() + timedelta(hours=1, seconds=1)
+        with patch("django.core.cache.backends.db.tz_now", return_value=later):
+            self.ask("耳鳴怎麼辦")
+        self.assertEqual(QuestionLog.objects.count(), 32)
 
     def test_the_hint_shows_once(self):
         self.ask("")

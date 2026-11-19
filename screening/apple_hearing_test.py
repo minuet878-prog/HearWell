@@ -8,21 +8,25 @@ page is known (one sample, 2026-11-17); anything else is unreadable, and the per
 hand. The PDF is read in memory and dropped: its name and birthday are never kept.
 """
 
-import io
+import json
 import math
 import re
+import subprocess
+import sys
 import unicodedata
 from dataclasses import dataclass
 from datetime import date
 from itertools import pairwise
+from pathlib import Path
 
-from pdfminer.high_level import extract_pages
-from pdfminer.layout import LTChar, LTCurve
+from django.utils import timezone
 
-from screening.audiogram import AIR_FREQUENCIES
+from screening.audiogram import AIR_FREQUENCIES, APPLE_DB_MIN, DB_MAX
 from screening.models.audiograms import Unreadable
 
 MAX_BYTES = 2 * 1024 * 1024
+PAGE_READER = Path(__file__).with_name("pdf_page.py")
+READ_SECONDS = 15  # under Gunicorn's 30, which would stop the whole request
 EAR_COLOURS = {"right": (1.0, 0.18, 0.33), "left": (0.0, 0.53, 1.0)}
 COLOUR_TOLERANCE = 0.03
 VALUE_SIZE = 10  # pt, the values beside the points
@@ -54,6 +58,20 @@ class AppleHearingTest:
 
 
 @dataclass(frozen=True)
+class _Char:
+    """A letter on the page, as screening/pdf_page.py writes it."""
+
+    text: str
+    colour: object
+    size: float
+    x0: float
+    x1: float
+    y0: float
+    y1: float
+    baseline: float
+
+
+@dataclass(frozen=True)
 class _Word:
     text: str
     colour: tuple
@@ -67,25 +85,41 @@ def read(data):
     """The test's date and both ears' points, or CannotRead with the reason."""
     if len(data) > MAX_BYTES or not data.startswith(b"%PDF"):
         raise CannotRead(Unreadable.NOT_A_PDF)
-    try:
-        page = next(extract_pages(io.BytesIO(data), maxpages=1))
-    # Anything the parser trips on in a file it cannot read is the same answer to the person.
-    except Exception as error:
-        raise CannotRead(Unreadable.NOT_A_PDF) from error
-    chars = [item for item in _walk(page) if isinstance(item, LTChar)]
+    chars, curves = _first_page(data)
     lines = _lines(chars)
     if not any("Apple聽力測試" in line.replace(" ", "") for line in lines):
         raise CannotRead(Unreadable.NOT_APPLE)
     try:
-        return _test(page, chars, lines)
+        return _test(curves, chars, lines)
     # A page shaped otherwise (a colour given as a name, a point with no number): not the layout.
     except (TypeError, ValueError, IndexError) as error:
         raise CannotRead(Unreadable.LAYOUT) from error
 
 
-def _test(page, chars, lines):
+def _first_page(data):
+    """Page 1's letters, and its lines as (colour, points), read by screening/pdf_page.py in a
+    process of its own with a memory and time limit: a PDF can unpack to far more than its size."""
+    try:
+        result = subprocess.run(
+            [sys.executable, "-I", str(PAGE_READER)],
+            input=data,
+            capture_output=True,
+            timeout=READ_SECONDS,
+            check=True,
+        )
+        page = json.loads(result.stdout)
+        chars = [_Char(**char) for char in page["chars"]]
+        curves = [(curve["colour"], curve["points"]) for curve in page["curves"]]
+    # Anything the parser trips on, or a file it cannot read within the limits: the same answer
+    # to the person.
+    except (subprocess.SubprocessError, ValueError, KeyError, TypeError) as error:
+        raise CannotRead(Unreadable.NOT_A_PDF) from error
+    return chars, curves
+
+
+def _test(page_curves, chars, lines):
     tested_on = _tested_on(lines)
-    curves = _curves(page)
+    curves = _curves(page_curves)
     words = _words(chars)
     zero, per_db = _scale(words, curves)
     points = []
@@ -95,6 +129,9 @@ def _test(page, chars, lines):
         values = _values(words, ear, curve)
         for (x, y), frequency in zip(curve, AIR_FREQUENCIES, strict=True):
             db = values[x]
+            # Nothing off the chart can be saved (the database refuses it), so it is not read.
+            if not APPLE_DB_MIN <= db <= DB_MAX["air"]:
+                raise CannotRead(Unreadable.LAYOUT)
             # The point's height read on the grey scale must agree with its printed value.
             if abs(db - (zero - y) / per_db) > CROSS_CHECK_DB:
                 raise CannotRead(Unreadable.CROSS_CHECK)
@@ -116,13 +153,6 @@ def _answered_yes(lines, question):
     return False
 
 
-def _walk(item):
-    yield item
-    if hasattr(item, "__iter__"):
-        for child in item:
-            yield from _walk(child)
-
-
 def _same_colour(colour, ear):
     return (
         isinstance(colour, (tuple, list))
@@ -140,7 +170,7 @@ def _ear_of(colour):
 def _text(char):
     # The page writes some characters as CJK radicals (⼒ for 力, ⽉ for 月); a typeset minus
     # (U+2212), which NFKC leaves alone, is read as the hyphen it means.
-    return unicodedata.normalize("NFKC", char.get_text()).replace("\u2212", "-")
+    return unicodedata.normalize("NFKC", char.text).replace("\u2212", "-")
 
 
 def _rows(chars):
@@ -157,7 +187,7 @@ def _rows(chars):
 
 
 def _baseline(char):
-    return char.matrix[5]
+    return char.baseline
 
 
 def _lines(chars):
@@ -179,7 +209,7 @@ def _words(chars):
             last = run[-1]
             together = (
                 char.x0 - last.x1 <= WORD_GAP
-                and char.graphicstate.ncolor == last.graphicstate.ncolor
+                and char.colour == last.colour
                 and abs(char.size - last.size) < 0.5
             )
             if not together:
@@ -193,7 +223,7 @@ def _words(chars):
 def _word(run):
     return _Word(
         text="".join(_text(char) for char in run),
-        colour=run[0].graphicstate.ncolor,
+        colour=run[0].colour,
         size=run[0].size,
         x0=run[0].x0,
         x1=run[-1].x1,
@@ -209,24 +239,26 @@ def _tested_on(lines):
         if found := TEST_DATE.search(line):
             year, month, day = map(int, found.groups())
             try:
-                return date(year, month, day)
+                tested_on = date(year, month, day)
             except ValueError:
                 break
+            # A test still to come was misread.
+            if tested_on > timezone.localdate():
+                break
+            return tested_on
     raise CannotRead(Unreadable.LAYOUT)
 
 
-def _curves(page):
+def _curves(page_curves):
     """Each ear's polyline, its points left to right; exactly one each."""
     found = {}
-    for item in _walk(page):
-        if not isinstance(item, LTCurve) or item.fill:
-            continue
-        ear = _ear_of(item.stroking_color)
+    for colour, points in page_curves:
+        ear = _ear_of(colour)
         if ear is None:
             continue
-        if ear in found or len(item.pts) != len(AIR_FREQUENCIES):
+        if ear in found or len(points) != len(AIR_FREQUENCIES):
             raise CannotRead(Unreadable.LAYOUT)
-        found[ear] = sorted(item.pts)
+        found[ear] = sorted(points)
     if set(found) != set(EAR_COLOURS):
         raise CannotRead(Unreadable.LAYOUT)
     for curve in found.values():
@@ -248,7 +280,11 @@ def _scale(words, curves):
                 ticks[int(found[1])] = word.middle
     if 0 not in ticks or 120 not in ticks:
         raise CannotRead(Unreadable.LAYOUT)
-    return ticks[0], (ticks[0] - ticks[120]) / 120
+    per_db = (ticks[0] - ticks[120]) / 120
+    # 0 dB above 120 dB, or the heights cannot be read as dB at all.
+    if per_db <= 0:
+        raise CannotRead(Unreadable.LAYOUT)
+    return ticks[0], per_db
 
 
 def _values(words, ear, curve):

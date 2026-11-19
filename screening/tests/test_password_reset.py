@@ -16,7 +16,7 @@ from django.utils import timezone
 from screening import forms
 from screening.forms import PASSWORD_RULES
 from screening.models import User
-from screening.tests.helpers import consented_user, minimum_password_length
+from screening.tests.helpers import consented_user, minimum_password_length, without_nonce
 from screening.views.accounts import RESET_EMAIL
 
 PASSWORD = "Xk9#mPq2vLw"
@@ -38,8 +38,8 @@ class ForgotPasswordPageTests(TestCase):
         return self.client.post(reverse("password_reset"), {"email": email})
 
     def _as_typed(self, response, email):
-        """The page with the typed email and the per-request CSRF token taken out."""
-        content = response.content.decode().replace(email, "EMAIL")
+        """The page with the typed email and the per-request CSRF token and nonce taken out."""
+        content = without_nonce(response.content).replace(email, "EMAIL")
         return re.sub(r'name="csrfmiddlewaretoken" value="[^"]*"', "", content)
 
     def _assert_same_as_not_registered(self, email):
@@ -81,7 +81,9 @@ class ForgotPasswordPageTests(TestCase):
 
     def test_an_account_without_a_password_gets_one_too(self):
         # Signing in with Google or LINE leaves no usable password (spec #505, #506).
-        user = User.objects.create_user(username="google_only", email="g@example.com")
+        user = User.objects.create_user(
+            username="google_only", email="g@example.com", confirmed_email="g@example.com"
+        )
         self.assertFalse(user.has_usable_password())
         self._ask("g@example.com")
         self.assertEqual(len(mail.outbox), 1)
@@ -182,9 +184,18 @@ class ResetEmailTests(TestCase):
                 with self.subTest(version=version, words=words):
                     self.assertIn(words, text)
 
-    def test_the_link_is_on_the_address_the_page_was_opened_on(self):
+    @override_settings(SITE_URL="")
+    def test_without_a_site_url_the_link_is_on_the_address_the_page_was_opened_on(self):
         message = self._send(HTTP_HOST="localhost", secure=True)
         self.assertTrue(_reset_link(message).startswith("https://localhost/reset/"))
+
+    @override_settings(SITE_URL="https://tingpal.tw")
+    def test_with_a_site_url_the_link_is_on_it_whatever_the_host(self):
+        # Never from the request's Host header, like the sign-in callbacks and the reminders.
+        message = self._send(HTTP_HOST="localhost")
+        self.assertTrue(_reset_link(message).startswith("https://tingpal.tw/reset/"))
+        (html, _), *_ = message.alternatives
+        self.assertNotIn("localhost", message.body + html)
 
 
 class SetNewPasswordTests(TestCase):
@@ -249,14 +260,18 @@ class SetNewPasswordTests(TestCase):
         self.assertFalse(self.client.login(username="wang_ming", password=PASSWORD))
 
     def test_who_has_not_agreed_signs_in_on_the_consent_page(self):
-        user = User.objects.create_user(username="new_one", email="n@example.com")
+        user = User.objects.create_user(
+            username="new_one", email="n@example.com", confirmed_email="n@example.com"
+        )
         response = self._set(self._open_link(user), "Qz7!nw4Tlake")
         self.assertEqual(response.redirect_chain[-1][0], reverse("consent"))
         self.assertEqual(int(self.client.session["_auth_user_id"]), user.pk)
         self.assertContains(response, "密碼改好了")
 
     def test_an_account_without_a_password_can_then_sign_in_with_one(self):
-        user = User.objects.create_user(username="google_only", email="g@example.com")
+        user = User.objects.create_user(
+            username="google_only", email="g@example.com", confirmed_email="g@example.com"
+        )
         self._set(self._open_link(user), "Qz7!nw4Tlake")
         self.client.logout()
         self.assertTrue(self.client.login(username="google_only", password="Qz7!nw4Tlake"))
@@ -497,7 +512,9 @@ class AttemptLimitTests(TestCase):
     def test_an_unknown_email_does_not_count_against_the_email(self):
         for _ in range(3):
             self._ask("x@example.com", forwarded="10.0.0.1")
-        User.objects.create_user(username="late", email="x@example.com")
+        User.objects.create_user(
+            username="late", email="x@example.com", confirmed_email="x@example.com"
+        )
         response = self._ask("x@example.com", forwarded="10.0.0.2")
         self.assertRedirects(response, reverse("password_reset_sent"))
 

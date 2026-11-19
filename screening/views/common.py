@@ -2,7 +2,9 @@ import re
 from functools import wraps
 
 from django.contrib.auth.views import redirect_to_login
+from django.shortcuts import render
 from django.urls import reverse
+from django.utils.cache import add_never_cache_headers
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
@@ -129,3 +131,13 @@ def open_outside_url(request):
     query = request.GET.copy()
     query["openExternalBrowser"] = "1"
     return f"{request.path}?{query.urlencode()}"
+
+
+def email_link_page(request, template, context=None, status=200):
+    # Opened from an email without signing in, as a shared report is (reports._family_page): it
+    # names the account, so never cached, indexed, or referred on (spec #656 acceptance 39).
+    response = render(request, template, context, status=status)
+    add_never_cache_headers(response)
+    response["X-Robots-Tag"] = "noindex, nofollow"
+    response["Referrer-Policy"] = "no-referrer"
+    return response

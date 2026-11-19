@@ -203,7 +203,9 @@ def confirm_identity(request):
     user = request.user
     form = None
     if user.has_usable_password():
-        form = PasswordConfirmForm(request.POST if request.method == "POST" else None, user=user)
+        form = PasswordConfirmForm(
+            request.POST if request.method == "POST" else None, request=request
+        )
         if form.is_valid():
             if action in REMOVES:
                 return _remove(request, REMOVES[action])

@@ -66,6 +66,12 @@ export function clearGuestResult(code, key) {
   });
 }
 
+// Every guest result, kept or not: logging out leaves none for the next person on this device.
+export function clearAllGuestResults() {
+  const keys = attempt(() => Object.keys(localStorage).filter((key) => key.startsWith(GUEST_PREFIX))) ?? [];
+  keys.forEach((key) => attempt(() => localStorage.removeItem(key)));
+}
+
 // Every guest result kept, by its code; each one that must not stay (expired or broken) is
 // deleted on the way, in one pass over the storage.
 function keptResults(now) {

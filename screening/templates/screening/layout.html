@@ -37,7 +37,7 @@
     {# Copy buttons: every page's 複製信箱 in the footer (#580), the share and family pages' own. A plain static file, as it was on those two pages. #}
     <script defer src="{% static 'screening/copy-link.js' %}"></script>
     {# Header wave (#138, ADR 0006): only a tab's first page plays it; runs before the page is drawn. #}
-    <script>
+    <script nonce="{{ request.csp_nonce }}">
         if (sessionStorage.getItem("header-wave-played")) {
             document.documentElement.classList.add("header-wave-played");
         } else {
@@ -46,14 +46,14 @@
     </script>
     {# Entrance animations wait until they are in view (#341, ADR 0029): marked before the page is drawn, so they hold their first frame until scroll-helpers.js starts them. Without JavaScript they play at once. #}
     {# If in-view.js has not taken over 3 seconds after the page starts (scroll-helpers.js failed to load or stopped), they play at once too, rather than hold for ever: long enough for a slow phone to load that small file, short enough that a still first frame does not look broken. #}
-    <script>
+    <script nonce="{{ request.csp_nonce }}">
         document.documentElement.classList.add("play-in-view");
         window.playInViewFallback = setTimeout(function () {
             document.documentElement.classList.remove("play-in-view");
         }, 3000);
     </script>
     {# Smooth scrolling waits for the page and its fonts: a link into a page jumps straight to its section. #}
-    <script>
+    <script nonce="{{ request.csp_nonce }}">
         addEventListener("load", () => {
             document.fonts.ready.then(() => document.documentElement.classList.add("smooth-scroll"));
         });

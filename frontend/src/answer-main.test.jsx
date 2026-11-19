@@ -11,9 +11,10 @@ import { saveDraft } from "./draft.js";
 
 // Tests run from frontend/ (npm test --prefix frontend); jsdom gives import.meta.url a non-file scheme.
 const TEMPLATE = resolve(process.cwd(), "../screening/templates/screening/screening.html");
-// The only script without attributes on the answer page: the one that runs before the form.
+// The only script without a src on the answer page, the one that runs before the form; it carries
+// the Content-Security-Policy nonce only.
 const inlineScript = () => {
-  const found = readFileSync(TEMPLATE, "utf-8").match(/<script>([\s\S]*?)<\/script>/);
+  const found = readFileSync(TEMPLATE, "utf-8").match(/<script(?: nonce="[^"]*")?>([\s\S]*?)<\/script>/);
   if (!found) throw new Error("screening.html has no inline <script>");
   return found[1];
 };

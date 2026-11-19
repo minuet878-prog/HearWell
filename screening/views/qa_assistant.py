@@ -3,8 +3,9 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.cache import add_never_cache_headers
 from django.views.decorators.http import require_http_methods
+from rest_framework.throttling import BaseThrottle
 
-from screening.forms import QaQuestionForm
+from screening.forms import QaQuestionForm, add_attempt, attempts
 from screening.models import QuestionLog, purge_question_log
 from screening.qa_assistant import content
 from screening.qa_assistant.matching import match
@@ -14,6 +15,8 @@ from screening.qa_assistant.matching import match
 RESULTS_SESSION_KEY = "qa_results"
 # A blank or too long question's hints for the home page, shown once; never the question.
 HINT_SESSION_KEY = "qa_hint"
+QUESTIONS_PER_ADDRESS = 30  # an hour
+TOO_MANY = "試太多次了，請一小時後再試"
 
 # 幾題可能相關: the best few, not every question sharing a word.
 MOST_RESULTS = 5
@@ -112,6 +115,13 @@ def qa_search(request):
     if not form.is_valid():
         request.session[HINT_SESSION_KEY] = form.errors.get_json_data()["question"]
         return HttpResponseRedirect(reverse("qa_home"))
+    # Security check 2026-11-19: each question is kept 90 days, so one address cannot fill the
+    # table. The address as the guest scoring limit takes it; only its hashed count is kept.
+    address = BaseThrottle().get_ident(request)
+    if attempts("qa", address) >= QUESTIONS_PER_ADDRESS:
+        request.session[HINT_SESSION_KEY] = [{"message": TOO_MANY, "code": "too_many"}]
+        return HttpResponseRedirect(reverse("qa_home"))
+    add_attempt("qa", address)
     question = form.cleaned_data["question"]
     codes = match(question)
     # #400 (ADR 0034): every typed question, anonymously, with the first question it matched.

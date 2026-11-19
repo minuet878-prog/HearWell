@@ -9,7 +9,7 @@ from django.urls import reverse
 
 from screening.models import RetestReminder
 from screening.tests import test_layout
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, without_nonce
 
 # The owner's words on the three pages, settled on 2026-11-17 (#658).
 CANCEL_WORDS = (
@@ -90,7 +90,9 @@ class ReminderCancelTests(TestCase):
                     self.assertContains(response, INVALID_WORDS, status_code=404)
                     self.assertNotContains(response, "gone_mama", status_code=404)
                     # The footer's 意見回饋 link names the address it came from.
-                    pages[name, method] = test_layout._main(response.content.decode())
+                    pages[name, method] = without_nonce(
+                        test_layout._main(response.content.decode())
+                    )
         self.assertEqual(len(set(pages.values())), 1)
         self.assertTrue(self._reminder().enabled)
 

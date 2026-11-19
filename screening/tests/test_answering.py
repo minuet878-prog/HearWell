@@ -23,7 +23,7 @@ from screening.tests.helpers import consented_user, fake_definition, register
 
 def answer_loading_script(content):
     """The answer page's own inline script; every page also carries the header wave's (#138)."""
-    scripts = re.finditer(r"<script>(.*?)</script>", content, re.DOTALL)
+    scripts = re.finditer(r"<script(?: nonce=\"[^\"]*\")?>(.*?)</script>", content, re.DOTALL)
     return next((script for script in scripts if "answer-loading" in script.group(1)), None)
 
 

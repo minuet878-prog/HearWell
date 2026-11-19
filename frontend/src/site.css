@@ -4387,6 +4387,19 @@
     font-weight: 400;
   }
 
+  /* Security check 2026-11-19 (docs/design/email-confirmation-mockup.html 4): an email whose
+     確認信 is not answered yet, a small tag in the mild level's amber. */
+  .email-unconfirmed {
+    display: inline-block;
+    margin-top: 0.15rem;
+    padding: 0 0.5rem;
+    border-radius: var(--radius-small);
+    background-color: var(--color-mild-bg);
+    color: var(--color-mild);
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
   /* #659 (the #657 mockup's C): the email 重測提醒 once on, a green line with its tick (the
      success green, ADR 0007). */
   .reminder-on {
@@ -5225,7 +5238,10 @@
   }
 
   .system-message p {
+    min-width: 0;
     margin: 0;
+    /* An email in the words (the 確認信's notice) breaks rather than widen the page at 200%. */
+    overflow-wrap: anywhere;
   }
 
   /* Focused when the page opens (system-message.js), so screen readers say it: the site's blue

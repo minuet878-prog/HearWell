@@ -450,6 +450,7 @@ class QuestionnaireCodeTests(SimpleTestCase):
 
 # Logged-in views that show no health data (GLOSSARY.md 健康資料頁面), each with its reason (#182).
 NO_HEALTH_DATA = {
+    "email_confirm_resend": "sends the 確認信 again and goes back to account settings; no page",
     "consent": "the privacy summary and the agree button only",
     "audiogram_new": "an empty input page; a saved audiogram opens in audiogram_edit",
     "delete_account": "how many records would go, not their answers, scores or audiograms",

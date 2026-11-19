@@ -283,6 +283,43 @@ class MonitoringTests(TestCase):
         self.assertNotIn("hhie-s", payload)
         self.assertFalse(event.get("breadcrumbs", {}).get("values"))
 
+    def test_the_local_log_keeps_only_the_template(self):
+        with redirect_stderr(StringIO()) as local:
+            scoring.classify(4242424, "hhie-s")
+        self.assertIn("Score %s out of range for questionnaire %r", local.getvalue())
+        self.assertNotIn("4242424", local.getvalue())
+        self.assertNotIn("hhie-s", local.getvalue())
+
+    def test_secret_links_reach_sentry_as_their_route(self):
+        # A share, a reminder's cancel link and a reset link open with the token in the path.
+        cases = {
+            "https://tingpal.tw/shared/s3cr3tShare/report": (
+                "https://tingpal.tw/shared/<str:token>/report"
+            ),
+            "https://tingpal.tw/reminder/cancel/s3cr3tCancel": (
+                "https://tingpal.tw/reminder/cancel/<str:token>"
+            ),
+            "https://tingpal.tw/reset/MQ/s3cr3t-reset": (
+                "https://tingpal.tw/reset/<uidb64>/<token>"
+            ),
+            "https://tingpal.tw/": "https://tingpal.tw/",
+        }
+        for url, route in cases.items():
+            with self.subTest(url):
+                event = monitoring._scrub({"request": {"url": url}}, {})
+                self.assertEqual(event["request"]["url"], route)
+
+    def test_a_link_no_page_answers_reaches_sentry_without_its_path(self):
+        # A token link cut or with a slash added matches no route; its path may still hold the
+        # token, so none of it is sent.
+        for url in (
+            "https://tingpal.tw/shared/s3cr3tShare/report/",
+            "https://tingpal.tw/reset/MQ/s3cr3t-reset/extra?token=s3cr3tQuery",
+        ):
+            with self.subTest(url):
+                event = monitoring._scrub({"request": {"url": url}}, {})
+                self.assertEqual(event["request"]["url"], "https://tingpal.tw/<no-route>")
+
     # 3b
     def test_logs_before_the_error_do_not_ride_along(self):
         # Made at run time: Sentry also sends the source lines around each frame, so a value

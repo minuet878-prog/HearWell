@@ -6,6 +6,10 @@
     {% elif not user.email %}
     <p class="mt-0 mb-1">想在到期時收到 email 提醒，要先在帳號設定補上 email。</p>
     <a class="inline-link" href="{% url 'account_settings' %}">到帳號設定補上 email</a>
+    {% elif not user.email_confirmed %}
+    {# Security check 2026-11-19: the 確認信 not answered yet; it is sent again from account settings (mockup 4). #}
+    <p class="mt-0 mb-1">想在到期時收到 email 提醒，要先確認您的 email。</p>
+    <a class="inline-link" href="{% url 'account_settings' %}">到帳號設定重寄確認信</a>
     {% else %}
     {% if retest_reminder.next_date %}<p class="mt-0 mb-1">下次建議 {{ retest_reminder.next_date|date:"Y/m/d" }}。</p>{% endif %}
     {% include "screening/retest_reminder_purpose.html" %}

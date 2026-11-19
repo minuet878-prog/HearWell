@@ -1,8 +1,23 @@
+import copy
 import logging
 import sys
 import traceback
+from urllib.parse import urlsplit, urlunsplit
 
 import sentry_sdk
+from django.urls import Resolver404, resolve
+
+
+def _route(url):
+    # A share, a reminder's cancel link and a reset link carry their token in the path; the route
+    # ("shared/<str:token>/report") still says which page broke.
+    parts = urlsplit(url)
+    try:
+        route = resolve(parts.path).route
+    except Resolver404:
+        # A token link cut short or with a slash added: its path may still hold the token.
+        route = "<no-route>"
+    return urlunsplit((parts.scheme, parts.netloc, f"/{route}", "", ""))
 
 
 def _scrub(event, hint):
@@ -15,6 +30,8 @@ def _scrub(event, hint):
     request = event.get("request", {})
     request.pop("headers", None)
     request.pop("query_string", None)
+    if "url" in request:
+        request["url"] = _route(request["url"])
     # A logger.error() call is sent as its template only ("Score %s out of range ..."), without
     # the values filled in. Keep logging with %s: an f-string puts the data into the template.
     logentry = event.get("logentry", {})
@@ -39,6 +56,13 @@ def init(dsn, transport=None):
 class WithoutErrorWords(logging.Formatter):
     """settings.LOGGING's: an error's type and where it happened, without its words (they can
     hold an email), as _scrub sends it to Sentry."""
+
+    def format(self, record):
+        # The message's template only, without the values filled in, as _scrub sends it. A copy:
+        # the same record also goes to Sentry.
+        record = copy.copy(record)
+        record.args = None
+        return super().format(record)
 
     def formatException(self, exc_info):
         kind, _, trace = exc_info

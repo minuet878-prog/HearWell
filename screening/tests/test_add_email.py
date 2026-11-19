@@ -1,12 +1,16 @@
 """#660 (spec #656 acceptance 7-11, the #657 mockup's 二): an account without an email adds one
 itself, once, after 確認本人; one with an email cannot change it here and writes to us as before."""
 
+from urllib.parse import urlsplit
+
+from django.core import mail
 from django.test import TestCase
 from django.urls import reverse
 
 from screening.models import RetestReminder, User
 from screening.tests import (
     test_confirm_identity,
+    test_email_confirmation,
     test_layout,
     test_line_confirm_identity,
     test_line_sign_in_methods,
@@ -93,15 +97,19 @@ class ConfirmedTests(TestCase):
     def email(self):
         return User.objects.get(pk=self.user.pk).email
 
-    # 8
-    def test_a_good_email_is_saved_and_the_reminder_can_be_turned_on(self):
+    # 8, with its 確認信 answered first (security check 2026-11-19, the owner's pick)
+    def test_a_good_email_is_saved_and_the_reminder_waits_for_its_confirmation(self):
         response = self.client.post(ADD_EMAIL, {"email": "wang.daughter@example.com"})
         self.assertRedirects(response, reverse("account_settings"))
         self.assertEqual(self.email(), "wang.daughter@example.com")
         page = self.client.get(reverse("account_settings"))
         self.assertContains(page, "wang.daughter@example.com")
-        self.assertContains(page, "打開提醒")
+        self.assertNotContains(page, "打開提醒")
         self.assertNotContains(page, f'href="{ADD_EMAIL}"')
+        self.client.post(reverse("retest_reminder"), {"enabled": "1"})
+        self.assertFalse(RetestReminder.objects.filter(user=self.user, enabled=True).exists())
+        self.client.post(urlsplit(test_email_confirmation.confirmation_link(mail.outbox[-1])).path)
+        self.assertContains(self.client.get(reverse("account_settings")), "打開提醒")
         self.client.post(reverse("retest_reminder"), {"enabled": "1"})
         self.assertTrue(RetestReminder.objects.get(user=self.user).enabled)
 

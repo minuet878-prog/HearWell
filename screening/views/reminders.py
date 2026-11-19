@@ -1,13 +1,11 @@
 from django.http import HttpResponseBadRequest, HttpResponseRedirect
-from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.cache import add_never_cache_headers
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from screening.models import RetestReminder
-from screening.views.common import form_address, health_data_page, safe_next
+from screening.views.common import email_link_page, form_address, health_data_page, safe_next
 
 
 @form_address
@@ -23,20 +21,12 @@ def retest_reminder(request):
         reminder = RetestReminder.objects.filter(user=user).first()
         if reminder is not None:
             reminder.turn_off()
-    elif user.email:  # without one there is nowhere to send it (acceptance 5)
+    # Without one there is nowhere to send it (acceptance 5); without its 確認信 answered, it
+    # may be someone else's (security check 2026-11-19).
+    elif user.email_confirmed:
         reminder, _ = RetestReminder.objects.get_or_create(user=user)
         reminder.turn_on(timezone.localdate())
     return HttpResponseRedirect(safe_next(request) or reverse("account_settings"))
-
-
-def _email_link_page(request, template, context=None, status=200):
-    # Opened from an email without signing in, as a shared report is (reports._family_page): it
-    # names the account, so never cached, indexed, or referred on (spec #656 acceptance 39).
-    response = render(request, template, context, status=status)
-    add_never_cache_headers(response)
-    response["X-Robots-Tag"] = "noindex, nofollow"
-    response["Referrer-Policy"] = "no-referrer"
-    return response
 
 
 # RFC 8058's one-click: a mail program POSTs List-Unsubscribe=One-Click to this address without a
@@ -49,18 +39,18 @@ def reminder_cancel(request, token):
     if request.method == "GET":
         reminder = RetestReminder.objects.select_related("user").filter(cancel_token=token).first()
         if reminder is not None:
-            return _email_link_page(
+            return email_link_page(
                 request, "screening/reminder_cancel.html", {"reminder": reminder}
             )
     elif RetestReminder.cancel(token):  # one already off answers the same
         if request.POST.get("List-Unsubscribe") == "One-Click":
             # RFC 8058: a mail program's one-click is answered here, not sent on.
-            return _email_link_page(request, "screening/reminder_cancelled.html")
+            return email_link_page(request, "screening/reminder_cancelled.html")
         return HttpResponseRedirect(reverse("reminder_cancelled"))
     # Wrong, or gone with its account: the same answer for both.
-    return _email_link_page(request, "screening/reminder_invalid.html", status=404)
+    return email_link_page(request, "screening/reminder_invalid.html", status=404)
 
 
 @require_http_methods(["GET"])
 def reminder_cancelled(request):
-    return _email_link_page(request, "screening/reminder_cancelled.html")
+    return email_link_page(request, "screening/reminder_cancelled.html")

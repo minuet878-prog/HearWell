@@ -174,6 +174,17 @@ class GuestScoreThrottle(SimpleRateThrottle):
         return self.cache_format % {"scope": self.scope, "ident": self.get_ident(request)}
 
 
+class GuestCountThrottle(SimpleRateThrottle):
+    # Security check 2026-11-19 (the owner's pick, over the grill's Q15): a flood would only make
+    # the numbers wrong, but each one writes to the database. In the server's memory, like
+    # GuestScoreThrottle; a person opens a page far fewer times an hour.
+    scope = "guest_count"
+    rate = "60/hour"
+
+    def get_cache_key(self, request, view):
+        return self.cache_format % {"scope": self.scope, "ident": self.get_ident(request)}
+
+
 IMPORTED_STAYS = "從 iPhone 匯入的聽力圖不能修改，可以刪掉重新匯入"
 GUEST_LIMIT = "剛才做了很多次，請過一小時再試。您的作答沒有不見。"
 
@@ -183,11 +194,12 @@ class GuestCount(GenericAPIView):
     landing page, once it has opened in a browser (spec #677); a door pressed on the signed-out
     home, or the address 傳給他 sent, opened in a browser (spec #655). Anyone, signed in or not,
     and nothing about them is kept: no session is read (so no CSRF), and no limit (the
-    grill's Q15: a flood only makes the number wrong)."""
+    grill's Q15: a flood only makes the number wrong), but 60 an hour from one address."""
 
     serializer_class = GuestCountSerializer
     authentication_classes = ()
     permission_classes = ()
+    throttle_classes = (GuestCountThrottle,)
 
     @extend_schema(
         responses={
