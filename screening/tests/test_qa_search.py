@@ -1,10 +1,12 @@
 import dataclasses
 import re
+from datetime import timedelta
 from unittest.mock import patch
 
 from django.core.cache import caches
 from django.test import Client, TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from screening.models import QuestionLog, User
 from screening.qa_assistant import content
@@ -146,6 +148,13 @@ class QaSearchTests(TestCase):
         self.client = Client()  # another browser at the same address
         self.assert_back_home_with(self.ask("耳鳴怎麼辦"), "試太多次了，請一小時後再試")
         self.assertEqual(QuestionLog.objects.count(), 30)
+        # Another address is not held up, and this one is not after an hour.
+        self.ask("耳鳴怎麼辦", REMOTE_ADDR="198.51.100.1")
+        self.assertEqual(QuestionLog.objects.count(), 31)
+        later = timezone.now() + timedelta(hours=1, seconds=1)
+        with patch("django.core.cache.backends.db.tz_now", return_value=later):
+            self.ask("耳鳴怎麼辦")
+        self.assertEqual(QuestionLog.objects.count(), 32)
 
     def test_the_hint_shows_once(self):
         self.ask("")

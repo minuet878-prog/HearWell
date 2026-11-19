@@ -309,6 +309,17 @@ class MonitoringTests(TestCase):
                 event = monitoring._scrub({"request": {"url": url}}, {})
                 self.assertEqual(event["request"]["url"], route)
 
+    def test_a_link_no_page_answers_reaches_sentry_without_its_path(self):
+        # A token link cut or with a slash added matches no route; its path may still hold the
+        # token, so none of it is sent.
+        for url in (
+            "https://tingpal.tw/shared/s3cr3tShare/report/",
+            "https://tingpal.tw/reset/MQ/s3cr3t-reset/extra?token=s3cr3tQuery",
+        ):
+            with self.subTest(url):
+                event = monitoring._scrub({"request": {"url": url}}, {})
+                self.assertEqual(event["request"]["url"], "https://tingpal.tw/<no-route>")
+
     # 3b
     def test_logs_before_the_error_do_not_ride_along(self):
         # Made at run time: Sentry also sends the source lines around each frame, so a value

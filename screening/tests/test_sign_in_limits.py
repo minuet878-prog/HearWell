@@ -7,6 +7,7 @@ from datetime import timedelta
 from unittest import mock
 
 from django.core.cache import caches
+from django.db import connection
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -88,6 +89,33 @@ class SignInLimitTests(TestCase):
         self.assertContains(response, TOO_MANY)
         self.assertFalse(self._signed_in())
 
+    def test_an_hour_later_the_address_works_again(self):
+        for number in range(20):
+            self._login(username=f"guess{number}", password="wrong")
+        later = timezone.now() + timedelta(hours=1, seconds=1)
+        with mock.patch("django.core.cache.backends.db.tz_now", return_value=later):
+            self._login()
+        self.assertTrue(self._signed_in())
+
+    def test_counts_keep_neither_the_username_nor_the_address(self):
+        # ADR 0071: hashed, like the forgot-password page's.
+        self._login(password="wrong", remote="203.0.113.7")
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT cache_key, value FROM password_reset_limits")
+            rows = cursor.fetchall()
+        self.assertEqual(len(rows), 2)
+        for row in rows:
+            for kept in ("wang_ming", "203.0.113.7"):
+                self.assertNotIn(kept, " ".join(row))
+
+
+class SignInLengthTests(TestCase):
+    def test_a_sign_in_still_lasts_14_days(self):
+        # The owner kept it (2026-11-19): elders signed in on their own phone stay signed in.
+        consented_user(username="wang_ming", password=PASSWORD)
+        self.client.post(reverse("login"), {"username": "wang_ming", "password": PASSWORD})
+        self.assertEqual(self.client.session.get_expiry_age(), 14 * 24 * 60 * 60)
+
 
 class PasswordConfirmLimitTests(TestCase):
     """Deleting the account and confirming it is you ask for the password again: the same count
@@ -121,4 +149,24 @@ class PasswordConfirmLimitTests(TestCase):
         response = self.client.post(
             reverse("login"), {"username": "wang_ming", "password": PASSWORD}
         )
+        self.assertContains(response, TOO_MANY)
+
+    def test_twenty_from_the_address_hold_up_both_pages(self):
+        for number in range(20):
+            self.client.post(reverse("login"), {"username": f"guess{number}", "password": "wrong"})
+        self.client.force_login(self.user)
+        for url in (reverse("delete_account"), f"{reverse('confirm_identity')}?action=add_email"):
+            with self.subTest(url):
+                self.assertContains(self.client.post(url, {"password": PASSWORD}), TOO_MANY)
+        self.assertTrue(User.objects.filter(pk=self.user.pk).exists())
+
+    def test_wrong_passwords_here_count_for_the_address(self):
+        for number in range(15):
+            self.client.post(reverse("login"), {"username": f"guess{number}", "password": "wrong"})
+        self.client.force_login(self.user)
+        for _ in range(5):
+            self.client.post(reverse("confirm_identity") + "?action=add_email", {"password": "x"})
+        self.client.logout()
+        consented_user(username="li_hua", password=PASSWORD)
+        response = self.client.post(reverse("login"), {"username": "li_hua", "password": PASSWORD})
         self.assertContains(response, TOO_MANY)

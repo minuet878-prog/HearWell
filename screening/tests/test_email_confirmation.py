@@ -3,22 +3,23 @@ email-confirmation-mockup.html). An email typed on the site gets the 重設密�
 only once its owner pressed 確認信箱 in the 確認信. Google's email and the emails kept before count
 as confirmed; a link lasts 3 days."""
 
-import importlib
 import re
 from datetime import timedelta
 from unittest import mock
 from urllib.parse import urlsplit
 
-from django.apps import apps
 from django.core import mail, signing
 from django.core.cache import caches
-from django.test import TestCase, override_settings
+from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
+from django.test import TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from screening.forms import HELP_ADDRESS
 from screening.management.commands import send_retest_reminders
 from screening.models import RetestReminder, User
+from screening.tests import test_retest_reminder_mail
 from screening.tests.helpers import (
     FakeGoogle,
     FakeLine,
@@ -176,6 +177,12 @@ class ConfirmPageTests(TestCase):
         self.assertContains(self.client.post(self.path), "信箱確認好了")
         self.assertTrue(User.objects.get(pk=self.user.pk).email_confirmed)
 
+    def test_a_link_just_under_3_days_still_works(self):
+        later = timezone.now() + timedelta(days=3, minutes=-1)
+        with mock.patch("django.core.signing.time.time", return_value=later.timestamp()):
+            self.client.post(self.path)
+        self.assertTrue(User.objects.get(pk=self.user.pk).email_confirmed)
+
     def test_a_link_past_3_days_cannot_be_used(self):
         later = timezone.now() + timedelta(days=3, seconds=1)
         with mock.patch("django.core.signing.time.time", return_value=later.timestamp()):
@@ -219,6 +226,18 @@ class AccountSettingsTests(TestCase):
         response = self.client.post(reverse("email_confirm_resend"), follow=True)
         self.assertContains(response, "試太多次了，請一小時後再試")
         self.assertEqual(len(mail.outbox), 3)
+        # An hour later it sends again.
+        later = timezone.now() + timedelta(hours=1, seconds=1)
+        with mock.patch("django.core.cache.backends.db.tz_now", return_value=later):
+            self.client.post(reverse("email_confirm_resend"))
+        self.assertEqual(len(mail.outbox), 4)
+
+    def test_another_accounts_resends_are_its_own(self):
+        for _ in range(4):
+            self.client.post(reverse("email_confirm_resend"))
+        self.client.force_login(unconfirmed_user(username="li_hua", email="li@example.com"))
+        self.client.post(reverse("email_confirm_resend"))
+        self.assertEqual(mail.outbox[-1].to, ["li@example.com"])
 
     def test_a_confirmed_email_is_not_sent_again(self):
         User.objects.filter(pk=self.user.pk).update(confirmed_email="wang@example.com")
@@ -270,12 +289,34 @@ class GateTests(TestCase):
         self.assertIn(reminder, send_retest_reminders._sendable())
 
 
-class ExistingEmailsTests(TestCase):
+class UnconfirmedReminderRunTests(test_retest_reminder_mail.ReminderMailTestCase):
+    def test_the_run_sends_nothing_to_an_unconfirmed_email(self):
+        user = self.person("typed", email="typed@example.com")
+        User.objects.filter(pk=user.pk).update(confirmed_email="")
+        self.assertEqual(self.run_on(test_retest_reminder_mail.DUE_ON), [])
+        User.objects.filter(pk=user.pk).update(confirmed_email="typed@example.com")
+        self.assertEqual(self.run_on(test_retest_reminder_mail.DUE_ON), ["typed@example.com"])
+
+
+class ExistingEmailsTests(TransactionTestCase):
+    """Migration 0044 run on accounts made before it."""
+
+    before = (("screening", "0043_merge_doors_and_apple_import"),)
+    after = (("screening", "0044_user_confirmed_email"),)
+
+    def _migrate(self, targets):
+        executor = MigrationExecutor(connection)
+        executor.migrate(list(targets))
+        return executor.loader.project_state(list(targets)).apps
+
+    def tearDown(self):
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
+
     def test_emails_kept_before_count_as_confirmed(self):
-        kept = User.objects.create_user(username="kept", email="kept@example.com")
-        none = User.objects.create_user(username="none")
-        User.objects.update(confirmed_email="")
-        migration = importlib.import_module("screening.migrations.0044_user_confirmed_email")
-        migration.confirm_existing_emails(apps, None)
-        self.assertTrue(User.objects.get(pk=kept.pk).email_confirmed)
-        self.assertEqual(User.objects.get(pk=none.pk).confirmed_email, "")
+        old_user = self._migrate(self.before).get_model("screening", "User")
+        old_user.objects.create(username="kept", email="kept@example.com")
+        old_user.objects.create(username="none")
+        new_user = self._migrate(self.after).get_model("screening", "User")
+        self.assertEqual(new_user.objects.get(username="kept").confirmed_email, "kept@example.com")
+        self.assertEqual(new_user.objects.get(username="none").confirmed_email, "")

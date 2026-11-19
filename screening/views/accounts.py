@@ -238,7 +238,9 @@ def delete_account(request):
         status = 403 if request.method == "POST" else 200
         return render(request, "screening/delete_account.html", {"is_admin": True}, status=status)
     if user.has_usable_password():
-        form = PasswordConfirmForm(request.POST if request.method == "POST" else None, user=user)
+        form = PasswordConfirmForm(
+            request.POST if request.method == "POST" else None, request=request
+        )
         delete = form.is_valid()
     else:
         # #505 acceptance 30, #506 acceptance 20: without a password, 確認本人 with a provider on

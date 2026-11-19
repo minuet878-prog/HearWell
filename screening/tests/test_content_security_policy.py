@@ -25,6 +25,8 @@ class ContentSecurityPolicyTests(TestCase):
         policy = policy_of(self.client.get(reverse("index")))
         self.assertEqual(policy["default-src"], "'self'")
         self.assertRegex(policy["script-src"], r"^'self' 'nonce-[\w-]{22,}'$")
+        # ADR 0072: inline styles stay allowed (style="" attributes and Django admin's).
+        self.assertEqual(policy["style-src"], "'self' 'unsafe-inline'")
         self.assertEqual(policy["object-src"], "'none'")
         self.assertEqual(policy["base-uri"], "'self'")
         self.assertEqual(policy["frame-ancestors"], "'none'")

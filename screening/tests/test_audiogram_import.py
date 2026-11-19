@@ -4,7 +4,7 @@ made-up PDFs drawn like the real one (apple_pdf.py)."""
 import json
 import re
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from io import StringIO
 from unittest import mock
 
@@ -22,7 +22,6 @@ from screening.models import Audiogram, ImportFailureMonth, Unreadable, User
 from screening.tests import test_layout
 from screening.tests.apple_pdf import FREQUENCIES, LEFT, RIGHT, apple_pdf
 from screening.tests.helpers import consented_user
-from screening.views.audiograms import IMPORTS_PER_HOUR
 
 WHO = "要存進「王大明」的紀錄"
 PDF_NAME = "PDF 上印的是 iPhone 主人的名字，不一定是做測試的人。"
@@ -338,14 +337,18 @@ class ImportEdgeCaseTests(TestCase):
     def test_twenty_files_an_hour_then_a_wait(self):
         """Reading a PDF takes a process of its own: one account cannot keep the server busy."""
         caches["password_reset"].clear()
-        for _ in range(IMPORTS_PER_HOUR):
+        for _ in range(20):
             self.assertIn(UNREADABLE, self._main(self._post("不是 PDF".encode())))
         main = self._main(self._post(apple_pdf()))
         self.assertIn("試太多次了，請一小時後再試", main)
         self.assertNotIn("存下來", main)
         self.assertIn('type="file"', main)
         # Not counted as a file it could not read: it was never read.
-        self.assertEqual(self._counts()["not_a_pdf"], IMPORTS_PER_HOUR)
+        self.assertEqual(self._counts()["not_a_pdf"], 20)
+        # An hour later it reads again.
+        later = timezone.now() + timedelta(hours=1, seconds=1)
+        with mock.patch("django.core.cache.backends.db.tz_now", return_value=later):
+            self.assertIn("存下來", self._main(self._post(apple_pdf())))
         # Someone else's hour is their own.
         self.client.force_login(self.other)
         self.assertIn("存下來", self._main(self._post(apple_pdf())))

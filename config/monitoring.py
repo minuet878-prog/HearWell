@@ -15,7 +15,8 @@ def _route(url):
     try:
         route = resolve(parts.path).route
     except Resolver404:
-        return url
+        # A token link cut short or with a slash added: its path may still hold the token.
+        route = "<no-route>"
     return urlunsplit((parts.scheme, parts.netloc, f"/{route}", "", ""))
 
 

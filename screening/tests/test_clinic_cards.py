@@ -3,6 +3,7 @@ each landing on its card's page with the card's mark; the landing page counts th
 
 import re
 import threading
+import time
 from unittest.mock import patch
 
 import segno
@@ -12,6 +13,7 @@ from django.db import connection
 from django.test import Client, TestCase, TransactionTestCase, override_settings
 from django.test.utils import CaptureQueriesContext
 
+from screening.api.views import GuestCountThrottle
 from screening.models import GuestMonth, User
 from screening.public_pages import is_public
 from screening.tests import test_guest_counts
@@ -110,8 +112,10 @@ class ScanCountTests(TestCase):
     """Acceptance 10 and 12: the landing page sends the card's kind once; each card has its own
     column of the 訪客月計數, and a kind the site does not know adds nothing."""
 
-    def send(self, kind):
-        return self.client.post(GUEST_COUNTS, {"kind": kind}, content_type="application/json")
+    def send(self, kind, **kwargs):
+        return self.client.post(
+            GUEST_COUNTS, {"kind": kind}, content_type="application/json", **kwargs
+        )
 
     def counts(self):
         # Every column, so one card adding to another's, or to the guests', shows.
@@ -154,6 +158,10 @@ class ScanCountTests(TestCase):
             self.assertEqual(self.send("clinic_elder").status_code, 204)
         self.assertEqual(self.send("clinic_elder").status_code, 429)
         self.assertEqual(GuestMonth.objects.get().clinic_elder, 60)
+        # Another address is not held up, and this one is not after an hour.
+        self.assertEqual(self.send("clinic_elder", REMOTE_ADDR="198.51.100.1").status_code, 204)
+        with patch.object(GuestCountThrottle, "timer", return_value=time.time() + 3601):
+            self.assertEqual(self.send("clinic_elder").status_code, 204)
 
     def test_a_kind_it_does_not_know_is_refused_and_adds_nothing(self):
         for kind in ("send", "completed", "", None):

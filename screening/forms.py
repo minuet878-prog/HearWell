@@ -230,33 +230,36 @@ SIGN_INS_PER_ADDRESS = 20
 NAME_WINDOW = 15 * 60
 
 
-def sign_ins_held_up(username, address=None):
-    return attempts("sign-in-name", username) >= SIGN_INS_PER_NAME or (
-        address is not None and attempts("sign-in-address", address) >= SIGN_INS_PER_ADDRESS
+def _address(request):
+    # The address as the guest scoring limit takes it (NUM_PROXIES: X-Forwarded-For's last,
+    # which Nginx adds).
+    return BaseThrottle().get_ident(request)
+
+
+def sign_ins_held_up(username, request):
+    return (
+        attempts("sign-in-name", username) >= SIGN_INS_PER_NAME
+        or attempts("sign-in-address", _address(request)) >= SIGN_INS_PER_ADDRESS
     )
 
 
-def count_failed_sign_in(username, address=None):
+def count_failed_sign_in(username, request):
     add_attempt("sign-in-name", username, window=NAME_WINDOW)
-    if address is not None:
-        add_attempt("sign-in-address", address)
+    add_attempt("sign-in-address", _address(request))
 
 
 class CountedSignIn:
     """Mixed into the site's and the admin's login forms, before Django's AuthenticationForm."""
 
     def clean(self):
-        # The address as the guest scoring limit takes it (NUM_PROXIES: X-Forwarded-For's last,
-        # which Nginx adds).
-        address = BaseThrottle().get_ident(self.request)
         username = self.cleaned_data.get("username") or ""
-        if sign_ins_held_up(username, address):
+        if sign_ins_held_up(username, self.request):
             raise forms.ValidationError(TOO_MANY_SIGN_INS, code="too_many")
         try:
             return super().clean()
         except forms.ValidationError as error:
             if error.code == "invalid_login":
-                count_failed_sign_in(username, address)
+                count_failed_sign_in(username, self.request)
             raise
 
 
@@ -387,17 +390,19 @@ class PasswordConfirmForm(NoLabelSuffix, forms.Form):
     # strip=False like Django's login and register forms: spaces are part of a password.
     password = forms.CharField(strip=False, error_messages={"required": "請輸入密碼"})
 
-    def __init__(self, *args, user, **kwargs):
+    def __init__(self, *args, request, **kwargs):
         super().__init__(*args, **kwargs)
-        self.user = user
+        self.request = request
+        self.user = request.user
 
     def clean_password(self):
         password = self.cleaned_data["password"]
-        # Counted with the username's sign-ins, so neither is a way round the other.
-        if sign_ins_held_up(self.user.username):
+        # Counted with the username's and the address's sign-ins, so neither page is a way round
+        # the other.
+        if sign_ins_held_up(self.user.username, self.request):
             raise forms.ValidationError(TOO_MANY_SIGN_INS)
         if not self.user.check_password(password):
-            count_failed_sign_in(self.user.username)
+            count_failed_sign_in(self.user.username, self.request)
             raise forms.ValidationError("密碼不正確")
         return password
 
