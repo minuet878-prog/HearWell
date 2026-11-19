@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import segno
 from django.conf import settings
+from django.core.cache import cache
 from django.db import connection
 from django.test import Client, TestCase, TransactionTestCase, override_settings
 from django.test.utils import CaptureQueriesContext
@@ -143,6 +144,16 @@ class ScanCountTests(TestCase):
         added_in_place = r'SET "clinic_elder" = \("screening_guestmonth"\."clinic_elder" \+ '
         self.assertRegex(updates[0], added_in_place)
         self.assertEqual(GuestMonth.objects.get().clinic_elder, 2)
+
+    def test_sixty_an_hour_from_one_address_then_nothing_is_added(self):
+        # Security check 2026-11-19 (the owner's pick, over the grill's Q15): a flood would
+        # only make the numbers wrong, but it also writes to the database each time.
+        cache.clear()
+        self.addCleanup(cache.clear)
+        for _ in range(60):
+            self.assertEqual(self.send("clinic_elder").status_code, 204)
+        self.assertEqual(self.send("clinic_elder").status_code, 429)
+        self.assertEqual(GuestMonth.objects.get().clinic_elder, 60)
 
     def test_a_kind_it_does_not_know_is_refused_and_adds_nothing(self):
         for kind in ("send", "completed", "", None):

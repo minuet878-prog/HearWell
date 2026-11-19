@@ -109,7 +109,7 @@ paths:
         landing page, once it has opened in a browser (spec #677); a door pressed on the signed-out
         home, or the address 傳給他 sent, opened in a browser (spec #655). Anyone, signed in or not,
         and nothing about them is kept: no session is read (so no CSRF), and no limit (the
-        grill's Q15: a flood only makes the number wrong).
+        grill's Q15: a flood only makes the number wrong), but 60 an hour from one address.
       tags:
       - guest-counts
       requestBody:
