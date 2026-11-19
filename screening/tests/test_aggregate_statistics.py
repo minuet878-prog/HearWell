@@ -69,7 +69,10 @@ class StatisticsHighlightTests(TestCase):
         for name in ("privacy", "consent", "about"):
             with self.subTest(page=name):
                 response = self.client.get(reverse(name))
-                self.assertContains(response, self.NEW)
+                # The first item under the highlights' first group, 用來做什麼.
+                highlights = response.content.decode().split("用來做什麼</h3>", 1)[1]
+                first = highlights[highlights.index("<li>") + 4 : highlights.index("</li>")]
+                self.assertEqual(first, self.NEW)
                 self.assertNotContains(response, self.OLD)
 
 
