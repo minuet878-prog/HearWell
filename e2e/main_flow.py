@@ -9,6 +9,7 @@ import calendar
 import json
 import os
 import re
+import time
 from contextlib import contextmanager, nullcontext
 from datetime import date, datetime, timedelta
 from itertools import combinations, pairwise
@@ -24,6 +25,7 @@ from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.core.management import call_command
 from django.test import Client, override_settings
 from django.utils import timezone
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import expect, sync_playwright
 
 from screening.audiogram import DB_MAX
@@ -126,6 +128,19 @@ def type_audiogram_date(main, year, month, day):
     main.get_by_label("民國年").fill(year)
     main.get_by_label("月", exact=True).fill(month)
     main.get_by_label("日", exact=True).fill(day)
+
+
+def wait_until(page, expression, arg=None, timeout=30_000, polling=None):
+    """page.wait_for_function, polled from here: Playwright polls it in the page with eval, which
+    the site's Content-Security-Policy refuses (security check 2026-11-19), so any wait not true
+    at once failed. page.evaluate goes through the browser's debugging protocol, which the policy
+    does not cover. polling: milliseconds between checks, else about a frame."""
+    interval = polling if isinstance(polling, int | float) else 16
+    deadline = time.monotonic() + timeout / 1000
+    while not page.evaluate(expression, arg):
+        if time.monotonic() > deadline:
+            raise PlaywrightTimeoutError(f"still false after {timeout} ms: {expression}")
+        page.wait_for_timeout(interval)
 
 
 class SavesFailureArtifacts:
@@ -2391,14 +2406,20 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
         with self.saving_artifacts():
             for state, words in (
                 ("no email", "補上 email"),
+                ("unconfirmed", "重寄確認信"),
                 ("off", "打開提醒"),
                 ("on", "關掉提醒"),
                 ("on and due", "您現在就可以再做一次"),
             ):
                 with self.subTest(state=state):
-                    if state == "off":
+                    if state == "unconfirmed":
                         User.objects.filter(pk=self.user.pk).update(
                             email="wang.daughter.reminder.address@example.com"
+                        )
+                    elif state == "off":
+                        # Its 確認信 answered (security check 2026-11-19).
+                        User.objects.filter(pk=self.user.pk).update(
+                            confirmed_email="wang.daughter.reminder.address@example.com"
                         )
                     elif state == "on":
                         RetestReminder.objects.create(
@@ -2495,7 +2516,8 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             card.hover()
             # #491: the card fades to blue over 0.15 s but the circle turns white at once, so
             # compare only after the fade has started and finished.
-            self.page.wait_for_function(
+            wait_until(
+                self.page,
                 """el => getComputedStyle(el).backgroundColor !== "rgb(255, 255, 255)"
                     && el.getAnimations().length === 0""",
                 arg=card.element_handle(),
@@ -2982,11 +3004,11 @@ class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase)
     def arrived(self, current):
         """Waits for the new page's current pill, then says how the page arrived."""
         expect(self.main().locator("[aria-current]")).to_have_text(current)
-        self.page.wait_for_function("window.revealed")
+        wait_until(self.page, "window.revealed")
         return self.page.evaluate("window.revealed")
 
     def assert_pill_slid(self):
-        self.page.wait_for_function("window.settled")
+        wait_until(self.page, "window.settled")
         self.assertEqual(self.page.evaluate("window.moving"), PILL_PARTS)
         start, end = self.page.evaluate("window.pill")
         self.assertNotEqual(start, end)
@@ -3063,12 +3085,12 @@ class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase)
             ):
                 self.page.goto(f"{self.live_server_url}{start}")
                 # The page really has no @view-transition left, so nothing can opt it in.
-                self.page.wait_for_function("window.droppedRules > 0")
+                wait_until(self.page, "window.droppedRules > 0")
                 main = self.main()
                 main.get_by_role("navigation", name=switch).get_by_role("link", name=side).click()
                 expect(self.page).to_have_url(re.compile(url))
                 expect(main.locator("[aria-current]")).to_have_text(side)
-                self.page.wait_for_function("window.droppedRules > 0")
+                wait_until(self.page, "window.droppedRules > 0")
 
     def test_loading_bar_shows_while_the_next_side_takes_a_while(self):
         # ADR 0027: the old page still shows the moving bar and 載入中… until the new side
@@ -3103,7 +3125,7 @@ class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase)
         """Does action, then says how the page it leads to arrived."""
         with self.page.expect_navigation():
             action()
-        self.page.wait_for_function("window.revealed")
+        wait_until(self.page, "window.revealed")
         return self.page.evaluate("window.revealed")
 
     def test_no_other_change_of_page_transitions(self):
@@ -4039,12 +4061,13 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             self.page.goto(
                 f"{self.live_server_url}/guide/form-9#reapply", wait_until="domcontentloaded"
             )
-            self.page.wait_for_function("window.scrollY > 0")
+            wait_until(self.page, "window.scrollY > 0")
             for route in held:
                 route.continue_()
-            self.page.wait_for_function("document.fonts.status === 'loaded'")
+            wait_until(self.page, "document.fonts.status === 'loaded'")
             # The heading is on screen for a moment as the scroll passes it; wait until it stops.
-            self.page.wait_for_function(
+            wait_until(
+                self.page,
                 "() => { const still = scrollY === window.lastY; window.lastY = scrollY; "
                 "return still; }",
                 polling=200,
@@ -4225,9 +4248,10 @@ class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
     def test_old_jump_link_lands_on_its_section(self):
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/family#urgent-title")
-            self.page.wait_for_function(
+            wait_until(
+                self.page,
                 "Math.abs(document.getElementById('urgent-title').getBoundingClientRect().top)"
-                " < 10 && window.scrollY > 0"
+                " < 10 && window.scrollY > 0",
             )
 
 
@@ -8996,7 +9020,8 @@ class BackToTopTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             expect(footer_link).to_be_focused()
 
             # The focus scrolls the footer link into view, smoothly; let that end first.
-            self.page.wait_for_function(
+            wait_until(
+                self.page,
                 "() => { const still = scrollY === window.lastY; window.lastY = scrollY; "
                 "return still; }",
                 polling=200,
@@ -9035,7 +9060,7 @@ class BackToTopTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
                 # Right after the click a smooth scroll has only just begun.
                 at_top = button.evaluate("b => { b.click(); return window.scrollY === 0; }")
                 self.assertEqual(at_top, not smooth)
-                self.page.wait_for_function("window.scrollY === 0")
+                wait_until(self.page, "window.scrollY === 0")
                 title = self.main().get_by_role("heading", level=1)
                 expect(title).to_be_focused()
                 expect(title).to_be_in_viewport()
@@ -9062,7 +9087,8 @@ class BackToTopTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
                 # The footer's room for the button follows the tab bar's height, which the page
                 # takes in a frame after the text grows: wait for it, or the page grows after the
                 # scroll and its foot is no longer in view.
-                self.page.wait_for_function(
+                wait_until(
+                    self.page,
                     """() => document.documentElement.style.getPropertyValue("--tab-bar-height")
                         === `${document.querySelector(".site-nav").offsetHeight}px`""",
                     timeout=5000,
@@ -9295,7 +9321,8 @@ class ScrollHelpersOnAPhone(OnAPhone):
     def wait_until(self, selector, state):
         """Until every animation in the first match of selector (itself, what is inside it and
         their ::before and ::after) is in that state, each one started."""
-        self.page.wait_for_function(
+        wait_until(
+            self.page,
             """([selector, state]) => {
                 const all = document.querySelector(selector).getAnimations({subtree: true});
                 return all.length && all.every(a => a.playState === state && a.startTime !== null);
@@ -9831,7 +9858,7 @@ class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLive
         self.page.evaluate(self.SAMPLE, [selector, ms])
 
     def samples(self):
-        self.page.wait_for_function("window.sampled", timeout=15000)
+        wait_until(self.page, "window.sampled", timeout=15000)
         return self.page.evaluate("window.samples")
 
     def light(self, sample):
@@ -11604,8 +11631,9 @@ class SpeechBananaListTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServ
             expect(first).to_be_visible()
             self.page.keyboard.press("Tab")
             expect(first).to_be_focused()
-            self.page.wait_for_function(
-                "getComputedStyle(document.activeElement).boxShadow.includes('0px 0px 0px')"
+            wait_until(
+                self.page,
+                "getComputedStyle(document.activeElement).boxShadow.includes('0px 0px 0px')",
             )
             self.page.keyboard.press("Enter")
             expect(first).to_be_focused()
@@ -11984,7 +12012,8 @@ class SpeechBananaTapTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
 
     def settled_scroll(self):
         """Where the page stops: the browser carries a swipe on for a moment after the lift."""
-        self.page.wait_for_function(
+        wait_until(
+            self.page,
             "() => { const still = scrollY === window.lastY; window.lastY = scrollY; "
             "return still; }",
             polling=200,
@@ -12018,7 +12047,7 @@ class SpeechBananaTapTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             self.assertEqual(self.page.evaluate(self.UNDER, start), [True, True])
             self.assertEqual(self.page.evaluate("window.scrollY"), 0)
             self.swipe(start, -200)
-            self.page.wait_for_function("window.scrollY > 100")
+            wait_until(self.page, "window.scrollY > 100")
             self.assert_nothing_picked()
 
             # The page runs on after the lift by a varying amount, at times past box 5.
@@ -12028,7 +12057,7 @@ class SpeechBananaTapTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             start = self.on_screen(self.ON_BOX_5)
             self.assertEqual(self.page.evaluate(self.UNDER, start), [True, True])
             self.swipe(start, 100)
-            self.page.wait_for_function("y => window.scrollY < y", arg=scrolled - 50)
+            wait_until(self.page, "y => window.scrollY < y", arg=scrolled - 50)
             self.settled_scroll()
             self.assert_nothing_picked()
 
@@ -12285,7 +12314,8 @@ class FamilyScenarioTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
             ):
                 with self.subTest(anchor=anchor):
                     self.open(f"{path}#{anchor}", signed_in=False)
-                    self.page.wait_for_function(
+                    wait_until(
+                        self.page,
                         "id => Math.abs(document.getElementById(id).getBoundingClientRect().top)"
                         " < 10 && window.scrollY > 0",
                         arg=anchor,
@@ -13709,7 +13739,8 @@ class WearMotionTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
             expect(arrow).to_be_hidden()
             self.page.clock.resume()
             # On its way: neither where it started nor where it is drawn.
-            self.page.wait_for_function(
+            wait_until(
+                self.page,
                 """([el, start, drawn]) => {
                     const box = el.getBoundingClientRect();
                     const [left, top] = [box.x + scrollX, box.y + scrollY];
@@ -13887,7 +13918,7 @@ class TabBarHidesOnScrollT457Test(SavesFailureArtifacts, LayoutOnAPhone, StaticL
             self.page.evaluate("document.querySelectorAll('details').forEach(d => d.open = true)")
 
     def wait_for_bar(self, where):
-        self.page.wait_for_function(f"({self.WHERE})() === {where!r}")
+        wait_until(self.page, f"({self.WHERE})() === {where!r}")
 
     def scroll_y(self):
         return self.page.evaluate("scrollY")
@@ -13904,8 +13935,8 @@ class TabBarHidesOnScrollT457Test(SavesFailureArtifacts, LayoutOnAPhone, StaticL
             self.page.mouse.wheel(0, 200)
             self.wait_for_bar("hidden")
             self.page.mouse.wheel(0, 100_000)
-            self.page.wait_for_function(
-                "scrollY + innerHeight >= document.documentElement.scrollHeight - 1"
+            wait_until(
+                self.page, "scrollY + innerHeight >= document.documentElement.scrollHeight - 1"
             )
             self.wait_for_bar("shown")
 
@@ -13927,7 +13958,7 @@ class TabBarHidesOnScrollT457Test(SavesFailureArtifacts, LayoutOnAPhone, StaticL
             self.assertEqual(self.scroll_y(), scrolled)
             # Still there while the focus stays on the tabs, whichever way the page goes.
             self.page.mouse.wheel(0, 300)
-            self.page.wait_for_function(f"scrollY > {scrolled}")
+            wait_until(self.page, f"scrollY > {scrolled}")
             self.page.wait_for_timeout(400)
             self.assertEqual(self.page.evaluate(self.WHERE), "shown")
 

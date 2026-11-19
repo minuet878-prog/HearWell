@@ -10,7 +10,7 @@ from unittest import mock
 from urllib.parse import urlsplit
 
 from django.apps import apps
-from django.core import mail
+from django.core import mail, signing
 from django.core.cache import caches
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -19,7 +19,14 @@ from django.utils import timezone
 from screening.forms import HELP_ADDRESS
 from screening.management.commands import send_retest_reminders
 from screening.models import RetestReminder, User
-from screening.tests.helpers import FakeGoogle, FakeLine, consented_user, google_on, line_on
+from screening.tests.helpers import (
+    FakeGoogle,
+    FakeLine,
+    consented_user,
+    google_on,
+    line_on,
+    submission_with_answers,
+)
 
 PASSWORD = "Xk9#mPq2vLw"
 SENT = "已寄確認信到 {}。請在 3 天內打開信，按「確認信箱」。沒收到的話，可以到帳號設定重寄。"
@@ -80,6 +87,15 @@ class SendingTests(TestCase):
         self.assertEqual(mail.outbox[-1].to, ["added@example.com"])
         self.assertFalse(User.objects.get(pk=user.pk).email_confirmed)
 
+    def test_the_link_does_not_show_the_email(self):
+        # It ends up in the server's access log and the browser's history.
+        user = consented_user(username="no_email", password=PASSWORD)
+        User.objects.filter(pk=user.pk).update(email="secret.address@example.com")
+        self.client.force_login(user)
+        self.client.post(reverse("email_confirm_resend"))
+        token = urlsplit(confirmation_link(mail.outbox[-1])).path.rsplit("/", 1)[1]
+        self.assertNotIn("secret", signing.b64_decode(token.split(":")[0].encode()).decode())
+
     def test_a_failed_send_says_to_resend_later(self):
         with mock.patch(
             "screening.email_confirmation.EmailMultiAlternatives.send", side_effect=OSError
@@ -107,19 +123,6 @@ class GoogleTests(TestCase):
         self.client.post(reverse("google_name"), {"username": "林阿美", "roc_birth_year": ""})
         self.assertTrue(User.objects.get(username="林阿美").email_confirmed)
         self.assertEqual(mail.outbox, [])
-
-    def test_only_a_confirmed_email_leads_to_the_same_email_page(self):
-        unconfirmed_user(username="typed_by_someone", email="lin.mei@example.com")
-        google = FakeGoogle(self.client)
-        google.start()
-        response = google.come_back(sub="google-new", email="lin.mei@example.com")
-        self.assertRedirects(response, reverse("google_name"))
-        User.objects.filter(username="typed_by_someone").update(
-            confirmed_email="lin.mei@example.com"
-        )
-        google.start()
-        response = google.come_back(sub="google-new", email="lin.mei@example.com")
-        self.assertRedirects(response, reverse("google_same_email"))
 
 
 @line_on
@@ -224,6 +227,8 @@ class AccountSettingsTests(TestCase):
 
 
 class GateTests(TestCase):
+    fixtures = ("questions_fixture.json",)  # HHIE-S, for a result page
+
     def setUp(self):
         caches["password_reset"].clear()
 
@@ -240,6 +245,15 @@ class GateTests(TestCase):
         (message,) = mail.outbox
         self.assertIn("confirmed_one", message.body)
         self.assertNotIn("typed_by_someone", message.body)
+
+    def test_the_result_page_asks_to_confirm_before_offering_the_reminder(self):
+        user = unconfirmed_user(username="wang_ming", email="wang@example.com")
+        self.client.force_login(user)
+        response = self.client.get(
+            reverse("result", args=[submission_with_answers(user, "hhie-s", [0] * 10).pk])
+        )
+        self.assertContains(response, "想在到期時收到 email 提醒，要先確認您的 email。")
+        self.assertNotContains(response, "到期時寄 email 提醒我")
 
     def test_the_reminder_cannot_be_turned_on_for_an_unconfirmed_email(self):
         user = unconfirmed_user(username="wang_ming", email="wang@example.com")

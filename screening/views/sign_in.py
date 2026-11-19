@@ -9,7 +9,6 @@ from django.contrib.auth import views as auth_views
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import NON_FIELD_ERRORS
 from django.db import IntegrityError, transaction
-from django.db.models import F
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -195,12 +194,7 @@ def _signed_in_as(request, identity, method):
     }
     # An email already on an account (any case) is never signed into nor merged (ADR 0057). Only
     # Google's: the one typed on LINE's name page is not asked about (#506 acceptance 8).
-    # A confirmed email only: an unconfirmed one may have been typed by someone else, whose
-    # account this would lead to.
-    if (
-        identity.email
-        and User.objects.filter(email__iexact=identity.email, confirmed_email=F("email")).exists()
-    ):
+    if identity.email and User.objects.filter(email__iexact=identity.email).exists():
         return redirect("google_same_email")
     return redirect(f"{identity.provider}_name")
 

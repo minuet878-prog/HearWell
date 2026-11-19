@@ -100,14 +100,14 @@ def _first_page(data):
     """Page 1's letters, and its lines as (colour, points), read by screening/pdf_page.py in a
     process of its own with a memory and time limit: a PDF can unpack to far more than its size."""
     try:
-        done = subprocess.run(
+        result = subprocess.run(
             [sys.executable, "-I", str(PAGE_READER)],
             input=data,
             capture_output=True,
             timeout=READ_SECONDS,
             check=True,
         )
-        page = json.loads(done.stdout)
+        page = json.loads(result.stdout)
         chars = [_Char(**char) for char in page["chars"]]
         curves = [(curve["colour"], curve["points"]) for curve in page["curves"]]
     # Anything the parser trips on, or a file it cannot read within the limits: the same answer

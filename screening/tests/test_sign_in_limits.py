@@ -106,6 +106,14 @@ class PasswordConfirmLimitTests(TestCase):
         self.assertContains(response, TOO_MANY)
         self.assertTrue(User.objects.filter(pk=self.user.pk).exists())
 
+    def test_confirming_it_is_you_counts_too(self):
+        url = f"{reverse('confirm_identity')}?action=add_email"
+        for _ in range(5):
+            self.assertContains(self.client.post(url, {"password": "wrong"}), "密碼不正確")
+        response = self.client.post(url, {"password": PASSWORD})
+        self.assertContains(response, TOO_MANY)
+        self.assertRedirects(self.client.get(reverse("add_email")), url)
+
     def test_wrong_passwords_here_hold_up_the_login_too(self):
         for _ in range(5):
             self.client.post(reverse("delete_account"), {"password": "wrong"})

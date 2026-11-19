@@ -5,6 +5,7 @@ else's typed on purpose, would let that mailbox's owner set the account's passwo
 site write to anyone.
 """
 
+import hashlib
 import logging
 from urllib.parse import urlsplit
 
@@ -28,8 +29,14 @@ NOT_SENT = "確認信寄不出去，請稍後到帳號設定重寄。"
 TOO_MANY = "試太多次了，請一小時後再試"
 
 
+def _email_mark(email):
+    # Only a hash of the email rides in the link: a signed value is readable, and the link ends
+    # up in the server's access log and the browser's history.
+    return hashlib.sha256(email.encode()).hexdigest()[:16]
+
+
 def _link(request, user):
-    token = signing.dumps({"user": user.pk, "email": user.email}, salt=SALT)
+    token = signing.dumps({"user": user.pk, "email": _email_mark(user.email)}, salt=SALT)
     path = reverse("email_confirm", args=[token])
     # From SITE_URL, never the request's Host header, like the 重設密碼信; the page's own address
     # only in development.
@@ -55,7 +62,7 @@ def send(request, user):
     except Exception:
         # A fixed message: the mail service's own words may hold the email (config.monitoring).
         logger.exception("An email confirmation could not be sent")
-        messages.warning(request, NOT_SENT)
+        messages.error(request, NOT_SENT)
     else:
         messages.info(request, SENT.format(email=user.email))
 
@@ -64,13 +71,13 @@ def resend(request):
     """The account settings' 重寄確認信: 3 an hour for one account."""
     account = str(request.user.pk)
     if attempts("email-confirmation", account) >= RESENDS_PER_HOUR:
-        messages.warning(request, TOO_MANY)
+        messages.error(request, TOO_MANY)
         return
     add_attempt("email-confirmation", account)
     send(request, request.user)
 
 
-def reading(token):
+def account_for(token):
     """The account the link was sent for, while it is active and its email the one sent to;
     None for a link expired, changed, or for an email changed since."""
     try:
@@ -78,6 +85,6 @@ def reading(token):
     except signing.BadSignature:
         return None
     user = User.objects.filter(pk=sent.get("user"), is_active=True).first()
-    if user is None or not user.email or user.email != sent.get("email"):
+    if user is None or not user.email or _email_mark(user.email) != sent.get("email"):
         return None
     return user

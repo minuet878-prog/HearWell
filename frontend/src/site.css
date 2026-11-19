@@ -5238,7 +5238,10 @@
   }
 
   .system-message p {
+    min-width: 0;
     margin: 0;
+    /* An email in the words (the 確認信's notice) breaks rather than widen the page at 200%. */
+    overflow-wrap: anywhere;
   }
 
   /* Focused when the page opens (system-message.js), so screen readers say it: the site's blue

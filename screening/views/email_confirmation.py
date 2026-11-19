@@ -3,8 +3,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from screening import email_confirmation
-from screening.views.common import form_address
-from screening.views.reminders import email_link_page
+from screening.views.common import email_link_page, form_address
 
 PAGE = "screening/email_confirm.html"
 
@@ -13,7 +12,7 @@ PAGE = "screening/email_confirm.html"
 def email_confirm(request, token):
     """The 確認信's link (docs/design/email-confirmation-mockup.html 3a-3c), signed in or not:
     GET asks, since a mail program's link scanner opens it too; POST confirms."""
-    user = email_confirmation.reading(token)
+    user = email_confirmation.account_for(token)
     if user is None:
         return email_link_page(request, PAGE, status=404)
     if request.method == "POST":
