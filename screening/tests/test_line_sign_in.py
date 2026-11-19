@@ -756,11 +756,13 @@ class PrivacyTests(TestCase):
 
     def test_version_8_with_its_date(self):
         # Version 7 (Google, spec #505) is already live: LINE is one more. Its date is set the
-        # day version 8 goes live, not before version 7's.
-        self.assertEqual(models.CONSENT_VERSION, 8)
+        # day version 8 goes live, not before version 7's. Spec #733 raised it to 9 for the
+        # 整體統計 (test_aggregate_statistics).
+        self.assertGreaterEqual(models.CONSENT_VERSION, 8)
         self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 14))
         updated_on = models.PRIVACY_UPDATED_ON.strftime("%Y/%m/%d")
-        self.assertContains(self.client.get(reverse("privacy")), f"第 8 版，{updated_on} 更新")
+        privacy = self.client.get(reverse("privacy"))
+        self.assertContains(privacy, f"第 {models.CONSENT_VERSION} 版，{updated_on} 更新")
 
     def test_who_agreed_to_version_7_agrees_again(self):
         user = User.objects.create_user(username="agreed_to_7")

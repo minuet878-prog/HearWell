@@ -19,12 +19,13 @@ PASSWORD = "Xk9#mPq2vLw"
 TEMPLATES = Path(__file__).resolve().parents[1] / "templates" / "screening"
 # Readability batch 3 (the owner's C2 A, 2026-11-16): the eight highlights in three groups,
 # each word as it was; only their order moved to fit the groups. Not a new consent version
-# (ADR 0061): what people are told did not change.
+# (ADR 0061): what people are told did not change. Spec #733 (version 9) added the 整體統計 to
+# the first line.
 HIGHLIGHT_GROUPS = (
     (
         "用來做什麼",
         (
-            "只用來算分數、給建議、保存您的紀錄，不拿去賣或做廣告。",
+            "只用來算分數、給建議、保存您的紀錄，以及做認不出是誰的整體統計；不拿去賣或做廣告。",
             "照顧旅程的待辦打勾也會保存，跟其他紀錄一樣可以下載或刪除。",  # version 5 (spec #478)
             "結果只是參考，不是醫療診斷。",
         ),
@@ -171,8 +172,8 @@ class PrivacyHighlightsTests(TestCase):
 
     def test_grouping_the_highlights_is_not_a_new_version(self):
         # ADR 0061: only the order and the titles changed, so who agreed to version 8 is not
-        # asked again. A later version for new words updates this number.
-        self.assertEqual(models.CONSENT_VERSION, 8)
+        # asked again. A later version for new words updates this number: spec #733's 整體統計.
+        self.assertEqual(models.CONSENT_VERSION, 9)
 
     def test_highlights_are_written_in_one_place(self):
         files = [
@@ -589,8 +590,8 @@ class PrivacyPageT361Tests(TestCase):
         # each kind alike; all are level 2.
         classes = {anchor: kind for anchor, kind, _ in self._headings()}
         # #400 the question log, #526 忘記密碼時, #505 Google, #506 LINE, #641 意見回饋, #664 email
-        # 重測提醒.
-        self.assertEqual(len(classes), 18)
+        # 重測提醒, #733 整體統計.
+        self.assertEqual(len(classes), 19)
         open_ones = {classes.pop("highlights-title"), classes.pop("contact-title")}
         self.assertEqual(open_ones, {"h4"})
         self.assertEqual(set(classes.values()), {"fold-row-title"})

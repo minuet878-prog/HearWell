@@ -97,8 +97,9 @@ class ReminderPrivacyTests(TestCase):
             recipients,
         )
 
-    def test_the_date_moved_and_the_version_stays_8(self):
-        self.assertEqual(models.CONSENT_VERSION, 8)
+    def test_the_date_moved_and_the_version_stayed(self):
+        # It stayed 8; spec #733 raised it to 9 for the 整體統計 (test_aggregate_statistics).
+        self.assertGreaterEqual(models.CONSENT_VERSION, 8)
         self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 17))
         updated_on = f"{models.PRIVACY_UPDATED_ON:%Y/%m/%d}"
-        self.assertIn(f"第 8 版，{updated_on} 更新", self.main)
+        self.assertIn(f"第 {models.CONSENT_VERSION} 版，{updated_on} 更新", self.main)
