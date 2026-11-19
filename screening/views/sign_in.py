@@ -7,6 +7,7 @@ from dataclasses import replace
 from django.contrib.auth import login
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.views import redirect_to_login
+from django.core.exceptions import NON_FIELD_ERRORS
 from django.db import IntegrityError, transaction
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import redirect, render
@@ -16,6 +17,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 
 from screening import oidc
+from screening.forms import LoginForm
 from screening.models import SignInMethod, User
 from screening.views import confirm_identity, sign_in_methods
 from screening.views.accounts import NEW_ACCOUNT
@@ -51,10 +53,14 @@ class LoginView(auth_views.LoginView):
     #506)."""
 
     template_name = "screening/login.html"
+    form_class = LoginForm
     http_method_names = ("get", "post")
 
     def get_context_data(self, **kwargs):
-        return super().get_context_data(**kwargs) | sign_in_choices(self.request)
+        context = super().get_context_data(**kwargs) | sign_in_choices(self.request)
+        # Failed sign-ins counted (screening.forms.CountedSignIn): its own words in the red box.
+        context["too_many"] = context["form"].has_error(NON_FIELD_ERRORS, "too_many")
+        return context
 
 
 def _require_keys(provider):

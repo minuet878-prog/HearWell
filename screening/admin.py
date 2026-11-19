@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
+from .forms import AdminLoginForm
 from .models import (
     Answer,
     Feedback,
@@ -19,6 +20,9 @@ from .models import (
     purge_feedback,
     purge_question_log,
 )
+
+# Failed sign-ins counted like the site's own login (screening.forms.CountedSignIn).
+admin.site.login_form = AdminLoginForm
 
 
 @admin.register(User)

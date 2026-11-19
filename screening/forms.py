@@ -6,7 +6,13 @@ from urllib.parse import urlsplit
 
 from django import forms
 from django.conf import settings
-from django.contrib.auth.forms import PasswordResetForm, SetPasswordForm, UserCreationForm
+from django.contrib.admin.forms import AdminAuthenticationForm
+from django.contrib.auth.forms import (
+    AuthenticationForm,
+    PasswordResetForm,
+    SetPasswordForm,
+    UserCreationForm,
+)
 from django.core.cache import caches
 from django.core.mail import EmailMultiAlternatives
 from django.db import transaction
@@ -14,6 +20,7 @@ from django.forms import BaseFormSet, formset_factory
 from django.template import loader
 from django.utils import timezone
 from django.utils.html import format_html, format_html_join
+from rest_framework.throttling import BaseThrottle
 
 from screening import family_deadlines
 from screening.models import (
@@ -196,19 +203,67 @@ def _attempts_key(kind, value):
 
 
 def attempts(kind, value):
-    """How many this hour; the hour starts at the first attempt."""
+    """How many in the window; it starts at the first attempt."""
     count, _ = caches["password_reset"].get(_attempts_key(kind, value), (0, None))
     return count
 
 
-def add_attempt(kind, value):
-    # The hour's end is kept with the count, so a later attempt does not move it. Reading and
+def add_attempt(kind, value, window=RESET_WINDOW):
+    # The window's end is kept with the count, so a later attempt does not move it. Reading and
     # writing are two steps, so requests at the very same moment may count once between them;
     # the owner accepted the limits being about right (2026-11-13) over a new table for it.
     key = _attempts_key(kind, value)
     now = time.time()
-    count, ends = caches["password_reset"].get(key, (0, now + RESET_WINDOW))
+    count, ends = caches["password_reset"].get(key, (0, now + window))
     caches["password_reset"].set(key, (count + 1, ends), timeout=ends - now)
+
+
+# Failed sign-ins (the owner's pick, 2026-11-19): 5 for one username in 15 minutes, from any
+# address, and 20 from one address in an hour, whatever the usernames. Past either, the password
+# is not checked at all, even the right one. Someone can hold up another's username for 15
+# minutes by typing it wrong; the owner accepted that over guessing without end.
+TOO_MANY_SIGN_INS = "試太多次了，請稍後再試"
+SIGN_INS_PER_NAME = 5
+SIGN_INS_PER_ADDRESS = 20
+NAME_WINDOW = 15 * 60
+
+
+def sign_ins_held_up(username, address=None):
+    return attempts("sign-in-name", username) >= SIGN_INS_PER_NAME or (
+        address is not None and attempts("sign-in-address", address) >= SIGN_INS_PER_ADDRESS
+    )
+
+
+def count_failed_sign_in(username, address=None):
+    add_attempt("sign-in-name", username, window=NAME_WINDOW)
+    if address is not None:
+        add_attempt("sign-in-address", address)
+
+
+class CountedSignIn:
+    """Mixed into the site's and the admin's login forms, before Django's AuthenticationForm."""
+
+    def clean(self):
+        # The address as the guest scoring limit takes it (NUM_PROXIES: X-Forwarded-For's last,
+        # which Nginx adds).
+        address = BaseThrottle().get_ident(self.request)
+        username = self.cleaned_data.get("username") or ""
+        if sign_ins_held_up(username, address):
+            raise forms.ValidationError(TOO_MANY_SIGN_INS, code="too_many")
+        try:
+            return super().clean()
+        except forms.ValidationError as error:
+            if error.code == "invalid_login":
+                count_failed_sign_in(username, address)
+            raise
+
+
+class LoginForm(CountedSignIn, AuthenticationForm):
+    pass
+
+
+class AdminLoginForm(CountedSignIn, AdminAuthenticationForm):
+    pass
 
 
 def may_reset_password(user):
@@ -325,7 +380,11 @@ class PasswordConfirmForm(NoLabelSuffix, forms.Form):
 
     def clean_password(self):
         password = self.cleaned_data["password"]
+        # Counted with the username's sign-ins, so neither is a way round the other.
+        if sign_ins_held_up(self.user.username):
+            raise forms.ValidationError(TOO_MANY_SIGN_INS)
         if not self.user.check_password(password):
+            count_failed_sign_in(self.user.username)
             raise forms.ValidationError("密碼不正確")
         return password
 
