@@ -16,8 +16,9 @@ class StatisticsPrivacyTests(TestCase):
         self.main = page[page.index("<main") : page.index("</main>")]
 
     def part(self, title_id, next_id):
+        # The row's words, from its title to the next row's start.
         html = self.main[self.main.index(f'id="{title_id}"') : self.main.index(f'id="{next_id}"')]
-        return test_layout._text(html)
+        return test_layout._text(html[html.index(">") + 1 : html.rindex("<details")])
 
     def test_why_it_is_collected_includes_the_statistics(self):
         why = self.part("why-title", "collected-title")
@@ -27,7 +28,7 @@ class StatisticsPrivacyTests(TestCase):
             why,
         )
         # Acceptance 7: the promise stays, now with the statistics listed above it.
-        self.assertTrue(why.endswith("我們不會把您的資料拿去賣、做廣告，或做上面以外的用途。 <h2"))
+        self.assertTrue(why.endswith("我們不會把您的資料拿去賣、做廣告，或做上面以外的用途。"))
 
     def test_a_part_of_its_own_after_the_feedback_part(self):
         self.assertIn('<h2 id="statistics-title" class="fold-row-title">整體統計</h2>', self.main)
@@ -39,8 +40,8 @@ class StatisticsPrivacyTests(TestCase):
         )
 
     def test_the_part_says_what_is_counted_and_what_is_published(self):
-        part = self.part("statistics-title", "storage-title")
-        for words in (
+        # Acceptance 2: word for word, nothing more.
+        sentences = (
             "我們會把大家的問卷作答與結果、聽力圖、助聽器與補助資料和出生年合起來統計，"
             "例如每個月有幾個人做篩檢、各分級各佔多少，用來改善網站，"
             "也會在簡報、網站或申請補助時說明聽伴的成效。",
@@ -50,9 +51,10 @@ class StatisticsPrivacyTests(TestCase):
             "只統計同意這一版說明的人。",
             "刪除帳號後，您的資料不會再算進新的統計；已經公布的數字無法收回。",
             "以後如果要拿資料做學術研究，會另外說明、請您自己勾選同意；不勾也一樣能使用聽伴。",
-        ):
-            with self.subTest(words=words):
-                self.assertIn(words, part)
+        )
+        self.assertEqual(
+            self.part("statistics-title", "storage-title"), " ".join(("整體統計", *sentences))
+        )
 
 
 class StatisticsHighlightTests(TestCase):
