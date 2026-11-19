@@ -15,7 +15,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 from rest_framework.throttling import BaseThrottle
 
-from screening import models
+from screening import email_confirmation, models
 from screening.forms import (
     RESETS_PER_ADDRESS,
     ROC_OFFSET,
@@ -68,6 +68,7 @@ def register(request):
             else:
                 login(request, user)
                 request.session[NEW_ACCOUNT] = True
+                email_confirmation.send(request, user)
                 # New accounts agree to the privacy notice before anything else.
                 if next_url:
                     return redirect_to_login(next_url, reverse("consent"))
@@ -284,5 +285,9 @@ def add_email(request):
     # A mistyped email keeps the confirmation, to try again; the one that is saved uses it up.
     if form.is_valid() and confirm_identity.use_confirmation(request, "add_email"):
         form.save(request.user)
+        # The form saves in the database only (added once): read it back to send to it.
+        request.user.refresh_from_db(fields=["email"])
+        if not request.user.email_confirmed:
+            email_confirmation.send(request, request.user)
         return redirect("account_settings")
     return render(request, "screening/add_email.html", {"form": form})

@@ -1,0 +1,27 @@
+{% extends "screening/layout.html" %}
+
+{% block title %}{% if confirmed %}信箱確認好了{% elif user_to_confirm %}確認信箱{% else %}連結不能用了{% endif %}｜聽伴{% endblock %}
+
+{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block body %}
+{# Security check 2026-11-19 (docs/design/email-confirmation-mockup.html 3a-3c): opened from the 確認信 without signing in. Opening it confirms nothing: a mail program's link scanner opens links too. #}
+<div class="narrow-form">
+    {% if confirmed %}
+    <h1 class="h3 mt-4">信箱確認好了</h1>
+    <p class="wrap-anywhere">忘記密碼時，我們會把重設密碼信寄到 {{ user_to_confirm.email }}。</p>
+    <a class="btn btn-primary btn-lg w-full" href="{% url 'index' %}">回首頁</a>
+    {% elif user_to_confirm %}
+    <h1 class="h3 mt-4">確認信箱</h1>
+    <p class="wrap-anywhere">要確認 <strong>{{ user_to_confirm.email }}</strong> 是 {{ user_to_confirm.username }} 的信箱嗎？</p>
+    <form method="post">
+        {% csrf_token %}
+        <button class="btn btn-primary btn-lg w-full" type="submit">確認信箱</button>
+    </form>
+    {% else %}
+    <h1 class="h3 mt-4">這個連結不能用了</h1>
+    <p>確認信的連結 3 天內有效。請登入後到帳號設定，再寄一封確認信。</p>
+    <a class="btn btn-primary btn-lg w-full" href="{% url 'account_settings' %}">到帳號設定</a>
+    {% endif %}
+</div>
+{% endblock %}

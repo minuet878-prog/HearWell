@@ -523,6 +523,8 @@ NOT_PAGES = {
     "report_share_cancel",
     "download_my_data",
     "retest_reminder",
+    # Sends the 確認信 again and goes back to account settings (security check 2026-11-19).
+    "email_confirm_resend",
     # A 小卡網址 only sends the scan on to its landing page (spec #677).
     "clinic_card_elder",
     "clinic_card_family",

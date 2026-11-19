@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Email 確認｜設計圖</title>
+<style>
+  :root { --primary: #1f4e8c; --muted: #4a5460; --line: #e3e7ec; --surface: #f3f6fa; --danger: #b42318; --warn-bg: #fff4e5; }
+  body { margin: 0; padding: 24px 16px 48px; background: #e9edf2; font: 18px/1.6 system-ui, "PingFang TC", "Noto Sans TC", sans-serif; color: #1a1f24; }
+  h1.page { font-size: 1.5rem; margin: 0 0 8px; }
+  .intro { max-width: 60rem; margin: 0 auto 24px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 28px; justify-content: center; }
+  .shot { width: 360px; }
+  .shot > .label { font-weight: 700; margin-bottom: 8px; }
+  .shot > .why { font-size: .95rem; color: var(--muted); margin: 8px 2px 0; }
+  .phone { background: #fff; border-radius: 22px; box-shadow: 0 2px 10px rgba(0,0,0,.12); padding: 20px 18px 24px; min-height: 300px; }
+  .bar { display: flex; justify-content: space-between; color: var(--primary); font-weight: 700; border-bottom: 1px solid var(--line); padding-bottom: 10px; margin-bottom: 14px; }
+  h2 { font-size: 1.35rem; margin: 6px 0 12px; }
+  h3 { font-size: 1.15rem; margin: 18px 0 8px; }
+  p { margin: 0 0 12px; }
+  .btn { display: block; text-align: center; padding: 13px 16px; border-radius: 14px; font-weight: 700; text-decoration: none; border: 2px solid var(--primary); }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-outline { background: #fff; color: var(--primary); }
+  .btn-small { display: inline-block; padding: 6px 12px; border-radius: 10px; font-size: .95rem; }
+  .row { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; }
+  .row .note { color: var(--muted); font-size: .95rem; }
+  .row .title { font-weight: 700; word-break: break-all; }
+  .row.with-btn { display: grid; grid-template-columns: 1fr auto; gap: 0 12px; align-items: center; }
+  .row.with-btn .btn-small { grid-row: 1 / span 3; grid-column: 2; }
+  .tag { display: inline-block; font-size: .9rem; font-weight: 700; color: #8a4b00; background: var(--warn-bg); border-radius: 8px; padding: 1px 8px; margin-top: 2px; }
+  .help { color: var(--muted); font-size: .95rem; }
+  .notice { background: var(--surface); border-left: 6px solid var(--primary); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; }
+  .error-box { border: 2px solid var(--danger); background: #fdecea; color: var(--danger); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; font-weight: 700; }
+  .field { border: 2px solid #c5ccd5; border-radius: 12px; padding: 12px; margin: 4px 0 14px; color: var(--muted); }
+  .mail { background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.12); padding: 18px; }
+  .mail .head { font-size: .9rem; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 12px; }
+  .mail .foot { border-top: 1px solid var(--line); padding-top: 10px; font-size: .9rem; color: var(--muted); margin-top: 16px; }
+  .link { color: var(--primary); word-break: break-all; }
+  .muted-link { color: var(--primary); font-weight: 700; text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="intro">
+  <h1 class="page">Email 確認：要改的畫面</h1>
+  <p>規則（你已決定）：信箱要點過確認信才算「確認」；沒確認的信箱收不到重設密碼信，也打不開重測提醒。今天以前已經填好的信箱先算已確認；Google 給的信箱直接算已確認；確認連結 3 天有效。</p>
+  <p>以下每個畫面只有一種做法，請看字和位置對不對。</p>
+</div>
+
+<div class="grid">
+
+  <div class="shot">
+    <div class="label">1. 註冊、LINE 建帳號、補上 email 之後</div>
+    <div class="phone">
+      <div class="bar"><span>聽伴</span><span>☰</span></div>
+      <div class="notice">已寄確認信到 wang@example.com。請在 3 天內打開信，按「確認信箱」。沒收到的話，可以到帳號設定重寄。</div>
+      <h2>隱私權說明</h2>
+      <p class="help">（原本的下一頁內容）</p>
+    </div>
+    <p class="why">用網站原本的提示條，出現在下一頁最上面。補上 email 的下一頁是帳號設定。</p>
+  </div>
+
+  <div class="shot">
+    <div class="label">2. 確認信</div>
+    <div class="mail">
+      <div class="head">寄件者：聽伴 &lt;noreply@tingpal.tw&gt;<br>主旨：聽伴 確認您的信箱</div>
+      <p>wang_ming 您好：</p>
+      <p>請按下面的按鈕，確認這個信箱是您的。確認以後，忘記密碼時才能把重設密碼信寄給您，也能收重測提醒。</p>
+      <a class="btn btn-primary">確認信箱</a>
+      <p style="margin-top:14px">按鈕按不了的話，把這個網址複製到瀏覽器打開：<br><span class="link">https://tingpal.tw/email/confirm/Mjc:1vX9…</span></p>
+      <p>這個連結 3 天內有效。不是您申請的，請不用理會這封信。</p>
+      <div class="foot">聽伴 聽力自我照護・tingpal.tw</div>
+    </div>
+    <p class="why">樣式跟重設密碼信一樣。</p>
+  </div>
+
+  <div class="shot">
+    <div class="label">3a. 點信裡的按鈕之後（還要再按一次）</div>
+    <div class="phone">
+      <div class="bar"><span>聽伴</span><span>☰</span></div>
+      <h2>確認信箱</h2>
+      <p>要確認 <strong>wang@example.com</strong> 是 wang_ming 的信箱嗎？</p>
+      <a class="btn btn-primary">確認信箱</a>
+    </div>
+    <p class="why">多按一次是因為有些信箱會自動「點」信裡的連結（防毒掃描），只靠打開網址會被誤確認。不用先登入。</p>
+  </div>
+
+  <div class="shot">
+    <div class="label">3b. 確認完成</div>
+    <div class="phone">
+      <div class="bar"><span>聽伴</span><span>☰</span></div>
+      <h2>信箱確認好了</h2>
+      <p>忘記密碼時，我們會把重設密碼信寄到 wang@example.com。</p>
+      <a class="btn btn-primary">回首頁</a>
+    </div>
+  </div>
+
+  <div class="shot">
+    <div class="label">3c. 連結過期或不對</div>
+    <div class="phone">
+      <div class="bar"><span>聽伴</span><span>☰</span></div>
+      <h2>這個連結不能用了</h2>
+      <p>確認信的連結 3 天內有效。請登入後到帳號設定，再寄一封確認信。</p>
+      <a class="btn btn-primary">到帳號設定</a>
+    </div>
+  </div>
+
+  <div class="shot">
+    <div class="label">4. 帳號設定（信箱還沒確認）</div>
+    <div class="phone">
+      <div class="bar"><span>聽伴</span><span>☰</span></div>
+      <h3>我的帳號</h3>
+      <div class="row"><div class="note">使用者名稱</div><div class="title">wang_ming</div></div>
+      <div class="row with-btn">
+        <div class="note">電子郵件</div>
+        <div class="title">wang@example.com</div>
+        <div><span class="tag">還沒確認</span></div>
+        <a class="btn btn-outline btn-small">重寄確認信</a>
+      </div>
+      <p class="help">請打開確認信，按「確認信箱」。確認以後，忘記密碼時才能寄重設密碼信給您。</p>
+      <h3>email 重測提醒</h3>
+      <div class="row"><div class="note">目前</div><div class="title">沒有打開</div></div>
+      <p>您的 email 還沒確認，確認以後才能收提醒。</p>
+      <a class="btn btn-outline">重寄確認信</a>
+    </div>
+    <p class="why">按「重寄確認信」後回到同一頁，上面出現 1 的提示條。每個帳號每小時最多重寄 3 封。已確認的信箱，這一列跟現在一樣，沒有標籤和按鈕。</p>
+  </div>
+
+  <div class="shot">
+    <div class="label">5. 忘記密碼頁（信箱還沒確認）</div>
+    <div class="phone">
+      <div class="bar"><span>聽伴</span><span>☰</span></div>
+      <h2>忘記密碼</h2>
+      <div class="error-box">這個信箱還沒確認，沒辦法寄重設密碼信。請寫信到 <span class="muted-link">hearwellweb@gmail.com</span>，我們幫您處理。</div>
+      <div>電子郵件</div>
+      <div class="field">wang@example.com</div>
+      <a class="btn btn-primary">寄重設密碼信</a>
+    </div>
+    <p class="why">還沒確認就忘記密碼，只能請你手動處理（例如在 admin 幫他確認信箱）。</p>
+  </div>
+
+</div>
+</body>
+</html>

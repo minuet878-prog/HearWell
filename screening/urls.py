@@ -9,6 +9,7 @@ from .views import (
     clinic_cards,
     confirm_identity,
     crawlers,
+    email_confirmation,
     export,
     family,
     feedback,
@@ -112,6 +113,10 @@ urlpatterns = [
     path("account/email", accounts.add_email, name="add_email"),
     path("reminder", reminders.retest_reminder, name="retest_reminder"),
     path("reminder/cancel/<str:token>", reminders.reminder_cancel, name="reminder_cancel"),
+    path(
+        "email/confirm/resend", email_confirmation.email_confirm_resend, name="email_confirm_resend"
+    ),
+    path("email/confirm/<str:token>", email_confirmation.email_confirm, name="email_confirm"),
     path("reminder/cancelled", reminders.reminder_cancelled, name="reminder_cancelled"),
     path("account/confirm", confirm_identity.confirm_identity, name="confirm_identity"),
     path("account/sign-in-methods/google/add", sign_in_methods.google_add, name="google_add"),

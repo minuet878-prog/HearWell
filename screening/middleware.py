@@ -29,7 +29,8 @@ from screening.views.common import form_page
 # the privacy notice's highlights (#640). A 小卡網址 only sends the scan on to its landing page,
 # which the gate then guards as it would anyway, and the cards' print page shows only the cards
 # (spec #677). Cancelling the email 重測提醒 from an email's link stops processing, and opens
-# without signing in (spec #656 acceptance 39).
+# without signing in (spec #656 acceptance 39). So does a 確認信's link (security check 2026-11-19),
+# which only confirms the email it was sent to.
 OPEN_PAGES = {
     "index",
     "privacy",
@@ -75,6 +76,7 @@ OPEN_PAGES = {
     "clinic_cards",
     "reminder_cancel",
     "reminder_cancelled",
+    "email_confirm",
 }
 
 

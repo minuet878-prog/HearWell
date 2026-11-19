@@ -9,6 +9,7 @@ from django.contrib.auth import views as auth_views
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import NON_FIELD_ERRORS
 from django.db import IntegrityError, transaction
+from django.db.models import F
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -16,7 +17,7 @@ from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 
-from screening import oidc
+from screening import email_confirmation, oidc
 from screening.forms import LoginForm
 from screening.models import SignInMethod, User
 from screening.views import confirm_identity, sign_in_methods
@@ -194,7 +195,12 @@ def _signed_in_as(request, identity, method):
     }
     # An email already on an account (any case) is never signed into nor merged (ADR 0057). Only
     # Google's: the one typed on LINE's name page is not asked about (#506 acceptance 8).
-    if identity.email and User.objects.filter(email__iexact=identity.email).exists():
+    # A confirmed email only: an unconfirmed one may have been typed by someone else, whose
+    # account this would lead to.
+    if (
+        identity.email
+        and User.objects.filter(email__iexact=identity.email, confirmed_email=F("email")).exists()
+    ):
         return redirect("google_same_email")
     return redirect(f"{identity.provider}_name")
 
@@ -240,7 +246,8 @@ def _name_page(request, provider):
                     email = form.cleaned_data["email"]
                 else:
                     email = pending["email"]
-                user = form.save(email=email)
+                # Google gives only an email it has verified (oidc.finish); a typed one is not yet.
+                user = form.save(email=email, confirmed="email" not in form.fields)
                 SignInMethod.objects.create(
                     user=user,
                     provider=pending["provider"],
@@ -262,6 +269,8 @@ def _name_page(request, provider):
             login(request, user)  # also forgets the pending identity
             # As registering with a password does: the consent page greets a new account (#152).
             request.session[NEW_ACCOUNT] = True
+            if email and not user.email_confirmed:
+                email_confirmation.send(request, user)
             if pending["next"]:
                 return redirect_to_login(pending["next"], reverse("consent"))
             return redirect("consent")

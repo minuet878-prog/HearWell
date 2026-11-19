@@ -157,11 +157,13 @@ class GoogleNameForm(NoLabelSuffix, forms.ModelForm):
         self.fields["username"].help_text = USERNAME_HELP
         give_birth_year_checks(self.fields["roc_birth_year"])
 
-    def save(self, *, email):
+    def save(self, *, email, confirmed):
         user = super().save(commit=False)
         roc = self.cleaned_data["roc_birth_year"]
         user.birth_year = None if roc is None else roc + ROC_OFFSET
         user.email = email
+        if confirmed:
+            user.confirmed_email = email
         user.set_unusable_password()
         user.save()
         return user
@@ -258,11 +260,11 @@ class CountedSignIn:
             raise
 
 
-class LoginForm(CountedSignIn, AuthenticationForm):
+class LoginForm(NoLabelSuffix, CountedSignIn, AuthenticationForm):
     pass
 
 
-class AdminLoginForm(CountedSignIn, AdminAuthenticationForm):
+class AdminLoginForm(NoLabelSuffix, CountedSignIn, AdminAuthenticationForm):
     pass
 
 
@@ -284,6 +286,9 @@ class ResetEmailNotSent(Exception):
     """#529: the mail service did not take a 重設密碼信."""
 
 
+UNCONFIRMED_EMAIL = f"這個信箱還沒確認，沒辦法寄重設密碼信。請寫信到 {HELP_ADDRESS}，我們幫您處理。"
+
+
 class ForgotPasswordForm(NoLabelSuffix, PasswordResetForm):
     """Spec #355: every ordinary account on the email gets a 重設密碼信, with or without a
     password (one made with Google or LINE gains one); staff, superusers and inactive accounts
@@ -295,15 +300,20 @@ class ForgotPasswordForm(NoLabelSuffix, PasswordResetForm):
         widget=forms.EmailInput(attrs={"autocomplete": "email", "class": "form-control"}),
     )
 
-    def get_users(self, email):
+    def _accounts(self, email):
         users = User.objects.filter(email__iexact=email)
         return [
             user for user in users if may_reset_password(user) and _same_email(email, user.email)
         ]
 
+    def get_users(self, email):
+        # Only to an email its owner confirmed (security check 2026-11-19): a mistyped one, or
+        # someone else's, would let that mailbox set the account's password.
+        return [user for user in self._accounts(email) if user.email_confirmed]
+
     def clean_email(self):
         email = self.cleaned_data["email"]
-        if not self.get_users(email):
+        if not self._accounts(email):
             raise forms.ValidationError("這個信箱沒有註冊，請檢查有沒有打錯")
         return email
 
@@ -311,6 +321,9 @@ class ForgotPasswordForm(NoLabelSuffix, PasswordResetForm):
         email = self.cleaned_data.get("email")
         if email and attempts("email", email) >= RESETS_PER_EMAIL:
             raise forms.ValidationError(TOO_MANY_RESETS)
+        # docs/design/email-confirmation-mockup.html 5: in the red box above the field.
+        if email and not self.get_users(email):
+            raise forms.ValidationError(UNCONFIRMED_EMAIL)
         return self.cleaned_data
 
     def save(self, **options):
@@ -397,7 +410,7 @@ class AddEmailForm(NoLabelSuffix, forms.Form):
         label="電子郵件",
         # What the account's email column holds: longer is the form's error, not a database one.
         max_length=User._meta.get_field("email").max_length,
-        help_text="請再看一次有沒有打錯，網站不會寄信確認。",
+        help_text="請再看一次有沒有打錯，我們會寄一封確認信到這個信箱。",
         widget=forms.EmailInput(attrs={"autocomplete": "email", "class": "form-control"}),
     )
 

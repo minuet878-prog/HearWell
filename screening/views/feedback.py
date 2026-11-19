@@ -76,6 +76,7 @@ PAGE_NAMES = {
     "confirm_identity": "確認本人",
     "reminder_cancel": "取消重測提醒",
     "reminder_cancelled": "取消重測提醒",
+    "email_confirm": "確認信箱",
     "audiogram_list": "聽力圖",
     "audiogram_new": "記錄聽力圖",
     "audiogram_import": "從 iPhone 匯入",

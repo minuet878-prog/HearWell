@@ -29,7 +29,9 @@ admin.site.login_form = AdminLoginForm
 class CustomUserAdmin(UserAdmin):
     fieldsets = (
         *UserAdmin.fieldsets,
-        ("個人資料", {"fields": ("birth_year",)}),
+        # confirmed_email: the owner confirms one by hand for someone who wrote in, after
+        # checking it is theirs (docs/design/email-confirmation-mockup.html 5).
+        ("個人資料", {"fields": ("birth_year", "confirmed_email")}),
     )
     add_fieldsets = (
         *UserAdmin.add_fieldsets,

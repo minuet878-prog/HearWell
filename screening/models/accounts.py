@@ -36,6 +36,15 @@ PRIVACY_UPDATED_ON = date(2026, 11, 17)
 class User(AbstractUser):
     # Western calendar year; only the year is collected (data minimisation).
     birth_year = models.PositiveSmallIntegerField(null=True, blank=True)
+    # The email as it was when its 確認信 was answered (security check 2026-11-19); the email
+    # changed since (by the owner, in the admin) is unconfirmed again. Google's own and the emails
+    # already kept when this came in count as confirmed.
+    confirmed_email = models.EmailField("確認過的電子郵件", blank=True, default="")
+
+    @property
+    def email_confirmed(self):
+        """Whether the 重設密碼信 and the 重測提醒 may go to the email."""
+        return bool(self.email) and self.confirmed_email == self.email
 
     @property
     def is_admin(self):

@@ -17,7 +17,10 @@ class SameEmailTests(TestCase):
 
     def setUp(self):
         self.owner = User.objects.create_user(
-            username="王小明", password=PASSWORD, email="a@example.com"
+            username="王小明",
+            password=PASSWORD,
+            email="a@example.com",
+            confirmed_email="a@example.com",
         )
         self.google = FakeGoogle(self.client)
 

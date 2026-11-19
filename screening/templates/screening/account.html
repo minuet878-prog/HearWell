@@ -20,10 +20,18 @@
             <dt class="settings-row-note">使用者名稱</dt>
             <dd class="settings-row-title">{{ user.username }}</dd>
         </div>
-        {% if user.email %}
+        {% if user.email_confirmed %}
         <div class="settings-row">
             <dt class="settings-row-note">電子郵件</dt>
             <dd class="settings-row-title">{{ user.email }}</dd>
+        </div>
+        {% elif user.email %}
+        {# Security check 2026-11-19 (docs/design/email-confirmation-mockup.html 4): 還沒確認 under it, 重寄確認信 on the right of its row. #}
+        <div class="settings-row grid grid-cols-[1fr_auto] items-center gap-x-3">
+            <dt class="settings-row-note">電子郵件</dt>
+            <dd class="settings-row-title wrap-anywhere">{{ user.email }}</dd>
+            <dd class="m-0"><span class="email-unconfirmed">還沒確認</span></dd>
+            <dd class="col-start-2 row-span-3 row-start-1 m-0">{% include "screening/email_confirm_resend.html" with small=True %}</dd>
         </div>
         {% else %}
         {# #660 (the #657 mockup's 二): without one, 補上 on the right of its row, after 確認本人. #}
@@ -38,6 +46,7 @@
             <dd class="settings-row-title">{% if roc_birth_year is not None %}民國 {{ roc_birth_year }} 年（{{ user.birth_year }}）{% else %}未填{% endif %}</dd>
         </div>
     </dl>
+    {% if user.email and not user.email_confirmed %}<p class="field-help mt-2 mb-0">請打開確認信，按「確認信箱」。確認以後，忘記密碼時才能寄重設密碼信給您。</p>{% endif %}
     {# #361: a blank can only be filled in by writing to us (no edit form yet); said once under the details. #660: but for the email, added above. #}
     {% if roc_birth_year is None %}<p class="mt-2 mb-0 wrap-anywhere">要修改請寫信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></p>
     <p class="mt-2 mb-0">{% include "screening/copy_address_button.html" %}</p>{% endif %}
@@ -76,13 +85,16 @@
             <dd class="settings-row-title">沒有打開</dd>
         </div>
     </dl>
-    {% if user.email %}
+    {% if user.email_confirmed %}
     <form method="post" action="{% url 'retest_reminder' %}">
         {% csrf_token %}
         <input type="hidden" name="enabled" value="1">
         <button class="btn btn-outline-primary w-full" type="submit">打開提醒</button>
     </form>
     <p class="field-help mt-2 mb-0 wrap-anywhere">會寄到 {{ user.email }}</p>
+    {% elif user.email %}
+    <p class="mt-0">您的 email 還沒確認，確認以後才能收提醒。</p>
+    {% include "screening/email_confirm_resend.html" %}
     {% else %}
     <p class="mt-0">您的帳號還沒有 email，要先補上才能收提醒。</p>
     <a class="btn btn-outline-primary w-full" href="{% url 'add_email' %}">補上 email</a>

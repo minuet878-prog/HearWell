@@ -1,0 +1,5 @@
+{# Security check 2026-11-19 (docs/design/email-confirmation-mockup.html 4): the 確認信 again, back to account settings. small: the button on the email's row; otherwise the reminder section's full-width one. #}
+<form method="post" action="{% url 'email_confirm_resend' %}">
+    {% csrf_token %}
+    <button class="btn btn-outline-primary{% if not small %} w-full{% endif %}" type="submit">重寄確認信</button>
+</form>
