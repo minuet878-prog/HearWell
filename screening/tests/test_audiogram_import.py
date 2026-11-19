@@ -213,7 +213,8 @@ class PrivacyNoticeTests(TestCase):
             "您自己輸入或從 iPhone 匯入的聽力圖（匯入用的 PDF 讀完就丟，不保存）", content
         )
         self.assertNotIn("您自己輸入的聽力圖、", content)
-        self.assertEqual(accounts.CONSENT_VERSION, 8)
+        # Spec #733 raised it to 9 for the 整體統計 (test_aggregate_statistics).
+        self.assertGreaterEqual(accounts.CONSENT_VERSION, 8)
 
 
 class ImportEntryTests(TestCase):

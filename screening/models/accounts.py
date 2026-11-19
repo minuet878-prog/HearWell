@@ -21,7 +21,9 @@ from screening.models.submissions import Answer
 # 7: signing in with Google keeps Google's code (`sub`) and email as a 登入方式 (spec #505).
 # 8: signing in with LINE keeps LINE's code as a 登入方式; version 7 was already live, so it is
 # one more (spec #506).
-CONSENT_VERSION = 8
+# 9: the 整體統計 is a new use of the health data, with no ticking of its own (spec #733,
+# ADR 0069).
+CONSENT_VERSION = 9
 # The 提問紀錄 (#400) is new data but linked to no one, so only the date moved (ADR 0034); the
 # cookie sentence's minor fix for public forms (#431) moved it again (ADR 0014); versions 4, 5,
 # 6 and 7 moved it with the version (#452, spec #478, #526, spec #505). Version 8 (#506) has not
@@ -29,8 +31,9 @@ CONSENT_VERSION = 8
 # (spec #492): nothing new is kept, so that sentence needed no version of its own. 意見回饋 (spec
 # #633, #641) is new data linked to no one, so only the date moved (ADR 0064), to the day it
 # went live (#643). The email 重測提醒 (spec #656, #664) is a new use of the email that each one
-# ticks on, so again only the date moved (ADR 0065); set it to the day it goes live.
-PRIVACY_UPDATED_ON = date(2026, 11, 17)
+# ticks on, so again only the date moved (ADR 0065); set it to the day it goes live. Version 9
+# (spec #733) moves it with the version: set it to the day version 9 goes live.
+PRIVACY_UPDATED_ON = date(2026, 11, 19)
 
 
 class User(AbstractUser):

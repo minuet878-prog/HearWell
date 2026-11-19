@@ -455,15 +455,16 @@ class FeedbackPrivacyTests(TestCase):
         # (test_reminder_privacy).
         self.assertIn("只有您自己申請時才寄。", part)
 
-    def test_the_date_moved_and_the_version_stays_8(self):
-        self.assertEqual(models.CONSENT_VERSION, 8)
+    def test_the_date_moved_and_the_version_stayed(self):
+        # It stayed 8; spec #733 raised it to 9 for the 整體統計 (test_aggregate_statistics).
+        self.assertGreaterEqual(models.CONSENT_VERSION, 8)
         self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 16))
         updated_on = f"{models.PRIVACY_UPDATED_ON:%Y/%m/%d}"
-        self.assertIn(f"第 8 版，{updated_on} 更新", self.main)
+        self.assertIn(f"第 {models.CONSENT_VERSION} 版，{updated_on} 更新", self.main)
 
-    def test_who_agreed_to_version_8_before_is_not_asked_again(self):
+    def test_who_agreed_before_the_date_moved_is_not_asked_again(self):
         user = User.objects.create_user(username="feedback_agreed_before")
-        Consent.objects.create(user=user, version=8)
+        Consent.objects.create(user=user, version=models.CONSENT_VERSION)
         Consent.objects.filter(user=user).update(agreed_at=timezone.now() - timedelta(days=30))
         self.client.force_login(user)
         self.assertEqual(self.client.get(reverse("my_hearing")).status_code, 200)
