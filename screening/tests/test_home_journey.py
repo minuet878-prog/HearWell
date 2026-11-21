@@ -28,7 +28,15 @@ from screening.tests.helpers import consented_user
 TODAY = date(2026, 11, 12)
 NORMAL = (20, 20, 20, 20)
 PTA_55 = test_guide_summary.PTA_55
-SOLID = re.compile(r'class="btn btn-primary\b')
+# The page's main button: solid, or white on the blue hero card (#749, ADR 0076).
+SOLID = re.compile(r'class="btn btn-(?:primary|hero)(?=[ "])')
+
+
+def greets(greeting, title):
+    """The bird's lead and the page's title in its bubble (#749)."""
+    return rf'<p class="bird-lead">{greeting}，</p>\s*<h1 class="bird-title">{title}</h1>'
+
+
 # The 現在這一步 card's 待辦 (spec #478), left to test_journey_todos: these check its one thing.
 TODOS = re.compile(r'<div class="todos">.*?</div>', re.S)
 
@@ -132,7 +140,7 @@ class EmptyStateHomeTests(HomeJourneyTestCase):
     def test_without_any_record_the_home_page_is_the_empty_state(self):
         # Spec #453 acceptance 1: a preview and the start button, no journey or tiles.
         main = self.main()
-        self.assertIn('<h1 class="h3">從一份問卷開始</h1>', main)
+        self.assertIn('<h1 class="bird-title">從一份問卷開始</h1>', main)
         preview = self.part(main, "empty-preview")
         self.assertEqual(
             self.text(preview),
@@ -142,7 +150,8 @@ class EmptyStateHomeTests(HomeJourneyTestCase):
         self.assertNotIn("<a", preview)  # a preview, not a link
         self.assertRegex(
             main,
-            r'<a class="btn btn-primary btn-lg btn-start w-full" data-play-in-view '
+            r'<section class="hero-card" data-play-in-view>\s*<p>[^<]*</p>\s*'
+            r'<a class="btn btn-hero btn-lg btn-start" '
             rf'href="{reverse("questionnaire_list")}">開始篩檢</a>',
         )
         self.assertEqual(len(SOLID.findall(main)), 1)
@@ -251,7 +260,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
         self.assertNotIn("<a", tiles.split("下次篩檢")[1])
         hhie = reverse("screening", args=[self.questionnaires[hhie_s.CODE].pk])
         self.assertIn(
-            f'<a class="btn btn-primary btn-lg w-full" href="{hhie}">再做一次（大約 3 分鐘）</a>',
+            f'<a class="btn btn-hero btn-lg" href="{hhie}">再做一次（大約 3 分鐘）</a>',
             self.card(main),
         )
 
@@ -260,7 +269,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
         self.answer(on=date(2026, 9, 12))
         self.make(NORMAL, NORMAL, tested_on=date(2026, 9, 1))
         main = self.main()
-        self.assertIn('<h1 class="h3">早安，今天沒有要做的事</h1>', main)
+        self.assertRegex(main, greets("早安", "今天沒有要做的事"))
         self.assertEqual(SOLID.findall(main), [])
         self.assertIn(
             '<p class="journey-count"><span class="visually-hidden">進度 </span>4 / 5</p>', main
@@ -278,7 +287,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
 
     def test_with_a_button_there_is_one_thing_to_do_today(self):
         self.answer()
-        self.assertIn('<h1 class="h3">早安，今天只要做一件事</h1>', self.main())
+        self.assertRegex(self.main(), greets("早安", "今天只要做一件事"))
 
     def test_the_greeting_follows_the_time_of_day_in_taiwan(self):
         # #458 D2: Asia/Taipei, the site's time zone.
@@ -293,7 +302,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
         ):
             with self.subTest(hour=hour):
                 self.now = timezone.make_aware(datetime(2026, 11, 12, hour, 30))
-                self.assertIn(f'<h1 class="h3">{greeting}，今天只要做一件事</h1>', self.main())
+                self.assertRegex(self.main(), greets(greeting, "今天只要做一件事"))
 
     def test_step_3_s_card_is_the_stop_its_reason_and_its_button(self):
         # Spec #453 acceptance 6; the owner on #458: no 目前這一站 label, no 「因為：」 (D10).
@@ -308,7 +317,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
             "看九號表的流程",
         )
         self.assertIn(
-            '<a class="btn btn-primary btn-lg w-full" href="/guide/form-9">看九號表的流程</a>', card
+            '<a class="btn btn-hero btn-lg" href="/guide/form-9">看九號表的流程</a>', card
         )
         self.assertNotIn("checkbox", card)
 
@@ -388,11 +397,11 @@ class JourneyHomeTests(HomeJourneyTestCase):
                 self.fresh_user(records.__name__)
                 audiogram = records()
                 card = self.card(self.main())
-                self.assertIn(f'<h3 class="journey-card-title">{title}</h3>', card)
-                self.assertIn(f'<p class="journey-card-because">{because}</p>', card)
+                self.assertIn(f'<h3 class="hero-card-title">{title}</h3>', card)
+                self.assertIn(f"<p>{because}</p>", card)
                 self.assertNotIn("因為", card)
                 buttons = re.findall(
-                    r'<a class="btn btn-primary[^"]*" href="([^"]*)">([^<]*)</a>', card
+                    r'<a class="btn btn-hero btn-lg" href="([^"]*)">([^<]*)</a>', card
                 )
                 if button is None:
                     self.assertEqual(buttons, [])
@@ -409,7 +418,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
         card = self.card(self.main())
         solid = card.index('href="/audiograms/new?next=/">有，記錄聽力圖</a>')
         outline = card.index(
-            '<a class="btn btn-outline-primary btn-lg w-full" '
+            '<a class="btn btn-hero-outline btn-lg" '
             'href="/qa/where-to-get-a-hearing-test">還沒，看要去哪裡檢查</a>'
         )
         self.assertLess(solid, outline)
@@ -542,8 +551,7 @@ class StepInteractionTests(HomeJourneyTestCase):
         self.assertRegex(
             main,
             r'<li class="journey-step is-current"[^>]*>\s*<span class="journey-dot">3</span>\s*'
-            r'<div class="journey-card">\s*<div class="journey-card-main" '
-            r"data-play-in-view>",
+            r'<div class="journey-card">\s*<section class="hero-card" data-play-in-view>',
         )
         self.assertEqual(main.count("data-play-in-view"), 1)
         steps = re.findall(r'<li class="journey-step ([^"]*)" style="--journey-step: (\d)"', main)

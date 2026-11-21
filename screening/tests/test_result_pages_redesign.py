@@ -17,7 +17,8 @@ from screening.tests import test_guide_summary, test_result_pages
 from screening.tests.helpers import consented_user, submission_with_answers
 
 TAIPEI = timezone.get_fixed_timezone(8 * 60)
-SOLID = re.compile(r'class="btn btn-primary\b')
+# The page's main button: solid, or white on the blue hero card (#749, ADR 0076).
+SOLID = re.compile(r'class="btn btn-(?:primary|hero)(?=[ "])')
 BANNER = re.compile(r'<div class="result-banner result-banner-([a-z_]+)">(.*?)</div>\s*<p', re.S)
 # The score bar, to its ends' row and its own closing tag (score_bar.html).
 SCORE_BAR = re.compile(
@@ -120,7 +121,7 @@ class GradedResultPageTests(TestCase):
         )
         order = [
             steps[0]["text"],
-            '<p class="result-next-label">建議您下一步</p>',
+            '<p class="hero-card-label">建議您下一步</p>',
             '<details class="result-details">',
             "<span>看完整說明</span>",
             ">分享給家人<",
@@ -178,7 +179,7 @@ class EveryResultPageTests(TestCase):
             with self.subTest(code=code):
                 main = self._main(code)
                 self.assertEqual(len(SOLID.findall(main)), 1)
-                self.assertLess(main.index("result-next-label"), SOLID.search(main).start())
+                self.assertLess(main.index("hero-card-label"), SOLID.search(main).start())
 
     def test_every_result_page_folds_its_explanation_then_lists_sharing_and_printing(self):
         for code in test_result_pages.QUESTIONNAIRES:

@@ -212,7 +212,7 @@ class LastResultTests(TestCase):
         day = date.today() - timedelta(days=200)
         self.record("hhie-s", [4, 4, 2, 2, 0, 0, 0, 0, 0, 0], day, wearing_hearing_aid=False)
         recommended = re.search(
-            r'<section aria-labelledby="catalogue-recommended"[^>]*>(.*?)</section>',
+            r'<section [^>]*aria-labelledby="catalogue-recommended"[^>]*>(.*?)</section>',
             self.main(),
             re.S,
         ).group(1)

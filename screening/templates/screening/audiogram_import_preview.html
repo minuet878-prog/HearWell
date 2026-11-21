@@ -1,11 +1,11 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 {% block title %}確認匯入的結果｜聽伴{% endblock %}
 {% block extra_head %}
 <script type="module" src="{% static 'screening/frontend/audiogram-view.js' %}"></script>
 {% endblock %}
 {% block body %}
-<h1 class="h3 mt-4">確認匯入的結果</h1>
+{% include "screening/bird_dialogue.html" with lead="audiogram_import_preview"|page_lead title="確認匯入的結果" %}
 {# Spec #702 (#703 mockup 3A): whose record first, then the check, the date, the chart and the values. #}
 <p class="text-xl/normal font-bold mb-1 wrap-anywhere">要存進「{{ user.username }}」的紀錄</p>
 <p class="field-help">PDF 上印的是 iPhone 主人的名字，不一定是做測試的人。</p>

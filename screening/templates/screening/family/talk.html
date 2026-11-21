@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 
 {% block extra_head %}
@@ -9,7 +9,7 @@
 {% block body %}
 {# #469 (the #468 mockup, H3 on the reading comparison page): the family guide's 怎麼跟聽損的家人說話 on a page of its own, each tip under a line drawing in the care steps' style. Content reviewed by the audiologist on 2026-10-17 (spec appendix A); change it only after review. The drawings are drafts for the owner. #}
 <article class="family-guide wrap-anywhere">
-<h1 class="h3 mt-4">怎麼跟聽損的家人說話</h1>
+{% include "screening/bird_dialogue.html" with lead="family_talk"|page_lead title="怎麼跟聽損的家人說話" %}
 <p>家人有聽力困難時，日常對話常常要講好幾次，雙方都容易累、容易誤會。下面幾個小方法，可以讓溝通輕鬆一點。</p>
 {# Readability batch 2 (the owner's A): each drawing at the left of its words (site.css .talk-tips). #}
 <ul class="tips divided-rows mb-6 talk-tips">

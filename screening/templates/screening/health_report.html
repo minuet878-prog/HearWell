@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block title %}聽伴聽力報告{% endblock %}
 
@@ -10,7 +10,7 @@
 
 {% block body %}
 <article class="health-report">
-<h1 class="h3 mt-4">聽伴聽力報告</h1>
+{% include "screening/bird_dialogue.html" with lead="health_report"|page_lead title="聽伴聽力報告" %}
 {% if not has_records %}
 {% include "screening/empty_state.html" with icon="report" title="還沒有報告" text="做完第一份問卷或記錄聽力圖，報告就會有內容，可以印出來給醫師看。" button="做第一份問卷" href=first_questionnaire_href %}
 {% else %}

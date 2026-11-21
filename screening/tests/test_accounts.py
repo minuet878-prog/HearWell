@@ -299,8 +299,8 @@ class LoginViewTests(TestCase):
     def test_title_greets_and_field_icons_stay_silent(self):
         content = self.client.get(self.url).content.decode()
         top = page_top(content)
-        self.assertIn('<h1 class="h3 mt-4">登入</h1>', top)
-        self.assertIn('<p class="text-(--color-muted)">歡迎回來。</p>', top)
+        self.assertIn('<h1 class="bird-title">登入</h1>', top)
+        self.assertIn('<p class="bird-lead">歡迎回來。</p>', top)
         icons = field_icons(content)
         self.assertEqual(len(icons), 2)
         for icon in icons:
@@ -622,8 +622,9 @@ class RegisterPageGuidanceTests(TestCase):
 
     def test_the_top_holds_the_title_the_line_and_the_step(self):
         top = page_top(self.client.get(self.url).content.decode())
-        self.assertIn('<h1 class="h3 mt-4">註冊</h1>', top)
-        self.assertIn('<p class="text-(--color-muted)">建立帳號，篩檢結果會幫您存起來。</p>', top)
+        self.assertIn('<h1 class="bird-title">註冊</h1>', top)
+        # #749: the line under the title became the bird's lead, above it.
+        self.assertIn('<p class="bird-lead">建立帳號，篩檢結果會幫您存起來。</p>', top)
         self.assertIn("第 1 步／共 2 步：建立帳號", top)
 
     # #360 (spec #354): 出生年 says it is optional in its name; 電子郵件 says what it is for and

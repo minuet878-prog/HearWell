@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block title %}我的紀錄｜聽伴{% endblock %}
 
@@ -16,7 +16,7 @@
 {% endblock %}
 
 {% block body %}
-<h1 class="h3 mt-2">我的紀錄</h1>
+{% include "screening/bird_dialogue.html" with lead="my_hearing"|page_lead title="我的紀錄" %}
 {% include "screening/records_switch.html" with side="questionnaires" %}
 {% if questionnaires|length > 1 %}
 {# Each tab is its own URL, so reload and the back button keep the tab. #}

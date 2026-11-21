@@ -1,0 +1,4 @@
+{# A page's one most important thing (ADR 0076, spec #741 acceptance 34): the deep blue card, at most one a page; its white button (btn-hero) is the page's main button, so the page has no solid blue one. `body`: what goes in it, made with {% capture %}; `attrs`: more attributes on the card. #}
+<section class="hero-card"{% if attrs %} {{ attrs }}{% endif %}>
+    {{ body }}
+</section>

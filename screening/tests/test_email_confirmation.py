@@ -158,7 +158,7 @@ class ConfirmPageTests(TestCase):
     def test_opening_the_link_asks_and_confirms_nothing(self):
         # A mail program's link scanner opens links too; signed out, as from the email.
         response = self.client.get(self.path)
-        self.assertContains(response, '<h1 class="h3 mt-4">確認信箱</h1>', html=True)
+        self.assertContains(response, '<h1 class="bird-title">確認信箱</h1>', html=True)
         self.assertContains(response, "<strong>wang@example.com</strong>")
         self.assertContains(response, ">確認信箱</button>")
         self.assertFalse(User.objects.get(pk=self.user.pk).email_confirmed)

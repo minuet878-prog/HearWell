@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 
 {% block extra_head %}
@@ -11,7 +11,7 @@
 {% block body %}
 {# Content reviewed by the audiologist on 2026-10-17 (spec appendix A); change it only after review. #}
 <article class="family-guide wrap-anywhere">
-<h1 class="h3 mt-4">家人專區</h1>
+{% include "screening/bird_dialogue.html" with lead="family_guide"|page_lead title="家人專區" %}
 {# Readability batch 2 (the owner's words, 2026-11-16): one sentence over the list; the talking tips' own words stay on family_talk. #}
 <p>想幫聽力不好的家人，可以從這裡開始。</p>
 

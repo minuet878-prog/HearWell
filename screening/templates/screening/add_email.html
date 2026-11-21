@@ -1,11 +1,12 @@
 {% extends "screening/layout.html" %}
+{% load custom_filters %}
 
 {% block title %}補上 email｜聽伴{% endblock %}
 
 {% block body %}
 {# #660 (spec #656 acceptance 7-9, the #657 mockup's 二): after 確認本人, one field and one button; added once. #}
 <div class="narrow-form">
-    <h1 class="h3 mt-4">補上 email</h1>
+    {% include "screening/bird_dialogue.html" with lead="add_email"|page_lead title="補上 email" %}
     <p>補上之後可以收重測提醒，忘記密碼時也能寄重設密碼信給您。補上以後要修改，請寫信給我們。</p>
     <form method="post" class="auth-form">
         {% csrf_token %}

@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 
 {% block extra_head %}{% include "screening/continue_notice.html" %}{% if journey %}
@@ -15,7 +15,9 @@
 {% if continue_notice %}<div id="continue-notice"></div>{% endif %}
 {% if journey %}
 {# #459 (ADR 0044, mockup #458): the 照顧旅程, its 現在這一步 the one thing to do today. #}
-<h1 class="h3">{{ greeting }}，{% if journey.card.button %}今天只要做一件事{% else %}今天沒有要做的事{% endif %}</h1>
+{# #749 (ADR 0076): the greeting is the bird's lead, the rest of the old title the page's title. #}
+{% capture bird_lead %}{{ greeting }}，{% endcapture %}
+{% include "screening/bird_dialogue.html" with lead=bird_lead title=journey.card.button|yesno:"今天只要做一件事,今天沒有要做的事" %}
 {# 上次結果 is the latest life-impact record, its whole tile a link in its level's colour (L1); 下次篩檢 is grey, information only. Without a life-impact record both are grey and say not yet (#458 D6). #}
 <div class="journey-tiles">
     {% with submission=journey.last_result %}
@@ -72,19 +74,20 @@
             {% if step.state == "current" %}
             {% with card=journey.card %}
             <div class="journey-card">
-                {# The entrance waits for the card's one thing, not the whole step: #480 moved data-play-in-view here from the step, as the to-dos under it made the step too tall to be in view on arrival (ADR 0029 itself unchanged). #}
-                <div class="journey-card-main" data-play-in-view>
-                    <p class="journey-card-label">現在這一步</p>
-                    <h3 class="journey-card-title">{{ card.title }}</h3>
-                    <p class="journey-card-because">{{ card.because }}</p>
+                {# #749 (ADR 0076): the 現在這一步 is the page's one thing, in the blue hero card, its button white. The entrance waits for the card's one thing, not the whole step: #480 moved data-play-in-view here from the step, as the to-dos under it made the step too tall to be in view on arrival (ADR 0029 itself unchanged). #}
+                {% capture hero %}
+                    <p class="hero-card-label">現在這一步</p>
+                    <h3 class="hero-card-title">{{ card.title }}</h3>
+                    <p>{{ card.because }}</p>
                     {% if card.button %}
-                    <a class="btn btn-primary btn-lg w-full" href="{{ card.button.1 }}{% if card.come_back %}?next={{ request.path|urlencode }}{% endif %}">{{ card.button.0 }}</a>
-                    {% if card.import_button %}<a class="btn btn-outline-primary btn-lg w-full" href="{{ card.import_button.1 }}">{{ card.import_button.0 }}</a>{% endif %}
-                    {% if card.second %}<a class="btn btn-outline-primary btn-lg w-full" href="{{ card.second.1 }}">{{ card.second.0 }}</a>{% endif %}
+                    <a class="btn btn-hero btn-lg" href="{{ card.button.1 }}{% if card.come_back %}?next={{ request.path|urlencode }}{% endif %}">{{ card.button.0 }}</a>
+                    {% if card.import_button %}<a class="btn btn-hero-outline btn-lg" href="{{ card.import_button.1 }}">{{ card.import_button.0 }}</a>{% endif %}
+                    {% if card.second %}<a class="btn btn-hero-outline btn-lg" href="{{ card.second.1 }}">{{ card.second.0 }}</a>{% endif %}
                     {% elif card.href %}
                     <a class="journey-card-link" href="{{ card.href }}">看這一站的說明</a>
                     {% endif %}
-                </div>
+                {% endcapture %}
+                {% include "screening/hero_card.html" with body=hero attrs="data-play-in-view" %}
                 {% include "screening/journey_todos.html" with todos=card.todos %}
             </div>
             {% endwith %}
@@ -118,8 +121,13 @@
 {# #459 (mockup #458 A): the 空狀態首頁, for a signed-in user without a questionnaire or an audiogram. The dashed box is a preview, not a link. Since spec #655 (#673) a visitor sees the two doors below instead. #}
 {% if guest_questionnaires %}<div id="guest-home" class="grid gap-3 mb-6" hidden></div>{% endif %}
 {% if user.is_authenticated %}
-<h1 class="h3">從一份問卷開始</h1>
-<p>聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。</p>
+{% include "screening/bird_dialogue.html" with lead="index_empty"|page_lead title="從一份問卷開始" %}
+{# #749 (ADR 0076): the one thing to do, in the blue hero card. #}
+{% capture hero %}
+    <p>聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。</p>
+    <a class="btn btn-hero btn-lg btn-start" href="{% url 'questionnaire_list' %}">開始篩檢</a>
+{% endcapture %}
+{% include "screening/hero_card.html" with body=hero attrs="data-play-in-view" %}
 <div class="empty-preview">
     <p class="empty-preview-title">做完第一份問卷，這裡會排出您的照顧旅程</p>
     <ol class="step-list" role="list">
@@ -128,7 +136,6 @@
         <li><span class="step-list-number">3</span><span class="step-list-body">首頁一次告訴您一件該做的事</span></li>
     </ol>
 </div>
-<a class="btn btn-primary btn-lg btn-start w-full" data-play-in-view href="{% url 'questionnaire_list' %}">開始篩檢</a>
 <ul class="home-links" role="list">
     <li><a href="{% url 'guide' %}">了解助聽器選配與補助</a></li>
     <li><a href="{% url 'family_guide' %}">我是家人</a></li>
@@ -136,7 +143,7 @@
 </ul>
 {% else %}
 {# Spec #655 (#673, the #669 mockup's A, grill Q3, Q4): someone not signed in first sees two doors, pale blue blocks one above the other, in the owner's words (#671). They take the place of the heading, the three-step preview, 開始篩檢 and 我是家人; the doors are plain links, and door-count.js counts a press. #}
-<h1 class="visually-hidden">聽伴</h1>
+{% include "screening/bird_dialogue.html" with lead="index_guest"|page_lead title="聽力變化常常容易被忽略" %}
 <ul class="home-doors list-unstyled grid gap-3 m-0" role="list">
     <li><a class="link-card action-card home-door" href="{% url 'questionnaire_list' %}" data-door="door_self">
         {% include "screening/action_icon.html" with icon="clipboard" %}

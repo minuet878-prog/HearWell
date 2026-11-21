@@ -169,7 +169,7 @@ class RecordPageUnchangedTests(ResultFromAnswersTestCase):
                     )
                     with self.assertNumQueries(queries):
                         response = self.client.get(reverse("result", args=[record.pk]))
-                    self.assertContains(response, '<div class="result-next">')
+                    self.assertContains(response, '<section class="hero-card">')
                     self.assertContains(response, f'href="{reverse("share_report")}"')
                     self.assertContains(response, f'href="{reverse("health_report")}"')
                     if wearing is not None:

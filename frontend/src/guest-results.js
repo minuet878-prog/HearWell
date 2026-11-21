@@ -256,9 +256,10 @@ export async function saveGuestResults({
   }
   if (failed.length === 0) {
     // The feedback batch (the owner's F3): the page stays and the saving line gives way to the
-    // box with what comes next; the title above it goes, the box's own saying it is saved.
+    // box with what comes next; the bird saying the title above it goes, the box's own bird
+    // saying it is saved (#749).
     saving.hidden = true;
-    root.querySelector("[data-guest-title]").hidden = true;
+    root.querySelector("[data-guest-title]").closest(".bird-dialogue").hidden = true;
     root.querySelector("[data-guest-done]").hidden = false;
     root.querySelector("[data-guest-done-title]").focus();
     return;

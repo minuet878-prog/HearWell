@@ -2637,7 +2637,7 @@
     margin-top: 0.5rem;
   }
 
-  .result-attempt ~ .result-next {
+  .result-attempt ~ .hero-card {
     margin-top: 0.75rem;
   }
 
@@ -6105,24 +6105,6 @@
     margin: 1rem 0 0;
   }
 
-  /* The feedback batch (the owner's F3): a guest result just saved, the save page's box in the
-     success green (ADR 0007, 0028: the moment something is done), its title in large white type
-     (9.6:1). */
-  .guest-saved {
-    margin: 1.5rem 0 1rem;
-    padding: 1.25rem 1rem;
-    border-radius: var(--radius-medium);
-    background-color: var(--color-normal);
-    color: #fff;
-    text-align: center;
-  }
-
-  .guest-saved-title {
-    margin: 0;
-    font-size: 1.45rem;
-    font-weight: 700;
-  }
-
   .journey-tiles {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(8.5rem, 100%), 1fr));
@@ -6465,34 +6447,14 @@
     }
   }
 
+  /* #749 (ADR 0076): the 現在這一步 is the blue hero card, its to-dos under it. */
   .journey-card {
     flex: 1;
     min-width: 0;
-    padding: 0.875rem 1rem 1rem;
-    border-radius: var(--radius-medium);
-    background-color: var(--color-brand-soft);
   }
 
-  .journey-card-label {
+  .journey-card .hero-card {
     margin: 0;
-    color: var(--color-muted);
-    font-weight: 700;
-  }
-
-  .journey-card-title {
-    margin: 0 0 0.375rem;
-    color: var(--color-heading);
-    font-size: var(--text-section-title);
-    font-weight: 700;
-    line-height: 1.35;
-  }
-
-  .journey-card-because {
-    margin: 0;
-  }
-
-  .journey-card .btn {
-    margin-top: 0.75rem;
   }
 
   .journey-card-link {
@@ -7526,5 +7488,147 @@
     .clinic-cards-sheet {
       box-shadow: none;
     }
+  }
+}
+
+/* #749 (ADR 0076, the canvas's Pro boards): every page's top is the bird and its pale blue
+   bubble, the lead above the page's title; a page's one most important thing sits in the deep
+   blue hero card, its white button the page's main button. */
+@layer components {
+  /* The bubble takes the rest of the line, and at large text on a narrow phone, where it would
+     be a few characters wide, it goes under the bird instead. */
+  .bird-dialogue {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.6667rem;
+    margin: 0.5rem 0 1.25rem;
+  }
+
+  /* The logo's bird (ADR 0039) on the brand's deep pebble. */
+  .bird-avatar {
+    position: relative;
+    flex: none;
+    width: 3.1111rem;
+    height: 3.1111rem;
+    border-radius: 42% 58% 55% 45% / 48% 42% 58% 52%;
+    background-image: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+  }
+
+  .bird-avatar::after {
+    content: "";
+    position: absolute;
+    inset: 0.3333rem;
+    background-color: #fff;
+    -webkit-mask: var(--logo-glyph) center / contain no-repeat;
+    mask: var(--logo-glyph) center / contain no-repeat;
+  }
+
+  .bird-bubble {
+    position: relative;
+    flex: 1 1 10rem;
+    min-width: 0;
+    margin-left: 0.25rem;
+    padding: 0.6667rem 0.8889rem 0.7778rem;
+    border-radius: 1.1111rem;
+    background-color: var(--color-brand-soft);
+  }
+
+  .bird-bubble-tail {
+    position: absolute;
+    top: 1rem;
+    left: -0.6667rem;
+    width: 0.8889rem;
+    height: 1.2222rem;
+    fill: var(--color-brand-soft);
+  }
+
+  .bird-lead {
+    margin: 0;
+    color: var(--color-body);
+    overflow-wrap: anywhere;
+  }
+
+  .bird-title {
+    margin: 0;
+    color: var(--color-heading);
+    font-size: var(--text-page-title);
+    font-weight: 700;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .hero-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 1.25rem 0;
+    /* As .recommended-block (#668): narrower sides where a date that cannot break would not
+       fit, on a 320px phone at 200% text. */
+    padding: 1.1111rem clamp(0.5rem, (100% - 9rem) * 100, 1.1111rem);
+    border-radius: 1.3333rem;
+    background-image: linear-gradient(160deg, var(--color-primary), var(--color-primary-hover));
+    color: #fff;
+    box-shadow: 0 0.5556rem 1.3333rem rgba(23, 59, 106, 0.28);
+    overflow-wrap: anywhere;
+  }
+
+  .hero-card > * { margin: 0; }
+
+  .hero-card a:not(.btn) { color: #fff; }
+
+  .hero-card-label {
+    font-weight: 700;
+  }
+
+  .hero-card-title {
+    color: #fff;
+    font-size: var(--text-page-title);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .hero-card .btn {
+    width: 100%;
+    margin-top: 0.25rem;
+  }
+
+  /* A recommended questionnaire in the card (questionnaire page): its words white, its icon's
+     circle white so it stays apart. */
+  .hero-card :is(.recommended-label, .recommended-title, .recommended-code, .recommended-facts) {
+    color: #fff;
+  }
+
+  .hero-card .questionnaire-icon {
+    background-color: #fff;
+  }
+
+  /* The hero card's own buttons: white with blue words (8.6:1), and framed in white for a
+     second one; colour only under a mouse and when pressed (ADR 0006). */
+  .btn-hero {
+    --btn-color: var(--color-primary);
+    --btn-bg: #fff;
+    --btn-border-color: #fff;
+    --btn-hover-color: var(--color-primary-hover);
+    --btn-hover-bg: var(--color-brand-soft);
+    --btn-hover-border-color: var(--color-brand-soft);
+    --btn-focus-ring: rgba(255, 255, 255, 0.75);
+    --btn-active-color: var(--color-primary-hover);
+    --btn-active-bg: var(--color-brand-soft-deep);
+    --btn-active-border-color: var(--color-brand-soft-deep);
+  }
+
+  .btn-hero-outline {
+    --btn-color: #fff;
+    --btn-bg: transparent;
+    --btn-border-color: #fff;
+    --btn-hover-color: #fff;
+    --btn-hover-bg: rgba(255, 255, 255, 0.14);
+    --btn-hover-border-color: #fff;
+    --btn-focus-ring: rgba(255, 255, 255, 0.75);
+    --btn-active-color: #fff;
+    --btn-active-bg: rgba(255, 255, 255, 0.24);
+    --btn-active-border-color: #fff;
   }
 }

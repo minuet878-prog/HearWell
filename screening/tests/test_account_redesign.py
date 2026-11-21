@@ -122,7 +122,7 @@ class SignInPagesTests(TestCase):
                 self.client.force_login(user)
             with self.subTest(page=name):
                 main = _main(self.client.get(reverse(name)))
-                self.assertIn(f'<h1 class="h3 mt-4">{title}</h1>', main)
+                self.assertIn(f'<h1 class="bird-title">{title}</h1>', main)
                 self.assertNotIn("auth-hero", main)
                 self.assertNotIn("auth-card", main)
 

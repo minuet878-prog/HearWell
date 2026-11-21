@@ -1,9 +1,10 @@
 {% extends "screening/layout.html" %}
+{% load custom_filters %}
 
 
 {% block body %}
 {# #397 (spec #396, prototype #373 C): the urgent answer first. The owner's call (2026-10-27): then the topics, then 大家常問. #}
-<h1 class="h3 mt-2">問答小助手</h1>
+{% include "screening/bird_dialogue.html" with lead="qa_home"|page_lead title="問答小助手" %}
 {% include "screening/qa/urgent_box.html" %}
 <h2 class="h4 mt-6">依主題找</h2>
 {# #398: each topic is a page of its questions. #}

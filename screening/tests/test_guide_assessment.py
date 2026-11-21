@@ -101,7 +101,7 @@ class AssessmentChapterTests(TestCase):
         self.assertContains(
             response, "<title>聽力要多差才能申請身障證明？鑑定門檻與鑑定醫院\uff5c聽伴</title>"
         )
-        self.assertContains(response, '<h1 class="h3 mt-4">身障鑑定與鑑定醫院</h1>')
+        self.assertContains(response, '<h1 class="bird-title">身障鑑定與鑑定醫院</h1>')
         text = test_guide.article_text(response)
         positions = [text.index(s) for s in (*ASSESSMENT, ROSTER_NOTE)]
         self.assertEqual(positions, sorted(positions))

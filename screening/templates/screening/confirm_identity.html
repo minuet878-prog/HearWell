@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block title %}確認本人｜聽伴{% endblock %}
 
@@ -10,7 +10,7 @@
 {% block body %}
 {# Spec #505 (the #507 mockup section 6, W15, W16), #506 (the #539 mockup 6): one thing to do, the password or a provider on the account; the line under the title says what comes next. #}
 <div class="narrow-form">
-    <h1 class="h3 mt-4">先確認是您本人</h1>
+    {% include "screening/bird_dialogue.html" with lead="confirm_identity"|page_lead title="先確認是您本人" %}
     {% if confirm_error %}<div class="error-box" role="alert">{{ confirm_error }}</div>{% endif %}
     {% if form %}
     <p>接下來要<strong>{{ words }}</strong>。請輸入 {{ user.username }} 的密碼。</p>

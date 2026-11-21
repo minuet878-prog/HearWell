@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block title %}登入｜聽伴{% endblock %}
 
@@ -11,8 +11,7 @@
 {% block body %}
 {# #471 (mockup #470 D1 B): the title on the white page like every other page; no brand banner and no card over it (the banner was the 2026-10-23 pick). The thick fields stay. #}
 <div class="narrow-form">
-    <h1 class="h3 mt-4">登入</h1>
-    <p class="text-(--color-muted)">歡迎回來。</p>
+    {% include "screening/bird_dialogue.html" with lead="login"|page_lead title="登入" %}
     <div class="auth-form">
         {% if next %}
         <p class="text-black">請先登入，沒有帳號請按註冊。登入後會帶您回到剛剛的頁面。</p>

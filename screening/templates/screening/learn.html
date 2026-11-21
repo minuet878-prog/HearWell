@@ -1,10 +1,11 @@
 {% extends "screening/layout.html" %}
+{% load custom_filters %}
 
 
 {% block body %}
 {# #269 (spec #268): the 了解 tab's entry. #469 (the #468 mockup A): one list of rows (E), the same as the family zone's and the catalogue's, without group titles. #}
 {# #366: card titles wrap into even lines, never one character alone on the last. #}
-<h1 class="h3 mt-2">了解</h1>
+{% include "screening/bird_dialogue.html" with lead="learn"|page_lead title="了解" %}
 <ul class="list-unstyled text-balance">
     <li><a class="link-card action-card" href="{% url 'guide' %}">
         {% include "screening/action_icon.html" with icon="guide" %}

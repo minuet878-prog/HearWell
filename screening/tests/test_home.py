@@ -58,7 +58,7 @@ class GuestHomeKeptResultTests(VisitorHomeTestCase):
         place = re.search(r'<div id="guest-home"([^>]*)></div>', main)
         self.assertIn("hidden", place.group(1))
         # Spec #655 (#673): on top of the two doors.
-        self.assertLess(place.start(), main.index('<h1 class="visually-hidden">聽伴</h1>'))
+        self.assertLess(place.start(), main.index('<div class="bird-dialogue">'))
         page = self.client.get(reverse("index")).content.decode()
         data = re.search(
             r'<script id="guest-home-data" type="application/json">(.*?)</script>', page
@@ -98,7 +98,8 @@ class NewUserHomeTests(VisitorHomeTestCase):
         # Spec #655 (#673, grill Q4): the doors take the place of the 空狀態首頁's heading, its
         # three steps, 開始篩檢 and 我是家人 (test_home_doors has the doors themselves).
         main = self._main()
-        self.assertIn('<h1 class="visually-hidden">聽伴</h1>', main)
+        # #749 (the canvas's ProGuest): the bird's bubble is the page's heading.
+        self.assertIn('<h1 class="bird-title">聽力變化常常容易被忽略</h1>', main)
         for gone in ("從一份問卷開始", "empty-preview"):
             with self.subTest(gone=gone):
                 self.assertNotIn(gone, main)
@@ -127,8 +128,9 @@ class NewUserHomeTests(VisitorHomeTestCase):
         # Spec #655 (#673): only a signed-in user's 空狀態首頁 has 開始篩檢; a visitor has doors.
         self.assertNotIn("btn-start", self._main())
         self.client.force_login(consented_user(username="startbutton"))
+        # #749 (ADR 0076): white, in the blue hero card.
         self.assertRegex(
-            self._main(), r'<a class="btn btn-primary btn-lg btn-start w-full"[^>]*>開始篩檢</a>'
+            self._main(), r'<a class="btn btn-hero btn-lg btn-start"[^>]*>開始篩檢</a>'
         )
 
     # The 2026-11-14 walkthrough: someone with an account logs in to see their 照顧旅程, so the

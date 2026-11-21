@@ -1,9 +1,10 @@
 {% extends "screening/layout.html" %}
+{% load custom_filters %}
 
 {% block title %}刪除帳號｜聽伴{% endblock %}
 
 {% block body %}
-<h1 class="h3 mt-4">刪除帳號</h1>
+{% include "screening/bird_dialogue.html" with lead="delete_account"|page_lead title="刪除帳號" %}
 {% if is_admin %}
 <p>管理員帳號請先在後台移除管理員權限，再回來刪除。</p>
 <a class="btn btn-outline-primary btn-lg" href="{% url 'account_settings' %}">回帳號設定</a>

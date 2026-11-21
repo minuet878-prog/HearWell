@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block title %}註冊｜聽伴{% endblock %}
 
@@ -14,8 +14,7 @@
 {% block body %}
 {# #471 (mockup #470 D1 B): the title on the white page; the step bar on white as on the answer page. #}
 <div class="narrow-form">
-    <h1 class="h3 mt-4">註冊</h1>
-    <p class="text-(--color-muted)">建立帳號，篩檢結果會幫您存起來。</p>
+    {% include "screening/bird_dialogue.html" with lead="register"|page_lead title="註冊" %}
     {# Issue #151: register and consent are steps 1 and 2 of 2, numbered apart from the wizard. #}
     {% include "screening/step_progress.html" with step=1 total=2 label="建立帳號" %}
     <div class="auth-form">

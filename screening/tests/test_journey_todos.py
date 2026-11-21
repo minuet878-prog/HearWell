@@ -310,7 +310,7 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
         return re.search(r'<li class="route-stop is-here[^"]*" data-stop="([^"]+)"', guide).group(1)
 
     def card_title(self, card):
-        return re.search(r'<h3 class="journey-card-title">([^<]*)</h3>', card).group(1)
+        return re.search(r'<h3 class="hero-card-title">([^<]*)</h3>', card).group(1)
 
     def current_number(self, main):
         """The 現在這一步's number on the home page."""
@@ -561,7 +561,7 @@ class Ticket480ResultPagesTests(TestCase):
         for code, submission in submissions.items():
             with self.subTest(code=code):
                 main = self.result(submission)
-                self.assertIn('<div class="result-next">', main)
+                self.assertIn('<section class="hero-card">', main)
                 for drawn in ('class="todos', 'class="todo ', "要做的事", "journey_todo_tick"):
                     self.assertNotIn(drawn, main)
 
