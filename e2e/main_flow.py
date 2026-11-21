@@ -6607,9 +6607,10 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.assertEqual(self.style(card, "transform"), "none")
             self.page.mouse.up()
             self.page.mouse.move(0, 0)
-            # Chosen: dark blue fill (#328, C1), same place and size.
+            # Chosen: #759, the answer page's soft blue (was #328 C1's dark blue), same place and
+            # size.
             self.assertEqual(self.settled(card).bounding_box(), before)
-            self.assertEqual(self.style(card, "backgroundColor"), self.PRIMARY)
+            self.assertEqual(self.style(card, "backgroundColor"), self.BRAND_SELECTED)
             self.assertEqual(self.style(card, "transform"), "none")
 
     # #141 (2a): only clickable cards move (ADR 0006); boxes that cannot be clicked stay still.
@@ -6951,6 +6952,8 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
     BRAND_SELECTED = "rgb(232, 238, 247)"
     BRAND_SOFT_DEEP = "rgb(214, 226, 242)"
     HEADING = "rgb(33, 37, 41)"
+    # #759: a chosen option's second blue edge, inside its border.
+    DOUBLE_EDGE = "rgb(31, 78, 140) 0px 0px 0px 2px inset"
     # D1: the thick blue edge on an open dropdown's left, 0.3rem at the 18px base, painted on its
     # background (a 並列區塊 keeps no shadow, ADR 0024).
     OPEN_EDGE = "linear-gradient(to right, rgb(31, 78, 140) 5.4px, rgba(0, 0, 0, 0) 5.4px)"
@@ -7192,8 +7195,9 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
         return choice
 
     def answer_pages(self):
-        """Each kind of answer choice: the React page, the web form without JavaScript, and the
-        comparison pages' cards. (name, JavaScript, path, where the choices are, an opener)."""
+        """Each kind of answer choice: the React page, the web form without JavaScript, the
+        comparison pages' cards, and since #759 a route stop's question and the family pages'
+        點選看說明. (name, JavaScript, path, where the choices are, an opener)."""
         self.submission(self.hhie_s, [2] * 10)
         self.submission(self.hhie_s, [4] * 10)
         self.submission(self.hhie_s, [0] * 10, wearing=True)
@@ -7208,12 +7212,21 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
             ("web form", False, f"/questionnaire/{self.hhie_s.pk}", "#answer-form", None),
             ("comparison page", True, f"/comparisons/{self.hhie_s.pk}", "main", None),
             ("audiogram comparison", True, "/audiograms/compare", "main", open_first_pick),
+            # 戴哪一耳？ only: the question has others, hidden till the fitting needs them.
+            (
+                "route stop question",
+                True,
+                "/guide/after-fitting",
+                "#stop-question fieldset:has(input[name=ear])",
+                None,
+            ),
+            ("family pick", True, "/family/reluctant", "[data-pick-explain]", None),
         )
 
-    # C1: the chosen answer is dark blue with white words and a white tick on its right; the
-    # others stay white. #755 (canvas ProAnswer, spec #741 P10): on the answer page, the soft
-    # blue with the heading's dark words and a solid blue tick instead.
-    def test_chosen_answers_turn_dark_blue_with_a_tick(self):
+    # C1: the chosen answer has a tick on its right; the others stay white. #759: everywhere
+    # it is #755's (canvas ProAnswer, spec #741 P10), the soft blue with the heading's dark
+    # words, a double blue edge and a solid blue tick, where it was dark blue with white words.
+    def test_chosen_answers_turn_soft_blue_with_a_double_edge_and_a_tick(self):
         with self.saving_artifacts():
             for name, javascript, path, where, opener in self.answer_pages():
                 with self.subTest(name):
@@ -7223,23 +7236,33 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
                         opener(self.page)
                     scope = self.page.locator(where)
                     choice = self.choose_one(scope)
-                    answer_page = where in ("#answer-app", "#answer-form")
+                    props = ("backgroundColor", "color", "borderTopColor", "boxShadow")
                     self.assertEqual(
-                        {prop: self.style(choice, prop) for prop in ("backgroundColor", "color")},
-                        {"backgroundColor": self.BRAND_SELECTED, "color": self.HEADING}
-                        if answer_page
-                        else {"backgroundColor": self.PRIMARY, "color": self.WHITE},
+                        {prop: self.style(choice, prop) for prop in props},
+                        {
+                            "backgroundColor": self.BRAND_SELECTED,
+                            "color": self.HEADING,
+                            "borderTopColor": self.PRIMARY,
+                            "boxShadow": self.DOUBLE_EDGE,
+                        },
                     )
                     tick = {
                         prop: self.style(choice, prop, "::after")
                         for prop in ("content", "backgroundColor", "backgroundImage", "width")
                     }
                     self.assertNotEqual(tick["content"], "none")
-                    self.assertEqual(
-                        tick["backgroundColor"], self.PRIMARY if answer_page else self.WHITE
-                    )
+                    self.assertEqual(tick["backgroundColor"], self.PRIMARY)
                     self.assertIn("svg", tick["backgroundImage"])
                     self.assertGreater(float(tick["width"].removesuffix("px")), 0)
+                    if where not in self.ANSWER_PAGE:
+                        # #759 (the owner's addition): off the answer page only the chosen look
+                        # changes; the round radio button shows at its size, the answer too.
+                        radio = choice.get_by_role("radio")
+                        self.assertEqual(
+                            [self.style(radio, prop) for prop in ("opacity", "width")],
+                            ["1", "27px"],  # 1.5rem
+                        )
+                        self.assertEqual(self.style(choice, "minHeight"), "54px")  # 3rem
                     group = choice.locator(
                         "xpath=ancestor::div[contains(@class, 'choice-group')][1]"
                     )
@@ -7255,6 +7278,38 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
                             for prop in ("backgroundColor", "backgroundImage")
                         ]
                         self.assertEqual(room, [self.CLEAR, "none"])
+
+    ANSWER_PAGE = ("#answer-app", "#answer-form")
+
+    # #759 acceptance 2: off the answer page, which #755 covers, the keyboard still chooses an
+    # answer, and it is still a radio button named by its words and checked.
+    def test_a_keyboard_chooses_and_a_screen_reader_hears_it_chosen(self):
+        with self.saving_artifacts():
+            for name, javascript, path, where, opener in self.answer_pages():
+                if where in self.ANSWER_PAGE:
+                    continue
+                with self.subTest(name):
+                    self.open(javascript=javascript)
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    if opener:
+                        opener(self.page)
+                    choices = self.choices(self.page.locator(where))
+                    expect(choices.first).to_be_visible()
+                    checked = choices.evaluate_all("ls => ls.map((l) => l.control.checked)")
+                    choice = choices.nth(checked.index(False))
+                    words = choice.inner_text().strip()
+                    radio = choice.get_by_role("radio")
+                    radio.focus()
+                    self.page.keyboard.press("Space")
+                    expect(radio).to_be_checked()
+                    expect(
+                        self.page.locator(where).get_by_role(
+                            "radio", name=words, checked=True, exact=True
+                        )
+                    ).to_have_count(1)
+                    # The keyboard's ring around the whole answer, over the chosen look.
+                    self.assertEqual(self.style(choice, "outlineStyle"), "solid")
+                    self.assertEqual(self.style(choice, "backgroundColor"), self.BRAND_SELECTED)
 
     # C1: at 200% text on a 320px phone the chosen answer, tick and all, stays on the screen.
     def test_chosen_answer_fits_a_phone_at_double_text_size(self):
@@ -10339,6 +10394,12 @@ class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLive
                 self.assert_never_lights(self.samples())
 
 
+def pseudo_style(locator, pseudo, prop):
+    return locator.evaluate(
+        "(el, [pseudo, prop]) => getComputedStyle(el, pseudo)[prop]", [pseudo, prop]
+    )
+
+
 class LayoutOnAPhone(OnAPhone):
     """Spec #354's layout tests: one browser for the class, a signed-in user's session cookie,
     pages opened at a size, and what is measured on them."""
@@ -11797,6 +11858,7 @@ class SpeechBananaListTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServ
 
     DARK_BOX = "rgb(31, 78, 140)"  # the site's primary colour
     WHITE_BOX = "rgb(255, 255, 255)"
+    PICKED = "rgb(232, 238, 247)"  # #759: the list's button picked, as a chosen option
     # Group 5 at 5500 Hz: the right ear's line is over it, the left ear has no marks that far up.
     RIGHT = ((500, 25), (1000, 30), (2000, 45), (4000, 60), (6000, 65))
     LEFT = ((500, 30), (1000, 35), (2000, 40), (4000, 50))
@@ -11907,14 +11969,15 @@ class SpeechBananaListTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServ
                         )
                         self.assertTrue(apart, f"groups {i + 1} and {j + 1} overlap")
 
-    # Acceptance 6: picked from the list, the box goes dark and the result says the group's
-    # description, examples and a sentence for each ear.
+    # Acceptance 6: picked from the list, the box goes dark (the list's button the soft blue of a
+    # chosen option, #759) and the result says the group's description, examples and a sentence
+    # for each ear.
     def test_picking_from_the_list_darkens_the_box_and_writes_the_result(self):
         with self.saving_artifacts():
             self.open_page()
             self.open_list()
             self.pick(self.GROUP_5).click()
-            expect(self.pick(self.GROUP_5)).to_have_css("background-color", self.DARK_BOX)
+            expect(self.pick(self.GROUP_5)).to_have_css("background-color", self.PICKED)
             box = self.page.locator('[data-group="5"] rect')
             self.assertEqual(self.style(box, "fill"), self.DARK_BOX)
             self.assertEqual(
@@ -11955,6 +12018,51 @@ class SpeechBananaListTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServ
             expect(self.result()).to_contain_text("母音的低音部分")
             label = self.main().get_by_role("img").get_attribute("aria-label")
             self.assertIn("語言香蕉區", label)
+
+    def assert_looks_chosen(self, pick, chosen):
+        # Buttons fade between colours: waits for each to settle.
+        for prop, value in chosen.items():
+            css = re.sub(r"[A-Z]", lambda m: f"-{m[0].lower()}", prop)
+            expect(pick).to_have_css(css, value)
+
+    # #759 (the owner's mockup, A): the group picked from the list looks like every chosen
+    # option, the soft blue with a double blue edge and a solid blue tick, with the mouse still
+    # over it and with the keyboard's focus on it; the others stay white with no tick.
+    def test_the_picked_group_looks_like_a_chosen_option(self):
+        chosen = {
+            "backgroundColor": "rgb(232, 238, 247)",
+            "color": "rgb(33, 37, 41)",
+            "borderTopColor": self.DARK_BOX,
+        }
+        with self.saving_artifacts():
+            self.open_page()
+            self.open_list()
+            pick = self.pick(self.GROUP_5)
+            pick.click()
+            expect(pick).to_have_attribute("aria-pressed", "true")
+            self.assert_looks_chosen(pick, chosen)
+            self.assertEqual(
+                self.style(pick, "boxShadow"), "rgb(31, 78, 140) 0px 0px 0px 2px inset"
+            )
+            self.assertEqual(pseudo_style(pick, "::after", "backgroundColor"), self.DARK_BOX)
+            self.assertIn("svg", pseudo_style(pick, "::after", "backgroundImage"))
+            # The result above grows, so the mouse may be over another button by now.
+            self.page.mouse.move(0, 0)
+            others = self.main().locator('.speech-banana-pick[aria-pressed="false"]')
+            self.assertEqual(others.count(), 5)
+            for other in others.all():
+                expect(other).to_have_css("background-color", self.WHITE_BOX)
+                self.assertEqual(pseudo_style(other, "::after", "backgroundImage"), "none")
+            self.page.keyboard.press("Shift+Tab")
+            self.page.keyboard.press("Tab")
+            expect(pick).to_be_focused()
+            self.assert_looks_chosen(pick, chosen)
+            # The double edge and the keyboard's ring, both, once the ring has faded in.
+            ring = (
+                r"^rgb\(31, 78, 140\) 0px 0px 0px 2px inset, "
+                r"rgba\(31, 78, 140, 0\.5\) 0px 0px 0px 4\.5px$"
+            )
+            expect(pick).to_have_css("box-shadow", re.compile(ring))
 
     # Acceptance 8: 320 wide at 200% text the page does not scroll sideways, the result and list
     # words double, and every button in the list is at least 44 pixels tall.
@@ -12240,6 +12348,7 @@ class SpeechBananaTapTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
     """#442 (spec #436): tapping the chart picks the nearest group; a swipe stays a scroll."""
 
     DARK_BOX = "rgb(31, 78, 140)"  # the site's primary colour
+    PICKED = SpeechBananaListTest.PICKED
     GROUP_5 = "ㄈㄐㄑㄓㄔㄒㄕ"
     HINT = "點圖上的注音，看那一群。"
     # In chart units. Empty space: 46 from box 5's centre, 58 from box 6's. The other is on box 5.
@@ -12304,7 +12413,7 @@ class SpeechBananaTapTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
         self.assertEqual(self.style(box, "fill"), self.DARK_BOX)
         self.open_list()
         expect(self.pick(self.GROUP_5)).to_have_attribute("aria-pressed", "true")
-        expect(self.pick(self.GROUP_5)).to_have_css("background-color", self.DARK_BOX)
+        expect(self.pick(self.GROUP_5)).to_have_css("background-color", self.PICKED)
 
     def assert_nothing_picked(self):
         expect(self.result()).to_have_text(self.HINT)
@@ -12494,7 +12603,7 @@ class FamilyScenarioTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
 
     SECTION = "遇到這些情況，您會怎麼做？"
     SCENARIO = COMMUNICATION_SCENARIOS[0]
-    CHOSEN_BLUE = "rgb(31, 78, 140)"  # --color-primary, #1f4e8c
+    CHOSEN_BLUE = "rgb(232, 238, 247)"  # #759: --color-brand-selected, a chosen option
 
     def section(self):
         return self.main().get_by_role("region", name=self.SECTION)
@@ -14643,16 +14752,16 @@ class ScreeningAnsweringT463Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLi
                     choice = self.main().locator("div.choice-group label").first
                     self.assertEqual(self.style(choice, "borderTopColor"), self.EDGE)
                     choice.locator("input").check()
-                    if path.startswith("/questionnaire/"):
-                        # #755 (canvas ProAnswer): the answer page's chosen is the soft blue
-                        # with a blue edge and the headings' dark words.
-                        colours = ("rgb(232, 238, 247)", "rgb(33, 37, 41)")
-                        self.assertEqual(self.style(choice, "borderTopColor"), "rgb(31, 78, 140)")
-                    else:
-                        # Chosen stays dark blue with white words (#328).
-                        colours = ("rgb(31, 78, 140)", "rgb(255, 255, 255)")
-                    self.assertEqual(self.style(choice, "backgroundColor"), colours[0])
-                    self.assertEqual(self.style(choice, "color"), colours[1])
+                    # #755 (canvas ProAnswer), and the wizard's too since #759: chosen is the
+                    # soft blue with a double blue edge, the headings' dark words and a tick.
+                    self.assertEqual(self.style(choice, "borderTopColor"), "rgb(31, 78, 140)")
+                    self.assertEqual(
+                        self.style(choice, "boxShadow"), "rgb(31, 78, 140) 0px 0px 0px 2px inset"
+                    )
+                    tick = choice.evaluate("el => getComputedStyle(el, '::after').backgroundColor")
+                    self.assertEqual(tick, "rgb(31, 78, 140)")
+                    self.assertEqual(self.style(choice, "backgroundColor"), "rgb(232, 238, 247)")
+                    self.assertEqual(self.style(choice, "color"), "rgb(33, 37, 41)")
 
     def test_continue_and_start_over_stack_the_whole_width(self):
         self.open(self.answer_page("hhie-s"))
@@ -17703,6 +17812,31 @@ class ClinicCardPrintTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
                     self.open("/clinic-cards", (width, 900), signed_in=False)
                     scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
                     self.assertLessEqual(scroll_width, width)
+
+    # #759 (the owner's mockup, A): the card being shown is the soft blue with a blue ring
+    # inside, as a chosen option, but no tick; the other half stays as it was.
+    def test_the_chosen_card_kind_is_soft_blue_with_a_ring_and_no_tick(self):
+        with self.saving_artifacts():
+            self.open("/clinic-cards", self.DESKTOP, signed_in=False)
+            chosen = self.page.locator('.clinic-cards-choice[aria-current="page"]')
+            other = self.page.locator(".clinic-cards-choice:not([aria-current])")
+            self.assertEqual(
+                {
+                    prop: self.style(chosen, prop)
+                    for prop in ("backgroundColor", "color", "boxShadow")
+                },
+                {
+                    "backgroundColor": "rgb(232, 238, 247)",
+                    "color": "rgb(33, 37, 41)",
+                    "boxShadow": "rgb(31, 78, 140) 0px 0px 0px 2px inset",
+                },
+            )
+            for pseudo in ("::before", "::after"):
+                self.assertEqual(pseudo_style(chosen, pseudo, "content"), "none")
+            self.assertEqual(
+                {prop: self.style(other, prop) for prop in ("backgroundColor", "color")},
+                {"backgroundColor": "rgba(0, 0, 0, 0)", "color": "rgb(31, 78, 140)"},
+            )
 
     def test_it_fits_a_phone_at_double_text_size(self):
         with self.saving_artifacts():
