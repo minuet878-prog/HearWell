@@ -1902,6 +1902,13 @@
   .auth-input:focus-within > svg { stroke: var(--color-primary); }
   .auth-input:has([aria-invalid="true"]) > svg { stroke: var(--color-severe); }
   .auth-input > .form-control { padding-left: 3rem; }
+  /* #741 (acceptance bug, 2026-11-21): 顯示 comes after its password box, so Tab goes box then
+     button. At the right end of the box's row where the box still has 12rem; below it when not
+     (double text size, a narrow phone), so what is seen keeps the order Tab goes in. In the row
+     it is the box's height. */
+  .password-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .password-row > .auth-input { flex: 1 1 12rem; min-width: 0; }
+  .password-row > .password-toggle { flex: none; }
   /* #332 (spec #326 D5): the eye beside 顯示／隱藏, the size of the words, on their line. */
   .password-toggle > svg {
     width: 1.25em;

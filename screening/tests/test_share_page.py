@@ -31,6 +31,12 @@ TICK = (
     '<path d="M5 12.5l4.5 4.5L19 7.5"/></svg>'
 )
 TAIPEI = ZoneInfo("Asia/Taipei")
+# #741 (owner, 2026-11-21): the address written out only without JavaScript, as text to copy by
+# hand that wraps anywhere at 200% text.
+NOSCRIPT_ADDRESS = re.compile(
+    r'<noscript><p class="[^"]*\bwrap-anywhere\b[^"]*">網址：<span class="font-bold">([^<]+)'
+    r"</span></p></noscript>"
+)
 
 
 def _hhie_s_questionnaire():
@@ -203,8 +209,9 @@ class SharePageTests(TestCase):
         self.assertNotIn("還沒有人打開", content)
 
     # Acceptance 14: the buttons start hidden and only the script shows them. #741 (owner,
-    # 2026-11-21): the line spelling out the address went; the buttons carry it.
-    def test_the_buttons_carry_the_link_and_no_line_spells_it_out(self):
+    # 2026-11-21): the line spelling out the address went; the buttons carry it, and only a
+    # browser without JavaScript, where they never show, gets the address written out.
+    def test_the_buttons_carry_the_link_and_only_noscript_spells_it_out(self):
         share = self._share(self.user)
         content = self._page().content.decode()
         for button_id in ("share-button", "copy-link"):
@@ -214,8 +221,10 @@ class SharePageTests(TestCase):
                 self.assertRegex(tag.group(0), r"\shidden[\s>]")
         self.assertNotIn('id="share-url"', content)
         self.assertNotIn("可以複製這個網址傳給家人", content)
-        self.assertEqual(content.count(self._share_url(share)), 2)
-        self.assertEqual(content.count('data-url="' + self._share_url(share) + '"'), 2)
+        url = self._share_url(share)
+        self.assertEqual(content.count(url), 3)
+        self.assertEqual(content.count(f'data-url="{url}"'), 2)
+        self.assertEqual(NOSCRIPT_ADDRESS.findall(content), [url])
         self.assertIn("screening/share-button.js", content)
         self.assertIn("screening/copy-link.js", content)
         self.assertRegex(content, r'id="copy-status"[^>]*aria-live="polite"')

@@ -19,10 +19,10 @@ const REGISTER = `
     <input type="text" name="username" id="id_username">
     <input type="email" name="email" id="id_email">
     <div id="id_email_hint" role="status"><button type="button">按這裡改</button></div>
-    <button type="button" class="password-toggle" aria-controls="id_password1">顯示</button>
     <input type="password" name="password1" id="id_password1">
-    <button type="button" class="password-toggle" aria-controls="id_password2">顯示</button>
+    <button type="button" class="password-toggle" aria-controls="id_password1">顯示</button>
     <input type="password" name="password2" id="id_password2">
+    <button type="button" class="password-toggle" aria-controls="id_password2">顯示</button>
     <input type="text" name="roc_birth_year" id="id_roc_birth_year" inputmode="numeric">
     <button type="submit">註冊</button>
   </form>`;

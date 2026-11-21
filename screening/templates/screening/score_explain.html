@@ -1,4 +1,4 @@
-{# 這個分數怎麼算, open between the score block and the 建議下一步 (spec #741, the owner 2026-11-21, compare-impact.html's A): how the total is counted; a ruler of the levels with a dot fixed at this score (drawn for the eye, said once in words; nothing to drag); for HHIE-S and HHIA-S where the impact is (情緒, 社交); then #461's reviewed first step. The other steps, the full advice and each level's range stay a tap away. #}
+{# 這個分數怎麼算, open between the score block and the 建議下一步 (spec #741, the owner 2026-11-21, compare-impact.html's A): how the total is counted; a ruler of the levels with a dot fixed at this score (drawn for the eye, said once in words; nothing to drag); for HHIE-S and HHIA-S where the impact is (情緒, 社交); then #461's reviewed first step, each level's range a tap away. The other steps and the level's full advice are not on result pages (the owner at acceptance, 2026-11-21). #}
 {% with result=submission.result %}
 <section class="score-explain" aria-labelledby="score-explain-title">
     <h2 id="score-explain-title" class="score-explain-title">這個分數怎麼算</h2>
@@ -42,20 +42,6 @@
         <ul>
             {% for range in level_ranges %}<li>{{ range.low }}–{{ range.high }} 分：{{ range.text }}</li>{% endfor %}
         </ul>
-    </details>
-    {% endif %}
-    {% if next_steps %}
-    <details class="dropdown-line">
-        <summary>看完整建議</summary>
-        {% for step in fold_steps %}
-        <p>{{ step.text }}</p>
-        {% if step.action_label %}
-        <p class="next-steps-links">
-            <a class="next-steps-link" href="{% url step.action_url %}">{{ step.action_label }}</a>
-        </p>
-        {% endif %}
-        {% endfor %}
-        <p>{{ advice }}</p>
     </details>
     {% endif %}
 </section>

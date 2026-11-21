@@ -228,8 +228,8 @@ class GradedResult(Result):
         level = self.level["level"]
         next_steps = definition.next_steps.get(level, ())
         # The 2026-11-14 walkthrough (mockup 3A): a guest sees the step that says to have the
-        # hearing checked outside the fold, in place of the 照顧旅程 card's advice. It is the
-        # reviewed step marked HEARING_CHECK; the fold then leaves it out.
+        # hearing checked in its own box, in place of the 照顧旅程 card's advice. It is the
+        # reviewed step marked HEARING_CHECK.
         advice_step = (
             next((step for step in next_steps if step.get("hearing_check")), None)
             if self.is_guest
@@ -243,15 +243,14 @@ class GradedResult(Result):
             "next_steps": next_steps,
             "advice_step": advice_step,
             "where_to_test": WHERE_TO_TEST,
-            # 這個分數怎麼算, open (spec #741, 2026-11-21): the ruler, the reviewed first step
-            # shown, the other steps under 看完整建議; a guest's step to have the hearing checked
-            # stays in its own box.
+            # 這個分數怎麼算, open (spec #741, 2026-11-21): the ruler and the reviewed first step;
+            # since the owner's acceptance that day, no other step; a guest's step to have the
+            # hearing checked stays in its own box.
             "ruler": score_ruler(definition, self.total, level),
             "impact_parts": self._impact_parts(definition, answers),
             "first_step": (
                 next_steps[0] if next_steps and next_steps[0] is not advice_step else None
             ),
-            "fold_steps": [step for step in next_steps[1:] if step is not advice_step],
             "score_sum_text": SCORE_SUM_TEXT,
             "level_ranges": level_ranges(definition),
             # A guest's save card (spec #492); "" for a level it has no sentence for.

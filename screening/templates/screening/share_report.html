@@ -59,11 +59,12 @@
         <div class="step-list-body">
             <h2 class="share-step-title">傳給家人</h2>
             {% if share %}
-            {# Without JavaScript both buttons stay hidden; #741 (owner, 2026-11-21): no line spells the address out any more. #}
+            {# Without JavaScript both buttons stay hidden; #741 (owner, 2026-11-21): only then is the address written out, to copy by hand. #}
             <div class="flex flex-col gap-3 mt-3">
                 <button id="share-button" type="button" class="btn btn-primary btn-lg w-full" data-url="{{ share_url }}" data-title="聽伴聽力報告" hidden>再傳一次給家人</button>
                 <button id="copy-link" type="button" class="btn btn-outline-primary btn-lg w-full" data-url="{{ share_url }}" hidden>複製連結</button>
             </div>
+            <noscript><p class="mt-3 mb-0 wrap-anywhere">網址：<span class="font-bold">{{ share_url }}</span></p></noscript>
             {# #332 (spec #326 B3): the button itself shows ✓ 已複製; this area only says it to screen readers. #}
             <p id="copy-status" class="visually-hidden" aria-live="polite"></p>
             {# #366: the danger stands apart, under a line, from what sends; #471 (D4): a red text link. #}

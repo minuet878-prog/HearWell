@@ -1243,6 +1243,31 @@ class CopyPasswordRegisterFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLi
                 expect(toggle).to_have_accessible_name(name)
                 self.assertNotIn(self.SLASH, eye.inner_html())
 
+    # #741 acceptance bug (2026-11-21): 顯示 sat by the 密碼 label, so Tab from 使用者名稱 went to
+    # it before the password box.
+    def test_tab_goes_to_the_password_then_its_show_button(self):
+        self.open(width=390)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/login")
+            password = self.main().get_by_label("密碼", exact=True)
+            toggle = self.main().get_by_role("button", name="顯示密碼")
+            self.main().get_by_label("使用者名稱").focus()
+            self.page.keyboard.press("Tab")
+            expect(password).to_be_focused()
+            self.page.keyboard.press("Tab")
+            expect(toggle).to_be_focused()
+            # Where it fits, at the right end of the box's row; seen where it is in the order.
+            box, button = password.bounding_box(), toggle.bounding_box()
+            self.assertGreaterEqual(button["x"], box["x"] + box["width"])
+            self.assertLess(abs(button["y"] - box["y"]), box["height"])
+            self.assertGreaterEqual(button["height"], 44)
+            # At 200% text on a 320px phone it wraps under the box, never ahead of it.
+            self.page.set_viewport_size({"width": 320, "height": 640})
+            self.double_text()
+            box, button = password.bounding_box(), toggle.bounding_box()
+            self.assertGreaterEqual(button["y"], box["y"] + box["height"])
+            self.assertGreaterEqual(button["height"], 44)
+
     TICK = "M5 12.5l4.5 4.5L19 7.5"  # the tick's path, drawn in the field
 
     def tick(self, field):
@@ -1705,25 +1730,24 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         expect(self.main().locator(".result-banner")).to_contain_text("輕度到中度影響")
         # #750 (page grill P11): large, the level's short name.
         expect(self.main().locator(".result-level-short")).to_have_text("輕到中度")
-        # HHIE-S 輕度到中度影響's steps (ticket #157), since 2026-11-21 in 這個分數怎麼算, open
-        # above the 建議下一步: step 1 shown, the check and the retest under 看完整建議. The
-        # report is left to the list rows, as these steps' words do not mention it (result page
-        # tidy-up); since spec #693 no link to the hearing-aid guide.
+        # HHIE-S 輕度到中度影響's step 1 (ticket #157), since 2026-11-21 in 這個分數怎麼算, open
+        # above the 建議下一步; since the owner's acceptance that day no 看完整建議, so not the
+        # check or the retest. The report is left to the list rows (result page tidy-up); since
+        # spec #693 no link to the hearing-aid guide.
         how = self.main().locator(".score-explain")
         expect(how.get_by_role("heading", name="這個分數怎麼算")).to_be_visible()
         expect(how.locator(".score-explain-advice")).to_contain_text(
             "聽力問題已經慢慢影響您的社交活動與情緒"
         )
-        full = how.locator("details.dropdown-line").filter(has_text="看完整建議")
-        expect(full.get_by_text("半年後再做一次", exact=False)).to_be_hidden()
+        expect(how.locator("details.dropdown-line > summary")).to_have_text(["看各級的分數"])
+        expect(self.main()).not_to_contain_text("看完整建議")
+        expect(self.main()).not_to_contain_text("建議前往醫院耳鼻喉科進行聽力相關檢查")
+        expect(self.main()).not_to_contain_text("半年後再做一次，時間到了首頁會提醒您。")
         # The gauge in sight in the result box, not in 這個分數怎麼算.
         expect(self.main().locator(".result-banner .gauge")).to_be_visible()
         expect(how.locator(".gauge")).to_have_count(0)
-        full.locator(":scope > summary").click()
-        expect(full).to_contain_text("建議前往醫院耳鼻喉科進行聽力相關檢查")
         expect(how.get_by_role("link", name="看助聽器選配與補助")).to_have_count(0)
         expect(how.get_by_role("link", name="看／印聽力報告")).to_have_count(0)
-        expect(full).to_contain_text("半年後再做一次，時間到了首頁會提醒您。")
         # 20 of 40 sits at the top of the arc, its middle, on the thick 輕度到中度 arc (9-24).
         arcs = self.page.locator(".gauge-arcs").bounding_box()
         knob = self.page.locator(".gauge-knob").bounding_box()
@@ -2506,7 +2530,8 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                 ("unconfirmed", "重寄確認信"),
                 ("off", "打開提醒"),
                 ("on", "關掉提醒"),
-                ("on and due", "您現在就可以再做一次"),
+                # Spec #741 (the owner at acceptance, 2026-11-21): due, the block asks nothing more.
+                ("on and due", "關掉提醒"),
             ):
                 with self.subTest(state=state):
                     if state == "unconfirmed":
@@ -2528,6 +2553,8 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                         )
                     self.page.goto(f"{self.live_server_url}/account")
                     expect(self.page.locator(section)).to_contain_text(words)
+                    expect(self.page.locator(section)).not_to_contain_text("再做一次")
+                    expect(self.page.locator(section)).not_to_contain_text("下次篩檢")
                     self.assert_fits_a_phone_at_double_text_size(state)
 
     # #662 (spec #656 acceptance 40): an email's cancel link, opened without signing in, and the
@@ -7030,12 +7057,12 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.assertEqual(
                 [(self.style(a, "stroke"), self.style(a, "opacity")) for a in arcs], strokes
             )
-            # 看每一題的回答, and since 2026-11-21 這個分數怎麼算's two dropdowns (看各級的分數,
-            # 看完整建議), open on the page.
+            # 看每一題的回答, and since 2026-11-21 這個分數怎麼算's 看各級的分數 (its 看完整建議
+            # gone since the owner's acceptance that day), open on the page.
             for row in self.page.locator(".result-details > summary").all():
                 row.click()
             summaries = self.page.locator("main details > summary").all()
-            self.assertEqual(len(summaries), 3)
+            self.assertEqual(len(summaries), 2)
             for summary in summaries:
                 self.assertGreaterEqual(summary.bounding_box()["height"], 44)
             self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=thi")
@@ -7276,21 +7303,17 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
     # A4: a text link's underline thickens under a mouse, and a light blue shows behind its
     # words while it is pressed.
     def test_text_links_thicken_when_hovered_and_tint_when_pressed(self):
-        # 無／極輕微影響: its folded step links 記錄聽力圖 (spec #693 left the other levels' folds
-        # without a link).
-        record = self.submission(self.hhie_s, [0] * 10)
+        # A link inside a sentence on the privacy page, its closing 有問題或要刪除資料？. It was a
+        # result page's step link until the owner's acceptance (2026-11-21) took 看完整建議, the
+        # last of them, away.
         self.open()
         with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
-            # Since 2026-11-21 the steps after the first are under 這個分數怎麼算's 看完整建議.
-            how = self.main().locator(".score-explain details").filter(has_text="看完整建議")
-            how.locator(":scope > summary").click()
-            self.page.mouse.move(0, 0)
-            step_link = how.locator(".next-steps-link").first
+            self.page.goto(f"{self.live_server_url}/privacy")
+            page_link = self.main().get_by_role("link", name="hearwellweb@gmail.com").last
             footer_link = self.page.get_by_role("contentinfo").get_by_role(
                 "link", name="隱私權說明"
             )
-            for name, link in (("next step", step_link), ("footer", footer_link)):
+            for name, link in (("in a sentence", page_link), ("footer", footer_link)):
                 with self.subTest(name):
                     link.scroll_into_view_if_needed()
                     rest = self.style(link, "textDecorationThickness")
@@ -8127,35 +8150,25 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.assertEqual(self.style(link, "textDecorationLine"), "underline")
                     self.assertGreaterEqual(link.bounding_box()["height"], 44)
 
-    # #309: the advice's links still look like links and the cards below are list rows. Since
-    # #750 (canvas ProResult) every step is under 這個分數怎麼算, since 2026-11-21 open and flat
-    # on the white page. THI's support message has no line beside it.
-    def test_result_advice_is_flat_with_links_that_look_like_links(self):
-        links_seen = 0
+    # #309: the advice is flat and the cards below are list rows. Since #750 (canvas ProResult)
+    # the advice is in 這個分數怎麼算, since 2026-11-21 open and flat on the white page, and since
+    # the owner's acceptance that day only step 1, which has no link. THI's support message has
+    # no line beside it.
+    def test_result_advice_is_flat_and_the_cards_are_list_rows(self):
         with self.saving_artifacts():
             # HHIE-S and HHIA-S at 20 (mild to moderate), THI at full marks: the pages with advice.
             for name, signed_in, path in WHITE_CARD_PAGES_HOME_RESULT[2:]:
                 with self.subTest(page=name):
                     self.visit(signed_in, path)
                     advice = self.main().locator(".score-explain")
-                    advice.locator("details").filter(has_text="看完整建議").locator(
-                        ":scope > summary"
-                    ).click()
                     self.assert_flat_part(advice)
                     self.assert_readable_on_white(advice)
-                    links = self.main().locator(".next-steps-link")
-                    links_seen += links.count()
-                    for link in links.all():
-                        with self.subTest(link=link.inner_text()):
-                            self.assertEqual(self.style(link, "color"), self.PRIMARY)
-                            self.assertEqual(self.style(link, "textDecorationLine"), "underline")
                     cards = self.main().locator(".result-list a.link-card")
                     self.assertGreater(cards.count(), 0)
                     for card in cards.all():
                         with self.subTest(card=card.inner_text()[:10]):
                             self.assert_list_row(card)
             self.assert_unlined(self.main().get_by_text(THI_SUPPORT_MESSAGE, exact=True))
-        self.assertGreater(links_seen, 0)
 
     # #316: the 建議您下一步 box on every result page (the home page's since #459 is the 照顧旅程,
     # test_journey_home_card_tiles_and_links); #461 checks the box itself.
@@ -11644,6 +11657,30 @@ class ChooserAndAnsweringT362Test(SavesFailureArtifacts, LayoutOnAPhone, StaticL
                 self.assertEqual(locator.evaluate(f"e => getComputedStyle(e).{side}"), "0px")
 
 
+def assert_address_only_without_javascript(test, path, button, url_end):
+    """Spec #741 (the owner at acceptance, 2026-11-21): on a 320px phone without JavaScript the
+    buttons stay hidden, so the address is written out whole, text to select that wraps anywhere
+    and fits at 200% text; with JavaScript it is not, and the copy button (no share sheet) is."""
+    address = re.compile(rf"^網址：http://\S+{url_end}$")
+    for javascript in (False, True):
+        with test.subTest(javascript=javascript):
+            # LayoutOnAPhone's own open: ReportShareLearnT366Test's sets the script itself.
+            LayoutOnAPhone.open(
+                test, path, (320, 640), script=test.NO_SHARE_SHEET, java_script_enabled=javascript
+            )
+            line = test.main().get_by_text(address)
+            copy = test.main().get_by_role("button", name=button, exact=True)
+            if javascript:
+                expect(line).to_have_count(0)
+                expect(copy).to_be_visible()
+                continue
+            expect(line).to_be_visible()
+            expect(copy).to_be_hidden()
+            test.assertEqual(test.style(line, "userSelect"), "auto")
+            test.assertEqual(test.style(line, "overflowWrap"), "anywhere")
+            test.assert_fits_a_phone_at_double_text_size(f"{path} without javascript")
+
+
 class ReportShareLearnT366Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """#366 (spec #354, 報告、了解與選配指引): the share page's buttons, the family's cover
     title and 「先看重點」 box, and the 了解 page's card titles."""
@@ -11683,6 +11720,12 @@ class ReportShareLearnT366Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
             copy_box = copy.bounding_box()
             self.assertGreaterEqual(line_top - (copy_box["y"] + copy_box["height"]), gap)
             self.assertGreaterEqual(cancel.bounding_box()["y"] - line_bottom, gap)
+
+    # Spec #741 (the owner at acceptance, 2026-11-21): with a live link, the address is written
+    # out only without JavaScript.
+    def test_address_written_out_only_without_javascript(self):
+        path = f"/shared/{self.share.token}"
+        assert_address_only_without_javascript(self, "/share", "複製連結", path)
 
     # With the share sheet, 再傳一次給家人 stays the main button and 複製連結 the outline one.
     def test_copy_stays_the_outline_button_beside_the_share_sheet(self):
@@ -11937,6 +11980,11 @@ class FamilyAndAccountT361Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
             section = self.main()
             expect(section.get_by_role("button", name="傳給家人")).to_be_visible()
             expect(section.get_by_role("button", name="複製網址")).to_be_hidden()
+
+    # Spec #741 (the owner at acceptance, 2026-11-21): without JavaScript neither button shows,
+    # so the address is written out to copy by hand; with it, the page is as before.
+    def test_address_written_out_only_without_javascript(self):
+        assert_address_only_without_javascript(self, "/family", "複製網址", r"/family")
 
     # Acceptance 6: on a desktop the password field and the buttons start where the text does,
     # and 請輸入密碼確認 is a field name like login's and register's: bold, in the heading colour.

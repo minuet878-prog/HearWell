@@ -114,7 +114,8 @@ DEFINITION = Definition(
     short_names=SHORT_NAMES,
     advice=ADVICE,
     next_steps=NEXT_STEPS,
-    # Under the next steps: the full advice, the only other place it is said, is folded away.
+    # Under the next steps: the full advice, the only other place it is said, is not on the
+    # result page.
     result_note=LIFE_IMPACT_LIMITS,
     comparison=TotalComparison(anchor=f"report-comparison-{CODE}"),
 )

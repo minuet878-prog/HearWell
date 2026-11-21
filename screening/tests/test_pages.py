@@ -707,8 +707,8 @@ class PageFlowTests(TestCase):
     def test_result_page_order(self):
         # Ticket #157 (ADR 0010), #461 (the #460 mockup R1), #750 (canvas ProResult), the owner
         # 2026-11-21: the level block, 這個分數怎麼算 open (the ruler, where the impact is, step
-        # 1, then the other steps and the full advice folded), the 建議下一步, 看每一題的回答,
-        # then the list rows.
+        # 1, each level's range; no other step and no full advice since the owner's acceptance
+        # that day), the 建議下一步, 看每一題的回答, then the list rows.
         submission = self._submit([4, 4, 2, 2, 0, 0, 0, 0, 0, 0])  # 12
         main = self._result(submission)
         steps = hhie_s.NEXT_STEPS["mild_to_moderate"]
@@ -724,10 +724,7 @@ class PageFlowTests(TestCase):
                 '"score-impact-points">12 分',
                 '"score-impact-points">0 分',
                 steps[0]["text"],
-                "<summary>看完整建議</summary>",
-                steps[1]["text"],
-                steps[2]["text"],
-                get_advice("mild_to_moderate"),
+                "<summary>看各級的分數</summary>",
                 "建議您下一步",
                 "<span>看每一題的回答</span>",
                 "助聽器：未記錄",

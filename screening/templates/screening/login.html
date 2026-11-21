@@ -40,14 +40,14 @@
                 </div>
             </div>
             <div class="mb-4 auth-field">
-                <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
-                    <label for="id_password">密碼</label>
-                    {# Same 顯示 button as the register page (#151); hidden until the script runs. #}
+                <label for="id_password" class="form-label">密碼</label>
+                <div class="password-row">
+                    <div class="auth-input">
+                        {% include "screening/auth_field_icon.html" with icon="lock" %}
+                        <input {% if form.errors and form.username.value %}autofocus {% endif %}{% if form.errors %}aria-invalid="true" aria-describedby="login_error" {% endif %}class="form-control" id="id_password" type="password" name="password" autocomplete="current-password" required>
+                    </div>
+                    {# Same 顯示 button as the register page (#151); hidden until the script runs. After the box (#741), so Tab reaches the box first. #}
                     <button type="button" class="btn btn-outline-primary password-toggle" aria-controls="id_password" aria-label="顯示密碼" data-label="密碼" hidden>顯示</button>
-                </div>
-                <div class="auth-input">
-                    {% include "screening/auth_field_icon.html" with icon="lock" %}
-                    <input {% if form.errors and form.username.value %}autofocus {% endif %}{% if form.errors %}aria-invalid="true" aria-describedby="login_error" {% endif %}class="form-control" id="id_password" type="password" name="password" autocomplete="current-password" required>
                 </div>
             </div>
             <button class="w-full btn btn-lg btn-primary" type="submit">登入</button>

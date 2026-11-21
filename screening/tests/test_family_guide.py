@@ -4,6 +4,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from screening.models import User
+from screening.tests import test_share_page
 from screening.tests.helpers import consented_user
 
 # Each topic with its sources, worded exactly as reviewed in the spec's appendix A.
@@ -259,8 +260,12 @@ class CopyAddressT361Tests(TestCase):
         self.assertEqual(words, "複製網址")
         self.assertIn(f'data-url="{address}"', attrs)
         self.assertIn("data-without-share-sheet", attrs)
-        # Without JavaScript the button never shows (the address bar is the way then).
+        # Without JavaScript the button never shows; #741 (owner, 2026-11-21): then, and only
+        # then, the address is written under it to copy by hand.
         self.assertRegex(attrs, r"\shidden(\s|$)")
         self.assertNotIn("可以複製這個網址", self.content)
+        self.assertEqual(test_share_page.NOSCRIPT_ADDRESS.findall(self.content), [address])
+        self.assertEqual(self.content.count(address), 2)  # the copy button's and the noscript's
+        self.assertLess(self.content.index('id="copy-link"'), self.content.index("網址：<span"))
         self.assertIn('id="copy-status"', self.share)
         self.assertIn("screening/copy-link.js", self.content)

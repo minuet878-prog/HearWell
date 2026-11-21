@@ -134,7 +134,9 @@ class HhiaSTests(TestCase):
                 self.assertIn(advice, data["advice"])
                 self.assertIn(explanation, data["advice"])
                 page = self.client.get(reverse("result", args=[data["id"]]))
-                self.assertContains(page, advice)
+                # The whole advice is the API's and the report's; the result page has had no
+                # 看完整建議 since the owner's acceptance (2026-11-21).
+                self.assertNotContains(page, advice)
                 self.assertContains(page, explanation)
                 self.assertContains(page, level)
 

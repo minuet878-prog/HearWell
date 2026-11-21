@@ -151,34 +151,29 @@ class GradedResultPageTests(TestCase):
         positions = [main.index(piece) for piece in order]
         self.assertEqual(positions, sorted(positions))
 
-    def test_every_word_of_the_explanation_is_kept_once(self):
-        # R1's fold, since #750 two; since 2026-11-21 (the owner) 這個分數怎麼算 is open: the
-        # reviewed step 1 shown, the other steps and the full advice under its 看完整建議, the
-        # answers still in their row; the gauge in the block alone.
+    def test_the_explanation_keeps_step_one_and_drops_the_full_advice(self):
+        # R1's fold, since #750 two; since 2026-11-21 (the owner) 這個分數怎麼算 is open with the
+        # reviewed step 1 shown and, since the owner's acceptance that day, no 看完整建議: the
+        # other steps and the full advice are gone; the answers still in their row; the gauge
+        # in the block alone.
         main = self.main(self.hhie_s([4, 4, 2, 2, 0, 0, 0, 0, 0, 0], (2026, 11, 12)))
         fold = details(main)
         self.assertNotIn("open", fold[: fold.index(">")])
         self.assertIn("助聽器：沒戴", fold)
         section = main[main.index('<section class="score-explain"') :]
         section = section[: section.index("</section>")]
-        full = re.search(
-            r'<details class="dropdown-line">\s*<summary>看完整建議</summary>(.*?)</details>',
-            section,
-            re.S,
-        ).group(1)
         steps = hhie_s.NEXT_STEPS["mild_to_moderate"]
         self.assertIn(f'<p class="score-explain-advice">{steps[0]["text"]}</p>', section)
-        self.assertNotIn(steps[0]["text"], full)
+        self.assertEqual(main.count(steps[0]["text"]), 1)
+        self.assertIn("<summary>看各級的分數</summary>", section)
+        self.assertNotIn("看完整建議", main)
         for piece in (
-            steps[0]["text"],
             steps[1]["text"],
             steps[2]["text"],
             get_advice("mild_to_moderate", hhie_s.CODE),
         ):
             with self.subTest(piece=piece):
-                self.assertEqual(main.count(piece), 1)
-                if piece is not steps[0]["text"]:
-                    self.assertIn(piece, full)
+                self.assertNotIn(piece, main)
         self.assertNotIn('<div class="gauge"', section)
         self.assertEqual(main.count('<div class="gauge"'), 1)
 

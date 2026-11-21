@@ -3,7 +3,6 @@ result page, its way through registering or logging in and the consent, and the 
 sends every guest result kept in the browser to the records API."""
 
 import json
-import re
 import uuid
 from io import StringIO
 from typing import ClassVar
@@ -24,10 +23,6 @@ SUBMISSIONS = "/api/submissions/"
 SAVE_FROM_CARD = "/guest/save?from=card"
 PASSWORD = "Fake-pass-2468"
 SAVE_TITLE = '<h2 class="result-next-title">註冊保存</h2>'
-# 這個分數怎麼算's 看完整建議: the other steps and the level's whole advice.
-FULL_ADVICE = re.compile(
-    r'<details class="dropdown-line">\s*<summary>看完整建議</summary>.*?</details>', re.S
-)
 MORE = "註冊後還有耳鳴、在吵雜環境聽不聽得清楚等問卷可以做。"
 # Spec #693 acceptance 4: the two that lead on to the audiogram promise no fitting.
 REASONS = {
@@ -173,11 +168,9 @@ class GuestAdviceTests(GuestSaveTestCase):
             questionnaire = self.hhie_s if code == hhie_s.CODE else self.hhia_s
             with self.subTest(questionnaire=code, level=level):
                 html = self.guest_html(self.LEVELS[level], questionnaire)
-                # Once, and not again as a step under 看完整建議 (whose whole paragraph may
-                # quote it; since 2026-11-21 in 這個分數怎麼算, before the save card).
-                full = FULL_ADVICE.search(html).group(0)
-                self.assertNotIn(f"<p>{advice}</p>", full)
-                html = html.replace(full, "")
+                # Once: 這個分數怎麼算 has no 看完整建議 since the owner's acceptance
+                # (2026-11-21), so it is not said again there.
+                self.assertNotIn("看完整建議", html)
                 self.assertEqual(html.count(advice), 1)
                 box = html.index('class="result-advice')
                 self.assertLess(box, html.index(advice))

@@ -10,7 +10,12 @@ from django.urls import reverse
 
 from screening.forms import RegisterForm
 from screening.models import Questionnaire, Submission, User
-from screening.tests.helpers import consented_user, minimum_password_length, step_bar
+from screening.tests.helpers import (
+    assert_toggle_follows_its_input,
+    consented_user,
+    minimum_password_length,
+    step_bar,
+)
 
 
 def page_top(content):
@@ -277,6 +282,11 @@ class LoginViewTests(TestCase):
         self.assertIn('aria-controls="id_password"', buttons[0])
         self.assertIn('aria-label="顯示密碼"', buttons[0])
         self.assertRegex(buttons[0], r"\shidden[\s>]")
+
+    def test_tab_reaches_the_password_before_its_show_button(self):
+        # #741 acceptance bug (2026-11-21): 顯示 sat by the label, so Tab from 使用者名稱 went to it
+        # before the password box.
+        assert_toggle_follows_its_input(self, self.client.get(self.url), "id_password")
 
     def test_register_button_sits_under_the_login_button(self):
         main = self.client.get(self.url).content.decode().split('id="main-content"', 1)[1]
@@ -708,6 +718,13 @@ class RegisterPageGuidanceTests(TestCase):
                 self.assertIn('type="button"', button)
                 self.assertIn(f'aria-controls="id_{field}"', button)
                 self.assertRegex(button, r"\shidden[\s>]")
+
+    def test_each_show_button_comes_right_after_its_password_box(self):
+        # #741: Tab goes 密碼, its 顯示, 密碼確認, its 顯示.
+        response = self.client.get(self.url)
+        for field in ("id_password1", "id_password2"):
+            with self.subTest(field=field):
+                assert_toggle_follows_its_input(self, response, field)
 
     def test_the_password_count_waits_for_javascript(self):
         # Readability batch 3 (C1 B): the count under 密碼, its minimum the server's; the
