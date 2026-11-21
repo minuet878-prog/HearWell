@@ -419,7 +419,10 @@ class ResetPagesSiteWideTests(TestCase):
                 self.assertEqual(len(re.findall(r"<h1\b", main)), 1)
                 self.assertIn('href="#main-content"', content)
                 self.assertIn('<footer class="site-footer">', content)
-                self.assertRegex(content, rf'<a href="{reverse("login")}" aria-current="page">')
+                # Under 紀錄, as the login page (#748).
+                self.assertRegex(
+                    content, rf'<a href="{reverse("my_hearing")}" aria-current="page">'
+                )
 
 
 TOO_MANY = "試太多次了，請一小時後再試"

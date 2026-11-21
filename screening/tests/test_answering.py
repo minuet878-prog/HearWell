@@ -504,9 +504,7 @@ class ReactAnswerPageTests(TestCase):
     def test_logout_js_when_logged_in_only(self):
         for url in (reverse("index"), reverse("questionnaire_list"), reverse("my_hearing")):
             with self.subTest(url=url):
-                response = self.client.get(url)
-                self.assertContains(response, self.LOGOUT_JS)
-                self.assertContains(response, 'id="logout-form"')
+                self.assertContains(self.client.get(url), self.LOGOUT_JS)
         self.client.logout()
         for url in (reverse("index"), reverse("login"), reverse("register")):
             with self.subTest(url=url):

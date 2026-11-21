@@ -133,7 +133,7 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
         nav = test_pages.RedesignLayoutTests.NAV.search(content).group()
         self.assertEqual(
             re.findall(r"<span>([^<]+)</span>", nav),
-            ["首頁", "篩檢", "紀錄", "了解"],
+            ["首頁", "問卷", "紀錄", "了解"],
         )
 
     # The zone's home page: picked on the comparison page, option A.

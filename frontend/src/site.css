@@ -617,20 +617,32 @@
     border: 0.125rem solid currentColor;
   }
 
-  /* Header: white since the brand refresh, the same as the app's status bar (theme-color, #138). */
+  /* Header: white since the brand refresh, the same as the app's status bar (theme-color, #138).
+     #748 (ADR 0079): it stays at the top; scrolled past it (site-header.js marks data-scrolled),
+     its white goes and only the frosted ‹ and avatar float over the page, which shows between
+     them and stays clickable there. */
   .site-header {
-    position: relative;
-    overflow: hidden;
+    position: sticky;
+    top: 0;
+    z-index: 1020;
     background-color: #fff;
-    border-bottom: 1px solid var(--color-line);
     color: var(--color-primary);
     /* viewport-fit=cover (layout.html) lets the page run under the iPhone's status bar; the
        header's white fills it and its contents start below. 0 everywhere else. */
     padding-top: env(safe-area-inset-top);
   }
 
+  .site-header[data-scrolled] {
+    background-color: transparent;
+    pointer-events: none;
+  }
+
+  .site-header[data-scrolled] :is(.site-back, .site-avatar, .site-login) {
+    pointer-events: auto;
+  }
+
   /* An iPhone home-screen app softly blurs about 1.25rem more under its status bar (iOS 26 on),
-     which the page cannot turn off: the logo and logout start below it. Only iOS reads
+     which the page cannot turn off: the logo and avatar start below it. Only iOS reads
      -webkit-touch-callout, so Android's home-screen app keeps the plain header. */
   @media (display-mode: standalone) {
     @supports (-webkit-touch-callout: none) {
@@ -638,10 +650,6 @@
         padding-top: calc(env(safe-area-inset-top) + 1.5rem);
       }
     }
-  }
-
-  .site-header-bar {
-    position: relative;
   }
 
   /* Entrance animations wait until they are in view (#341, ADR 0029). With JavaScript, layout.html
@@ -657,96 +665,129 @@
     animation-play-state: paused;
   }
 
-  /* The header wave chosen in #136 (values in docs/verification/issue-136.md): bars jump and a
-     soft light sweeps once, about 3.7 seconds, then the bars stay level and low. The resting look
-     is the plain style, so no animation (reduced motion, a tab's later pages) means a still row.
-     On the white header the bars are 8% brand blue, so blue text over them stays above 7:1. */
-  .site-wave {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: flex-end;
-    gap: 4px;
-    padding: 0 1rem;
-    pointer-events: none;
-  }
-
-  .site-wave span {
-    flex: 1;
-    height: 22%;
-    border-radius: 4px 4px 0 0;
-    background-color: var(--color-primary);
-    opacity: 0.08;
-    transform-origin: bottom;
-    animation: wave-jump 3.5s ease-in-out var(--wave-delay, 0s) both;
-  }
-
-  /* Each bar jumps to its own heights: seven patterns, staggered over five delays. */
-  .site-wave span:nth-child(7n + 1) { --wave-1: 1.5; --wave-2: 2.88; --wave-3: 2.01; }
-  .site-wave span:nth-child(7n + 2) { --wave-1: 2.67; --wave-2: 2.05; --wave-3: 2.02; }
-  .site-wave span:nth-child(7n + 3) { --wave-1: 2.96; --wave-2: 3.1; --wave-3: 1.41; }
-  .site-wave span:nth-child(7n + 4) { --wave-1: 2.14; --wave-2: 1.56; --wave-3: 1.6; }
-  .site-wave span:nth-child(7n + 5) { --wave-1: 2.16; --wave-2: 3.2; --wave-3: 2.08; }
-  .site-wave span:nth-child(7n + 6) { --wave-1: 2.97; --wave-2: 1.35; --wave-3: 1.9; }
-  .site-wave span:nth-child(7n + 7) { --wave-1: 2.66; --wave-2: 3.16; --wave-3: 1.19; }
-  .site-wave span:nth-child(5n + 2) { --wave-delay: 0.05s; }
-  .site-wave span:nth-child(5n + 3) { --wave-delay: 0.1s; }
-  .site-wave span:nth-child(5n + 4) { --wave-delay: 0.15s; }
-  .site-wave span:nth-child(5n + 5) { --wave-delay: 0.2s; }
-
-  .site-wave::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    transform: translateX(-100%);
-    background-image: linear-gradient(105deg, transparent 30%, rgba(31, 78, 140, 0.1) 50%, transparent 70%);
-    animation: wave-sweep 2.5s ease-in-out 1s both;
-  }
-
-  .header-wave-played .site-wave span,
-  .header-wave-played .site-wave::after {
-    animation: none;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .site-wave span,
-    .site-wave::after {
-      animation: none;
-    }
-  }
-
-  /* Phones: brand and logout share the first line, the signed-in name gets the second, so a
-     back button or a long name never pushes logout down. The name stays first in the source,
-     so screen readers and Tab still reach it before logout. */
+  /* #748 (canvas ProHome, ProScrollDemo): the name on the left, the avatar or 登入 on the
+     right, one line at any text size. */
   .site-header-bar {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem 1rem;
+    padding-block: 0.5rem;
   }
 
-  .site-header-bar .site-account {
-    order: 1;
-    flex-basis: 100%;
+  /* Without JavaScript the ‹ is a link home beside the name; site-header.js marks the header
+     data-scroll-swap, and from then on the ‹ sits over the name, shown only once scrolled. */
+  .site-header-start {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
   }
 
-  /* #357: on a phone the name's own line sits over the wave's bars; the header's white hides
-     them behind it. */
-  @media (max-width: 47.99em) {
-    .site-header-bar .site-account {
-      background-color: #fff;
+  .site-header[data-scroll-swap] .site-back {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    translate: 0 -50%;
+  }
+
+  .site-header[data-scroll-swap]:not([data-scrolled]) .site-back,
+  .site-header[data-scrolled] .site-brand {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  /* Round, the size of a fingertip: the ‹ on the page's pale blue, as the avatar. */
+  :is(.site-back, .site-avatar) {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: var(--spacing-touch);
+    height: var(--spacing-touch);
+    border: 1px solid transparent;
+    border-radius: 50%;
+    background-color: var(--color-brand-soft);
+    color: var(--color-primary);
+    text-decoration: none;
+  }
+
+  .site-back svg {
+    width: 1.5556rem;
+    height: 1.5556rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .site-avatar {
+    font-size: 1.1111rem;
+    font-weight: 700;
+  }
+
+  /* Under a finger or a mouse colour only (ADR 0006). */
+  :is(.site-back, .site-avatar):hover {
+    color: var(--color-primary-hover);
+  }
+
+  :is(.site-back, .site-avatar):active {
+    background-color: var(--color-brand-soft-deep);
+  }
+
+  .site-login {
+    flex: none;
+    min-height: var(--spacing-touch);
+    border-radius: var(--radius-pill);
+  }
+
+  /* Scrolled: frosted glass as the tab bar (ADR 0045, 0079), 88% white, solid where the browser
+     cannot blur or with reduced transparency. */
+  .site-header[data-scrolled] :is(.site-back, .site-avatar) {
+    background-color: #fff;
+    border-color: var(--color-line);
+    box-shadow: 0 0.375rem 1rem rgba(33, 37, 41, 0.18);
+  }
+
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .site-header[data-scrolled] .site-back {
+      background-color: rgba(255, 255, 255, 0.88);
+    }
+
+    .site-header[data-scrolled] .site-avatar {
+      background-color: rgba(238, 243, 250, 0.88);
+    }
+
+    .site-header[data-scrolled] :is(.site-back, .site-avatar) {
+      border-color: rgba(255, 255, 255, 0.7);
+      -webkit-backdrop-filter: blur(14px) saturate(1.6);
+      backdrop-filter: blur(14px) saturate(1.6);
     }
   }
 
-  /* Wide screens: one line. A zero basis makes the name take the space left and wrap inside it;
-     sized by its full text, a long name would drop to a new line with logout. */
-  @media (min-width: 48em) {
-    .site-header-bar .site-account {
-      order: 0;
-      flex: 1 1 0;
-      min-width: 0;
-      text-align: end;
+  @media (prefers-reduced-transparency: reduce) {
+    .site-header[data-scrolled] :is(.site-back, .site-avatar) {
+      background-color: #fff;
+      border-color: var(--color-line);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+
+  /* The swap fades; with reduced motion it just changes. */
+  @media (prefers-reduced-motion: no-preference) {
+    .site-header {
+      transition: background-color 0.25s;
+    }
+
+    :is(.site-brand, .site-back) {
+      transition: opacity 0.2s, visibility 0.2s;
+    }
+
+    .site-avatar {
+      transition: background-color 0.25s, box-shadow 0.25s, border-color 0.25s;
     }
   }
 
@@ -764,14 +805,6 @@
     gap: 0.5rem;
     color: var(--color-primary);
     text-decoration: none;
-  }
-
-  /* In the home-screen app the back button needs the logo's room so logout stays on the first
-     line (#118); the app's own icon already shows the logo there. */
-  @media (max-width: 47.99em) {
-    .site-header-bar:has(.site-back:not([hidden])) .site-logo {
-      display: none;
-    }
   }
 
   /* Wordmark in two colours: "聽" in the primary blue, "伴" in the gradient's teal end. */
@@ -797,14 +830,6 @@
     /* Prefixed too: iPhones before iOS 15.4 only read -webkit-mask. */
     -webkit-mask: var(--logo-glyph) center / contain no-repeat;
     mask: var(--logo-glyph) center / contain no-repeat;
-  }
-
-  /* Home-screen app only (spec phase10_pwa_back_refresh.md): pwa-nav.js reveals both. */
-  .site-back {
-    min-width: var(--spacing-touch);
-    min-height: var(--spacing-touch);
-    font-size: 1rem;
-    font-weight: 700;
   }
 
   .pwa-pull {
@@ -948,13 +973,17 @@
     stroke-linejoin: round;
   }
 
-  /* W1 (#454, ADR 0043, without the frosted glass of ADR 0045, which is #457): the current page
-     is a pale blue pill with bold blue words, the others the heading colour (grey on a phone, as
-     W1); under a finger or a mouse colour only, never position (ADR 0006). */
+  /* W1 (#454, ADR 0043, without the frosted glass of ADR 0045, which is #457): the others the
+     heading colour (grey on a phone, as W1). #748 (spec #741 P9): the current page is a solid
+     blue pill with bold white words; pressing another tab, it slides there as the pill of
+     問卷｜聽力圖 (#334, switch-slide.js), under its own name, as a page can have both. Under a
+     finger or a mouse colour only, never position (ADR 0006). */
   .site-nav a[aria-current="page"] {
     border-radius: var(--radius-tab);
-    background-color: var(--color-brand-selected);
+    background-color: var(--color-primary);
+    color: #fff;
     font-weight: 700;
+    view-transition-name: tab-pill;
   }
 
   .site-nav a:active {
@@ -963,9 +992,8 @@
   }
 
   .site-nav a[aria-current="page"]:active {
-    background-color: var(--color-brand-soft-deep);
+    background-color: var(--color-primary-active);
   }
-
   @media (min-width: 48em) {
     /* White like the header, a thin line under it; the padding keeps the current-page pill
        inside the bar instead of filling it. */
@@ -2927,6 +2955,17 @@
     view-transition-name: switch-pill;
   }
 
+  /* #748: a tab pressed on a page with 問卷｜聽力圖 leaves that pill behind, and a page without a
+     current tab has no tab pill to slide from. A pill on one side only neither fades out over
+     the next page nor fades in: it is just gone, or just there. */
+  ::view-transition-old(*):only-child {
+    display: none;
+  }
+
+  ::view-transition-new(*):only-child {
+    animation: none;
+  }
+
   /* Legend under both charts. */
   .trend-legend {
     display: flex;
@@ -4495,15 +4534,6 @@
     stroke: var(--color-severe);
   }
 
-  /* The account link sits on the white header. */
-  .site-account {
-    color: var(--color-primary);
-  }
-
-  .site-account:hover {
-    color: var(--color-primary-hover);
-  }
-
   /* Questionnaire list (spec phase9_ui_refresh_4b_questionnaire_cards.md 4.1); the continue
      notice on the home and screening pages (#337) is the same 提示框 (P3, ADR 0043). */
   .questionnaire-guide, .continue-notice {
@@ -6021,18 +6051,6 @@
   @page {
     margin: 1.5cm;
   }
-}
-
-/* Header wave (#138). */
-@keyframes wave-jump {
-  20% { transform: scaleY(var(--wave-1)); }
-  45% { transform: scaleY(var(--wave-2)); }
-  70% { transform: scaleY(var(--wave-3)); }
-  to { transform: scaleY(1); }
-}
-
-@keyframes wave-sweep {
-  to { transform: translateX(100%); }
 }
 
 /* Questionnaire icon ripple (#141). */

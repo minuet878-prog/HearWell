@@ -11,7 +11,7 @@ let win;
 function page() {
   doc = document.implementation.createHTMLDocument("");
   doc.body.innerHTML = `
-    <nav aria-label="主要導覽"><a href="/">首頁</a></nav>
+    <nav aria-label="主要導覽" class="site-nav"><a href="/"><span>首頁</span></a></nav>
     <main>
       <nav class="records-switch" aria-label="紀錄種類">
         <a href="/my_hearing?view=questionnaires" aria-current="page">問卷</a>
@@ -51,15 +51,19 @@ describe("the pill slides", () => {
     click('.ear-switch a[href="?ear=left"]');
     expect(leave()).not.toHaveBeenCalled();
   });
+
+  // #748 (spec #741 acceptance 37): the tab bar's solid blue pill, by the same means.
+  it("when a bottom tab is pressed", () => {
+    page();
+    click('nav[aria-label="主要導覽"] a span');
+    expect(leave()).not.toHaveBeenCalled();
+  });
 });
 
 describe("every other change of page has no transition", () => {
-  it.each([
-    ["a bottom tab", 'nav[aria-label="主要導覽"] a'],
-    ["a card", ".link-card"],
-  ])("pressing %s", (_, selector) => {
+  it("pressing a card", () => {
     page();
-    click(selector);
+    click(".link-card");
     expect(leave()).toHaveBeenCalledOnce();
   });
 
