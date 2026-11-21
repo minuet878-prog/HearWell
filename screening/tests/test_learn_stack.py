@@ -134,7 +134,8 @@ class LearnStackTests(TestCase):
         self.assertEqual(
             rows,
             [
-                ("了解助聽器選配與補助", ""),
+                # The owner (2026-11-21): every row a line, this one its card's.
+                ("了解助聽器選配與補助", "從聽力檢查到申請補助"),
                 ("家人專區", "溝通與陪伴"),
                 ("聽損模擬", "聽聽看他聽到的聲音"),
                 ("問答小助手", "常見問題一次查"),

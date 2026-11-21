@@ -100,8 +100,8 @@ class LearnItem:
     row_line: str = ""  # under the row's title
 
 
-# The list's order (#469, #487, #640), its rows' words the canvas's ProLearn. The cards' lines
-# and buttons past the simulator's are drafts for the owner's review.
+# The list's order (#469, #487, #640), its rows' words the canvas's ProLearn. The cards' words,
+# drawings and the first card for each step: the owner reviewed them on 2026-11-21.
 SIMULATOR = LearnItem(
     "simulator",
     "hearing_loss_simulator",
@@ -112,7 +112,13 @@ SIMULATOR = LearnItem(
     "聽聽看他聽到的聲音",
 )
 GUIDE = LearnItem(
-    "guide", "guide", "guide", "了解助聽器選配與補助", "從聽力檢查到申請補助", "開始了解"
+    "guide",
+    "guide",
+    "guide",
+    "了解助聽器選配與補助",
+    "從聽力檢查到申請補助",
+    "開始了解",
+    "從聽力檢查到申請補助",
 )
 QA = LearnItem(
     "qa", "qa_home", "question", "問答小助手", "常見問題一次查", "問問看", "常見問題一次查"
