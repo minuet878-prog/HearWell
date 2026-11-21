@@ -699,9 +699,10 @@ class PageFlowTests(TestCase):
         return self._main(self.client.get(reverse("result", args=[submission.id])))
 
     def test_result_page_order(self):
-        # Ticket #157 (ADR 0010), #461 (the #460 mockup R1), #750 (canvas ProResult): the
-        # level block, the 建議下一步, then 看每一題的回答, 這個分數怎麼算 with the score detail,
-        # every step and the folded full advice, then the list rows.
+        # Ticket #157 (ADR 0010), #461 (the #460 mockup R1), #750 (canvas ProResult), the owner
+        # 2026-11-21: the level block, 這個分數怎麼算 open (the ruler, where the impact is, step
+        # 1, then the other steps and the full advice folded), the 建議下一步, 看每一題的回答,
+        # then the list rows.
         submission = self._submit([4, 4, 2, 2, 0, 0, 0, 0, 0, 0])  # 12
         main = self._result(submission)
         steps = hhie_s.NEXT_STEPS["mild_to_moderate"]
@@ -711,17 +712,19 @@ class PageFlowTests(TestCase):
                 "看看聽力對生活的影響",
                 '總分 <span class="result-number">12</span> 分（滿分 40）',
                 "輕度到中度影響",
+                "這個分數怎麼算</h2>",
+                "您 12 分",
+                "聽力問題影響在哪裡",
+                '"score-impact-points">12 分',
+                '"score-impact-points">0 分',
+                steps[0]["text"],
+                "<summary>看完整建議</summary>",
+                steps[1]["text"],
+                steps[2]["text"],
+                get_advice("mild_to_moderate"),
                 "建議您下一步",
                 "<span>看每一題的回答</span>",
                 "助聽器：未記錄",
-                "<span>這個分數怎麼算</span>",
-                "情緒分數：12",
-                "社交分數：0",
-                steps[0]["text"],
-                steps[1]["text"],
-                steps[2]["text"],
-                "<summary>看完整建議</summary>",
-                get_advice("mild_to_moderate"),
                 "印聽力報告",
                 "分享給家人",
                 "看紀錄與趨勢",
@@ -791,8 +794,8 @@ class PageFlowTests(TestCase):
         submission = self._submit([2] * 10, questionnaire=unknown)
         with self.assertLogs("screening.scoring", "ERROR"):
             main = self._result(submission)
-        self.assertIn('總分 <span class="result-number">20</span> 分', main)
-        self.assertNotIn("滿分", main)
+        # The total's own line (the parts of 這個分數怎麼算 have their own full scores).
+        self.assertIn('總分 <span class="result-number">20</span> 分</p>', main)
 
     # IDOR (14) is covered by SubmissionResultAccessTests; one more for the redesigned page.
     def test_result_of_other_user_is_404(self):

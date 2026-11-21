@@ -492,7 +492,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             expect(
                 self.main().get_by_text("整體平均 6.3 分（滿分 10）", exact=True)
             ).to_be_visible()
-            expect(self.main().get_by_text("情緒分數", exact=False)).to_have_count(0)
+            expect(self.main().get_by_text("聽力問題影響在哪裡", exact=False)).to_have_count(0)
             self.page.screenshot(path="/tmp/hearwell-ssq12-result.png", full_page=True)
             self.main().locator(".result-list").get_by_role("link", name="看紀錄").click()
             expect(self.main().locator("a.link-card:not(.action-card)")).to_contain_text(
@@ -1701,21 +1701,25 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         expect(self.main().locator(".result-banner")).to_contain_text("輕度到中度影響")
         # #750 (page grill P11): large, the level's short name.
         expect(self.main().locator(".result-level-short")).to_have_text("輕到中度")
-        # HHIE-S 輕度到中度影響's steps (ticket #157), since #750 all under 這個分數怎麼算: the
-        # check, then the retest. The report is left to the list rows, as this step's words do
-        # not mention it (result page tidy-up); since spec #693 no link to the hearing-aid guide.
-        how = self.main().locator(".result-details").filter(has_text="這個分數怎麼算")
-        folded = how.locator(".result-details-body")
-        expect(folded).to_be_hidden()
-        # The gauge in sight in the result box, not in the fold.
+        # HHIE-S 輕度到中度影響's steps (ticket #157), since 2026-11-21 in 這個分數怎麼算, open
+        # above the 建議下一步: step 1 shown, the check and the retest under 看完整建議. The
+        # report is left to the list rows, as these steps' words do not mention it (result page
+        # tidy-up); since spec #693 no link to the hearing-aid guide.
+        how = self.main().locator(".score-explain")
+        expect(how.get_by_role("heading", name="這個分數怎麼算")).to_be_visible()
+        expect(how.locator(".score-explain-advice")).to_contain_text(
+            "聽力問題已經慢慢影響您的社交活動與情緒"
+        )
+        full = how.locator("details.dropdown-line").filter(has_text="看完整建議")
+        expect(full.get_by_text("半年後再做一次", exact=False)).to_be_hidden()
+        # The gauge in sight in the result box, not in 這個分數怎麼算.
         expect(self.main().locator(".result-banner .gauge")).to_be_visible()
-        expect(folded.locator(".gauge")).to_have_count(0)
-        how.locator(":scope > summary").click()
-        expect(folded).to_contain_text("聽力問題已經慢慢影響您的社交活動與情緒")
-        expect(folded).to_contain_text("建議前往醫院耳鼻喉科進行聽力相關檢查")
-        expect(folded.get_by_role("link", name="看助聽器選配與補助")).to_have_count(0)
-        expect(folded.get_by_role("link", name="看／印聽力報告")).to_have_count(0)
-        expect(folded).to_contain_text("半年後再做一次，時間到了首頁會提醒您。")
+        expect(how.locator(".gauge")).to_have_count(0)
+        full.locator(":scope > summary").click()
+        expect(full).to_contain_text("建議前往醫院耳鼻喉科進行聽力相關檢查")
+        expect(how.get_by_role("link", name="看助聽器選配與補助")).to_have_count(0)
+        expect(how.get_by_role("link", name="看／印聽力報告")).to_have_count(0)
+        expect(full).to_contain_text("半年後再做一次，時間到了首頁會提醒您。")
         # 20 of 40 sits at the top of the arc, its middle, on the thick 輕度到中度 arc (9-24).
         arcs = self.page.locator(".gauge-arcs").bounding_box()
         knob = self.page.locator(".gauge-knob").bounding_box()
@@ -6898,7 +6902,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.assertEqual(
                 [(self.style(a, "stroke"), self.style(a, "opacity")) for a in arcs], strokes
             )
-            # #750: the dropdowns are in 這個分數怎麼算, a dropdown beside 看每一題的回答.
+            # 看每一題的回答, and since 2026-11-21 這個分數怎麼算's two dropdowns (看各級的分數,
+            # 看完整建議), open on the page.
             for row in self.page.locator(".result-details > summary").all():
                 row.click()
             summaries = self.page.locator("main details > summary").all()
@@ -7149,8 +7154,8 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
         self.open()
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
-            # #750: the steps' links are under 這個分數怎麼算.
-            how = self.main().locator(".result-details").filter(has_text="這個分數怎麼算")
+            # Since 2026-11-21 the steps after the first are under 這個分數怎麼算's 看完整建議.
+            how = self.main().locator(".score-explain details").filter(has_text="看完整建議")
             how.locator(":scope > summary").click()
             self.page.mouse.move(0, 0)
             step_link = how.locator(".next-steps-link").first
@@ -7995,8 +8000,8 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.assertGreaterEqual(link.bounding_box()["height"], 44)
 
     # #309: the advice's links still look like links and the cards below are list rows. Since
-    # #750 (canvas ProResult) every step is under 這個分數怎麼算, flat on the white page. THI's
-    # support message has no line beside it.
+    # #750 (canvas ProResult) every step is under 這個分數怎麼算, since 2026-11-21 open and flat
+    # on the white page. THI's support message has no line beside it.
     def test_result_advice_is_flat_with_links_that_look_like_links(self):
         links_seen = 0
         with self.saving_artifacts():
@@ -8004,9 +8009,10 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             for name, signed_in, path in WHITE_CARD_PAGES_HOME_RESULT[2:]:
                 with self.subTest(page=name):
                     self.visit(signed_in, path)
-                    how = self.main().locator(".result-details").filter(has_text="這個分數怎麼算")
-                    how.locator(":scope > summary").click()
-                    advice = how.locator(".result-details-body")
+                    advice = self.main().locator(".score-explain")
+                    advice.locator("details").filter(has_text="看完整建議").locator(
+                        ":scope > summary"
+                    ).click()
                     self.assert_flat_part(advice)
                     self.assert_readable_on_white(advice)
                     links = self.main().locator(".next-steps-link")
@@ -14223,10 +14229,11 @@ class PickExplainBackTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
 
 
 class ResultPagesT461Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
-    """#461 (spec #453, the #460 mockup R1): on a phone the first screen is the level block with
-    the line against last time and the 建議下一步's one solid button; since #750 (canvas
-    ProResult) the block holds the gauge, the score in its bowl and the two bars, with no sentence
-    under it. The rest is folded in the rows, and every result page fits a phone at 200% text."""
+    """#461 (spec #453, the #460 mockup R1): the level block with the line against last time,
+    then the 建議下一步's one solid button; since #750 (canvas ProResult) the block holds the
+    gauge, the score in its bowl and the two bars. Since 2026-11-21 (the owner relaxed the first
+    screen) 這個分數怎麼算 is open between them and the button may be on the second screen. The
+    rest is folded in the rows, and every result page fits a phone at 200% text."""
 
     fixtures = ("questions_fixture.json",)
     TAIPEI = ZoneInfo("Asia/Taipei")
@@ -14250,7 +14257,7 @@ class ResultPagesT461Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             Submission.objects.filter(pk=record.pk).update(created_at=moment)
         return record
 
-    def test_the_first_screen_has_the_block_the_sentence_and_one_solid_button(self):
+    def test_the_block_then_how_the_score_is_counted_then_one_solid_button(self):
         self.record("hhie-s", [4, 4, 4, 4, 2] + [0] * 5, (2026, 3, 26), wearing_hearing_aid=False)
         latest = self.record("hhie-s", [4, 4, 4, 2] + [0] * 6, wearing_hearing_aid=False)
         # Just sent, the green line on top: the first screen at its fullest.
@@ -14281,11 +14288,15 @@ class ResultPagesT461Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             box = solid.bounding_box()
             # 56px (S1's 3.1111rem, a hair under it when rounded).
             self.assertGreaterEqual(box["height"], 55.9)
-            # On the first screen of a 390 x 844 phone, above the floating tab bar.
-            tab_bar = self.page.get_by_role("navigation", name="主要導覽").bounding_box()
-            self.assertLessEqual(box["y"] + box["height"], tab_bar["y"])
-            # Readability batch 3 (B6 A), since #750 the gauge: in sight in the block, on the
-            # first screen above the button, and not in the folds as well.
+            # The owner, 2026-11-21: the block, 這個分數怎麼算 open, then the button, which may
+            # be below the first screen.
+            how = self.main().locator(".score-explain")
+            expect(how.locator(".score-ruler")).to_be_visible()
+            block, counted = banner.bounding_box(), how.bounding_box()
+            self.assertLessEqual(block["y"] + block["height"], counted["y"])
+            self.assertLessEqual(counted["y"] + counted["height"], box["y"])
+            # Readability batch 3 (B6 A), since #750 the gauge: in sight in the block, above the
+            # button, and not in the folds as well.
             gauge = banner.locator(".gauge")
             expect(gauge).to_be_visible()
             self.assertLessEqual(gauge.bounding_box()["y"], box["y"])
@@ -14347,10 +14358,108 @@ class ResultPagesT461Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             basis = basis or record
             with self.subTest(code=code), self.saving_artifacts():
                 self.open(f"/submission/{record.pk}", (320, 640))
-                # #750: a graded page's two folds, each opened.
-                for summary in self.main().locator(".result-details > summary").all():
+                # The answers' fold and, since 2026-11-21, 這個分數怎麼算's dropdowns, opened.
+                for summary in (
+                    self.main()
+                    .locator(".result-details > summary, .score-explain .dropdown-line > summary")
+                    .all()
+                ):
                     summary.click()
                 self.assert_fits_a_phone_at_double_text_size(code)
+
+
+class ScoreExplainTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Spec #741 (實作中本人補充, 2026-11-21, compare-impact.html's A): 這個分數怎麼算 open on a
+    graded result page: a ruler whose dot sits at the score and cannot be moved, and for HHIE-S
+    and HHIA-S 情緒 and 社交, a tap (or a key) showing that part's answers, with JavaScript or
+    without, the higher part open at first."""
+
+    fixtures = ("questions_fixture.json",)
+    record = ResultPagesT461Test.record
+    TAIPEI = ResultPagesT461Test.TAIPEI
+    # HHIE-S: items 1, 2, 4, 7, 9 情緒, 3, 5, 6, 8, 10 社交. 情緒 10, 社交 2: 12 of 40.
+    SCORES = (4, 4, 2, 2, 0, 0, 0, 0, 0, 0)
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+        self.sign_in(consented_user(username="score_explain_e2e"))
+        self.latest = self.record("hhie-s", list(self.SCORES), wearing_hearing_aid=False)
+
+    def parts(self):
+        # By the row's name: an answer may say 社交 (item 9, a 情緒 one).
+        parts = self.main().locator(".score-explain details.score-impact")
+        return [
+            parts.filter(has=self.page.locator(".score-impact-name", has_text=name))
+            for name in ("情緒", "社交")
+        ]
+
+    def test_the_dot_sits_at_the_score_and_nothing_can_be_dragged(self):
+        self.open(f"/submission/{self.latest.pk}")
+        with self.saving_artifacts():
+            how = self.main().locator(".score-explain")
+            track = how.locator(".score-ruler-track").bounding_box()
+            dot = how.locator(".score-ruler-dot")
+            box = dot.bounding_box()
+            self.assertAlmostEqual(
+                box["x"] + box["width"] / 2, track["x"] + track["width"] * 0.3, delta=1
+            )
+            expect(how.locator(".score-ruler-you")).to_have_text("您 12 分")
+            # 「您 N 分」 over the dot, inside the ruler's width.
+            you = how.locator(".score-ruler-you").bounding_box()
+            self.assertLessEqual(you["y"] + you["height"], box["y"])
+            self.assertTrue(you["x"] <= box["x"] + box["width"] / 2 <= you["x"] + you["width"])
+            expect(how.locator("input, [role=slider]")).to_have_count(0)
+            # Dragging it moves nothing.
+            self.page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+            self.page.mouse.down()
+            self.page.mouse.move(track["x"] + track["width"] * 0.9, box["y"] + box["height"] / 2)
+            self.page.mouse.up()
+            self.assertEqual(dot.bounding_box(), box)
+            expect(how.locator(".score-ruler-names > span")).to_have_text(
+                ["極輕微", "輕到中度", "顯著"]
+            )
+
+    def test_a_tap_or_a_key_shows_a_part_s_answers_one_at_a_time(self):
+        self.open(f"/submission/{self.latest.pk}")
+        with self.saving_artifacts():
+            emotional, social = self.parts()
+            # The higher, 情緒, open at first.
+            expect(emotional.locator("li")).to_have_count(5)
+            expect(emotional.locator("li").first).to_be_visible()
+            expect(emotional.locator("li").first).to_contain_text("常常")
+            expect(social.locator("li").first).to_be_hidden()
+            summary = social.locator(":scope > summary")
+            self.assertGreaterEqual(summary.bounding_box()["height"], 44)
+            summary.click()
+            expect(social.locator("li").first).to_be_visible()
+            expect(social.locator("li").first).to_contain_text("有時")
+            # One open at a time.
+            expect(emotional.locator("li").first).to_be_hidden()
+            # By keyboard.
+            emotional.locator(":scope > summary").focus()
+            self.page.keyboard.press("Enter")
+            expect(emotional.locator("li").first).to_be_visible()
+            expect(social.locator("li").first).to_be_hidden()
+            # #461's reviewed step 1 under the two parts, shown.
+            expect(self.main().locator(".score-explain-advice")).to_be_visible()
+
+    def test_without_javascript_the_parts_still_open(self):
+        self.open(f"/submission/{self.latest.pk}", java_script_enabled=False)
+        with self.saving_artifacts():
+            emotional, social = self.parts()
+            expect(emotional.locator("li").first).to_be_visible()
+            social.locator(":scope > summary").click()
+            expect(social.locator("li").first).to_be_visible()
+
+    def test_fits_a_phone_at_double_text_size(self):
+        for code, scores in (("hhie-s", list(self.SCORES)), ("thi", [2] * 25)):
+            record = self.record(code, scores, wearing_hearing_aid=False)
+            for width in (320, 390):
+                with self.subTest(code=code, width=width), self.saving_artifacts():
+                    self.open(f"/submission/{record.pk}", (width, 844))
+                    for summary in self.main().locator(".score-explain details > summary").all():
+                        summary.click()
+                    self.assert_fits_a_phone_at_double_text_size(code, width)
 
 
 class TabBarHidesOnScrollT457Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
@@ -17200,9 +17309,10 @@ class ChangeLabelT646Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
 
 
 class ResultFirstScreenT647Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
-    """From #647 (spec #644 H3, acceptance 18): every result page fits a phone at 200% text, and
-    the solid button stays above the tab bar (the owner's pick A). Its sentence 這是您第 N 次做
-    這份問卷。 went with the line above it (spec #741's 實作中本人補充, 2026-11-21: 這塊不要)."""
+    """From #647 (spec #644 H3, acceptance 18): every result page fits a phone at 200% text. The
+    solid button no longer has to stay above the tab bar (the owner's pick A, 2026-11-16, relaxed
+    2026-11-21: 這個分數怎麼算 opens above it). Its sentence 這是您第 N 次做這份問卷。 went with
+    the line above it (spec #741's 實作中本人補充, 2026-11-21: 這塊不要)."""
 
     fixtures = ("questions_fixture.json",)
     record = ResultPagesT461Test.record
@@ -17237,10 +17347,10 @@ class ResultFirstScreenT647Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiv
                         self.open(f"/submission/{record.pk}", (width, 844))
                         self.assert_fits_a_phone_at_double_text_size(code, width)
 
-    def test_the_solid_button_stays_above_the_tab_bar(self):
-        # The owner's pick A (2026-11-16): the one solid button stays on a 390 x 844 phone's
-        # first screen, above the floating tab bar, as ResultPagesT461Test asks of HHIE-S. Just
-        # sent, with the green line on top. Its records: 18, then 14.
+    def test_the_score_block_then_how_it_is_counted_then_the_suggestion(self):
+        # The owner relaxed pick A (2026-11-16) on 2026-11-21: the one solid button may be on a
+        # 390 x 844 phone's second screen; 這個分數怎麼算 is open between the score block and
+        # it. Just sent, with the green line on top. Its records: 18, then 14.
         self.sign_in(consented_user(username="t647_first"))
         latest = {}
         for code, earlier, now in (
@@ -17255,10 +17365,14 @@ class ResultFirstScreenT647Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiv
                 with self.subTest(code=code):
                     self.just_sent(record)
                     self.open(f"/submission/{record.pk}")
-                    # #749: white on the blue hero card.
-                    button = self.main().locator(".btn-hero").bounding_box()
-                    tab_bar = self.page.get_by_role("navigation", name="主要導覽").bounding_box()
-                    self.assertLessEqual(button["y"] + button["height"], tab_bar["y"], code)
+                    block = self.main().locator(".result-banner").bounding_box()
+                    how = self.main().locator(".score-explain")
+                    expect(how.get_by_role("heading", name="這個分數怎麼算")).to_be_visible()
+                    counted = how.bounding_box()
+                    # #749: the blue hero card, its button white.
+                    card = self.main().locator(".hero-card").bounding_box()
+                    self.assertLessEqual(block["y"] + block["height"], counted["y"], code)
+                    self.assertLessEqual(counted["y"] + counted["height"], card["y"], code)
 
 
 class EmptyStatesT648Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):

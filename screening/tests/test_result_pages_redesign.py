@@ -20,9 +20,9 @@ from screening.tests.helpers import consented_user, submission_with_answers
 TAIPEI = timezone.get_fixed_timezone(8 * 60)
 # The page's main button: solid, or white on the blue hero card (#749, ADR 0076).
 SOLID = re.compile(r'class="btn btn-(?:primary|hero)(?=[ "])')
-# The score block, up to the 建議下一步 card under it (#750).
+# The score block, up to 這個分數怎麼算 under it (#750; 2026-11-21).
 BANNER = re.compile(
-    r'<div class="result-banner result-banner-([a-z_]+)">(.*?)<section class="hero-card"', re.S
+    r'<div class="result-banner result-banner-([a-z_]+)">(.*?)<section class="score-explain"', re.S
 )
 DETAILS = re.compile(
     r'<details class="result-details"([^>]*)>(.*?)</details>\s*(?=<a|</div>)', re.S
@@ -135,41 +135,51 @@ class GradedResultPageTests(TestCase):
         banner = read(BANNER.search(self.main(old)).group(2))
         self.assertIn("比上次少 4 分 上次 2026/01/05 是 20 分", banner)
 
-    def test_the_block_then_the_suggestion_then_the_rows(self):
-        # #750 (canvas ProResult): the 建議下一步 card right under the block, no sentence between
-        # them; then the two folds and the list rows.
+    def test_the_block_then_how_the_score_is_counted_then_the_suggestion_then_the_rows(self):
+        # #750 (canvas ProResult), since 2026-11-21 (the owner) 這個分數怎麼算 open between the
+        # block and the 建議下一步 card; then the answers' fold and the list rows.
         main = self.main(self.hhie_s([4, 4, 2, 2, 0, 0, 0, 0, 0, 0], (2026, 11, 12)))  # 12
         self.assertNotIn("result-one-line", main)
         order = [
             '<div class="result-banner',
+            '<section class="score-explain"',
             '<p class="hero-card-label">建議您下一步</p>',
             "<span>看每一題的回答</span>",
-            "<span>這個分數怎麼算</span>",
             ">印聽力報告<",
             ">分享給家人<",
         ]
         positions = [main.index(piece) for piece in order]
         self.assertEqual(positions, sorted(positions))
 
-    def test_the_full_explanation_is_folded_with_every_word_kept(self):
-        # R1's fold, since #750 two: every reviewed step, the full advice, the subscores and the
-        # answers; the gauge in the block alone.
+    def test_every_word_of_the_explanation_is_kept_once(self):
+        # R1's fold, since #750 two; since 2026-11-21 (the owner) 這個分數怎麼算 is open: the
+        # reviewed step 1 shown, the other steps and the full advice under its 看完整建議, the
+        # answers still in their row; the gauge in the block alone.
         main = self.main(self.hhie_s([4, 4, 2, 2, 0, 0, 0, 0, 0, 0], (2026, 11, 12)))
         fold = details(main)
         self.assertNotIn("open", fold[: fold.index(">")])
+        self.assertIn("助聽器：沒戴", fold)
+        section = main[main.index('<section class="score-explain"') :]
+        section = section[: section.index("</section>")]
+        full = re.search(
+            r'<details class="dropdown-line">\s*<summary>看完整建議</summary>(.*?)</details>',
+            section,
+            re.S,
+        ).group(1)
         steps = hhie_s.NEXT_STEPS["mild_to_moderate"]
+        self.assertIn(f'<p class="score-explain-advice">{steps[0]["text"]}</p>', section)
+        self.assertNotIn(steps[0]["text"], full)
         for piece in (
             steps[0]["text"],
             steps[1]["text"],
             steps[2]["text"],
             get_advice("mild_to_moderate", hhie_s.CODE),
-            "情緒分數：",
-            "助聽器：沒戴",
         ):
             with self.subTest(piece=piece):
-                self.assertIn(piece, fold)
                 self.assertEqual(main.count(piece), 1)
-        self.assertNotIn('<div class="gauge"', fold)
+                if piece is not steps[0]["text"]:
+                    self.assertIn(piece, full)
+        self.assertNotIn('<div class="gauge"', section)
         self.assertEqual(main.count('<div class="gauge"'), 1)
 
     def test_suggesting_sharing_or_printing_leaves_its_row_out(self):
@@ -207,9 +217,11 @@ class EveryResultPageTests(TestCase):
         for code in test_result_pages.QUESTIONNAIRES:
             with self.subTest(code=code):
                 main = self._main(code)
-                # #750: a graded page's two folds, 看每一題的回答 and 這個分數怎麼算.
+                # One fold; a graded page's 這個分數怎麼算 open above the 建議下一步 since
+                # 2026-11-21.
                 graded = code in ("hhie-s", "hhia-s", "thi")
-                self.assertEqual(main.count('<details class="result-details">'), 1 + graded)
+                self.assertEqual(main.count('<details class="result-details">'), 1)
+                self.assertEqual(main.count('<section class="score-explain"'), graded)
                 rows = ROW.findall(main)
                 self.assertEqual(rows[:2], [PRINT_ROW, SHARE_ROW])
 

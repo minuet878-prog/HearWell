@@ -17,9 +17,9 @@ from screening.tests.helpers import consented_user, submission_with_answers
 from screening.views.common import JUST_SAVED
 
 TAIPEI = timezone.get_fixed_timezone(8 * 60)
-# The score block in its level's colour, up to the 建議下一步 card under it.
+# The score block in its level's colour, up to 這個分數怎麼算 under it (2026-11-21).
 BLOCK = re.compile(
-    r'<div class="result-banner result-banner-([a-z_]+)">(.*?)<section class="hero-card"', re.S
+    r'<div class="result-banner result-banner-([a-z_]+)">(.*?)<section class="score-explain"', re.S
 )
 # The gauge's arcs: each level's, the latest's drawn once in view (play-once-gauge).
 ARC = re.compile(r'<path class="gauge-arc gauge-arc-([a-z_]+)([^"]*)" d="M[^"]+"')
@@ -129,7 +129,6 @@ class ResultGaugePageTests(TestCase):
             ROW_TITLE.findall(rows),
             [
                 "看每一題的回答",
-                "這個分數怎麼算",
                 "印聽力報告",
                 "分享給家人",
                 "看紀錄與趨勢",
@@ -139,16 +138,16 @@ class ResultGaugePageTests(TestCase):
         # The 重測提醒 comes under the rows (P16), the card just above them.
         self.assertLess(main.index('<div class="result-list">'), main.index("result-reminder"))
 
-    def test_the_rows_open_on_the_answers_and_on_how_the_score_is_counted(self):
+    def test_a_row_opens_on_the_answers_and_how_the_score_is_counted_keeps_every_word(self):
         main = self.main(self.record(hhie_s.CODE, [4, 4, 2, 2] + [0] * 6, (2026, 11, 12)))
-        answers, counted = re.findall(
-            r'<details class="result-details">(.*?)</details>', main, re.S
-        )[:2]
+        (answers,) = re.findall(r'<details class="result-details">(.*?)</details>', main, re.S)
         self.assertIn("看每一題的回答", answers)
         self.assertIn("助聽器：沒戴", text(answers))
-        counted = text(counted)
+        # 這個分數怎麼算, open since 2026-11-21: what the fold held is still there.
+        counted = main[main.index('<section class="score-explain"') :]
+        counted = text(counted[: counted.index("</section>")])
         self.assertIn("每一題的分數加起來就是總分", counted)
-        # The levels by their full names, with their ranges, from the thresholds.
+        # The levels by their full names, with their ranges, from the thresholds (看各級的分數).
         for line in ("0–8 分：無／極輕微影響", "9–24 分：輕度到中度影響", "25–40 分：顯著影響"):
             self.assertIn(line, counted)
         for step in hhie_s.NEXT_STEPS["mild_to_moderate"]:

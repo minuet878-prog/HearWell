@@ -265,8 +265,8 @@ class ThiScoringTests(ThiTestCase):
     def test_result_page_shows_no_emotional_or_social_subscores(self):
         # Spec #208 Q5: THI shows its total and level only, no subscales of any kind.
         _, page = self._web_result([4] * 25)
-        self.assertNotContains(page, "情緒分數")
-        self.assertNotContains(page, "社交分數")
+        self.assertNotContains(page, "聽力問題影響在哪裡")
+        self.assertNotContains(page, "score-impact")
 
     def test_api_gives_null_subscores_not_zero(self):
         # #386: THI has no emotional or social items, so the API says "none" like the export.
@@ -387,7 +387,7 @@ class ThiResultAdviceTests(ThiTestCase):
         for total, expected in STEPS.items():
             with self.subTest(total=total):
                 main = self._main(total)
-                # Every step under 這個分數怎麼算 (#750).
+                # Step 1 shown in 這個分數怎麼算, the others under its 看完整建議 (2026-11-21).
                 steps = test_result_next_steps.ResultNextStepsTests._steps(self, main)
                 self.assertEqual(len(steps), len(expected))
                 for (words, links), (text, action) in zip(steps, expected, strict=True):

@@ -3,6 +3,7 @@ result page, its way through registering or logging in and the consent, and the 
 sends every guest result kept in the browser to the records API."""
 
 import json
+import re
 import uuid
 from io import StringIO
 from typing import ClassVar
@@ -23,6 +24,10 @@ SUBMISSIONS = "/api/submissions/"
 SAVE_FROM_CARD = "/guest/save?from=card"
 PASSWORD = "Fake-pass-2468"
 SAVE_TITLE = '<h2 class="result-next-title">註冊保存</h2>'
+# 這個分數怎麼算's 看完整建議: the other steps and the level's whole advice.
+FULL_ADVICE = re.compile(
+    r'<details class="dropdown-line">\s*<summary>看完整建議</summary>.*?</details>', re.S
+)
 MORE = "註冊後還有耳鳴、在吵雜環境聽不聽得清楚等問卷可以做。"
 # Spec #693 acceptance 4: the two that lead on to the audiogram promise no fitting.
 REASONS = {
@@ -135,10 +140,11 @@ class SaveCardTests(GuestSaveTestCase):
         self.assertLess(buttons, html.index("換手機或換瀏覽器就看不到這次結果。"))
 
     def test_after_the_one_sentence_where_the_journey_card_is(self):
-        # B1: in the 照顧旅程 card's place, after the level's one sentence and before the fold.
+        # B1: in the 照顧旅程 card's place, after the level's one sentence (since 2026-11-21 in
+        # 這個分數怎麼算) and before the fold.
         html = self.guest_html([0] * 10)
         card = html.index(SAVE_TITLE)
-        self.assertLess(html.index('class="result-one-line"'), card)
+        self.assertLess(html.index('class="score-explain-advice"'), card)
         self.assertLess(card, html.index('class="result-list"'))
 
 
@@ -167,11 +173,12 @@ class GuestAdviceTests(GuestSaveTestCase):
             questionnaire = self.hhie_s if code == hhie_s.CODE else self.hhia_s
             with self.subTest(questionnaire=code, level=level):
                 html = self.guest_html(self.LEVELS[level], questionnaire)
-                # Once before the fold, and not again as a step in it (看完整建議's whole
-                # paragraph may quote it).
-                self.assertEqual(html[: html.index('class="result-list"')].count(advice), 1)
-                fold = html[html.index('class="result-list"') :]
-                self.assertNotIn(f"<p>{advice}</p>", fold)
+                # Once, and not again as a step under 看完整建議 (whose whole paragraph may
+                # quote it; since 2026-11-21 in 這個分數怎麼算, before the save card).
+                full = FULL_ADVICE.search(html).group(0)
+                self.assertNotIn(f"<p>{advice}</p>", full)
+                html = html.replace(full, "")
+                self.assertEqual(html.count(advice), 1)
                 box = html.index('class="result-advice')
                 self.assertLess(box, html.index(advice))
                 self.assertLess(html.index(advice), html.index(SAVE_TITLE))

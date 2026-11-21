@@ -55,7 +55,7 @@ class Ssq12Tests(TestCase):
                 self.assertContains(
                     page, f'整體平均 <span class="result-number">{expected}</span> 分（滿分 10）'
                 )
-                self.assertNotContains(page, "情緒分數")
+                self.assertNotContains(page, "聽力問題影響在哪裡")
                 self.assertNotContains(page, "總分")
                 history = self.client.get(reverse("my_hearing"), {"questionnaire": "ssq12-tw"})
                 self.assertContains(history, f"整體平均：{expected}／10")

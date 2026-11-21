@@ -129,7 +129,9 @@ class SectionTests(ResultFromAnswersTestCase):
         )
         # #750: the gauge, its scale's two ends under it.
         self.assertIn('<span class="gauge-end">0</span><span class="gauge-end">40</span>', html)
-        self.assertIn('<p class="mb-1">情緒分數：12　社交分數：4</p>', html)
+        # 這個分數怎麼算's 聽力問題影響在哪裡 (spec #741, 2026-11-21).
+        self.assertRegex(html, r'(?s)>情緒</span>.*?"score-impact-points">12 分')
+        self.assertRegex(html, r'(?s)>社交</span>.*?"score-impact-points">4 分')
         self.assertIn("助聽器：沒戴", html)
         self.assertIn(hhie_s.ADVICE["mild_to_moderate"], html)
         questionnaire = Questionnaire.objects.get(code=hhie_s.CODE)

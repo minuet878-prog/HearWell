@@ -185,7 +185,11 @@ class AnswerPageTests(GuestTestCase):
 def shown_on_the_result_page(content):
     """(total, emotional, social, level text) as a result page shows them."""
     total = re.search(r'總分 <span class="result-number">(\d+)</span>', content).group(1)
-    emotional, social = re.search(r"情緒分數：(\d+)　社交分數：(\d+)", content).groups()
+    # 這個分數怎麼算's 聽力問題影響在哪裡 rows (spec #741, 2026-11-21).
+    emotional, social = (
+        re.search(rf'>{name}</span>.*?"score-impact-points">(\d+) 分', content, re.S).group(1)
+        for name in ("情緒", "社交")
+    )
     level = re.search(r'<h2 class="result-block-level[^"]*"[^>]*>([^<]+)</h2>', content).group(1)
     return int(total), int(emotional), int(social), level
 
@@ -368,7 +372,10 @@ class GuestResultPageTests(GuestTestCase):
         self.assertIn('總分 <span class="result-number">16</span> 分（滿分 40）', html)
         self.assertIn(">輕度到中度影響</h2>", html)
         self.assertIn('<svg class="gauge-arcs" viewBox="0 0 318 164" aria-hidden="true"', html)
-        self.assertIn("情緒分數：12　社交分數：4", html)
+        self.assertEqual(shown_on_the_result_page(html)[1:3], (12, 4))
+        # 這個分數怎麼算 (spec #741, 2026-11-21): the ruler and where the impact is.
+        self.assertIn('<div class="score-ruler" aria-hidden="true">', html)
+        self.assertIn("聽力問題影響在哪裡", html)
         self.assertIn("助聽器：沒戴", html)
         self.assertIn(hhie_s.ADVICE["mild_to_moderate"], html)
         labels = dict(hhie_s.CHOICES)

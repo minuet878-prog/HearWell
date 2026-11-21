@@ -79,15 +79,17 @@ class ResultPagesTests(TestCase):
         self.assertNotContains(response, "篩檢結果")
 
     def test_every_dropdown_on_a_result_page_is_a_list_row_or_a_line_inside_it(self):
-        # #461: a fold is a list row (#750: a graded page's 看每一題的回答 and 這個分數怎麼算);
-        # the folds inside are lines, so a box never sits in a box (dropdowns tidy-up).
+        # #461: a fold is a list row (#750: a graded page's 看每一題的回答), a line, or since
+        # 2026-11-21 one of 這個分數怎麼算's two parts (情緒, 社交): never a box in a box
+        # (dropdowns tidy-up).
         for code in QUESTIONNAIRES:
             with self.subTest(code=code):
                 tags = re.findall(r"<details[^>]*>", self._main(code))
-                self.assertEqual(tags[0], '<details class="result-details">')
-                for details in tags[1:]:
+                self.assertIn('<details class="result-details">', tags)
+                for details in tags:
                     row = details == '<details class="result-details">'
-                    self.assertTrue(row or "dropdown-line" in details, details)
+                    part = details.startswith('<details class="score-impact" name="score-impact"')
+                    self.assertTrue(row or part or "dropdown-line" in details, details)
 
     def test_ssq12_without_an_earlier_record_still_says_which_way_is_better(self):
         self.assertIn("分數越高，代表您回報的聆聽能力越好。", self._main("ssq12-tw"))

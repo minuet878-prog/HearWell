@@ -1,0 +1,62 @@
+{# 這個分數怎麼算, open between the score block and the 建議下一步 (spec #741, the owner 2026-11-21, compare-impact.html's A): how the total is counted; a ruler of the levels with a dot fixed at this score (drawn for the eye, said once in words; nothing to drag); for HHIE-S and HHIA-S where the impact is (情緒, 社交); then #461's reviewed first step. The other steps, the full advice and each level's range stay a tap away. #}
+{% with result=submission.result %}
+<section class="score-explain" aria-labelledby="score-explain-title">
+    <h2 id="score-explain-title" class="score-explain-title">這個分數怎麼算</h2>
+    <p>{{ score_sum_text }}</p>
+    {% if ruler %}
+    <div class="score-ruler" aria-hidden="true">
+        {# 「您 N 分」 over the dot: the room beside it shared out as the score's share and the rest, so it is centred over the middle, flush with the ruler's ends at its ends, and never runs off it. #}
+        <span class="score-ruler-you-row"><span style="flex-grow: {{ ruler.dot|floatformat:2 }}"></span><span class="score-ruler-you">您 {{ result.total }} 分</span><span style="flex-grow: {{ ruler.rest|floatformat:2 }}"></span></span>
+        <span class="score-ruler-track">{% for band in ruler.bands %}<span class="score-ruler-band score-ruler-band-{{ band.color }}{% if band.shade == "deep" %} score-ruler-band-deep{% endif %}{% if band.current %} score-ruler-band-current{% endif %}" style="width: {{ band.width|floatformat:2 }}%"></span>{% endfor %}<span class="score-ruler-dot" style="left: {{ ruler.dot|floatformat:2 }}%"></span></span>
+        <span class="score-ruler-names">{% for band in ruler.bands %}<span style="width: {{ band.width|floatformat:2 }}%">{{ band.short }}</span>{% endfor %}</span>
+    </div>
+    <p class="visually-hidden">分數尺從 0 到 {{ ruler.ceiling }} 分，您 {{ result.total }} 分，在「{{ result.level.text }}」這一段。</p>
+    {% endif %}
+    {% if impact_parts %}
+    <h3 class="score-impact-title">聽力問題影響在哪裡</h3>
+    {# Native folds: they open without JavaScript, by keyboard and with a screen reader; one name, so the browser keeps one open at a time where it can. #}
+    {% for part in impact_parts %}
+    <details class="score-impact" name="score-impact"{% if part.open %} open{% endif %}>
+        <summary><span class="score-impact-name">{{ part.name }}</span> <span class="score-impact-bar" aria-hidden="true"><span class="score-impact-fill" style="width: {{ part.width|floatformat:2 }}%"></span></span><span class="score-impact-points">{{ part.score }} 分<span class="visually-hidden">（滿分 {{ part.ceiling }}）</span></span></summary>
+        <ul class="score-impact-answers">
+            {% for answer in part.answers %}<li>{{ answer.question.question_text }} <span class="score-impact-answer{% if not answer.score %} score-impact-answer-none{% endif %}">{{ answer.get_answer_display }}</span></li>{% endfor %}
+        </ul>
+    </details>
+    {% endfor %}
+    <p class="text-black">情緒與社交分項僅供參考，目前沒有正式的解讀標準，請以總分分級為主。</p>
+    {% endif %}
+    {% if first_step %}
+    <p class="score-explain-advice">{{ first_step.text }}</p>
+    {% if first_step.action_label %}
+    <p class="next-steps-links">
+        <a class="next-steps-link" href="{% url first_step.action_url %}">{{ first_step.action_label }}</a>
+    </p>
+    {% endif %}
+    {% elif not next_steps %}
+    {# 「無法判讀」 has no steps: its advice, to answer again. #}
+    <p class="score-explain-advice">{{ advice }}</p>
+    {% endif %}
+    {% if level_ranges %}
+    <details class="dropdown-line">
+        <summary>看各級的分數</summary>
+        <ul>
+            {% for range in level_ranges %}<li>{{ range.low }}–{{ range.high }} 分：{{ range.text }}</li>{% endfor %}
+        </ul>
+    </details>
+    {% endif %}
+    {% if next_steps %}
+    <details class="dropdown-line">
+        <summary>看完整建議</summary>
+        {% for step in fold_steps %}
+        <p>{{ step.text }}</p>
+        {% if step.action_label %}
+        <p class="next-steps-links">
+            <a class="next-steps-link" href="{% url step.action_url %}">{{ step.action_label }}</a>
+        </p>
+        {% endif %}
+        {% endfor %}
+        <p>{{ advice }}</p>
+    </details>
+    {% endif %}
+</section>
+{% endwith %}

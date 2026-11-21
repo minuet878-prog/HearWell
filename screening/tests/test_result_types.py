@@ -127,7 +127,9 @@ class GradedResultTests(ResultTestCase):
             "輕度到中度影響</h2>",
         )
         self.assertContains(page, '總分 <span class="result-number">16</span> 分（滿分 40）')
-        self.assertContains(page, '<p class="mb-1">情緒分數：12　社交分數：4</p>')
+        # 這個分數怎麼算's 聽力問題影響在哪裡 (spec #741, 2026-11-21).
+        self.assertRegex(page.content.decode(), r'(?s)>情緒</span>.*?"score-impact-points">12 分')
+        self.assertRegex(page.content.decode(), r'(?s)>社交</span>.*?"score-impact-points">4 分')
         self.assertContains(page, "情緒與社交分項僅供參考")
         self.assertTrue(context["advice"])
         self.assertEqual(context["optional_ssq12"].code, ssq12_tw.CODE)  # unaided HHIE-S
@@ -166,7 +168,8 @@ class GradedResultTests(ResultTestCase):
         self.assert_no_copies(context)
         page = self.client.get(reverse("result", args=[record.pk]))
         self.assertContains(page, '總分 <span class="result-number">4</span> 分（滿分 100）')
-        self.assertNotContains(page, "情緒分數")  # result.subscores is None: no subscores shown
+        # result.subscores is None: no subscores shown
+        self.assertNotContains(page, "聽力問題影響在哪裡")
         self.assertNotContains(page, "情緒與社交分項僅供參考")
         self.assertTrue(context["support_message"])
         self.assertIsNone(context["optional_ssq12"])

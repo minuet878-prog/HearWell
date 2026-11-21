@@ -183,6 +183,38 @@ class GradedResult(Result):
             "width": self.total / ceiling * 100,
         }
 
+    def _impact_parts(self, definition, answers):
+        """這個分數怎麼算's 聽力問題影響在哪裡 (spec #741, 2026-11-21): 情緒 and 社交, each its
+        subscore against its items' full score and its answers; the higher open, 情緒 on a tie.
+        None without subscores (THI)."""
+        subscores = self.subscores
+        if subscores is None:
+            return None
+        parts = []
+        for category, name in (("emotional", "情緒"), ("social", "社交")):
+            items = [answer for answer in answers if answer.question.category == category]
+            ceiling = sum(
+                max(
+                    score
+                    for score, _label in definition.choices(answer.question.question_number)
+                    if isinstance(score, int)
+                )
+                for answer in items
+            )
+            score = subscores[category]
+            parts.append(
+                {
+                    "name": name,
+                    "score": score,
+                    "ceiling": ceiling,
+                    "width": score / ceiling * 100 if ceiling else 0,
+                    "answers": items,
+                }
+            )
+        emotional, social = parts
+        (emotional if emotional["score"] >= social["score"] else social)["open"] = True
+        return parts
+
     def page_context(self):
         from screening.care_journey import WHERE_TO_TEST
         from screening.models import Questionnaire
@@ -192,7 +224,7 @@ class GradedResult(Result):
         submission = self.submission
         definition = submission.questionnaire.definition
         code = submission.questionnaire.code
-        answers = self._answers()
+        answers = list(self._answers())
         level = self.level["level"]
         next_steps = definition.next_steps.get(level, ())
         # The 2026-11-14 walkthrough (mockup 3A): a guest sees the step that says to have the
@@ -211,13 +243,15 @@ class GradedResult(Result):
             "next_steps": next_steps,
             "advice_step": advice_step,
             "where_to_test": WHERE_TO_TEST,
-            # Under 這個分數怎麼算 (#750): every reviewed step; a guest's first and the one it
-            # sees outside stay where they are.
-            "fold_steps": (
-                [step for step in next_steps[1:] if step is not advice_step]
-                if self.is_guest
-                else list(next_steps)
+            # 這個分數怎麼算, open (spec #741, 2026-11-21): the ruler, the reviewed first step
+            # shown, the other steps under 看完整建議; a guest's step to have the hearing checked
+            # stays in its own box.
+            "ruler": score_ruler(definition, self.total, level),
+            "impact_parts": self._impact_parts(definition, answers),
+            "first_step": (
+                next_steps[0] if next_steps and next_steps[0] is not advice_step else None
             ),
+            "fold_steps": [step for step in next_steps[1:] if step is not advice_step],
             "score_sum_text": SCORE_SUM_TEXT,
             "level_ranges": level_ranges(definition),
             # A guest's save card (spec #492); "" for a level it has no sentence for.
@@ -245,6 +279,33 @@ def level_ranges(definition):
         ranges.append({"low": low, "high": upper, "text": text})
         low = upper + 1
     return ranges
+
+
+def score_ruler(definition, score, level):
+    """這個分數怎麼算's ruler (spec #741, 2026-11-21): each level a band as wide as its share of
+    the full score, as the gauge's arcs, its short name under it, and a dot fixed at the score.
+    "無法判讀" draws none."""
+    from screening.scoring import short_level_name
+
+    thresholds = definition.thresholds
+    if level == "unknown" or not thresholds:
+        return None
+    ceiling = thresholds[-1][0]
+    bands = []
+    start = 0
+    for upper, text, band_level in thresholds:
+        bands.append(
+            {
+                "width": (upper - start) / ceiling * 100,
+                "short": short_level_name(definition, band_level, text),
+                "color": definition.color(band_level),
+                "shade": definition.shade(band_level),
+                "current": band_level == level,
+            }
+        )
+        start = upper
+    dot = max(0, min(1, score / ceiling)) * 100
+    return {"bands": bands, "dot": dot, "rest": 100 - dot, "ceiling": ceiling}
 
 
 # The semicircle gauge's drawing (semicircle_gauge.html, canvas ProResult, and the countdown's

@@ -74,9 +74,8 @@ class NoAidAdviceResultTests(TestCase):
         # Acceptance 2: the advice and step 1, the words around them unchanged.
         main = self.main(hhie_s.CODE, "severe")
         self.assertNotIn("考慮配戴助聽器", main)
-        # Under 這個分數怎麼算 since #750, every step there.
-        steps = main[main.index('<div class="result-steps">') :]
-        self.assertTrue(steps.split("<p>", 1)[1].startswith(f"{SEVERE_STEP}</p>"))
+        # Step 1 shown in 這個分數怎麼算 (spec #741, 2026-11-21).
+        self.assertIn(f'<p class="score-explain-advice">{SEVERE_STEP}</p>', main)
         self.assertIn(f"<p>{SEVERE_ADVICE} {LIMITS}</p>", main)
 
     def test_hhie_s_states_its_limits_after_the_advice_and_at_the_bottom(self):
@@ -84,8 +83,9 @@ class NoAidAdviceResultTests(TestCase):
         for level in SCORES:
             with self.subTest(level=level):
                 main = self.main(hhie_s.CODE, level)
+                # The last paragraph of 看完整建議, after the other steps.
                 advice = re.search(
-                    r"<summary>看完整建議</summary>\s*<p>(.*?)</p>", main, re.S
+                    r"<summary>看完整建議</summary>.*?<p>([^<]*)</p>\s*</details>", main, re.S
                 ).group(1)
                 self.assertTrue(advice.endswith(f"。 {LIMITS}"), advice)
                 self.assertNotIn("已配戴助聽器者", advice)

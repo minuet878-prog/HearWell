@@ -168,10 +168,12 @@ class ResultNextStepsTests(TestCase):
         return content[content.index("<main") : content.index("</main>")]
 
     def _steps(self, main):
-        """Each step's words and the links under them, all under 這個分數怎麼算 since #750."""
-        body = main[main.index('<div class="result-steps">') :]
-        body = body[: body.index("</div>")]
-        return re.findall(r'<p>(.*?)</p>\s*(<p class="next-steps-links">.*?</p>)?', body, re.S)
+        """Each step's words and the links under them: step 1 shown in 這個分數怎麼算, the others
+        under its 看完整建議 before the level's whole advice (spec #741, 2026-11-21)."""
+        links = r'\s*(<p class="next-steps-links">.*?</p>)?'
+        first = re.search(rf'<p class="score-explain-advice">(.*?)</p>{links}', main, re.S)
+        body = re.search(r"<summary>看完整建議</summary>(.*?)</details>", main, re.S).group(1)
+        return [first.groups(), *re.findall(rf"<p>(.*?)</p>{links}", body, re.S)[:-1]]
 
     def test_each_level_shows_its_finalized_steps_and_action_buttons(self):
         for code, levels in STEPS.items():
@@ -217,7 +219,7 @@ class ResultNextStepsTests(TestCase):
         with self.assertLogs("screening.scoring", "ERROR"):
             main = self._main(submission)
         self.assertNotIn("next-steps", main)
-        self.assertIn(f'<p class="result-one-line">{UNKNOWN_ADVICE}</p>', main)
+        self.assertIn(f'<p class="score-explain-advice">{UNKNOWN_ADVICE}</p>', main)
         self.assertNotIn("看完整建議", main)
         advice = re.compile(r"<details([^>]*)>\s*<summary>看完整建議</summary>")
         for code in self.questionnaires:
