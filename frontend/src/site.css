@@ -8067,19 +8067,25 @@
   }
 
   /* The 了解 page's other cards (#754, learn_drawing.html): a white line drawing as tall as the
-     sound wave, each with its own play-once animation. */
+     sound wave, each with its own play-once animation. What grows past the drawing's box (the
+     question bubble's stamp starts large) is cut at its edge, so the page never widens. */
   .hero-art {
     display: block;
     width: auto;
     max-width: 100%;
     height: 2.6667rem;
     margin-bottom: 0.5rem;
-    overflow: visible;
+    overflow: hidden;
     fill: none;
     stroke: #fff;
     stroke-width: 3;
     stroke-linecap: round;
     stroke-linejoin: round;
+  }
+
+  .hero-art .play-once-stamp {
+    transform-box: fill-box;
+    transform-origin: center;
   }
 
   .hero-art .hero-art-dot {
@@ -8219,6 +8225,7 @@
     margin: 1.25rem 0;
     /* The cards peeking out on either side stay inside the page: no sideways scrolling. */
     overflow-x: clip;
+    container-type: inline-size;
   }
 
   /* Every card in one grid cell, so the stack is as tall as its tallest card at any text
@@ -8357,6 +8364,19 @@
     gap: 0.3333rem;
     min-width: 0;
     text-align: center;
+  }
+
+  /* Too narrow for ‹, the dots of five cards and › on one line (a 320px phone at 200% text,
+     the 了解 page's five, #754): where you are on a line of its own above the two buttons. */
+  @container (max-width: 14rem) {
+    .card-stack-controls {
+      flex-wrap: wrap;
+    }
+
+    .card-stack-where {
+      order: -1;
+      flex-basis: 100%;
+    }
   }
 
   .card-stack-position {
