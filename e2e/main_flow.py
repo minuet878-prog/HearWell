@@ -14243,9 +14243,16 @@ class ScreeningAnsweringT463Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLi
                     choice = self.main().locator("div.choice-group label").first
                     self.assertEqual(self.style(choice, "borderTopColor"), self.EDGE)
                     choice.locator("input").check()
-                    # Chosen stays dark blue with white words (#328).
-                    self.assertEqual(self.style(choice, "backgroundColor"), "rgb(31, 78, 140)")
-                    self.assertEqual(self.style(choice, "color"), "rgb(255, 255, 255)")
+                    if path.startswith("/questionnaire/"):
+                        # #755 (canvas ProAnswer): the answer page's chosen is the soft blue
+                        # with a blue edge and the headings' dark words.
+                        colours = ("rgb(232, 238, 247)", "rgb(33, 37, 41)")
+                        self.assertEqual(self.style(choice, "borderTopColor"), "rgb(31, 78, 140)")
+                    else:
+                        # Chosen stays dark blue with white words (#328).
+                        colours = ("rgb(31, 78, 140)", "rgb(255, 255, 255)")
+                    self.assertEqual(self.style(choice, "backgroundColor"), colours[0])
+                    self.assertEqual(self.style(choice, "color"), colours[1])
 
     def test_continue_and_start_over_stack_the_whole_width(self):
         self.open(self.answer_page("hhie-s"))

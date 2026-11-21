@@ -2026,6 +2026,11 @@
     white-space: nowrap;
     color: var(--color-normal);
   }
+  /* Empty, it still holds a line (#755): at double text size the count's line wraps it onto a
+     row of its own, which would otherwise grow when ✓ 已儲存 appears. */
+  .answer-saved:empty::before {
+    content: "\00a0";
+  }
   @media (prefers-reduced-motion: no-preference) {
     .answer-saved > span {
       animation: saved-fade 1.5s linear both;
