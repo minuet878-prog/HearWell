@@ -4153,9 +4153,10 @@ class RouteCheckmarkTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
 
 
 class CountUpTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
-    """Spec #741 (ticket #747, ADR 0077, acceptance 54-56): the result page's score counts up from
-    0 once, in view on arrival; a screen reader reads the end value throughout; reduced motion
-    shows the end value at once. The page's clock stands still, and steps only when told."""
+    """Spec #741 (ticket #747, ADR 0077, acceptance 54-56): the home page's days to the next
+    screening count up from 0 once, in view; a screen reader reads the end value throughout;
+    reduced motion shows the end value at once. A score is shown as it is (ADR 0077 since
+    2026-11-21). The page's clock stands still, and steps only when told."""
 
     fixtures = ("questions_fixture.json",)
     START = datetime(2026, 11, 21, 12, tzinfo=ZoneInfo("Asia/Taipei"))
@@ -4201,15 +4202,18 @@ class CountUpTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
         self.addCleanup(self.context.close)
         self.page.clock.install(time=self.START)
         self.page.clock.pause_at(self.START + timedelta(seconds=1))
-        self.page.goto(f"{self.live_server_url}/submission/{self.record.pk}")
-        self.score = self.main().locator("#result-score")
-        self.number = self.score.locator("[data-count-up]")
+        self.page.goto(f"{self.live_server_url}/")
+        self.days = self.main().locator(".journey-tiles .countdown-ring-days")
+        self.number = self.days.locator("[data-count-up]")
+        self.number.scroll_into_view_if_needed()
 
     def assert_reads_the_end_value(self):
-        expect(self.number).to_have_text("40")
-        expect(self.score).to_match_aria_snapshot("- paragraph: 總分 40 分（滿分 40）")
+        today = timezone.localdate()
+        days = (add_months(today, 6) - today).days
+        expect(self.number).to_have_text(str(days))
+        expect(self.days).to_match_aria_snapshot(f"- paragraph: 還有 {days} 天")
 
-    def test_the_score_counts_up_once_and_reads_as_its_end_value(self):
+    def test_the_days_count_up_once_and_read_as_their_end_value(self):
         with self.saving_artifacts():
             self.open("no-preference")
             expect(self.number).to_have_attribute("data-in-view", "")
@@ -4220,7 +4224,7 @@ class CountUpTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
 
             self.page.clock.run_for(450)
             shown = int(self.number.get_attribute("data-count-now"))
-            self.assertTrue(0 < shown < 40, shown)
+            self.assertTrue(0 < shown < int(self.number.text_content()), shown)
             self.assertIn(f'"{shown}"', self.number.evaluate(self.SHOWN))
             self.assert_reads_the_end_value()
 
@@ -4237,6 +4241,14 @@ class CountUpTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             self.page.clock.run_for(100)
             expect(self.number).not_to_have_attribute("data-count-now", re.compile(".*"))
             self.assertEqual(self.number.evaluate(self.SHOWN), "none")
+
+    def test_the_result_page_s_score_does_not_count(self):
+        with self.saving_artifacts():
+            self.open("no-preference")
+            self.page.goto(f"{self.live_server_url}/submission/{self.record.pk}")
+            score = self.main().locator("#result-score")
+            expect(score).to_match_aria_snapshot("- paragraph: 總分 40 分（滿分 40）")
+            expect(self.main().locator("[data-count-up]")).to_have_count(0)
 
     def test_reduced_motion_shows_the_end_value_at_once(self):
         with self.saving_artifacts():

@@ -884,8 +884,7 @@ class SelfReview693UnreadableLifeImpactTests(test_fitting_advice.LifeImpactTestC
         content = response.content.decode()
         # #751: a 無法判讀 score has no gauge to draw; the score stands alone.
         self.assertIn(
-            '<span class="journey-tile-score"><span data-count-up>44</span> '
-            "<small>分</small></span>",
+            '<span class="journey-tile-score"><span>44</span> <small>分</small></span>',
             content,
         )
         self.assertNotIn('<div class="gauge"', content)

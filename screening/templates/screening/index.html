@@ -55,7 +55,7 @@
         <span class="journey-tile-label">上次結果</span>
         <div class="journey-tile-gauge">
             {% if result.gauge %}{% include "screening/semicircle_gauge.html" with gauge=result.gauge %}{% endif %}
-            <span class="journey-tile-score"><span data-count-up>{{ result.total }}</span> <small>分</small></span>
+            <span class="journey-tile-score"><span>{{ result.total }}</span> <small>分</small></span>
         </div>
         <span class="journey-tile-level" aria-hidden="true">{{ result.level.short }}</span><span class="visually-hidden">{{ result.level.text }}</span>
         <span class="journey-tile-arrow" aria-hidden="true">›</span>

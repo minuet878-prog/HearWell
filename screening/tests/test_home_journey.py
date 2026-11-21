@@ -241,8 +241,9 @@ class JourneyHomeTests(HomeJourneyTestCase):
 
     def test_the_last_result_tile_is_its_gauge_score_and_short_level(self):
         # Spec #741 acceptance 41 (the canvas's ProHome): 12 points on HHIE-S, 輕度到中度影響,
-        # its arc drawn thick once in view, the score counting up over the gauge, the level's
-        # short name on screen and its full name read (page grill P11, as the result page).
+        # its arc drawn thick once in view, the score over the gauge (not counted up since
+        # 2026-11-21, ADR 0077), the level's short name on screen and its full name read (page
+        # grill P11, as the result page).
         latest = self.answer(score=4)
         Answer.objects.filter(submission=latest, question__question_number__lte=3).update(score=4)
         tiles = self.tiles(self.main())
@@ -256,8 +257,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
             gauge,
         )
         self.assertIn(
-            '<span class="journey-tile-score"><span data-count-up>12</span> '
-            "<small>分</small></span>",
+            '<span class="journey-tile-score"><span>12</span> <small>分</small></span>',
             gauge,
         )
         self.assertIn(

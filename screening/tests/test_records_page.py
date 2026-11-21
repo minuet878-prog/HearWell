@@ -93,7 +93,7 @@ class RecordsPageTests(TestCase):
         block = re.search(
             r'records-score">(.*?)<div class="result-since-last"', self.records(), re.S
         )
-        self.assertIn('<span class="result-number" data-count-up>12</span> 分', block.group(1))
+        self.assertIn('<span class="result-number">12</span> 分', block.group(1))
         self.assertIn(
             '<p class="result-level-short" aria-hidden="true">輕到中度</p>', block.group(1)
         )
