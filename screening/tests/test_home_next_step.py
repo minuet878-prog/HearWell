@@ -34,8 +34,8 @@ PAYOUT = "因為：驗證做完了，接下來看補助什麼時候發、怎麼�
 
 # A result page's 建議您下一步 (#461): title, button link and text.
 RESULT_NEXT_STEP = re.compile(
-    r'<h2 class="result-next-title">([^<]*)</h2>\s*'
-    r'<a class="btn btn-primary btn-lg w-full" href="([^"]*)">([^<]*)</a>',
+    r'<h2 class="hero-card-title">([^<]*)</h2>\s*'
+    r'<a class="btn btn-hero btn-lg" href="([^"]*)">([^<]*)</a>',
 )
 
 
@@ -102,7 +102,7 @@ class EveryStopNextStepTests(TestCase):
             with self.subTest(stop=stop), self.at(stop):
                 content = self.client.get(reverse("index")).content.decode()
                 self.assertIn(
-                    f'<p class="journey-card-because">{because.removeprefix("因為：")}</p>',
+                    f"<p>{because.removeprefix('因為：')}</p>",
                     content,
                 )
 

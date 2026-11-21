@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block title %}比較聽力圖｜聽伴{% endblock %}
 
@@ -12,7 +12,7 @@
 {% endblock %}
 
 {% block body %}
-<h1 class="h3 mt-4">比較聽力圖</h1>
+{% include "screening/bird_dialogue.html" with lead="audiogram_compare"|page_lead title="比較聽力圖" %}
 {% if audiograms|length < 2 %}
 <p>要有兩張聽力圖才能比較。</p>
 {% else %}

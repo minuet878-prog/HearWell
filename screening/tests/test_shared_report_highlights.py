@@ -256,7 +256,7 @@ class SharedReportHighlightsTests(TestCase):
         for card_id in ("family-highlights", "family-help"):
             with self.subTest(card=card_id):
                 self.assertRegex(content, rf'<section id="{card_id}" class="[^"]*\bno-print\b')
-        self.assertIn('<h1 class="h3 mt-2">聽伴聽力報告</h1>', content)
+        self.assertIn('<h1 class="bird-title">聽伴聽力報告</h1>', content)
         self.assertRegex(content, r'<p class="font-bold[^"]*">這是家人分享給您的報告，連結有效到 ')
 
     def test_expired_or_cancelled_links_still_show_nothing(self):

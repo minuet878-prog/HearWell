@@ -119,7 +119,7 @@ class Form9ChapterTests(TestCase):
         with self.assertNumQueries(0):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, '<h1 class="h3 mt-4">九號表：申請助聽器補助</h1>')
+        self.assertContains(response, '<h1 class="bird-title">九號表：申請助聽器補助</h1>')
         text = test_guide.article_text(response)
         positions = [text.index(s) for s in FORM_9]
         self.assertEqual(positions, sorted(positions))

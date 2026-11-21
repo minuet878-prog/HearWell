@@ -1,15 +1,14 @@
 {% extends "screening/layout.html" %}
+{% load custom_filters %}
 
 {% block title %}已取消 email 重測提醒｜聽伴{% endblock %}
 
 {% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
 
 {% block body %}
-{# #662 (spec #656 acceptance 33, 36), the #657 mockup's 已取消頁 in the feedback page's green box. The same after cancelling again. #}
+{# #662 (spec #656 acceptance 33, 36), the #657 mockup's 已取消頁, its title in the bird's bubble since #749 (ADR 0076). The same after cancelling again. #}
 <div class="narrow-form">
-    <div class="guest-saved">
-        <h1 class="guest-saved-title"><span aria-hidden="true">✓ </span>已取消</h1>
-    </div>
+    {% include "screening/bird_dialogue.html" with lead="reminder_cancelled"|page_lead title="已取消" %}
     {# The owner's words after cancelling, settled on 2026-11-17 (#658). #}
     <p>之後不會再寄重測提醒信給這個帳號。想再收到，可以登入後到帳號設定打開。</p>
     <a class="btn btn-outline-primary btn-lg w-full" href="{% url 'index' %}">回首頁</a>

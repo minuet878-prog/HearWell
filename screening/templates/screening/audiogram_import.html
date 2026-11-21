@@ -1,7 +1,8 @@
 {% extends "screening/layout.html" %}
+{% load custom_filters %}
 {% block title %}從 iPhone 匯入｜聽伴{% endblock %}
 {% block body %}
-<h1 class="h3 mt-4">從 iPhone 匯入</h1>
+{% include "screening/bird_dialogue.html" with lead="audiogram_import"|page_lead title="從 iPhone 匯入" %}
 {# Spec #702 (#703 mockup 4A): what could not be read goes first, with the file again below it. #}
 {% if too_many %}
 <div class="alert alert-warning" role="alert">試太多次了，請一小時後再試</div>

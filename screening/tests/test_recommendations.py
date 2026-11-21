@@ -152,7 +152,7 @@ class ConcernWizardTests(TestCase):
         recommended = self.by_code[code]
         self.assertEqual(page.context["recommended"], recommended)
         main = page.content.decode()
-        self.assertIn('<h1 class="h3 mt-2">推薦您做這一份</h1>', main)
+        self.assertIn('<h1 class="bird-title">推薦您做這一份</h1>', main)
         self.assertIn(f"{recommended.definition.topic}<span", main)
         self.assertIn(f">{recommended}</span>", main)
         self.assertIn(f'<p class="recommended-why"><strong>為什麼推薦：</strong>{why}</p>', main)
@@ -419,7 +419,7 @@ class ConcernWizardTests(TestCase):
     def test_choose_yourself_lists_every_questionnaire(self):
         self.login_age(None)
         page = self.wizard(choose="self")
-        self.assertContains(page, '<h1 class="h3 mt-2">選問卷</h1>', html=False)
+        self.assertContains(page, '<h1 class="bird-title">選問卷</h1>', html=False)
         self.assertNotContains(page, 'name="concern"')
         self.assert_catalog(page.content.decode())
 
@@ -707,7 +707,7 @@ class RecommendedQuestionnaireTests(TestCase):
         # The 推薦您做這一份 block, or None without one.
         page = page or self.client.get(reverse("questionnaire_list"))
         block = re.search(
-            r'<section aria-labelledby="catalogue-recommended"[^>]*>(.*?)</section>',
+            r'<section [^>]*aria-labelledby="catalogue-recommended"[^>]*>(.*?)</section>',
             page.content.decode(),
             re.S,
         )
@@ -716,7 +716,7 @@ class RecommendedQuestionnaireTests(TestCase):
     def starts(self, block):
         # The block's 開始作答 links, or with two (#463) its rows, in order.
         return re.findall(
-            r'<a class="(?:btn btn-primary btn-lg|link-card questionnaire-card)" href="([^"]+)">',
+            r'<a class="(?:btn btn-hero btn-lg|link-card questionnaire-card)" href="([^"]+)">',
             block,
         )
 
@@ -737,7 +737,7 @@ class RecommendedQuestionnaireTests(TestCase):
         # On top: the whole block comes before the first card.
         main = page.content.decode()
         card = '<a class="link-card questionnaire-card"'
-        section = main.index('<section aria-labelledby="catalogue-recommended"')
+        section = main.index('aria-labelledby="catalogue-recommended"')
         self.assertLess(main.index("</section>", section), main.index(card))
         # Still in the catalogue below, all six cards.
         cards = re.findall(rf'{card} href="(/questionnaire/[^"]+)">', main)

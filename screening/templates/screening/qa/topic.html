@@ -1,11 +1,12 @@
 {% extends "screening/layout.html" %}
+{% load custom_filters %}
 
 {% block title %}{{ name }}｜問答小助手｜聽伴{% endblock %}
 
 {% block body %}
 {# #398 (spec #396, prototype #373): a topic's questions, each on its own answer page. #}
 <p class="mt-2"><a href="{% url 'qa_home' %}"><span aria-hidden="true">‹</span> 回問答小助手</a></p>
-<h1 class="h3 mt-2">{{ name }}</h1>
+{% include "screening/bird_dialogue.html" with lead="qa_topic"|page_lead title=name %}
 <ul class="list-unstyled mb-0">
     {% for faq in faqs %}
     {% include "screening/qa/question_link.html" %}

@@ -926,7 +926,12 @@ class ReassuranceLineTests(TestCase):
         self.client.force_login(self.user)
 
     def head(self, content):
-        return re.search(r'<div id="answer-head">(.*?)</div>', content, re.S).group(1)
+        # Up to the intro: the bird's bubble (#749) has its own divs.
+        return re.search(
+            r'<div id="answer-head">(.*?)</div>\s*<div id="answer-intro">',
+            content,
+            re.S,
+        ).group(1)
 
     def test_every_questionnaire_says_it_under_the_count(self):
         for code in self.CODES:

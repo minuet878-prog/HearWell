@@ -65,7 +65,9 @@ class ResultPagesTests(TestCase):
             with self.subTest(code=code):
                 main = self._main(code)
                 day = timezone.localtime(self.submissions[code].created_at).strftime("%Y/%m/%d")
-                header = re.search(r"<h1[^>]*>(.*?)</h1>\s*<p[^>]*>(.*?)</p>", main, re.S)
+                header = re.search(
+                    r"<h1[^>]*>(.*?)</h1>\s*</div>\s*</div>\s*<p[^>]*>(.*?)</p>", main, re.S
+                )
                 self.assertEqual(self._text(header.group(1)), topic)
                 # IOI-HA and SADL are always answered wearing hearing aids: not said again.
                 wearing = "" if code in ALWAYS_AIDED else "・沒戴助聽器"

@@ -41,7 +41,7 @@ class ThiSupportResultTests(test_thi.ThiTestCase):
         self.assertLess(banner_end, support)
         self.assertIn('<div class="score-bar"', test_result_score_bar.result_box(main))
         self.assertLess(main.index('<div class="score-bar"'), support)
-        self.assertLess(support, main.index('<div class="result-next">'))
+        self.assertLess(support, main.index('<section class="hero-card">'))
 
     def test_item_11_or_item_23_alone_often_shows_the_support_message(self):
         for number in (11, 23):

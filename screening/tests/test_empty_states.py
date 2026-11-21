@@ -72,9 +72,7 @@ class EmptyStateTestCase(TestCase):
     def home_step_one(self):
         """The address of the home page's 去做問卷, on its journey card."""
         main = self.main(reverse("index"))
-        found = re.search(
-            r'<a class="btn btn-primary btn-lg w-full" href="([^"]*)">去做問卷</a>', main
-        )
+        found = re.search(r'<a class="btn btn-hero btn-lg" href="([^"]*)">去做問卷</a>', main)
         self.assertIsNotNone(found)
         return found.group(1)
 

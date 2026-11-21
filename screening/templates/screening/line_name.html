@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block title %}幫帳號取個名字｜聽伴{% endblock %}
 
@@ -12,7 +12,7 @@
 {% block body %}
 {# Spec #506 acceptance 5-8 (the #539 mockup 4, W4-W6): Google's name page without the email row; LINE gives no email, so an optional email field under the birth year. No account until 下一步. #}
 <div class="narrow-form">
-    <h1 class="h3 mt-4">幫帳號取個名字</h1>
+    {% include "screening/bird_dialogue.html" with lead="sign_in_name"|page_lead title="幫帳號取個名字" %}
     {% include "screening/step_progress.html" with step=1 total=2 label="建立帳號" %}
     <div class="auth-form">
         <form class="register-form" method="post" action="{% url 'line_name' %}">

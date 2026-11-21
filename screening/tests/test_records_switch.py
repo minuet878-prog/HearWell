@@ -51,7 +51,9 @@ class RecordsSwitchTests(TestCase):
 
     def _heading_then_switch(self, main):
         """The h1's text, if the switch comes right after it."""
-        match = re.search(r"<h1[^>]*>([^<]*)</h1>\s*<nav[^>]*aria-label=\"紀錄種類\"", main)
+        match = re.search(
+            r"<h1[^>]*>([^<]*)</h1>\s*</div>\s*</div>\s*<nav[^>]*aria-label=\"紀錄種類\"", main
+        )
         return None if match is None else match.group(1)
 
     def test_my_hearing_shows_the_switch_under_its_heading_with_questionnaires_current(self):

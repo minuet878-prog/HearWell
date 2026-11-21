@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block title %}帳號設定｜聽伴{% endblock %}
 
@@ -11,7 +11,7 @@
 {# Spec phase9_ui_refresh_3_structure.md 4.1: look only; deleting comes last, set apart. #}
 {# #195 (spec #183 stories 62-70): groups of rows; only the rows that go somewhere are links. #}
 {# #303 (#298's pick, ADR 0022): the details are flat rows; each link row is a white card. #}
-<h1 class="h3 mt-4">帳號設定</h1>
+{% include "screening/bird_dialogue.html" with lead="account_settings"|page_lead:user.username title="帳號設定" %}
 
 <section class="mt-6" aria-labelledby="account-title">
     <h2 id="account-title" class="h4">我的帳號</h2>

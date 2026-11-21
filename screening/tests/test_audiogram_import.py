@@ -272,7 +272,8 @@ class ImportEntryTests(TestCase):
         content = self.client.get(reverse("index")).content.decode()
         card = content[content.index('class="journey-card"') :]
         button = self._after_record(card, reverse("audiogram_new") + "?next=/")
-        self.assertIn("btn-outline-primary", button)
+        # #749: framed in white on the blue hero card.
+        self.assertIn("btn-hero-outline", button)
         self.assertLess(card.index("從 iPhone 匯入"), card.index("還沒，看要去哪裡檢查"))
 
 

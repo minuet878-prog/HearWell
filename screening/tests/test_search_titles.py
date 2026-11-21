@@ -89,7 +89,9 @@ class PageHeadingTests(TestCase):
 
     def test_the_big_headings_are_the_ones_before(self):
         headings = {
-            "/": "聽伴",  # spec #655 (#673): the visitor's home is two doors, its heading hidden
+            # Spec #655 (#673): the visitor's home is two doors; #749 (the canvas's ProGuest)
+            # put its heading in the bird's bubble.
+            "/": "聽力變化常常容易被忽略",
             "/learn": "了解",
             "/learn/simulator": "聽損模擬",
             "/privacy": "隱私權說明",

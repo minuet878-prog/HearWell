@@ -296,7 +296,7 @@ class ChapterQuestionTests(TestCase):
         data = {"stop": "assessment", "certificate": "maybe", "next": CHAPTER_CARD}
         response = self.client.post(reverse("route_answer"), data)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, '<h1 class="h3 mt-4">身障鑑定與鑑定醫院</h1>')
+        self.assertContains(response, '<h1 class="bird-title">身障鑑定與鑑定醫院</h1>')
         self.assertContains(response, 'class="text-danger field-error')
         self.assertContains(
             response, 'aria-describedby="id_certificate_helptext id_certificate_error"'
@@ -984,7 +984,7 @@ class FittingChapterTests(TestCase):
         }
         response = self.client.post(reverse("route_answer"), data)
         self.assertContains(response, "開始配戴日期不能是未來")
-        self.assertContains(response, '<h1 class="h3 mt-4">配戴助聽器之後</h1>')
+        self.assertContains(response, '<h1 class="bird-title">配戴助聽器之後</h1>')
 
 
 class Form25RouteTests(TestCase):

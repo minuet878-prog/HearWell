@@ -3,6 +3,7 @@ from django.utils.safestring import mark_safe
 
 from screening.audiogram import degree_level as get_degree_level
 from screening.middleware import OPEN_PAGES
+from screening.page_leads import page_lead
 
 register = template.Library()
 
@@ -51,3 +52,9 @@ def asks_about_guest_results(url_name):
     # adding or removing a sign-in method or deleting the account, which taken away there was
     # lost (#506 acceptance); the question waits for the page the step ends on.
     return url_name == "index" or url_name not in OPEN_PAGES | {"guest_save", "confirm_identity"}
+
+
+@register.filter(name="page_lead")
+def page_lead_filter(key, name=""):
+    # bird_dialogue.html's lead (ADR 0076): "login"|page_lead, or with the account's name.
+    return page_lead(key, name)

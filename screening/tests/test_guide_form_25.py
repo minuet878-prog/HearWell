@@ -81,7 +81,7 @@ class Form25ChapterTests(TestCase):
         with self.assertNumQueries(1):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, '<h1 class="h3 mt-4">二十五號表：使用效益驗證</h1>')
+        self.assertContains(response, '<h1 class="bird-title">二十五號表：使用效益驗證</h1>')
         text = test_guide.article_text(response)
         # Each found after the one before: the question title holds 誰要做 and 什麼時候 too.
         at = 0
@@ -168,7 +168,7 @@ class AfterFittingChapterTests(TestCase):
     def test_logged_out_visitor_reads_that_getting_used_to_it_takes_time(self):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, '<h1 class="h3 mt-4">配戴助聽器之後</h1>')
+        self.assertContains(response, '<h1 class="bird-title">配戴助聽器之後</h1>')
         text = inline_text(response)
         positions = [text.index(sentence) for sentence in AFTER_FITTING]
         self.assertEqual(positions, sorted(positions))

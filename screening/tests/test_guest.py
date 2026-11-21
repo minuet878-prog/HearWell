@@ -346,7 +346,7 @@ class GuestResultPageTests(GuestTestCase):
                 self.assertEqual(response.status_code, 200)
                 self.assertIn("no-store", response["Cache-Control"])
                 self.assertContains(
-                    response, f'<h1 class="h3 mt-2 mb-1">{questionnaire.definition.topic}</h1>'
+                    response, f'<h1 class="bird-title">{questionnaire.definition.topic}</h1>'
                 )
                 self.assertContains(response, f'data-code="{questionnaire.code}"')
                 self.assertContains(response, f'data-score-url="{GUEST_SCORE}"')

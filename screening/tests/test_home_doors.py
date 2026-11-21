@@ -66,8 +66,9 @@ class SignedOutDoorsTests(TestCase):
                 # Searched from the doors on: the page's description in its head says the last.
                 self.assertIn(kept, self.content[last_door:])
 
-    def test_the_page_still_has_a_heading_for_screen_readers(self):
-        self.assertRegex(self.content, r'<h1 class="visually-hidden">聽伴</h1>')
+    def test_the_page_has_its_heading_in_the_bird_s_bubble(self):
+        # #749 (the canvas's ProGuest): seen now, no longer for screen readers only.
+        self.assertIn('<h1 class="bird-title">聽力變化常常容易被忽略</h1>', self.content)
 
     def test_the_door_presses_are_counted_by_the_page(self):
         # Acceptance 23: the page sends the press; the doors stay plain links without it.
