@@ -185,6 +185,7 @@ class OnlyTheCountsTests(GuestCountTestCase):
                 "door_self",
                 "door_family",
                 "send_opened",
+                "door_aids",  # spec #741 (#752, grill P15): the third door
             },
         )
 
@@ -211,7 +212,7 @@ class OnlyTheCountsTests(GuestCountTestCase):
         self.assertEqual(months, ["2026/11", "2026/10"])
         headings = ("月份", "訪客完成", "保存（帳號密碼）", "保存（Google）", "保存（LINE）")
         cards = ("小卡：長輩卡", "小卡：家屬卡")
-        doors = ("門：了解自己", "門：擔心家人", "從傳給他打開")
+        doors = ("門：了解自己", "門：擔心家人", "從傳給他打開", "門：想了解助聽器")
         for heading in (*headings, *cards, "寄出提醒信", *doors):
             with self.subTest(heading=heading):
                 self.assertIn(heading, page)
@@ -230,6 +231,7 @@ class OnlyTheCountsTests(GuestCountTestCase):
                 ("door_self", "0"),
                 ("door_family", "0"),
                 ("send_opened", "0"),
+                ("door_aids", "0"),
             ],
         )
 
