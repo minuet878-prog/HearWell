@@ -4,11 +4,11 @@
     {% if gauge %}
     <div class="result-gauge-row">
         {% include "screening/semicircle_gauge.html" %}
-        {# Read: the score with the full score, then the level's full name. On screen: the score beside the gauge, whose end says the full score, and the level's short name large (page grill P11). #}
+        {# Read: the score with the full score, then the level's full name. On screen: the score in the gauge's bowl, whose end says the full score, and the level's short name large (page grill P11). #}
         <div class="result-gauge-words">
             <p id="result-score" class="visually-hidden">總分 <span class="result-number">{{ result.total }}</span> 分{% if max_score is not None %}（滿分 {{ max_score }}）{% endif %}</p>
-            {# Its words apart, spaced by the stylesheet: on a page the one 「總分 N 分」 is the read one. #}
-            <p class="result-score gauge-score-line" aria-hidden="true"><span>總分</span><span class="gauge-score">{{ result.total }}</span><span>分</span></p>
+            {# Its words apart, spaced by the stylesheet: on a page the one 「總分 N 分」 is the read one. The score and 分 alone, as the canvas's, to fit the gauge's bowl (the owner, 2026-11-21: 置中). #}
+            <p class="result-score gauge-score-line" aria-hidden="true"><span class="gauge-score">{{ result.total }}</span><span>分</span></p>
             <p class="result-level-short" aria-hidden="true">{{ result.level.short }}</p>
             <h2 class="result-block-level visually-hidden" aria-describedby="result-score">{{ result.level.text }}</h2>
         </div>

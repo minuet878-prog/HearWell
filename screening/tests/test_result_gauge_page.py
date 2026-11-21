@@ -82,9 +82,10 @@ class ResultGaugePageTests(TestCase):
             ],
         )
         self.assertIn('pathLength="1"', block)
-        # The ends of the scale, and the score beside it, not counted up (ADR 0077, 2026-11-21).
+        # The ends of the scale, and the score in its bowl, not counted up (ADR 0077, 2026-11-21).
         self.assertIn('<span class="gauge-end">0</span><span class="gauge-end">40</span>', block)
-        shown = '<span>總分</span><span class="gauge-score">12</span><span>分</span>'
+        shown = '<p class="result-score gauge-score-line" aria-hidden="true">'
+        shown += '<span class="gauge-score">12</span><span>分</span></p>'
         self.assertIn(shown, block)
         self.assertIn('<p class="result-level-short" aria-hidden="true">輕到中度</p>', block)
         # Read in its place: the score out of the full score, then the level.

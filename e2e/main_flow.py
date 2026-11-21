@@ -14109,7 +14109,7 @@ class PickExplainBackTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
 class ResultPagesT461Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """#461 (spec #453, the #460 mockup R1): on a phone the first screen is the level block with
     the line against last time and the 建議下一步's one solid button; since #750 (canvas
-    ProResult) the block holds the gauge, the score beside it and the two bars, with no sentence
+    ProResult) the block holds the gauge, the score in its bowl and the two bars, with no sentence
     under it. The rest is folded in the rows, and every result page fits a phone at 200% text."""
 
     fixtures = ("questions_fixture.json",)
@@ -14147,7 +14147,7 @@ class ResultPagesT461Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             expect(banner.locator(".result-since-last p")).to_have_text(
                 ["比上次少 4 分", "上次 2026/03/26 是 18 分"]
             )
-            # 48px for the number on screen (2.6667rem; #750: beside the gauge, the read one
+            # 48px for the number on screen (2.6667rem; #750: in the gauge, the read one
             # hidden), at least the body size for every other word.
             self.assertAlmostEqual(self.font_size(banner.locator(".gauge-score")), 48, delta=0.1)
             for words in (
@@ -14177,6 +14177,47 @@ class ResultPagesT461Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
                 self.assertGreaterEqual(summary.bounding_box()["height"], 44)
                 summary.click()
             expect(self.page.locator(".gauge")).to_have_count(1)
+
+    def test_the_score_block_is_centred(self):
+        # The owner (2026-11-21, 黃色卡片用置中): the gauge in the middle, the score inside its
+        # bowl, the level under it, the tag against last time in the middle; the bars full width.
+        # At 200% text the bowl has no room: the score goes under the gauge, still centred.
+        for code, earlier, now in (
+            ("hhie-s", [4, 4, 4, 4, 2] + [0] * 5, [4, 4, 4, 2] + [0] * 6),
+            ("thi", [4] * 25, [4] * 24 + [0]),
+        ):
+            self.record(code, earlier, (2026, 3, 26), wearing_hearing_aid=False)
+            latest = self.record(code, now, wearing_hearing_aid=False)
+            for width, double in ((390, False), (320, False), (320, True)):
+                with self.subTest(code=code, width=width, double=double), self.saving_artifacts():
+                    self.open(f"/submission/{latest.pk}", (width, 844))
+                    if double:
+                        self.double_text()
+                    banner = self.main().locator(".result-banner")
+                    inside = banner.evaluate(
+                        "e => { const r = e.getBoundingClientRect(), s = getComputedStyle(e);"
+                        " return [r.left + parseFloat(s.paddingLeft),"
+                        " r.right - parseFloat(s.paddingRight)]; }"
+                    )
+                    middle = (inside[0] + inside[1]) / 2
+                    gauge = banner.locator(".gauge").bounding_box()
+                    score = banner.locator(".gauge-score-line").bounding_box()
+                    level = banner.locator(".result-level-short").bounding_box()
+                    tag = banner.locator(".change-label").bounding_box()
+                    bars = banner.locator(".result-bars").bounding_box()
+                    for box in (gauge, score, level, tag):
+                        self.assertAlmostEqual(box["x"] + box["width"] / 2, middle, delta=1)
+                    gauge_bottom = gauge["y"] + gauge["height"]
+                    if double:
+                        self.assertGreaterEqual(score["y"], gauge_bottom - 0.5)
+                    else:
+                        self.assertGreaterEqual(score["y"], gauge["y"])
+                        self.assertLessEqual(score["y"] + score["height"], gauge_bottom)
+                    self.assertGreaterEqual(
+                        level["y"], max(score["y"] + score["height"], gauge_bottom) - 0.5
+                    )
+                    self.assertAlmostEqual(bars["width"], inside[1] - inside[0], delta=1)
+                    self.assert_fits_a_phone_at_double_text_size(code, width)
 
     def test_every_result_page_fits_a_phone_at_double_text_size(self):
         basis = None

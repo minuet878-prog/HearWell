@@ -5128,7 +5128,7 @@
     line-height: 1.4;
   }
 
-  /* Beside the gauge: the score as large as ever, the level's short name large (P11). */
+  /* With the gauge: the score as large as ever, the level's short name large (P11). */
   .gauge-score-line {
     display: flex;
     flex-wrap: wrap;
@@ -5149,10 +5149,9 @@
     line-height: 1.3;
   }
 
-  /* #750 (spec #741 acceptance 48, canvas ProResult): the gauge and, beside it, the score and the
-     level in words; the words go under the gauge where the two would not fit side by side. Kept
-     tight so the 建議下一步's button stays on a phone's first screen (the owner's pick A,
-     2026-11-16). */
+  /* #750 (spec #741 acceptance 48, canvas ProResult): the gauge and the score and the level in
+     words. Kept tight so the 建議下一步's button stays on a phone's first screen (the owner's pick
+     A, 2026-11-16). */
   /* Its corners stay a 提示框's (ADR 0043 P3). */
   .result-banner:has(> .result-gauge-row) {
     padding: 0.625rem 1rem;
@@ -5163,20 +5162,43 @@
     color: inherit;
   }
 
+  /* The owner (2026-11-21, 黃色卡片用置中): all of it in the middle, the gauge, under it the score
+     and the level's short name, then the tag against last time and a changed level; the bars
+     stay full width, their names left and their scores right. */
   .result-gauge-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.25rem 1rem;
+    container-type: inline-size;
+    text-align: center;
   }
 
   .result-gauge-row > .gauge {
-    flex: 1 1 8.5rem;
-    max-width: 12rem;
+    width: 12rem;
+    max-width: 100%;
+    margin-inline: auto;
   }
 
-  .result-gauge-words {
-    flex: 1 1 8rem;
+  .result-gauge-row .gauge-score-line {
+    justify-content: center;
+  }
+
+  .result-banner:has(> .result-gauge-row) .result-since-last {
+    text-align: center;
+  }
+
+  .result-banner:has(> .result-gauge-row) .result-bars {
+    text-align: start;
+  }
+
+  /* Where the gauge has its full 12rem, the score sits inside its bowl, as the canvas's: its line
+     pulled up over the gauge to stop above the scale's ends (1.2rem, .gauge-ends), and the level
+     under the gauge. At 200% text the bowl is too small for it: the score goes under the gauge. */
+  @container (min-width: 12rem) {
+    .result-gauge-row .gauge-score-line {
+      margin-top: -4rem;
+    }
+
+    .result-gauge-row .result-level-short {
+      margin-top: 1.2rem;
+    }
   }
 
   /* The green line on top of a saved record's result page: just done (ADR 0028's green). */
