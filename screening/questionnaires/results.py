@@ -388,10 +388,14 @@ class NormResult(Result):
             number = answer.question.question_number
             change = (answer.score > before[number]) - (answer.score < before[number])
             items.append({"name": IOI_HA_ITEM_NAMES[number], "change": IOI_HA_ITEM_CHANGE[change]})
-        difference = submission.total_answer_score - previous.total_answer_score
+        # Both totals, the sum of the 7 answers, for this comparison only: IOI-HA's result has
+        # no total of its own (read item by item against the norms).
+        total, previous_total = submission.total_answer_score, previous.total_answer_score
         return {
             "previous": previous,
-            "text": ioi_ha_since_last_text(difference),
+            "previous_total": previous_total,
+            "total": total,
+            "text": ioi_ha_since_last_text(total - previous_total),
             "items": items,
         }
 
