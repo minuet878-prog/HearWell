@@ -133,7 +133,9 @@ class SectionTests(ResultFromAnswersTestCase):
         self.assertRegex(html, r'(?s)>情緒</span>.*?"score-impact-points">12 分')
         self.assertRegex(html, r'(?s)>社交</span>.*?"score-impact-points">4 分')
         self.assertIn("助聽器：沒戴", html)
-        self.assertIn(hhie_s.ADVICE["mild_to_moderate"], html)
+        # Step 1, and since the owner's acceptance (2026-11-21) not the whole advice.
+        self.assertIn(hhie_s.NEXT_STEPS["mild_to_moderate"][0]["text"], html)
+        self.assertNotIn(hhie_s.ADVICE["mild_to_moderate"], html)
         questionnaire = Questionnaire.objects.get(code=hhie_s.CODE)
         questions = questionnaire.questions.order_by("question_number")
         labels = dict(hhie_s.CHOICES)

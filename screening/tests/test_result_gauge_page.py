@@ -138,17 +138,20 @@ class ResultGaugePageTests(TestCase):
         # The 重測提醒 comes under the rows (P16), the card just above them.
         self.assertLess(main.index('<div class="result-list">'), main.index("result-reminder"))
 
-    def test_a_row_opens_on_the_answers_and_how_the_score_is_counted_keeps_every_word(self):
+    def test_a_row_opens_on_the_answers_and_how_the_score_is_counted_keeps_step_one(self):
         main = self.main(self.record(hhie_s.CODE, [4, 4, 2, 2] + [0] * 6, (2026, 11, 12)))
         (answers,) = re.findall(r'<details class="result-details">(.*?)</details>', main, re.S)
         self.assertIn("看每一題的回答", answers)
         self.assertIn("助聽器：沒戴", text(answers))
-        # 這個分數怎麼算, open since 2026-11-21: what the fold held is still there.
+        # 這個分數怎麼算, open since 2026-11-21: what the fold held, but for 看完整建議 (gone since
+        # the owner's acceptance that day): step 1 only.
         counted = main[main.index('<section class="score-explain"') :]
         counted = text(counted[: counted.index("</section>")])
         self.assertIn("每一題的分數加起來就是總分", counted)
         # The levels by their full names, with their ranges, from the thresholds (看各級的分數).
         for line in ("0–8 分：無／極輕微影響", "9–24 分：輕度到中度影響", "25–40 分：顯著影響"):
             self.assertIn(line, counted)
-        for step in hhie_s.NEXT_STEPS["mild_to_moderate"]:
-            self.assertIn(step["text"], counted)
+        first, *rest = hhie_s.NEXT_STEPS["mild_to_moderate"]
+        self.assertIn(first["text"], counted)
+        for step in rest:
+            self.assertNotIn(step["text"], main)

@@ -51,8 +51,8 @@ class ThiSupportResultTests(test_thi.ThiTestCase):
         main = self._main(scores)
         self.assertIn('aria-describedby="result-score">極重度障礙</h2>', main)
         self.assertNotIn(SUPPORT, main)
-        # The catastrophic advice and steps still give the 1925 line.
-        self.assertIn(test_thi.LINE_1925, main.split("完整建議", 1)[1])
+        # The catastrophic advice and steps gave the 1925 line here until the owner's acceptance
+        # of spec #741 (2026-11-21) took 看完整建議 off result pages.
 
 
 class ThiSupportOnlyOnResultTests(test_thi.ThiTestCase):
