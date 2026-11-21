@@ -8668,6 +8668,15 @@
     text-align: center;
   }
 
+  /* The owner (2026-11-21): the simulator's wave was too big beside its words; on these cards
+     it is as tall as the other drawings (.hero-art), centred. */
+  .learn-card .hero-wave {
+    width: auto;
+    max-width: 100%;
+    height: 2.6667rem;
+    margin-inline: auto;
+  }
+
   .hero-card .recommended-audience {
     color: #fff;
   }
