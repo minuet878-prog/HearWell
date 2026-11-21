@@ -691,6 +691,10 @@ class ReviewedPagesTests(SimpleTestCase):
                 # #749 (ADR 0076): the title in the bird's bubble, the same words.
                 "{% load custom_filters %}",
                 '{% include "screening/bird_dialogue.html" with lead="privacy"',
+                # Spec #741's 實作中本人補充: 看過哪些選配指引頁面, my guide's page and step 2's
+                # 查詢醫療院所 kept as views too (the version stays 9); the owner reviews it at
+                # acceptance.
+                "以及您看過哪些選配指引頁面。",
             ),
             # #471 (the #470 mockup B) folded each part into a row and dropped the 這一頁的段落
             # list; the visible words are the same as main's apart from that list's title.
@@ -699,8 +703,9 @@ class ReviewedPagesTests(SimpleTestCase):
             # the health data line change: the page hashes the same on main and after it
             # without that line.
             # Spec #733 added the tags of the 整體統計 row. #749 took the title's line out (it is
-            # in the allowed lines, the bird's).
-            "6c158d3728edf69e468ac012272b2dabd7b013e5e489f2948f1ac14dd2df51d2",
+            # in the allowed lines, the bird's). Spec #741's 實作中本人補充 took the 看過 line out:
+            # without it the page hashes the same before and after the new words.
+            "eb5bb9b7695a206657aea29c276f626e81461a5ab758d0178e21ab91cd06b6ca",
         ),
     )
 
