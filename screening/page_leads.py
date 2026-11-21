@@ -8,6 +8,7 @@ A lead with {name} takes the account's name.
 
 LEADS = {
     # 首頁
+    "index": "今天也陪您照顧聽力。",
     "index_guest": "您好，歡迎來到聽伴。",
     "index_empty": "歡迎來到聽伴。",
     # 問卷

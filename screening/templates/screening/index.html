@@ -15,9 +15,8 @@
 {% if continue_notice %}<div id="continue-notice"></div>{% endif %}
 {% if journey %}
 {# #459 (ADR 0044, mockup #458): the 照顧旅程, its 現在這一步 the one thing to do today. #}
-{# #749 (ADR 0076): the greeting is the bird's lead, the rest of the old title the page's title; something to press, a button or an entry card (#744), is a thing to do today. #}
-{% capture bird_lead %}{{ greeting }}，{% endcapture %}
-{% include "screening/bird_dialogue.html" with lead=bird_lead title=journey.card.has_action|yesno:"今天只要做一件事,今天沒有要做的事" %}
+{# Spec #741 (#751, page grill P12): the bird greets the account by name, its title. #}
+{% include "screening/bird_dialogue.html" with lead="index"|page_lead title=greeting %}
 {# 上次結果 is the latest life-impact record, its whole tile a link in its level's colour (L1); 下次篩檢 is grey, information only. Without a life-impact record both are grey and say not yet (#458 D6). #}
 <div class="journey-tiles">
     {% with submission=journey.last_result %}

@@ -36,11 +36,7 @@ STAMP = '<span class="done-stamp play-once-stamp" data-play-in-view>'
 GUIDE_WORDS = "統整助聽器補助流程供您參考。"
 NORMAL_WORDS = "您的聽力檢測結果為正常，但若有耳鳴、耳悶等其他症狀，仍建議尋求醫師協助。"
 MILD_WORDS = "您的聽力未達補助資格，但依舊可以考慮配戴助聽器。"
-
-
-def greets(greeting, title):
-    """The bird's lead and the page's title in its bubble (#749)."""
-    return rf'<p class="bird-lead">{greeting}，</p>\s*<h1 class="bird-title">{title}</h1>'
+HOME_LEAD = "今天也陪您照顧聽力。"
 
 
 class HomeJourneyTestCase(TestCase):
@@ -296,7 +292,6 @@ class JourneyHomeTests(HomeJourneyTestCase):
         self.answer(on=date(2026, 9, 12))
         self.make(NORMAL, NORMAL, tested_on=date(2026, 9, 1))
         main = self.main()
-        self.assertRegex(main, greets("早安", "今天沒有要做的事"))
         self.assertEqual(SOLID.findall(main), [])
         self.assertIn(
             '<p class="journey-count"><span class="visually-hidden">進度 </span>6 / 7</p>', main
@@ -314,26 +309,6 @@ class JourneyHomeTests(HomeJourneyTestCase):
             ],
         )
         self.assertEqual(self.opened(main, 3), (f"{NORMAL_WORDS}", []))
-
-    def test_with_something_to_press_there_is_one_thing_to_do_today(self):
-        # An entry card counts, as a button does.
-        self.answer()
-        self.assertRegex(self.main(), greets("早安", "今天只要做一件事"))
-
-    def test_the_greeting_follows_the_time_of_day_in_taiwan(self):
-        # #458 D2: Asia/Taipei, the site's time zone.
-        self.answer()
-        for hour, greeting in (
-            (5, "早安"),
-            (11, "早安"),
-            (12, "午安"),
-            (17, "午安"),
-            (18, "晚安"),
-            (4, "晚安"),
-        ):
-            with self.subTest(hour=hour):
-                self.now = timezone.make_aware(datetime(2026, 11, 12, hour, 30))
-                self.assertRegex(self.main(), greets(greeting, "今天只要做一件事"))
 
     def test_only_hhie_s_the_seven_steps_and_the_hospital_card(self):
         # Spec #741 acceptance 1: the seven steps' names, step 2 the 現在這一步 with only
@@ -623,6 +598,56 @@ class JourneyHomeTests(HomeJourneyTestCase):
             self.answer(code=hhia_s.CODE, on=date(2026, 8, day))
         self.make(PTA_55, PTA_55, tested_on=date(2026, 8, 1))
         self.assertEqual(self.count_queries(), two)
+
+
+class LoggedInHomeTests(HomeJourneyTestCase):
+    """#751 (spec #741 acceptance 40, 41, the canvas's ProHome, page grill P12, P13)."""
+
+    def bubble(self, main):
+        """The bird's (lead, title), as text."""
+        found = re.search(
+            r'<p class="bird-lead">(.*?)</p>\s*<h1 class="bird-title">(.*?)</h1>', main, re.S
+        )
+        return self.text(found[1]), self.text(found[2])
+
+    def test_the_bird_greets_the_account_by_name_at_9_in_taiwan(self):
+        # Acceptance 40: the clock pinned at 9 a.m. Asia/Taipei (TIME_ZONE).
+        self.fresh_user("jason")
+        self.answer()
+        self.assertEqual(self.bubble(self.main()), (HOME_LEAD, "早安，jason"))
+
+    def test_a_name_over_8_characters_leaves_the_greeting_alone(self):
+        for name, title in (
+            ("abcdefgh", "早安，abcdefgh"),
+            ("abcdefghi", "早安"),
+            ("王小明", "早安，王小明"),
+        ):
+            with self.subTest(name=name):
+                self.fresh_user(name)
+                self.answer()
+                self.assertEqual(self.bubble(self.main())[1], title)
+
+    def test_the_greeting_follows_the_time_of_day_in_taiwan(self):
+        # #458 D2: 早安 from 5 to before 12, 午安 to before 18, 晚安 through the night.
+        self.fresh_user("jason")
+        self.answer()
+        for hour, greeting in (
+            (5, "早安"),
+            (11, "早安"),
+            (12, "午安"),
+            (17, "午安"),
+            (18, "晚安"),
+            (4, "晚安"),
+        ):
+            with self.subTest(hour=hour):
+                self.now = timezone.make_aware(datetime(2026, 11, 12, hour, 30))
+                self.assertEqual(self.bubble(self.main())[1], f"{greeting}，jason")
+
+    def test_one_thing_to_do_today_is_gone(self):
+        self.answer()
+        main = self.main()
+        for gone in ("今天只要做一件事", "今天沒有要做的事"):
+            self.assertNotIn(gone, main)
 
 
 class StepInteractionTests(HomeJourneyTestCase):

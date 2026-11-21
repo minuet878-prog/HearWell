@@ -170,11 +170,6 @@ class JourneyCard:
     entries: tuple[Entry, ...] = ()
     countdown: Countdown | None = None
 
-    @property
-    def has_action(self):
-        """Something to press today: its button or an entry card."""
-        return bool(self.button or self.entries)
-
 
 @dataclass(frozen=True)
 class NextScreening:
