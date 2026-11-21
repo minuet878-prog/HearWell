@@ -62,12 +62,6 @@ describe("scrolling past the header", () => {
     setUpSiteHeader(win);
     expect(isScrolled()).toBe(true);
   });
-
-  // Without JavaScript the back link sits beside the name (site.css); this mark moves it over.
-  it("marks the header as taken over", () => {
-    setUpSiteHeader(fakeWindow());
-    expect(header().hasAttribute("data-scroll-swap")).toBe(true);
-  });
 });
 
 describe("the back button", () => {

@@ -14,7 +14,6 @@ function canGoBackInSite(win) {
 export function setUpSiteHeader(win = window) {
   const header = win.document.querySelector(".site-header");
   const back = header.querySelector("[data-site-back]");
-  header.setAttribute("data-scroll-swap", "");
 
   const update = () => header.toggleAttribute("data-scrolled", win.scrollY > header.offsetHeight);
   update();

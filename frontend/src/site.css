@@ -620,11 +620,9 @@
   /* Header: white since the brand refresh, the same as the app's status bar (theme-color, #138).
      #748 (ADR 0079): it stays at the top; scrolled past it (site-header.js marks data-scrolled),
      its white goes and only the frosted ‹ and avatar float over the page, which shows between
-     them and stays clickable there. */
+     them and stays clickable there. Without JavaScript nothing floats, so it scrolls away with
+     the page: kept, its white would take a third of a small phone at 200% text. */
   .site-header {
-    position: sticky;
-    top: 0;
-    z-index: 1020;
     background-color: #fff;
     color: var(--color-primary);
     /* viewport-fit=cover (layout.html) lets the page run under the iPhone's status bar; the
@@ -635,6 +633,22 @@
   .site-header[data-scrolled] {
     background-color: transparent;
     pointer-events: none;
+  }
+
+  /* A jump into the page stops below the header rather than under it: about its height (the
+     56px 登入 and its padding). Only on the jump's target: as the page's scroll-padding it
+     would also count the header's own ‹ as under the header, and focusing or scrolling to it
+     would scroll the page back up and hide it. */
+  @media (scripting: enabled) {
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 1020;
+    }
+
+    :target {
+      scroll-margin-top: calc(env(safe-area-inset-top) + 4.25rem);
+    }
   }
 
   .site-header[data-scrolled] :is(.site-back, .site-avatar, .site-login) {
@@ -675,8 +689,8 @@
     padding-block: 0.5rem;
   }
 
-  /* Without JavaScript the ‹ is a link home beside the name; site-header.js marks the header
-     data-scroll-swap, and from then on the ‹ sits over the name, shown only once scrolled. */
+  /* Without JavaScript the ‹ is a link home beside the name. With it, the ‹ sits over the name
+     from the first paint, shown only once site-header.js marks the header scrolled. */
   .site-header-start {
     position: relative;
     display: flex;
@@ -685,14 +699,20 @@
     min-width: 0;
   }
 
-  .site-header[data-scroll-swap] .site-back {
-    position: absolute;
-    top: 50%;
-    left: 0;
-    translate: 0 -50%;
+  @media (scripting: enabled) {
+    .site-back {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      translate: 0 -50%;
+    }
+
+    .site-header:not([data-scrolled]) .site-back {
+      opacity: 0;
+      visibility: hidden;
+    }
   }
 
-  .site-header[data-scroll-swap]:not([data-scrolled]) .site-back,
   .site-header[data-scrolled] .site-brand {
     opacity: 0;
     visibility: hidden;
@@ -737,10 +757,9 @@
     background-color: var(--color-brand-soft-deep);
   }
 
+  /* A site button as any (#453 acceptance 32, ADR 0043 S1): 56px tall, a rounded square. */
   .site-login {
     flex: none;
-    min-height: var(--spacing-touch);
-    border-radius: var(--radius-pill);
   }
 
   /* Scrolled: frosted glass as the tab bar (ADR 0045, 0079), 88% white, solid where the browser
