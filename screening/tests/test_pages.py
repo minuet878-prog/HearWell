@@ -208,7 +208,7 @@ class HeaderBrandTests(TestCase):
                 self.client.force_login(consented_user(username="brandtester"))
             with self.subTest(logged_in=logged_in):
                 brand = self._brand(self.client.get(reverse("index")).content.decode())
-                self.assertRegex(brand, r'<span class="site-logo" aria-hidden="true"></span>')
+                self.assertNotIn("site-logo", brand)  # spec #741: the bird is the dialogue's
                 self.assertEqual(re.sub(r"<[^>]+>|\s", "", brand), "聽伴")
                 self.assertIn('<span class="site-wordmark-tint">伴</span>', brand)
 

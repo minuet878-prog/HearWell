@@ -41,10 +41,12 @@ class SignedInHeaderTests(TestCase):
         self.assertNotIn("登出", top)
         self.assertNotIn("site-wave", content)
 
-    def test_header_keeps_the_bird_and_the_name(self):
+    def test_header_keeps_the_name_without_the_bird(self):
+        # The owner (2026-11-21, at acceptance): the bird is the dialogue's alone, as the
+        # canvas's Pro header, so two birds no longer stack at the top left.
         top = header(self.client.get(reverse("index")).content.decode())
         brand = re.search(r'<p class="site-brand">(.*?)</p>', top, re.S).group(1)
-        self.assertIn('<span class="site-logo" aria-hidden="true"></span>', brand)
+        self.assertNotIn("site-logo", brand)
         self.assertEqual(re.sub(r"<[^>]+>|\s", "", brand), "聽伴")
 
     def test_logout_is_the_last_thing_on_account_settings(self):

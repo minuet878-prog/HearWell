@@ -5957,10 +5957,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.assertEqual(self.style(found, "borderTopRightRadius"), radius)
                     self.assertEqual(self.style(found, "borderTopLeftRadius"), radius)
 
-    # Brand refresh: a white header with the logo on a gradient; #748 (spec #741 P8): no wave,
-    # the avatar on the right.
-    LOGO_GRADIENT = "linear-gradient(135deg, rgb(31, 78, 140), rgb(29, 111, 153))"
-
+    # Brand refresh: a white header; #748 (spec #741 P8): no wave, the avatar on the right; the
+    # owner at #741's acceptance: no bird beside the name.
     def mask(self, locator, pseudo):
         return locator.evaluate(f"el => getComputedStyle(el, '{pseudo}').maskImage")
 
@@ -5977,11 +5975,9 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.assertEqual(self.style(brand, "color"), self.PRIMARY)
                     tint = brand.locator(".site-wordmark-tint")
                     self.assertEqual(self.style(tint, "color"), "rgb(29, 111, 153)")
-                    logo = brand.locator(".site-logo")
-                    self.assertEqual(self.style(logo, "backgroundImage"), self.LOGO_GRADIENT)
-                    # The pebble: uneven corners, not a circle.
-                    self.assertEqual(self.style(logo, "borderTopLeftRadius"), "42% 48%")
-                    self.assertIn("data:image/svg+xml", self.mask(logo, "::after"))
+                    # Spec #741 (the owner at acceptance): no bird in the header, the
+                    # dialogue's is the page's one.
+                    expect(brand.locator(".site-logo")).to_have_count(0)
                     avatar = header.get_by_role("link", name="帳號設定：style_e2e")
                     expect(avatar).to_have_text("S")
                     for text in (brand.locator(".site-wordmark-tint"), avatar):
