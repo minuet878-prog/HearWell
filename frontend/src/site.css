@@ -4790,22 +4790,39 @@
     border-radius: var(--radius-pill);
   }
 
-  /* The email 重測提醒 in one grey block; while off, the bell in a white circle beside what it
-     is for. */
+  /* The email 重測提醒 in one grey block: the bell in a white circle beside the title and one
+     short line saying whether it is on (spec #741, compare-reminder.html C). */
   .reminder-box {
     padding: 0.8889rem;
     border-radius: var(--radius-large);
     background-color: var(--color-surface);
   }
 
-  .reminder-purpose {
+  .reminder-head {
     display: flex;
-    align-items: flex-start;
-    gap: 0.6667rem;
-    margin-bottom: 0.5rem;
+    align-items: center;
+    gap: 0.7778rem;
+    margin-bottom: 0.7778rem;
+  }
+
+  .reminder-title {
+    margin: 0;
+    font-size: var(--text-section-title);
+  }
+
+  .reminder-state {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 1rem;
+  }
+
+  .reminder-state-on {
+    color: var(--color-primary);
+    font-weight: 700;
   }
 
   .reminder-bell {
+    position: relative;
     display: flex;
     flex: none;
     align-items: center;
@@ -4824,6 +4841,28 @@
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
+  }
+
+  /* While on, a small blue round tick at the bell's bottom right. */
+  .reminder-tick {
+    position: absolute;
+    right: -0.2222rem;
+    bottom: -0.2222rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.3333rem;
+    height: 1.3333rem;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background-color: var(--color-primary);
+  }
+
+  .reminder-bell .reminder-tick svg {
+    width: 0.7778rem;
+    height: 0.7778rem;
+    stroke: #fff;
+    stroke-width: 3.5;
   }
 
   /* Questionnaire list (spec phase9_ui_refresh_4b_questionnaire_cards.md 4.1); the continue
