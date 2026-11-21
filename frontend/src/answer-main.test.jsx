@@ -33,8 +33,15 @@ const status = () => document.getElementById("answer-loading");
 const form = () => document.getElementById("answer-form");
 const app = () => document.getElementById("answer-app");
 const intro = () => document.getElementById("answer-intro");
-// Spec #611 Q2: the reassurance under the count, and its second sentence, drawn hidden.
-const FIRST = "這不是考試，沒有對錯。";
+// #755 (spec #741 P21): the page's intro, folded under the form.
+const introFold = () => document.getElementById("answer-intro-fold");
+const FOLD = `
+  <details class="questionnaire-fold" id="answer-intro-fold">
+    <summary><span>這份問卷在問什麼？</span></summary>
+    <div id="answer-intro"><p>本問卷的目的在幫助您了解自己的聽力。</p></div>
+  </details>`;
+// Spec #611 Q2: the reassurance under the count, its sentence drawn hidden. Its first sentence,
+// 這不是考試，沒有對錯。, went in #755 (spec #741 P21).
 const SECOND = "答到一半離開，答案會留在這支手機，7 天內回來可以接著答。";
 const reassure = () => document.querySelector("#answer-head .answer-reassure");
 const secondSentence = () => reassure().querySelector("[data-draft-line]");
@@ -44,16 +51,15 @@ function page() {
     <div id="answer-head">
       <div class="bird-dialogue"><div class="bird-bubble"><p class="bird-lead">慢慢來，不用急。</p><h1 class="bird-title">聽力對生活的影響</h1></div></div>
       <p class="answer-meta">HHIE-S・共 10 題・大約 3 分鐘</p>
-      <p class="answer-reassure">${FIRST}<span data-draft-line hidden>${SECOND}</span></p>
+      <p class="answer-reassure"><span data-draft-line hidden>${SECOND}</span></p>
       <p class="answer-guest-line">沒註冊時只計算、不儲存。<a href="/privacy">隱私權說明</a></p>
     </div>
-    <div id="answer-intro"><p>本問卷的目的在幫助您了解自己的聽力。</p></div>
     <p id="answer-loading" role="status"></p>
-    <div id="answer-app" data-questionnaire-id="1" data-user-id="7" data-minutes="3"></div>
+    <div id="answer-app" data-questionnaire-id="1" data-user-id="7"></div>
     <form id="answer-form">
       <input type="hidden" name="csrfmiddlewaretoken" value="token">
       <input type="radio" name="form-0-score" value="4" aria-label="常常">
-    </form>`;
+    </form>${FOLD}`;
 }
 
 // Runs the page's inline script the way the browser does: before the form is drawn.
@@ -116,19 +122,20 @@ describe("React entry", () => {
     expect(status().textContent).toBe("");
   });
 
-  it("moves the page's intro and minutes into React (#153)", async () => {
+  it("moves the page's intro into React (#153)", async () => {
     runInline();
     respondWith(ok);
     await startReact();
     await waitFor(() => expect(app().textContent).toContain("這次填答時，您有沒有戴助聽器？"));
-    expect(intro().hidden).toBe(true);
+    // The page's own fold goes; React's takes its place under its buttons (#755).
+    expect(introFold().hidden).toBe(true);
     // Folded under 這份問卷在問什麼？ (#463).
     expect(app().textContent).not.toContain("本問卷的目的在幫助您了解自己的聽力。");
     act(() => [...app().querySelectorAll("button")].find((b) => b.textContent === "這份問卷在問什麼？").click());
     expect(app().textContent).toContain("本問卷的目的在幫助您了解自己的聽力。");
     act(() => app().querySelector("input[type=radio]").click());
     act(() => [...app().querySelectorAll("button")].find((b) => b.textContent === "下一題").click());
-    expect(app().textContent).toContain("第 1 題／共 1 題・還剩大約 3 分鐘");
+    expect(app().textContent).toContain("第 1 題，共 1 題最後一題");
   });
 
   it("starts on 沒戴 when the page says so, with the page's own hint (#154)", async () => {
@@ -197,26 +204,25 @@ describe("React entry", () => {
     expect([screenReaderOnly(".bird-dialogue"), screenReaderOnly(".answer-meta"), part(".answer-guest-line").hidden]).toEqual([true, true, true]);
   });
 
-  it("says both sentences once React takes over and keeps a draft (#611 Q2, acceptance 61)", async () => {
+  it("says the sentence once React takes over and keeps a draft (#611 Q2, acceptance 61)", async () => {
     runInline();
     respondWith(ok);
     await startReact();
     await waitFor(() => expect(app().textContent).toContain("這次填答時，您有沒有戴助聽器？"));
     expect(reassure().hidden).toBe(false);
     expect(secondSentence().hidden).toBe(false);
-    expect(reassure().textContent).toBe(FIRST + SECOND);
+    expect(reassure().textContent).toBe(SECOND);
   });
 
-  it("keeps to the first sentence when the form comes back (#611 Q2, acceptance 63)", async () => {
+  it("says nothing when the form comes back (#611 Q2, acceptance 63)", async () => {
     runInline();
     respondWith({ ok: false, status: 500, json: () => Promise.resolve({}) });
     await startReact();
     await waitFor(() => expect(form().hidden).toBe(false));
-    expect(reassure().hidden).toBe(false);
     expect(secondSentence().hidden).toBe(true);
   });
 
-  it("keeps to the first sentence when React is too late (#611 Q2, acceptance 63)", async () => {
+  it("says nothing when React is too late (#611 Q2, acceptance 63)", async () => {
     vi.useFakeTimers();
     runInline();
     vi.advanceTimersByTime(5000);
@@ -262,7 +268,7 @@ describe("React entry", () => {
     await waitFor(() => expect(html().classList.contains("answer-loading")).toBe(false));
     expect(status().textContent).toBe("");
     expect(form().hidden).toBe(false);
-    expect(intro().hidden).toBe(false);
+    expect(introFold().hidden).toBe(false);
     expect(app().textContent).toBe("");
   });
 
@@ -290,7 +296,7 @@ describe("React entry", () => {
 
     expect(form().hidden).toBe(false);
     expect(form().querySelector("[type=radio]").checked).toBe(true);
-    expect(intro().hidden).toBe(false);
+    expect(introFold().hidden).toBe(false);
     expect(app().textContent).toBe("");
   });
 });
@@ -307,20 +313,18 @@ describe("guest", () => {
       <div id="answer-head">
         <h1>聽力對生活的影響</h1>
         <p class="answer-meta">HHIE-S・共 10 題・大約 3 分鐘</p>
-        <p class="answer-reassure">${FIRST}</p>
         <p class="answer-guest-line">沒註冊時只計算、不儲存。<a href="/privacy">隱私權說明</a></p>
       </div>
-      <div id="answer-intro"><p>本問卷的目的在幫助您了解自己的聽力。</p></div>
       <p id="answer-loading" role="status"></p>
       <div id="answer-guest-fallback" role="alert" hidden>
         <p>${CANNOT_LOAD}</p><a href="/register?next=%2Fquestionnaire%2F1">註冊新帳號</a>
       </div>
-      <div id="answer-app" data-questionnaire-id="1" data-user-id="" data-minutes="3" data-guest
+      <div id="answer-app" data-questionnaire-id="1" data-user-id="" data-guest
         data-questionnaire-code="hhie-s" data-register-url="/register?next=%2Fquestionnaire%2F1"></div>
       <form id="answer-form">
         <input type="hidden" name="csrfmiddlewaretoken" value="token">
         <input type="radio" name="form-0-score" value="4" aria-label="常常">
-      </form>`;
+      </form>${FOLD}`;
   });
 
   it("asks to register, not the form, when React is not ready in 5 seconds", () => {
@@ -354,15 +358,14 @@ describe("guest", () => {
     expect(form().hidden).toBe(true);
   });
 
-  // #611 Q2 (acceptance 62): a guest keeps no draft, so React adds nothing to the first sentence.
-  it("keeps a guest's reassurance to the first sentence, above the guest line", async () => {
+  // #611 Q2 (acceptance 62): a guest keeps no draft, so the page draws no reassurance
+  // (test_guest.ReassuranceLineTests); the guest line still shows.
+  it("shows a guest the guest line", async () => {
     runInline();
     respondWith(ok);
     await startReact();
     await waitFor(() => expect(app().textContent).toContain("這次填答時，您有沒有戴助聽器？"));
-    expect(reassure().hidden).toBe(false);
-    expect(reassure().textContent).toBe(FIRST);
-    expect(reassure().nextElementSibling.className).toBe("answer-guest-line");
+    expect(document.querySelector("#answer-head .answer-guest-line").hidden).toBe(false);
   });
 
   // I4: the page's register link goes to React for a browser that cannot keep the result.

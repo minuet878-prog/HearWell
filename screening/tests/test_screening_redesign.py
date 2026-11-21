@@ -239,7 +239,7 @@ class AnswerPageTests(ScreeningPagesMixin, TestCase):
     def intro(self, code):
         content = self.client.get(self.answer_url(code)).content.decode()
         start = content.index('<div id="answer-intro">')
-        return content[start : content.index('id="answer-app"', start)]
+        return content[start : content.index("</details>", start)]
 
     def test_the_intro_has_no_round_icons_and_holds_the_source(self):
         self.login()
