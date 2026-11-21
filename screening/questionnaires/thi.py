@@ -49,6 +49,15 @@ THRESHOLDS = (
     (100, "極重度障礙", "catastrophic"),
 )
 
+# Large type's words (spec #741, page grill P11): the degree alone. The agent's draft.
+SHORT_NAMES = {
+    "none_or_slight": "輕微",
+    "mild": "輕度",
+    "moderate": "中度",
+    "severe": "重度",
+    "catastrophic": "極重度",
+}
+
 # Like the audiogram's degrees (spec #208 Q13): five levels, ADR 0007's three colours.
 LEVEL_COLORS = {
     "none_or_slight": "normal",
@@ -175,6 +184,7 @@ DEFINITION = Definition(
     result=GradedResult,
     choices=choices,
     thresholds=THRESHOLDS,
+    short_names=SHORT_NAMES,
     level_colors=LEVEL_COLORS,
     advice=ADVICE,
     next_steps=NEXT_STEPS,

@@ -309,7 +309,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
                 ("not-needed", "了解助聽器選配與補助 不符資格"),
                 ("not-needed", "申請補助與配戴助聽器 目前不需要"),
                 ("not-needed", "戴滿 3 個月做效益問卷 目前不需要"),
-                ("current", "7 現在這一步 半年後再篩檢 時間到了，這裡會出現「再做一次」的按鈕。"),
+                ("current", "7 現在這一步 半年後再篩檢 還有 120 天 下次篩檢 2027/03/12"),
             ],
         )
         self.assertEqual(self.opened(main, 3), (f"{NORMAL_WORDS}", []))
@@ -452,41 +452,74 @@ class JourneyHomeTests(HomeJourneyTestCase):
 
     # Step 5's card by each stop (#745): test_answer_cards.
 
-    def test_steps_6_and_7_keep_their_words_and_button(self):
-        # #746 draws their countdown cards; until then, their sentences and buttons.
-        def fitted(on):
-            def records():
-                self.answer()
-                AidAndSubsidy.objects.create(user=self.user, fitted_on=on, subsidy=Subsidy.OTHER)
-                self.answer(code=ioi_ha.CODE, on=on)
+    def fitted(self, on):
+        """Worn from `on`, the first IOI-HA done that day (steps 1 and 5 done, step 6 next)."""
+        self.answer()
+        AidAndSubsidy.objects.create(user=self.user, fitted_on=on, subsidy=Subsidy.OTHER)
+        self.answer(code=ioi_ha.CODE, on=on)
 
-            return records
+    def buttons(self, card):
+        return re.findall(r'<a class="btn btn-hero btn-lg" href="([^"]*)">([^<]*)</a>', card)
 
+    def test_step_6_before_3_months_is_its_countdown_card(self):
+        # Spec #741 acceptance 24: fitted 2026/09/27, so 3 months is 2026/12/27, 45 days on.
+        self.fitted(date(2026, 9, 27))
+        card = self.card(self.main())
+        self.assertEqual(
+            self.text(card),
+            "現在這一步 戴滿 3 個月做效益問卷 和上一次進行比較 "
+            "還有 45 天 2026/12/27 起可以再做一次",
+        )
+        self.assertEqual(self.buttons(card), [])
+        # The ring: 46 of the 91 days gone, drawn once in view (ADR 0077); the days count up
+        # while a screen reader hears the number itself.
+        self.assertIn(
+            '<path class="countdown-ring-arc play-once-ring" pathLength="1" '
+            'd="M52 8A44 44 0 1 1 50.5 96"/>',
+            card,
+        )
+        self.assertIn('<span class="countdown-ring-number" data-count-up>45</span>', card)
+
+    def test_step_6_at_3_months_is_its_button_alone(self):
+        # Spec #741 acceptance 25.
+        self.fitted(date(2026, 8, 12))
+        card = self.card(self.main())
         ioi = reverse("screening", args=[self.questionnaires[ioi_ha.CODE].pk])
-        for name, records, because, button in (
-            (
-                "40 days",
-                fitted(date(2026, 10, 3)),
-                "再 52 天滿 3 個月，到時候做使用效益問卷（IOI-HA）。",
-                [],
-            ),
-            (
-                "3 months",
-                fitted(date(2026, 8, 12)),
-                "您已經戴滿 3 個月，可以做使用效益問卷（IOI-HA），看助聽器幫了多少。",
-                [(ioi, "做效益問卷")],
-            ),
+        self.assertEqual(self.text(card), "現在這一步 戴滿 3 個月做效益問卷 做效益問卷")
+        self.assertEqual(self.buttons(card), [(ioi, "做效益問卷")])
+        self.assertNotIn("countdown-card", card)
+
+    def test_step_7_s_three_cases(self):
+        # Spec #741 acceptance 26: counting down from a life-impact record a day old, due 6
+        # months on, and without one (worn, both IOI-HA done).
+        hhie = reverse("screening", args=[self.questionnaires[hhie_s.CODE].pk])
+
+        def counting():
+            self.answer(on=date(2026, 11, 11))
+            self.make(NORMAL, NORMAL)
+
+        def due():
+            self.answer(on=date(2026, 5, 12))
+            self.make(NORMAL, NORMAL)
+
+        def none():
+            AidAndSubsidy.objects.create(
+                user=self.user, fitted_on=date(2026, 5, 1), subsidy=Subsidy.OTHER
+            )
+            self.answer(code=ioi_ha.CODE, on=date(2026, 5, 10))
+            self.answer(code=ioi_ha.CODE, on=date(2026, 9, 1))
+
+        for name, records, words, buttons in (
+            ("counting", counting, "還有 180 天 下次篩檢 2027/05/11", []),
+            ("due", due, "時間到了！ 再做一次（大約 3 分鐘）", [(hhie, "再做一次（大約 3 分鐘）")]),  # noqa: RUF001
+            ("none", none, "還沒有完成第一次篩檢。 去做問卷", [(hhie, "去做問卷")]),
         ):
-            with self.subTest(fitted=name):
+            with self.subTest(name):
                 self.fresh_user(name)
                 records()
                 card = self.card(self.main())
-                self.assertIn('<h3 class="hero-card-title">戴滿 3 個月做效益問卷</h3>', card)
-                self.assertIn(f"<p>{because}</p>", card)
-                self.assertEqual(
-                    re.findall(r'<a class="btn btn-hero btn-lg" href="([^"]*)">([^<]*)</a>', card),
-                    button,
-                )
+                self.assertEqual(self.text(card), f"現在這一步 半年後再篩檢 {words}")
+                self.assertEqual(self.buttons(card), buttons)
 
     def test_done_steps_say_their_day(self):
         # #458 D7.
@@ -589,13 +622,9 @@ class StepInteractionTests(HomeJourneyTestCase):
             self.opened(main, 5),
             ("戴滿 3 個月後，再做一次問卷和第一次比較，看看助聽器的幫助。", []),
         )
-        self.assertEqual(
-            self.opened(main, 6),
-            (
-                "時間到了，這裡會出現「再做一次」的按鈕。 下次篩檢 2027/03/26・還有 134 天",
-                [],
-            ),
-        )
+        # Step 7 opens to its countdown card (the canvas's 5-a).
+        self.assertEqual(self.opened(main, 6), ("還有 134 天 下次篩檢 2027/03/26", []))
+        self.assertIn('<div class="countdown-card">', self.body(main, 6))
         self.assertNotIn("<details open", main)
 
     def test_the_line_is_blue_up_to_the_current_step_without_a_progress_bar(self):
@@ -603,13 +632,16 @@ class StepInteractionTests(HomeJourneyTestCase):
         self.step_4_with_three_done()
         main = self.main()
         # Played once the 現在這一步's one thing is in view (ADR 0029; #480 moved the mark there
-        # from the whole step, which the to-dos under it made too tall); each stamp waits too.
+        # from the whole step, which the to-dos under it made too tall); each stamp and step 7's
+        # countdown ring wait too.
         self.assertRegex(
             main,
             r'<li class="journey-step is-current"[^>]*>\s*<span class="journey-dot">4</span>\s*'
             r'<div class="journey-card">\s*<section class="hero-card" data-play-in-view>',
         )
-        self.assertEqual(main.count("data-play-in-view"), 1 + main.count(STAMP))
+        rings = main.count('<div class="countdown-ring">')
+        self.assertEqual(rings, 1)
+        self.assertEqual(main.count("data-play-in-view"), 1 + main.count(STAMP) + rings)
         steps = re.findall(r'<li class="journey-step ([^"]*)" style="--journey-step: (\d)"', main)
         self.assertEqual(
             steps,

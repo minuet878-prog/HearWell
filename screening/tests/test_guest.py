@@ -188,7 +188,7 @@ def shown_on_the_result_page(content):
         r'總分 <span class="result-number" data-count-up>(\d+)</span>', content
     ).group(1)
     emotional, social = re.search(r"情緒分數：(\d+)　社交分數：(\d+)", content).groups()
-    level = re.search(r'<h2 class="result-block-level"[^>]*>([^<]+)</h2>', content).group(1)
+    level = re.search(r'<h2 class="result-block-level[^"]*"[^>]*>([^<]+)</h2>', content).group(1)
     return int(total), int(emotional), int(social), level
 
 
@@ -346,7 +346,7 @@ class GuestResultPageTests(GuestTestCase):
                 self.assertEqual(response.status_code, 200)
                 self.assertIn("no-store", response["Cache-Control"])
                 self.assertContains(
-                    response, f'<h1 class="bird-title">{questionnaire.definition.topic}</h1>'
+                    response, f'<h1 class="bird-title">看看{questionnaire.definition.topic}</h1>'
                 )
                 self.assertContains(response, f'data-code="{questionnaire.code}"')
                 self.assertContains(response, f'data-score-url="{GUEST_SCORE}"')
@@ -372,7 +372,7 @@ class GuestResultPageTests(GuestTestCase):
             '總分 <span class="result-number" data-count-up>16</span> 分（滿分 40）', html
         )
         self.assertIn(">輕度到中度影響</h2>", html)
-        self.assertIn('<div class="score-bar" aria-hidden="true">', html)
+        self.assertIn('<svg class="gauge-arcs" viewBox="0 0 318 164" aria-hidden="true"', html)
         self.assertIn("情緒分數：12　社交分數：4", html)
         self.assertIn("助聽器：沒戴", html)
         self.assertIn(hhie_s.ADVICE["mild_to_moderate"], html)
@@ -529,21 +529,16 @@ class GuestFallbackTests(GuestTestCase):
 
 
 class ReassuranceLineTests(GuestTestCase):
-    """Spec #611 Q2 (acceptance 62, 66): a guest keeps no draft, so only the first sentence, above
-    the guest line, which stays."""
+    """Spec #611 Q2 (acceptance 62, 66): a guest keeps no draft, so no reassurance (its first
+    sentence went in #755, spec #741 P21), and the guest line stays."""
 
-    FIRST = "這不是考試，沒有對錯。"
-
-    def test_a_guest_has_the_first_sentence_above_the_guest_line(self):
+    def test_a_guest_has_no_reassurance_but_the_guest_line(self):
         for questionnaire in (self.hhie_s, self.hhia_s):
             with self.subTest(code=questionnaire.code):
                 content = self.client.get(reverse("screening", args=[questionnaire.pk]))
                 content = content.content.decode()
-                self.assertIn(f'<p class="answer-reassure">{self.FIRST}</p>', content)
-                meta = content.index('class="answer-meta"')
-                line = content.index(self.FIRST)
-                self.assertLess(meta, line)
-                self.assertLess(line, content.index(GUEST_LINE))
+                self.assertNotIn("answer-reassure", content)
+                self.assertLess(content.index('class="answer-meta"'), content.index(GUEST_LINE))
                 self.assertNotIn("答到一半離開", content)
                 self.assertNotIn("data-draft-line", content)
                 self.assertNotIn("照平常的感覺", content)

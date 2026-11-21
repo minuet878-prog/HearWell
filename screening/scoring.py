@@ -48,13 +48,29 @@ def level_change_text(previous_level, level):
     return f"分級從「{previous_level}」變成「{level}」"
 
 
-UNKNOWN = {"text": "無法判讀", "level": "unknown", "color": "unknown"}
+# A graded result page's 這個分數怎麼算 (#750), above the levels' ranges.
+SCORE_SUM_TEXT = "每一題的分數加起來就是總分，分數越高，影響越大。"
+
+UNKNOWN = {"text": "無法判讀", "short": "無法判讀", "level": "unknown", "color": "unknown"}
 UNKNOWN_ADVICE = (
     "這次的作答結果無法判讀分級，可能是資料有誤。建議重新作答一次；"
     "若對聽力有疑慮，請直接諮詢聽力師或耳鼻喉科醫師。"
 )
 
 # Short column names for the norm chart on the history page.
+# An IOI-HA result page's 和上一次比較 (#746): the totals, a higher one better, as every item is
+# best at 5; and each item's change, by the sign of this answer less the last one.
+IOI_HA_ITEM_CHANGE = {1: "變好", -1: "變差", 0: "一樣"}
+
+
+def ioi_ha_since_last_text(difference):
+    if difference > 0:
+        return f"這一次比上一次多 {difference} 分（分數越高越好）"
+    if difference < 0:
+        return f"這一次比上一次少 {-difference} 分（分數越高越好）"
+    return "兩次的總分一樣"
+
+
 IOI_HA_ITEM_NAMES = {
     1: "使用時間",
     2: "幫助程度",
@@ -133,7 +149,13 @@ CARE_JOURNEY_STEPS = (
 LIFE_IMPACT_BECAUSE = "先做一份生活影響問卷，了解聽力對您生活的影響。"
 LIFE_IMPACT_BUTTON = "去做問卷"
 IOI_HA_BUTTON = "做效益問卷"
-IOI_HA_DUE_BECAUSE = "您已經戴滿 3 個月，可以做使用效益問卷（IOI-HA），看助聽器幫了多少。"
+# Step 6's countdown card before 3 months worn (spec #741, the canvas).
+FITTING_COMPARE = "和上一次進行比較"
+FITTING_AGAIN_FROM = "起可以再做一次"
+# Step 7's card (spec #741, the canvas): its countdown's words, due, or no life impact yet.
+NEXT_SCREENING = "下次篩檢"
+RETEST_TIME_UP = "時間到了！"  # noqa: RUF001
+FIRST_SCREENING_NOT_DONE = "還沒有完成第一次篩檢。"
 # Steps 2 to 4's cards (spec #741, the canvas's 照顧旅程展開): white entry cards.
 FIND_A_HOSPITAL = "查詢醫療院所"
 AUDIOGRAM_SOURCES = "聽力圖來源"
@@ -202,12 +224,6 @@ FITTING_ADVICE_NORMAL = (
 FITTING_ADVICE_BEFORE_YOU_GO = "去之前要準備什麼"
 
 
-def fitting_countdown_text(days):
-    return f"再 {days} 天滿 3 個月，到時候做使用效益問卷（IOI-HA）。"
-
-
-# Step 5's card while counting down (#458 D8): the 下次篩檢 tile already says the day.
-RETEST_COUNTDOWN_TEXT = "時間到了，這裡會出現「再做一次」的按鈕。"
 # What each step is, said when it is opened on the home page (#459 I1), step 1 first: step 3's,
 # 4's and 6's the canvas's (spec #741); step 2's a draft the owner settles on review.
 CARE_JOURNEY_ABOUT = (
@@ -218,7 +234,7 @@ CARE_JOURNEY_ABOUT = (
     # #598 (spec #593): no subsidy on everyone's way, the owner's wording on #595.
     "照選配路線一站一站走，從找聽力師到開始戴助聽器。",
     "戴滿 3 個月後，再做一次問卷和第一次比較，看看助聽器的幫助。",
-    RETEST_COUNTDOWN_TEXT,
+    "",  # step 7's is what its card says, by its countdown (care_journey)
 )
 
 
@@ -300,7 +316,13 @@ def classify(total_score, questionnaire_code):
     if total_score >= 0:
         for upper, text, level in definition.thresholds:
             if total_score <= upper:
-                return {"text": text, "level": level, "color": definition.color(level)}
+                return {
+                    "text": text,
+                    # A test's own definition may have none: its full name then.
+                    "short": definition.short_names.get(level, text),
+                    "level": level,
+                    "color": definition.color(level),
+                }
     logger.error("Score %s out of range for questionnaire %r", total_score, questionnaire_code)
     return UNKNOWN
 

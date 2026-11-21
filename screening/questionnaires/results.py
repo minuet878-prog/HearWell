@@ -11,6 +11,7 @@ methods break an import cycle: the definitions import this module, and scoring a
 import the definitions.
 """
 
+import math
 from decimal import ROUND_HALF_UP, Decimal
 from functools import cached_property
 
@@ -163,19 +164,24 @@ class GradedResult(Result):
         previous_total = previous.result.total
         changed = level["level"] != previous_level["level"]
         difference = self.total - previous_total
+        ceiling = self.submission.questionnaire.definition.thresholds[-1][0]
         return {
             "label": change_label_text(difference),
             "text": result_since_last_text(day, previous_total, difference),
             "level_change": (
                 level_change_text(previous_level["text"], level["text"]) if changed else None
             ),
+            # #750 (canvas ProResult): the two bars, each total's share of the full score.
+            "previous_total": previous_total,
+            "previous_width": previous_total / ceiling * 100,
+            "width": self.total / ceiling * 100,
         }
 
     def page_context(self):
         from screening.care_journey import WHERE_TO_TEST
         from screening.models import Questionnaire
         from screening.questionnaires import hhia_s, hhie_s, ssq12_tw
-        from screening.scoring import get_advice, max_score
+        from screening.scoring import SCORE_SUM_TEXT, get_advice, max_score
 
         submission = self.submission
         definition = submission.questionnaire.definition
@@ -195,11 +201,19 @@ class GradedResult(Result):
         return {
             "answers": answers,
             "max_score": max_score(code),
-            "score_bar": score_bar(definition, self.total, level),
+            "gauge": semicircle_gauge(definition, self.total, level),
             "next_steps": next_steps,
             "advice_step": advice_step,
             "where_to_test": WHERE_TO_TEST,
-            "fold_steps": [step for step in next_steps[1:] if step is not advice_step],
+            # Under 這個分數怎麼算 (#750): every reviewed step; a guest's first and the one it
+            # sees outside stay where they are.
+            "fold_steps": (
+                [step for step in next_steps[1:] if step is not advice_step]
+                if self.is_guest
+                else list(next_steps)
+            ),
+            "score_sum_text": SCORE_SUM_TEXT,
+            "level_ranges": level_ranges(definition),
             # A guest's save card (spec #492); "" for a level it has no sentence for.
             "save_reason": definition.save_reasons.get(level, ""),
             "advice": get_advice(level, code),
@@ -217,31 +231,56 @@ class GradedResult(Result):
         }
 
 
-def score_bar(definition, score, level):
-    # Ticket #158: a bar segmented by the thresholds, with a marker at this score's position.
-    # "無法判讀" (no thresholds, or an out-of-range score) draws no bar.
+def level_ranges(definition):
+    # 這個分數怎麼算 (#750): each level's lowest and highest total, by its full name.
+    ranges = []
+    low = 0
+    for upper, text, _level in definition.thresholds:
+        ranges.append({"low": low, "high": upper, "text": text})
+        low = upper + 1
+    return ranges
+
+
+# The semicircle gauge's drawing (semicircle_gauge.html, canvas ProResult): its centre and radius
+# in the SVG's own units, and the gap left at each side of a level's border, as a share of the arc.
+GAUGE_CENTRE = (159, 150)
+GAUGE_RADIUS = 124
+GAUGE_GAP = 0.012
+
+
+def _gauge_point(share):
+    # The point share of the way along the arc, from its left end over the top to its right end.
+    angle = math.pi * (1 - share)
+    centre_x, centre_y = GAUGE_CENTRE
+    x = centre_x + GAUGE_RADIUS * math.cos(angle)
+    y = centre_y - GAUGE_RADIUS * math.sin(angle)
+    return round(x, 1), round(y, 1)
+
+
+def semicircle_gauge(definition, score, level):
+    """#750 (canvas ProResult): one arc for each level, the score's level drawn thick, and a knob
+    where the score is. "無法判讀" (no thresholds, or an out-of-range score) draws none."""
     thresholds = definition.thresholds
     if level == "unknown" or not thresholds:
         return None
     ceiling = thresholds[-1][0]
-    segments = []
+    arcs = []
     start = 0
-    for upper, _text, segment_level in thresholds:
-        segments.append(
+    for upper, _text, arc_level in thresholds:
+        begin = _gauge_point(start / ceiling + (GAUGE_GAP if start else 0))
+        end = _gauge_point(upper / ceiling - (GAUGE_GAP if upper < ceiling else 0))
+        arcs.append(
             {
-                "level": segment_level,
-                "color": definition.color(segment_level),
-                "shade": definition.shade(segment_level),
-                "width": (upper - start) / ceiling * 100,
+                "path": f"M{begin[0]} {begin[1]}A{GAUGE_RADIUS} {GAUGE_RADIUS} 0 0 1 "
+                f"{end[0]} {end[1]}",
+                "color": definition.color(arc_level),
+                "shade": definition.shade(arc_level),
+                "current": arc_level == level,
             }
         )
         start = upper
-    position = max(0, min(100, score / ceiling * 100))
-    return {
-        "segments": segments,
-        "position": position,
-        "ceiling": ceiling,
-    }
+    knob = _gauge_point(max(0, min(1, score / ceiling)))
+    return {"arcs": arcs, "knob": knob, "ceiling": ceiling}
 
 
 class AverageResult(Result):
@@ -322,6 +361,42 @@ class NormResult(Result):
             "below_text": NORM_VERSUS_TEXT["below"],
             "others": [item for item in items if item not in below],
             "scale_ends": SCALE_ENDS,
+            "since_last": self._since_last(),
+        }
+
+    def _since_last(self):
+        # #746 (spec #741 acceptance 25, grill Q17): against this person's IOI-HA just before
+        # this one, as the HHI comparison: both totals, and each item better, worse or the same.
+        # Every item is best at 5 (ADR 0074). None for the first.
+        from screening.models import Submission
+        from screening.scoring import IOI_HA_ITEM_CHANGE, IOI_HA_ITEM_NAMES, ioi_ha_since_last_text
+
+        submission = self.submission
+        previous = (
+            Submission.objects.filter(
+                user_id=submission.user_id, questionnaire_id=submission.questionnaire_id
+            )
+            .earlier_than(submission)
+            .with_scores()
+            .first()
+        )
+        if previous is None:
+            return None
+        before = dict(previous.answers.values_list("question__question_number", "score"))
+        items = []
+        for answer in self._answers():
+            number = answer.question.question_number
+            change = (answer.score > before[number]) - (answer.score < before[number])
+            items.append({"name": IOI_HA_ITEM_NAMES[number], "change": IOI_HA_ITEM_CHANGE[change]})
+        # Both totals, the sum of the 7 answers, for this comparison only: IOI-HA's result has
+        # no total of its own (read item by item against the norms).
+        total, previous_total = submission.total_answer_score, previous.total_answer_score
+        return {
+            "previous": previous,
+            "previous_total": previous_total,
+            "total": total,
+            "text": ioi_ha_since_last_text(total - previous_total),
+            "items": items,
         }
 
 

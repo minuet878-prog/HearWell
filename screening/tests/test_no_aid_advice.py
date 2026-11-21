@@ -74,7 +74,9 @@ class NoAidAdviceResultTests(TestCase):
         # Acceptance 2: the advice and step 1, the words around them unchanged.
         main = self.main(hhie_s.CODE, "severe")
         self.assertNotIn("考慮配戴助聽器", main)
-        self.assertIn(f'<p class="result-one-line">{SEVERE_STEP}</p>', main)
+        # Under 這個分數怎麼算 since #750, every step there.
+        steps = main[main.index('<div class="result-steps">') :]
+        self.assertTrue(steps.split("<p>", 1)[1].startswith(f"{SEVERE_STEP}</p>"))
         self.assertIn(f"<p>{SEVERE_ADVICE} {LIMITS}</p>", main)
 
     def test_hhie_s_states_its_limits_after_the_advice_and_at_the_bottom(self):

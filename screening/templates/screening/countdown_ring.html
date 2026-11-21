@@ -1,0 +1,5 @@
+{# Spec #741 (the canvas, ADR 0075, 0077): a countdown ring, 還有 N 天 in it, its arc the share of the wait gone, drawn once in view by site.css's play-once-ring while the days count up (data-count-up); with reduced motion both are simply there. A screen reader hears 還有 N 天, the ring itself hidden. `countdown`: care_journey.Countdown. Step 6's and 7's countdown cards, and the home page's 離下次篩檢 tile (#751). #}
+<div class="countdown-ring">
+    <svg viewBox="0 0 104 104" aria-hidden="true" focusable="false" data-play-in-view><circle class="countdown-ring-track" cx="52" cy="52" r="44"/><path class="countdown-ring-arc play-once-ring" pathLength="1" d="{{ countdown.ring_path }}"/></svg>
+    <p class="countdown-ring-days"><span>還有</span> <span class="countdown-ring-number" data-count-up>{{ countdown.days_left }}</span> <span>天</span></p>
+</div>

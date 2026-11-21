@@ -3,8 +3,12 @@
 
 {% block title %}{{ questionnaire.questionnaire_name }} 作答｜聽伴{% endblock %}
 
-{# #462: no tab bar on a phone while answering, so 下一題 stays in the first screen; 聽伴 at the top left leads out, and the answers wait in this browser. #}
+{# #462: no tab bar on a phone while answering, so 下一題 stays in the first screen; 離開 at the top left leads out, and the answers wait in this browser. #}
 {% block nav_class %} site-nav-tucked{% endblock %}
+
+{# #755 (spec #741 P21): 離開 at the top left all the time, out to the questionnaires. Not the header's ‹, which here would go back a question (each question is a history entry), and not 聽伴 or the avatar, so nothing else leads away; the topic says what is being answered. #}
+{% block header_start %}<a class="site-leave" href="{% url 'questionnaire_list' %}"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>離開</a>{% endblock %}
+{% block header_end %}<p class="site-header-title">{{ questionnaire.definition.topic }}</p>{% endblock %}
 
 {% block extra_head %}
 {% if use_react %}
@@ -37,18 +41,12 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
     <div id="answer-head">
     {% include "screening/bird_dialogue.html" with lead="screening"|page_lead title=questionnaire.definition.topic %}
     <p class="answer-meta">{{ questionnaire.questionnaire_name }}・共 {{ question_count }} 題・大約 {{ questionnaire.definition.minutes }} 分鐘</p>
-    {# Spec #611 Q2: the second sentence only where answers are kept; React shows it once it takes over, so the form and a guest (no draft, ADR 0055) say the first only. #}
-    <p class="answer-reassure">這不是考試，沒有對錯。{% if use_react and not guest %}<span data-draft-line hidden>答到一半離開，答案會留在這支手機，7 天內回來可以接著答。</span>{% endif %}</p>
+    {# Spec #611 Q2: the sentence only where answers are kept; React shows it once it takes over, so the form and a guest (no draft, ADR 0055) say nothing. Its first sentence, 這不是考試，沒有對錯。, went in #755 (spec #741 P21). #}
+    {% if use_react and not guest %}<p class="answer-reassure"><span data-draft-line hidden>答到一半離開，答案會留在這支手機，7 天內回來可以接著答。</span></p>{% endif %}
     {% if guest %}
     {# Spec #492 (the #493 mockup G2): a guest's answers are scored, not saved. #}
     <p class="answer-guest-line"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span>沒註冊時只計算、不儲存。<a class="inline-link" href="{% url 'privacy' %}">隱私權說明</a></span></p>
     {% endif %}
-    </div>
-    {# React reads the intro from here and folds it under 這份問卷在問什麼？ (#153, #463), the source with it; without JS it just stays. #}
-    <div id="answer-intro">
-    {% include questionnaire.definition.intro_template %}
-    {% if is_ioi_ha %}{% include "screening/ioi_ha_source.html" %}{% endif %}
-    {% if questionnaire.definition.source_template %}{% include questionnaire.definition.source_template %}{% endif %}
     </div>
     {% if is_ioi_ha %}
     {# IOI-HA's norm basis for React's item 1, shown before answering (ADR 0002); a template, so never shown by itself. #}
@@ -87,7 +85,7 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
             }
         }, 5000);
     </script>
-    <div id="answer-app" data-questionnaire-id="{{ questionnaire.id }}" data-user-id="{{ user.id }}" data-minutes="{{ questionnaire.definition.minutes }}"{% if guest %} data-guest data-questionnaire-code="{{ questionnaire.code }}" data-register-url="{{ register_url }}"{% endif %}{% if preselect_unaided %} data-preselect-unaided{% endif %}{% if always_aided %} data-always-aided{% endif %}{% if is_ioi_ha %} data-skip-wearing data-norm-token="{{ norm_token }}"{% endif %}></div>
+    <div id="answer-app" data-questionnaire-id="{{ questionnaire.id }}" data-user-id="{{ user.id }}"{% if guest %} data-guest data-questionnaire-code="{{ questionnaire.code }}" data-register-url="{{ register_url }}"{% endif %}{% if preselect_unaided %} data-preselect-unaided{% endif %}{% if always_aided %} data-always-aided{% endif %}{% if is_ioi_ha %} data-skip-wearing data-norm-token="{{ norm_token }}"{% endif %}></div>
     {% endif %}
     <form id="answer-form" action="{% url 'screening' questionnaire.id %}" method="POST"{% if guest %} hidden{% endif %}>
         {% csrf_token %}
@@ -125,5 +123,14 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
         </div>
 
     </form>
+    {# #755 (spec #741 P21): 這份問卷在問什麼？ folded under the questions. React reads the intro from here and draws its own fold under its buttons (#153, #463), the source with it, hiding this one; the form given back keeps this. #}
+    <details class="questionnaire-fold" id="answer-intro-fold">
+        <summary><span class="action-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg></span><span>這份問卷在問什麼？</span><span class="questionnaire-fold-arrow" aria-hidden="true"></span></summary>
+        <div id="answer-intro">
+        {% include questionnaire.definition.intro_template %}
+        {% if is_ioi_ha %}{% include "screening/ioi_ha_source.html" %}{% endif %}
+        {% if questionnaire.definition.source_template %}{% include questionnaire.definition.source_template %}{% endif %}
+        </div>
+    </details>
 </div>
 {% endblock %}

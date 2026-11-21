@@ -95,3 +95,27 @@ describe("the back button", () => {
     expect(event.defaultPrevented).toBe(false);
   });
 });
+
+// #755 (spec #741 P21): the answer page has 離開 in its place, a plain link out to the
+// questionnaires; the back button there would go back a question.
+describe("a page without the back button", () => {
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <header class="site-header">
+        <a class="site-leave" href="/questionnaire_list">離開</a>
+      </header>
+      <main></main>`;
+    Object.defineProperty(header(), "offsetHeight", { value: 72, configurable: true });
+  });
+
+  it("still marks the header scrolled, and leaves 離開 a plain link", () => {
+    const win = fakeWindow({ canGoBack: true });
+    setUpSiteHeader(win);
+    win.scrollTo(200);
+    expect(isScrolled()).toBe(true);
+    const event = new MouseEvent("click", { bubbles: true, cancelable: true });
+    document.querySelector(".site-leave").dispatchEvent(event);
+    expect(win.history.back).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+  });
+});

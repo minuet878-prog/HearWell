@@ -39,6 +39,9 @@ THRESHOLDS = (
     (40, "顯著影響", "severe"),
 )
 
+# The canvas's words (spec #741, page grill P11), as HHIE-S's.
+SHORT_NAMES = {"normal": "極輕微", "mild_to_moderate": "輕到中度", "severe": "顯著"}
+
 _LEVEL_ADVICE = {
     "normal": "您這次回報的生活影響較少。若仍有聽不清楚的困擾，建議安排聽力評估。",
     "mild_to_moderate": (
@@ -108,6 +111,7 @@ DEFINITION = Definition(
     intro_audience="適合 18–64 歲成人；若您持續使用原問卷追蹤，也可以繼續填寫。",
     choices=choices,
     thresholds=THRESHOLDS,
+    short_names=SHORT_NAMES,
     advice=ADVICE,
     next_steps=NEXT_STEPS,
     # Under the next steps: the full advice, the only other place it is said, is folded away.

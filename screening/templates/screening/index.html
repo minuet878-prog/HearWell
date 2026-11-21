@@ -82,6 +82,8 @@
                     {# Spec #741 (#745): step 5's certificate, form 9 and notice are answer cards; form 25 a calendar date card. #}
                     {% if card.question %}{% include "screening/answer_card.html" with question=card.question done=card.moved_on %}{% endif %}
                     {% if card.date %}{% include "screening/date_card.html" with day=card.date %}{% endif %}
+                    {# Steps 6 and 7 counting down (#746). #}
+                    {% if card.countdown %}{% include "screening/countdown_card.html" with countdown=card.countdown %}{% endif %}
                     {# Spec #741: steps 2 and 4 are white entry cards, nothing else. #}
                     {% if card.entries %}<ul class="journey-entries" role="list">{% for entry in card.entries %}<li>{% include "screening/entry_card.html" with icon=entry.icon text=entry.text href=entry.href come_back=entry.come_back note=entry.note %}</li>{% endfor %}</ul>{% endif %}
                     {% if card.button %}
@@ -108,10 +110,8 @@
                     </a>
                     {% endwith %}{% endif %}
                     {% else %}
-                    <p>{{ step.about }}</p>
-                    {% if forloop.counter == 7 and journey.next_screening and not journey.next_screening.due %}
-                    <p class="journey-when">下次篩檢 {{ journey.next_screening.on|date:"Y/m/d" }}・還有 {{ journey.next_screening.days_left }} 天</p>
-                    {% endif %}
+                    {# Step 7 counting down opens to its countdown card (the canvas's 5-a, #746). #}
+                    {% if step.countdown %}{% include "screening/countdown_card.html" with countdown=step.countdown %}{% else %}<p>{{ step.about }}</p>{% endif %}
                     {% endif %}
                     {% if step.entries %}
                     {% if step.entries_title %}<p class="journey-entries-title">{{ step.entries_title }}</p>{% endif %}

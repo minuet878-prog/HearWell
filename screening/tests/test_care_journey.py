@@ -13,6 +13,7 @@ from screening.care_journey import (
     LATER,
     NOT_NEEDED,
     AudiogramResult,
+    Countdown,
     EarResult,
     Entry,
     JourneyCard,
@@ -55,6 +56,7 @@ SOURCES = (
 NORMAL_WORDS = "您的聽力檢測結果為正常，但若有耳鳴、耳悶等其他症狀，仍建議尋求醫師協助。"
 MILD_WORDS = "您的聽力未達補助資格，但依舊可以考慮配戴助聽器。"
 GUIDE_WORDS = "統整助聽器補助流程供您參考。"
+TIME_UP = "時間到了！"  # noqa: RUF001
 
 
 class CareJourneyTestCase(TestCase):
@@ -485,16 +487,26 @@ class EffectStepTests(CareJourneyTestCase):
         AidAndSubsidy.objects.create(user=self.user, fitted_on=fitted_on, subsidy=Subsidy.OTHER)
         self.answer(code=ioi_ha.CODE, on=fitted_on)
 
-    def test_before_3_months_step_6_counts_down_without_a_button(self):
-        # Fitted 2026/10/03; 3 months is 2027/01/03.
-        self.answer()
-        self.fit(date(2026, 10, 3))
-        journey = self.journey()
+    def test_before_3_months_step_6_is_its_countdown_card_without_a_button(self):
+        # Spec #741 acceptance 24: worn 45 days, the first IOI-HA done. Fitted 2026/11/30, so 3
+        # months is 2027/02/28, 90 days on: 45 days left, half the wait gone.
+        self.answer(on=date(2027, 1, 1))
+        self.fit(date(2026, 11, 30))
+        journey = self.journey(date(2027, 1, 14))
         self.assertEqual(journey.current, 6)
+        self.assertEqual(journey.card.because, "和上一次進行比較")
         self.assertEqual(
-            journey.card.because, "再 52 天滿 3 個月，到時候做使用效益問卷（IOI-HA）。"
+            journey.card.countdown,
+            Countdown(date(2027, 2, 28), 45, 0.5, below="起可以再做一次"),
         )
         self.assertIsNone(journey.card.button)
+
+    def test_3_months_on_step_6_is_its_button_alone(self):
+        # Spec #741 acceptance 25: only 做效益問卷, no sentence and no countdown.
+        self.answer()
+        self.fit(date(2026, 8, 12))
+        card = self.journey().card
+        self.assertEqual((card.because, card.countdown), ("", None))
 
     def test_3_months_on_step_6_s_button_is_ioi_ha(self):
         self.answer()
@@ -518,15 +530,26 @@ class RetestStepTests(CareJourneyTestCase):
         self.hhie = self.answer(on=answered_on)
         self.make(NORMAL, NORMAL)
 
-    def test_counting_down_step_7_has_no_button_at_6_of_7(self):
-        # Steps 1 to 6 done or 目前不需要, the last HHIE-S 2 months ago (#746 draws the
-        # countdown card).
-        self.normal_range(date(2026, 9, 12))
+    def test_counting_down_step_7_is_its_countdown_card_at_6_of_7(self):
+        # Spec #741 acceptance 26: steps 1 to 6 done or 目前不需要, the last HHIE-S a day ago;
+        # 2026/11/11 to 2027/05/11 is 181 days, 1 of them gone.
+        self.normal_range(date(2026, 11, 11))
         journey = self.journey()
         self.assertEqual(journey.current, 7)
-        self.assertEqual(journey.card.because, "時間到了，這裡會出現「再做一次」的按鈕。")
+        wait = Countdown(date(2027, 5, 11), 180, 1 / 181, above="下次篩檢")
+        self.assertEqual(journey.card.countdown, wait)
+        self.assertEqual(journey.card.because, "")
         self.assertIsNone(journey.card.button)
         self.assertEqual(journey.progress, 6)
+        # Step 7 opened before it is the 現在這一步 shows the same card (the canvas's 5-a).
+        self.assertEqual(journey.next_screening.countdown, wait)
+
+    def test_6_months_on_step_7_says_time_is_up(self):
+        # Spec #741 acceptance 26.
+        self.normal_range(date(2026, 5, 12))
+        card = self.journey().card
+        self.assertEqual((card.because, card.button[0]), (TIME_UP, "再做一次（大約 3 分鐘）"))
+        self.assertIsNone(card.countdown)
 
     def test_6_months_on_step_7_s_button_opens_the_same_questionnaire(self):
         # Spec #453 acceptance 15: HHIA-S answered, HHIA-S again, whatever the age says.
@@ -574,6 +597,7 @@ class RetestStepTests(CareJourneyTestCase):
         hhie = self.questionnaires[hhie_s.CODE]
         # #458 D6: the 下次篩檢 tile has no day to count from, not called due.
         self.assertIsNone(journey.next_screening)
+        self.assertEqual(journey.card.because, "還沒有完成第一次篩檢。")
         self.assertEqual(journey.card.button, ("去做問卷", f"/questionnaire/{hhie.pk}"))
 
     def test_without_an_age_step_1_opens_the_catalogue(self):
@@ -657,12 +681,25 @@ class StepAboutTests(CareJourneyTestCase):
                 GUIDE_WORDS,
                 "照選配路線一站一站走，從找聽力師到開始戴助聽器。",
                 "戴滿 3 個月後，再做一次問卷和第一次比較，看看助聽器的幫助。",
-                "時間到了，這裡會出現「再做一次」的按鈕。",
+                "還沒有完成第一次篩檢。",
             ],
         )
         self.assertEqual(
             [step.entries for step in steps], [(), (HOSPITAL,), SOURCES, (GUIDE,), (), (), ()]
         )
+
+    def test_step_7_opens_to_what_its_card_says_without_its_button(self):
+        # The canvas's 5-a: counting down, its countdown card in place of words; due, TIME_UP.
+        self.answer(on=date(2026, 9, 26))
+        step = self.journey().steps[6]
+        self.assertEqual(step.state, L)
+        self.assertEqual(
+            (step.about, step.countdown), ("", self.journey().next_screening.countdown)
+        )
+        self.fresh_user("due")
+        self.answer(on=date(2026, 5, 12))
+        step = self.journey().steps[6]
+        self.assertEqual((step.about, step.countdown), (TIME_UP, None))
 
     def test_a_done_step_opens_to_its_stamp_alone_but_step_4(self):
         # Spec #741 acceptance 27: step 1 only the stamp; step 3 the audiogram's card, which

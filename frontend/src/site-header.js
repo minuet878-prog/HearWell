@@ -19,7 +19,8 @@ export function setUpSiteHeader(win = window) {
   update();
   win.addEventListener("scroll", update, { passive: true });
 
-  if (canGoBackInSite(win)) {
+  // The answer page has 離開 in its place (#755): there going back would be the previous question.
+  if (back && canGoBackInSite(win)) {
     back.setAttribute("aria-label", "回上一頁");
     back.addEventListener("click", (event) => {
       event.preventDefault();
