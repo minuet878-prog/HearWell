@@ -562,7 +562,7 @@ class HistoryTabsTests(TestCase):
                 f"上一次（{self._date(aided)}）：14 分（分數越低越好）",
             ],
         )
-        self.assertIn('<span class="result-number" data-count-up>10</span> 分', main)
+        self.assertIn('<span class="result-number">10</span> 分', main)
         since_last = self._since_last_text(main)
         self.assertIn(f"上一次（{self._date(aided)}）：14 分（分數越低越好）", since_last)
         self.assertIn("比上次少 4 分", since_last)

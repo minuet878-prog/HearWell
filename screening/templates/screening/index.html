@@ -16,7 +16,7 @@
 {% if journey %}
 {# #459 (ADR 0044, mockup #458): the 照顧旅程, its 現在這一步 the one thing to do today. #}
 {# Spec #741 (#751, page grill P12): the bird greets the account by name, its title. #}
-{% include "screening/bird_dialogue.html" with lead="index"|page_lead title=greeting %}
+{% include "screening/bird_dialogue.html" with title=greeting %}
 {# Spec #741 (#751, the canvas's ProHome): the 現在這一步's card is the page's blue hero card, on top; after its words, 「第 N 步，共 7 步」 and a bar of the seven, filled as far as this step, its own segment growing once in view (ADR 0077). #}
 {# #journey-now: an answer that finishes its stop comes back here, its stamp in view (#745). #}
 {% with card=journey.card %}
@@ -34,7 +34,8 @@
         {% if card.date %}{% include "screening/date_card.html" with day=card.date %}{% endif %}
         {# Steps 6 and 7 counting down (#746). #}
         {% if card.countdown %}{% include "screening/countdown_card.html" with countdown=card.countdown %}{% endif %}
-        {# Spec #741: steps 2 and 4 are white entry cards, nothing else. #}
+        {# Spec #741: steps 2 and 4 are white entry cards, nothing else; step 3 without an audiogram its two sources under their small heading. #}
+        {% if card.entries_title %}<p class="journey-entries-title">{{ card.entries_title }}</p>{% endif %}
         {% if card.entries %}<ul class="journey-entries" role="list">{% for entry in card.entries %}<li>{% include "screening/entry_card.html" with icon=entry.icon text=entry.text href=entry.href come_back=entry.come_back note=entry.note %}</li>{% endfor %}</ul>{% endif %}
         {% if card.button %}
         <a class="btn btn-hero btn-lg" href="{{ card.button.1 }}">{{ card.button.0 }}</a>
@@ -54,7 +55,7 @@
         <span class="journey-tile-label">上次結果</span>
         <div class="journey-tile-gauge">
             {% if result.gauge %}{% include "screening/semicircle_gauge.html" with gauge=result.gauge %}{% endif %}
-            <span class="journey-tile-score"><span data-count-up>{{ result.total }}</span> <small>分</small></span>
+            <span class="journey-tile-score"><span>{{ result.total }}</span> <small>分</small></span>
         </div>
         <span class="journey-tile-level" aria-hidden="true">{{ result.level.short }}</span><span class="visually-hidden">{{ result.level.text }}</span>
         <span class="journey-tile-arrow" aria-hidden="true">›</span>
@@ -89,7 +90,6 @@
 <section class="journey" aria-labelledby="journey-title">
     <div class="journey-head">
         <h2 id="journey-title" class="h4">照顧旅程</h2>
-        <p class="journey-count"><span class="visually-hidden">進度 </span>{{ journey.progress }} / {{ journey.steps|length }}</p>
     </div>
     {# N3 dots on a line, blue as far as the 現在這一步 (#459 I2): done ones a blue tick and their day, the 現在這一步 marked 現在 (its card is the hero card on top, #751), the rest pale. Every step opens to say what it is (I1); care-journey.js keeps one open at a time. On a tab's first visit the ticks, the line and the ring play once, when the 現在這一步's row is in view (ADR 0028's 2026-11-12 exception, ADR 0029). #}
     <ol class="journey-steps" role="list">
@@ -136,7 +136,7 @@
 {% else %}
 {# #459 (mockup #458 A): the 空狀態首頁, for a signed-in user without a questionnaire or an audiogram. The dashed box is a preview, not a link. Since spec #655 (#673) a visitor sees the two doors below instead. #}
 {% if user.is_authenticated %}
-{% include "screening/bird_dialogue.html" with lead="index_empty"|page_lead title="從一份問卷開始" %}
+{% include "screening/bird_dialogue.html" with title="從一份問卷開始" %}
 {# #749 (ADR 0076): the one thing to do, in the blue hero card. #}
 {% capture hero %}
     <p>聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。</p>
@@ -158,7 +158,7 @@
 </ul>
 {% else %}
 {# Spec #741 (#752, the canvas's ProGuest, grill P14, P15): the bird, the blue hero card that starts a questionnaire with no account first, and two doors under it. The card's 開始 and both doors are plain links; door-count.js counts a press of each (P15). #}
-{% include "screening/bird_dialogue.html" with lead="index_guest"|page_lead title="聽力變化常常容易被忽略" %}
+{% include "screening/bird_dialogue.html" with title="聽力變化常常容易被忽略" %}
 {# P14: a guest result kept in this browser for 7 days, drawn by guest-home.js above the card. #}
 <div id="guest-home" class="grid gap-3" hidden></div>
 {% capture hero %}
@@ -186,6 +186,7 @@
     <li data-hide-in-app><a href="{% url 'add_to_home' %}">加到手機主畫面</a></li>
 </ul>
 {% endif %}
-<p class="empty-credit">內容由台灣執業聽力師設計與審定。</p>
+{# Spec #741's 實作中本人補充: a shield with a tick before it, in the brand blue. #}
+<p class="empty-credit"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM8.5 12l2.5 2.5 4.5-5"/></svg>內容由台灣執業聽力師設計與審定。</p>
 {% endif %}
 {% endblock %}

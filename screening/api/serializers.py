@@ -25,7 +25,7 @@ from screening.models import (
     Submission,
 )
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
-from screening.scoring import get_advice
+from screening.scoring import get_advice, short_level_name
 
 
 class GuestCountSerializer(serializers.Serializer):
@@ -66,7 +66,7 @@ class QuestionnaireSerializer(QuestionnaireSummarySerializer):
             {
                 "code": level,
                 "text": text,
-                "short": definition.short_names.get(level, text),
+                "short": short_level_name(definition, level, text),
                 "max": upper,
                 "color": definition.color(level),
                 "shade": definition.shade(level),

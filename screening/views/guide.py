@@ -16,6 +16,7 @@ from screening.fitting_route import (
     STOPS,
     SUBSIDY_STOPS,
     fitting_state,
+    keep_view,
     not_applicable_stops,
     stops_on_route,
     subsidy_declined,
@@ -157,7 +158,7 @@ def guide(request):
     # Open without logging in (spec #218): the contents are for family too. ?edit=<slug>
     # opens an answered stop's question again (#293).
     done_now = request.session.pop(DONE_NOW, None)
-    _keep_view(request, GUIDE_PAGE)
+    keep_view(request.user, GUIDE_PAGE)
     return _guide_page(request, edit=request.GET.get("edit"), done_now=done_now)
 
 
@@ -498,15 +499,8 @@ def guide_chapter(request, chapter):
     found = next((c for c in GUIDE_CHAPTERS if c.slug == chapter), None)
     if found is None:
         raise Http404
-    _keep_view(request, chapter)
+    keep_view(request.user, chapter)
     return _chapter_page(request, found)
-
-
-def _keep_view(request, chapter):
-    if request.user.is_authenticated and request.user.has_consented():
-        # 看過 (spec #291 acceptance 4): the first time stays; signed out or before agreeing
-        # to the privacy notice that covers it, nothing is kept.
-        models.GuideChapterView.objects.get_or_create(user=request.user, chapter=chapter)
 
 
 def _next_chapter(chapter, aid):

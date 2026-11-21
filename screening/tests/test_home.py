@@ -111,7 +111,7 @@ class NewUserHomeTests(VisitorHomeTestCase):
             re.findall(r'<li([^>]*)><a href="([^"]+)">([^<]+)</a></li>', links),
             [(" data-hide-in-app", reverse("add_to_home"), "加到手機主畫面")],
         )
-        self.assertIn('<p class="empty-credit">內容由台灣執業聽力師設計與審定。</p>', main)
+        self.assertIn("內容由台灣執業聽力師設計與審定。</p>", main)  # test_home_doors: its icon
         self.assertEqual(main.count("btn-primary"), 0)
         for old in ("home-hero", "home-illustration", "result-preview", "結果長這樣"):
             with self.subTest(old=old):

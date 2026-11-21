@@ -208,7 +208,7 @@ class HeaderBrandTests(TestCase):
                 self.client.force_login(consented_user(username="brandtester"))
             with self.subTest(logged_in=logged_in):
                 brand = self._brand(self.client.get(reverse("index")).content.decode())
-                self.assertRegex(brand, r'<span class="site-logo" aria-hidden="true"></span>')
+                self.assertNotIn("site-logo", brand)  # spec #741: the bird is the dialogue's
                 self.assertEqual(re.sub(r"<[^>]+>|\s", "", brand), "聽伴")
                 self.assertIn('<span class="site-wordmark-tint">伴</span>', brand)
 
@@ -711,7 +711,7 @@ class PageFlowTests(TestCase):
             main,
             (
                 f"{day} 作答",
-                '總分 <span class="result-number" data-count-up>12</span> 分（滿分 40）',
+                '總分 <span class="result-number">12</span> 分（滿分 40）',
                 "輕度到中度影響",
                 "建議您下一步",
                 "<span>看每一題的回答</span>",
@@ -784,7 +784,7 @@ class PageFlowTests(TestCase):
 
     def test_result_zero_score(self):
         main = self._result(self._submit([0] * 10))
-        self.assertIn('總分 <span class="result-number" data-count-up>0</span> 分（滿分 40）', main)
+        self.assertIn('總分 <span class="result-number">0</span> 分（滿分 40）', main)
         self.assertIn("無／極輕微影響", main)
 
     def test_result_without_thresholds_has_no_max(self):
@@ -793,7 +793,7 @@ class PageFlowTests(TestCase):
         submission = self._submit([2] * 10, questionnaire=unknown)
         with self.assertLogs("screening.scoring", "ERROR"):
             main = self._result(submission)
-        self.assertIn('總分 <span class="result-number" data-count-up>20</span> 分', main)
+        self.assertIn('總分 <span class="result-number">20</span> 分', main)
         self.assertNotIn("滿分", main)
 
     # IDOR (14) is covered by SubmissionResultAccessTests; one more for the redesigned page.
@@ -1193,7 +1193,7 @@ class HomeTests(TestCase):
     # 6, changed in the brand refresh (design picker round 3), and in #471 a plain grey line.
     def test_trust_block(self):
         main = self._main()
-        self.assertIn('<p class="empty-credit">內容由台灣執業聽力師設計與審定。</p>', main)
+        self.assertIn("內容由台灣執業聽力師設計與審定。</p>", main)  # test_home_doors: its icon
         self.assertEqual(main.count("內容由台灣執業"), 1)
         gone_texts = (
             "由聽力師開發",

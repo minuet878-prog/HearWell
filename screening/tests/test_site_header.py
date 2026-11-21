@@ -1,11 +1,14 @@
 """#748 (spec #741 acceptance 35-39, story 51; ADR 0079): the site header and the tab bar."""
 
 import re
+from pathlib import Path
 
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
 from screening.tests.helpers import consented_user
+
+SITE_CSS = Path(__file__).resolve().parents[2] / "frontend" / "src" / "site.css"
 
 
 def header(content):
@@ -38,10 +41,12 @@ class SignedInHeaderTests(TestCase):
         self.assertNotIn("登出", top)
         self.assertNotIn("site-wave", content)
 
-    def test_header_keeps_the_bird_and_the_name(self):
+    def test_header_keeps_the_name_without_the_bird(self):
+        # The owner (2026-11-21, at acceptance): the bird is the dialogue's alone, as the
+        # canvas's Pro header, so two birds no longer stack at the top left.
         top = header(self.client.get(reverse("index")).content.decode())
         brand = re.search(r'<p class="site-brand">(.*?)</p>', top, re.S).group(1)
-        self.assertIn('<span class="site-logo" aria-hidden="true"></span>', brand)
+        self.assertNotIn("site-logo", brand)
         self.assertEqual(re.sub(r"<[^>]+>|\s", "", brand), "聽伴")
 
     def test_logout_is_the_last_thing_on_account_settings(self):
@@ -111,3 +116,36 @@ class TabBarTests(TestCase):
     def test_signed_out_records_tab_leads_to_login_and_is_current_there(self):
         nav = self.NAV.search(self.client.get(reverse("login")).content.decode()).group(0)
         self.assertRegex(nav, rf'<a href="{reverse("my_hearing")}" aria-current="page">')
+
+
+def hover_rules_outside_hover_media(css):
+    """Selectors with :hover that no @media (hover: ...) wraps."""
+    css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    found, stack, prelude = [], [], ""
+    for char in css:
+        if char == "{":
+            selector = prelude.strip()
+            wrapped = any(s.startswith("@media") and "hover" in s for s in stack)
+            if ":hover" in selector and not wrapped:
+                found.append(selector)
+            stack.append(selector)
+            prelude = ""
+        elif char == "}":
+            if stack:
+                stack.pop()
+            prelude = ""
+        elif char == ";":
+            prelude = ""
+        else:
+            prelude += char
+    return found
+
+
+class HeaderButtonHoverTests(SimpleTestCase):
+    # CODING_STANDARDS 22 (ADR 0006): a hover effect shows only where there is a mouse, so a
+    # finger tapping 返回, the avatar or 離開 does not leave it stuck in the hover colour.
+    def test_back_avatar_and_leave_hover_only_under_a_hover_media_query(self):
+        unwrapped = hover_rules_outside_hover_media(SITE_CSS.read_text(encoding="utf-8"))
+        for button in (".site-back", ".site-avatar", ".site-leave"):
+            with self.subTest(button=button):
+                self.assertEqual([s for s in unwrapped if button in s], [])

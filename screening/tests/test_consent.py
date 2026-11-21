@@ -207,7 +207,7 @@ class PrivacyHighlightsTests(TestCase):
             "您自己輸入或從 iPhone 匯入的聽力圖（匯入用的 PDF 讀完就丟，不保存）、"
             "您在選配路線上的回答 有沒有聽覺機能的身心障礙證明 九號表與核定公文的進度 "
             "核定單耳或雙耳與補助等級 助聽器開始配戴的日期與戴哪一耳 有沒有用身障補助買 "
-            "二十五號表完成了沒 以及您看過哪幾個選配指引章節。",
+            "二十五號表完成了沒 以及您看過哪些選配指引頁面、是否查過醫療院所。",
             test_layout._text(collected),
         )
 
@@ -580,7 +580,7 @@ class PrivacyPageT361Tests(TestCase):
             "健康資料：每一次篩檢問卷的作答和分數、作答時有沒有戴助聽器、"
             # Whitespace is stripped above, the spaces around iPhone and PDF too.
             "您自己輸入或從iPhone匯入的聽力圖（匯入用的PDF讀完就丟，不保存）、"
-            "您在選配路線上的回答以及您看過哪幾個選配指引章節。",
+            "您在選配路線上的回答以及您看過哪些選配指引頁面、是否查過醫療院所。",
         )
 
     def test_every_section_heading_is_the_same_level(self):

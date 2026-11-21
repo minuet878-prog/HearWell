@@ -18,6 +18,7 @@ from screening.models import (
     Audiogram,
     AudiogramSource,
     Certificate,
+    GuideChapterView,
     Submission,
     Subsidy,
 )
@@ -42,9 +43,13 @@ STOPS = (
 WEARING_STOPS = STOPS[STOPS.index("after-fitting") :]
 # 看過指引頁 (spec #741): my guide opened signed in, kept as a chapter view of its own.
 GUIDE_PAGE = "guide"
+# 點過查詢醫療院所 (spec #741's 實作中本人補充): the 照顧旅程's step 2 opened signed in, kept the
+# same way; the Q&A answer it opens is care_journey's WHERE_TO_TEST.
+HOSPITAL_SEARCH = "find-a-hospital"
+TYPES_AND_PRICES = "types-and-prices"  # 助聽器的種類與價格's stop and chapter
 # The stop the home page passes by (ADR 0074): a chapter to read, so the 照顧旅程 shows the one
 # after it while my guide is still here.
-HOME_SKIPS = "types-and-prices"
+HOME_SKIPPED_STOP = TYPES_AND_PRICES
 # The stops a 看過 makes 已完成 (spec #291 Q4); the other chapters are done by an answer.
 DONE_BY_VIEWING = frozenset({"before-you-go", "types-and-prices"})
 # The certificate answers that finish 身障鑑定與鑑定醫院 (spec #291 Q2); 還沒有 stays.
@@ -106,7 +111,7 @@ class FittingState:
     # the exam, or both None when there is no exam (a self test alone estimates nothing).
     assessment: dict | None
     assessment_exam: Audiogram | None
-    home_stop: str | None  # the 目前這一站 on the home page, which passes by HOME_SKIPS
+    home_stop: str | None  # the 目前這一站 on the home page, which passes by HOME_SKIPPED_STOP
     # 看過: each chapter the user opened signed in, GUIDE_PAGE among them, and when first.
     viewed: dict
 
@@ -161,10 +166,17 @@ def latest_submission(user):
     )
 
 
-def _ioi_ha_since(user, aid):
-    # Taken on the fitting date or later (ADR 0074), as the 照顧旅程 counts it.
-    since = user.submissions.filter(questionnaire__code=IOI_HA, created_at__date__gte=aid.fitted_on)
-    return since.exists()
+def keep_view(user, chapter):
+    """看過 (spec #291 acceptance 4): the first time stays; signed out or before agreeing to the
+    privacy notice that covers it, nothing is kept."""
+    if user.is_authenticated and user.has_consented():
+        GuideChapterView.objects.get_or_create(user=user, chapter=chapter)
+
+
+def ioi_ha_since(user, day):
+    """The user's IOI-HA submissions taken on day or later: the fitting date's (ADR 0074) for the
+    first, 3 months on for the second."""
+    return user.submissions.filter(questionnaire__code=IOI_HA, created_at__date__gte=day)
 
 
 def wearing_hearing_aids(latest, aid):
@@ -215,7 +227,11 @@ def fitting_state(user, today):
         done.add("form-9")
     if aid is not None and aid.notice_received and aid.approved_ears and aid.level:
         done.add("notice")  # #294: 收到了 is done only with both of the notice's answers
-    if _fitted(aid) and (aid.notice_received or aid.subsidy) and _ioi_ha_since(user, aid):
+    if (
+        _fitted(aid)
+        and (aid.notice_received or aid.subsidy)
+        and ioi_ha_since(user, aid.fitted_on).exists()
+    ):
         # #295, spec #291 Q16: the fitting date, and without the notice the subsidy answered;
         # ADR 0074: and a first IOI-HA from that day on.
         done.add("after-fitting")
@@ -233,7 +249,7 @@ def fitting_state(user, today):
     waiting = not wearing and advice in WAITING_ADVICE and not started
     passed = done | not_applicable | (frozenset() if shown else SUBSIDY_STOPS)
     stop = _stop(wearing, passed, waiting)
-    home_stop = _stop(wearing, passed | {HOME_SKIPS}, waiting)
+    home_stop = _stop(wearing, passed | {HOME_SKIPPED_STOP}, waiting)
     return FittingState(
         latest,
         audiogram,

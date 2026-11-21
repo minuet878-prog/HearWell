@@ -5,6 +5,8 @@ from django.utils.cache import add_never_cache_headers
 from django.views.decorators.http import require_http_methods
 from rest_framework.throttling import BaseThrottle
 
+from screening.care_journey import WHERE_TO_TEST
+from screening.fitting_route import HOSPITAL_SEARCH, keep_view
 from screening.forms import QaQuestionForm, add_attempt, attempts
 from screening.models import QuestionLog, purge_question_log
 from screening.qa_assistant import content
@@ -94,6 +96,9 @@ def qa_answer(request, code):
     faq = content.BY_CODE.get(code)
     if faq is None:
         raise Http404
+    if code == WHERE_TO_TEST:
+        # The 照顧旅程's step 2 done once 查詢醫療院所 is opened (spec #741's 實作中本人補充).
+        keep_view(request.user, HOSPITAL_SEARCH)
     topic = _listed_topic(faq)
     return render(
         request,

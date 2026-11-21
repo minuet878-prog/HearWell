@@ -219,6 +219,8 @@ class Screenshots(StaticLiveServerTestCase):
             ("privacy", reverse("privacy")),
             ("family", reverse("family_guide")),
             ("add-to-home", reverse("add_to_home")),
+            # Spec #741 (#758): 了解, its stacked cards' drawings still under reduced motion.
+            ("learn", reverse("learn")),
         ):
             shots += [Shot("public", name, url, who="anon"), Shot("public", name, url)]
         shots += [

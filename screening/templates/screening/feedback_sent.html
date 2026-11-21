@@ -7,6 +7,8 @@
 {# Spec #633 (#636), the #634 mockup's A, its title in the bird's bubble since #749 (ADR 0076), then back to the page it came from. It never shows what was sent. #}
 <div class="narrow-form">
     {% include "screening/bird_dialogue.html" with lead="feedback_sent"|page_lead title="已送出，謝謝您" %}
+    {# Spec #741's 實作中本人補充: the result page's green line, its words a draft. #}
+    {% include "screening/success_strip.html" with text="意見回饋已送出。" %}
     {# #642: the owner's line, chosen in #635. #}
     <p>我們會看每一則意見，但不一定會回覆。有填 email 的，需要時會寫信給您。</p>
     {% if next %}<a class="btn btn-primary btn-lg w-full" href="{{ next }}">回到剛才那一頁</a>{% else %}<a class="btn btn-primary btn-lg w-full" href="{% url 'index' %}">回到首頁</a>{% endif %}

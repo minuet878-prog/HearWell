@@ -15,6 +15,7 @@ from screening.models import (
     AidAndSubsidy,
     Answer,
     Category,
+    GuideChapterView,
     Question,
     Questionnaire,
     Submission,
@@ -35,7 +36,6 @@ STAMP = '<span class="done-stamp play-once-stamp" data-play-in-view>'
 GUIDE_WORDS = "統整助聽器補助流程供您參考。"
 NORMAL_WORDS = "您的聽力檢測結果為正常，但若有耳鳴、耳悶等其他症狀，仍建議尋求醫師協助。"
 MILD_WORDS = "您的聽力未達補助資格，但依舊可以考慮配戴助聽器。"
-HOME_LEAD = "今天也陪您照顧聽力。"
 
 
 class HomeJourneyTestCase(TestCase):
@@ -241,8 +241,9 @@ class JourneyHomeTests(HomeJourneyTestCase):
 
     def test_the_last_result_tile_is_its_gauge_score_and_short_level(self):
         # Spec #741 acceptance 41 (the canvas's ProHome): 12 points on HHIE-S, 輕度到中度影響,
-        # its arc drawn thick once in view, the score counting up over the gauge, the level's
-        # short name on screen and its full name read (page grill P11, as the result page).
+        # its arc drawn thick once in view, the score over the gauge (not counted up since
+        # 2026-11-21, ADR 0077), the level's short name on screen and its full name read (page
+        # grill P11, as the result page).
         latest = self.answer(score=4)
         Answer.objects.filter(submission=latest, question__question_number__lte=3).update(score=4)
         tiles = self.tiles(self.main())
@@ -256,8 +257,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
             gauge,
         )
         self.assertIn(
-            '<span class="journey-tile-score"><span data-count-up>12</span> '
-            "<small>分</small></span>",
+            '<span class="journey-tile-score"><span>12</span> <small>分</small></span>',
             gauge,
         )
         self.assertIn(
@@ -317,9 +317,9 @@ class JourneyHomeTests(HomeJourneyTestCase):
         self.make(NORMAL, NORMAL, tested_on=date(2026, 9, 1))
         main = self.main()
         self.assertEqual(SOLID.findall(main), [])
-        self.assertIn(
-            '<p class="journey-count"><span class="visually-hidden">進度 </span>6 / 7</p>', main
-        )
+        # Only the hero card says how far (第 N 步，共 7 步): no count beside the journey's
+        # heading (spec #741's 實作中本人補充).
+        self.assertEqual(self.text(self.part(main, "journey-head")), "照顧旅程")
         self.assertEqual(
             self.steps(main),
             [
@@ -357,6 +357,43 @@ class JourneyHomeTests(HomeJourneyTestCase):
         self.assertEqual(SOLID.findall(card), [])
         for gone in ("要做的事", "checkbox", "網站會知道"):
             self.assertNotIn(gone, main)
+
+    def test_opening_the_hospital_search_moves_on_to_the_audiogram_s_sources(self):
+        # Spec #741's 實作中本人補充 (acceptance 1, 4): 查詢醫療院所 opened signed in finishes
+        # step 2, which then opens to its stamp and the same card; step 3's card is the small
+        # heading and the two sources.
+        self.answer()
+        self.client.get(reverse("qa_answer", args=["where-to-get-a-hearing-test"]))
+        main = self.main()
+        self.assertEqual(self.steps(main)[1][0], "done")
+        body = self.body(main, 1)
+        self.assertIn(STAMP, body)
+        self.assertEqual(self.entries(body), [("/qa/where-to-get-a-hearing-test", "查詢醫療院所")])
+        card = self.card(main)
+        self.assertEqual(
+            self.text(card), "現在這一步 記錄聽力圖 聽力圖來源 醫院檢查報告 AirPods 自我檢測"
+        )
+        self.assertIn('<p class="journey-entries-title">聽力圖來源</p>', card)
+        self.assertEqual(
+            self.entries(card),
+            [
+                ("/audiograms/new?next=/", "醫院檢查報告"),
+                ("/audiograms/import", "AirPods 自我檢測"),
+            ],
+        )
+
+    def test_the_hospital_search_is_kept_only_signed_in_and_consented(self):
+        # As 看過指引頁 (#743): signed out, or before agreeing to the privacy notice, nothing.
+        url = reverse("qa_answer", args=["where-to-get-a-hearing-test"])
+        undecided = type(self.user).objects.create_user(username="hospital_undecided")
+        self.client.force_login(undecided)
+        self.client.get(url)
+        self.client.logout()
+        self.client.get(url)
+        self.assertFalse(GuideChapterView.objects.exists())
+        self.client.force_login(self.user)
+        self.client.get(reverse("qa_answer", args=["my-results"]))
+        self.assertFalse(GuideChapterView.objects.exists())
 
     def test_without_an_audiogram_step_3_opens_to_its_two_sources(self):
         # Spec #741 acceptance 4, story 4: the small heading and two entry cards of one size, to
@@ -600,17 +637,17 @@ class LoggedInHomeTests(HomeJourneyTestCase):
     """#751 (spec #741 acceptance 40, 41, the canvas's ProHome, page grill P12, P13)."""
 
     def bubble(self, main):
-        """The bird's (lead, title), as text."""
-        found = re.search(
-            r'<p class="bird-lead">(.*?)</p>\s*<h1 class="bird-title">(.*?)</h1>', main, re.S
-        )
-        return self.text(found[1]), self.text(found[2])
+        """The bird's bubble, as its lines of text."""
+        found = re.search(r'<div class="bird-bubble">(.*?)</h1>', main, re.S)
+        return re.findall(r"<(?:p|h1)\b[^>]*>([^<]*)", found[1])
 
     def test_the_bird_greets_the_account_by_name_at_9_in_taiwan(self):
-        # Acceptance 40: the clock pinned at 9 a.m. Asia/Taipei (TIME_ZONE).
+        # Acceptance 40: the clock pinned at 9 a.m. Asia/Taipei (TIME_ZONE); as the canvas, one
+        # line with no lead (spec #741's 實作中本人補充).
         self.fresh_user("jason")
         self.answer()
-        self.assertEqual(self.bubble(self.main()), (HOME_LEAD, "早安，jason"))
+        self.assertEqual(self.bubble(self.main()), ["早安，jason"])
+        self.assertNotIn("bird-lead", self.main())
 
     def test_a_name_over_8_characters_leaves_the_greeting_alone(self):
         for name, title in (
@@ -621,7 +658,7 @@ class LoggedInHomeTests(HomeJourneyTestCase):
             with self.subTest(name=name):
                 self.fresh_user(name)
                 self.answer()
-                self.assertEqual(self.bubble(self.main())[1], title)
+                self.assertEqual(self.bubble(self.main()), [title])
 
     def test_the_greeting_follows_the_time_of_day_in_taiwan(self):
         # #458 D2: 早安 from 5 to before 12, 午安 to before 18, 晚安 through the night.
@@ -637,7 +674,7 @@ class LoggedInHomeTests(HomeJourneyTestCase):
         ):
             with self.subTest(hour=hour):
                 self.now = timezone.make_aware(datetime(2026, 11, 12, hour, 30))
-                self.assertEqual(self.bubble(self.main())[1], f"{greeting}，jason")
+                self.assertEqual(self.bubble(self.main()), [f"{greeting}，jason"])
 
     def hero(self, main):
         return self.part(main, "hero-card")
@@ -688,14 +725,15 @@ class StepInteractionTests(HomeJourneyTestCase):
 
     def test_every_step_opens_to_say_what_it_is(self):
         # I1: native <details>, so it opens without JavaScript too. A done step opens to its
-        # stamp (spec #741 acceptance 27); since #751 the 現在這一步's card is on top, so its row
-        # opens as any other, to what it is and its entry card.
+        # stamp (spec #741 acceptance 27), step 2's also to 查詢醫療院所 (實作中本人補充); since
+        # #751 the 現在這一步's card is on top, so its row opens as any other, to what it is and
+        # its entry card.
         self.step_4_with_three_done()
         main = self.main()
         items = self.items(main)
         self.assertEqual(["<details" in body for _, body in items], [True] * 7)
         self.assertEqual(self.opened(main, 0), ("已完成", []))
-        self.assertEqual(self.opened(main, 1), ("已完成", []))
+        self.assertEqual(self.opened(main, 1), ("已完成 查詢醫療院所", []))
         self.assertEqual(self.opened(main, 3), (f"{GUIDE_WORDS} 看助聽器選配與補助", []))
         self.assertEqual(
             self.opened(main, 4), ("照選配路線一站一站走，從找聽力師到開始戴助聽器。", [])
@@ -710,7 +748,8 @@ class StepInteractionTests(HomeJourneyTestCase):
         self.assertNotIn("<details open", main)
 
     def test_the_line_is_blue_up_to_the_current_step_without_a_progress_bar(self):
-        # I2: the walked steps, numbered for the entrance's timing; 「3 / 7」 stays.
+        # I2: the walked steps, numbered for the entrance's timing; 「3 / 7」 is gone, the hero
+        # card saying how far (spec #741's 實作中本人補充).
         self.step_4_with_three_done()
         main = self.main()
         # Played once the 現在這一步's row is in view (ADR 0029; since #751 its card is the hero
@@ -739,7 +778,7 @@ class StepInteractionTests(HomeJourneyTestCase):
                 ("is-later", "6"),
             ],
         )
-        self.assertIn('<span class="visually-hidden">進度 </span>3 / 7</p>', main)
+        self.assertNotIn("3 / 7", main)
         self.assertNotIn("journey-bar", main)
 
     def test_only_the_journey_loads_its_script(self):

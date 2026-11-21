@@ -121,9 +121,6 @@ class Definition:
     def color(self, level):
         return self.level_colors.get(level, level)
 
-    def short_name(self, level):
-        return self.short_names[level]
-
     def shade(self, level):
         """ "pale" or "deep": levels sharing a colour alternate from the lowest up, so the score
         bar and the trend chart's bands stay apart where two touch (THI's five levels)."""

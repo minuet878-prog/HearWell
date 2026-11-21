@@ -45,8 +45,9 @@ function countUp(element, win) {
 //   its animations on their first frame until this adds data-in-view. The animation itself is
 //   site.css's, for example the shared play-once-slide-up, play-once-stamp, play-once-ring and
 //   play-once-gauge classes (see there for what each needs).
-// - data-count-up on an element whose whole text is a number (a score, a number of days): it
-//   counts up from 0 once in view. It needs no data-play-in-view of its own.
+// - data-count-up on an element whose whole text is a number of days (a score is shown as it is,
+//   ADR 0077 since 2026-11-21): it counts up from 0 once in view. It needs no data-play-in-view
+//   of its own.
 // Starts each of them the first time it is in view, and stops watching it. One inside something
 // inert (a stacked card behind the front one, #754) is not seen yet: it waits until card-stack.js
 // says, with a card-stack-show event, that its card came to the front.

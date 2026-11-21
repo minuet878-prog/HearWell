@@ -2,15 +2,12 @@
 
 The one place for every page's lead. Keyed by the page's URL name; a page with more than one
 state (a link that no longer works, a form already sent) has a key of its own for each. The owner
-reviews every line before it goes live: the canvas's are hers already, the rest are drafts.
+reviewed every line on 2026-11-21; a new or changed lead goes to the owner before it goes live.
 A lead with {name} takes the account's name.
 """
 
 LEADS = {
-    # 首頁
-    "index": "今天也陪您照顧聽力。",
-    "index_guest": "您好，歡迎來到聽伴。",
-    "index_empty": "歡迎來到聽伴。",
+    # 首頁 has none: its bubble is one line, as the canvas (spec #741's 實作中本人補充).
     # 問卷
     "questionnaire_list": "不確定做哪一份？我可以幫您選。",
     "questionnaire_wizard": "回答幾個問題，我幫您挑。",

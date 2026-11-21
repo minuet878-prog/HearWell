@@ -29,9 +29,7 @@ class ThiSupportResultTests(test_thi.ThiTestCase):
 
     def test_item_5_often_shows_the_support_message_under_a_slight_level(self):
         main = self._main(only_often(5))
-        self.assertIn(
-            '總分 <span class="result-number" data-count-up>4</span> 分（滿分 100）', main
-        )
+        self.assertIn('總分 <span class="result-number">4</span> 分（滿分 100）', main)
         self.assertIn('aria-describedby="result-score">無障礙或輕微障礙</h2>', main)
         self.assertIn(SUPPORT, main)
         # Under the level: after the score block and the gauge in it (#750),

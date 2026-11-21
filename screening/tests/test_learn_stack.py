@@ -7,6 +7,7 @@ from io import StringIO
 from types import SimpleNamespace
 from unittest import mock
 
+from django.conf import settings
 from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
@@ -16,7 +17,8 @@ from screening.questionnaires import thi
 from screening.tests.helpers import consented_user
 
 CARD = re.compile(
-    r'<article class="hero-card card-stack-card" role="group" aria-roledescription="卡片" '
+    r'<article class="hero-card card-stack-card learn-card" role="group" '
+    r'aria-roledescription="卡片" '
     r'aria-label="([^"]+)"[^>]*>(.*?)</article>',
     re.S,
 )
@@ -83,6 +85,13 @@ class LearnStackTests(TestCase):
             body,
             rf'<a class="btn btn-hero btn-lg" href="{reverse("hearing_loss_simulator")}">聽聽看',
         )
+        # The owner (2026-11-21, at acceptance): the words on these cards centred.
+        css = (settings.BASE_DIR / "frontend/src/site.css").read_text()
+        self.assertRegex(css, r"\.learn-card \{[^}]*text-align: center;")
+        # Its line bigger than body text (owner, 2026-11-21): 22px at the 18px root.
+        self.assertRegex(css, r"\.learn-card > p \{[^}]*font-size: 1\.2222rem;")
+        # And the simulator's wave no taller than the other cards' drawings, so the words lead.
+        self.assertRegex(css, r"\.learn-card \.hero-wave \{[^}]*height: 2\.6667rem;")
         # Every card its own drawing, each playing once when its card comes to the front.
         drawings = [re.search(r"<svg[^>]*>", body).group() for _, body in self.cards(main)]
         self.assertEqual(len(set(drawings)), 5)
@@ -125,7 +134,8 @@ class LearnStackTests(TestCase):
         self.assertEqual(
             rows,
             [
-                ("了解助聽器選配與補助", ""),
+                # The owner (2026-11-21): every row a line, this one its card's.
+                ("了解助聽器選配與補助", "從聽力檢查到申請補助"),
                 ("家人專區", "溝通與陪伴"),
                 ("聽損模擬", "聽聽看他聽到的聲音"),
                 ("問答小助手", "常見問題一次查"),

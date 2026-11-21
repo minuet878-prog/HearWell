@@ -8,9 +8,10 @@ from django.utils.http import content_disposition_header
 from django.views.decorators.http import require_http_methods
 
 from screening import models
-from screening.fitting_route import GUIDE_PAGE
+from screening.fitting_route import GUIDE_PAGE, HOSPITAL_SEARCH
 from screening.forms import Form9Form, Form25Form, NoticeForm, answer_choices
 from screening.models import Answer, AudiogramPoint, Questionnaire
+from screening.scoring import FIND_A_HOSPITAL
 from screening.views.common import health_data_page
 from screening.views.guide import GUIDE_CHAPTERS
 
@@ -67,6 +68,7 @@ def download_my_data(request):
     aid = models.AidAndSubsidy.for_user(user)
     chapter_titles = {chapter.slug: chapter.title for chapter in GUIDE_CHAPTERS}
     chapter_titles[GUIDE_PAGE] = "助聽器選配與補助"  # 看過指引頁, by my guide's heading
+    chapter_titles[HOSPITAL_SEARCH] = FIND_A_HOSPITAL  # step 2's 查詢醫療院所 opened
     reminder = models.RetestReminder.objects.filter(user=user).first()
     data = {
         "account": {
