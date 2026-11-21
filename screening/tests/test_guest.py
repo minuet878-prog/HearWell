@@ -377,7 +377,9 @@ class GuestResultPageTests(GuestTestCase):
         self.assertIn('<div class="score-ruler" aria-hidden="true">', html)
         self.assertIn("聽力問題影響在哪裡", html)
         self.assertIn("助聽器：沒戴", html)
-        self.assertIn(hhie_s.ADVICE["mild_to_moderate"], html)
+        # Step 1, and since the owner's acceptance (2026-11-21) not the whole advice.
+        self.assertIn(hhie_s.NEXT_STEPS["mild_to_moderate"][0]["text"], html)
+        self.assertNotIn(hhie_s.ADVICE["mild_to_moderate"], html)
         labels = dict(hhie_s.CHOICES)
         for question, score in zip(
             self.hhie_s.questions.order_by("question_number"), scores, strict=True

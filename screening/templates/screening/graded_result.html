@@ -65,7 +65,7 @@
 {% if submission.result.is_guest %}{% include "screening/guest_clear.html" %}{% else %}{% include "screening/result_rows.html" %}{% endif %}
 </div>
 {% if retest_reminder %}{% include "screening/result_reminder.html" %}{% endif %}
-{# HHIA-S's limits stay outside the fold, as the owner chose (text-heavy pages tidy-up). #}
+{# HHIA-S's limits on their own, as the owner chose (text-heavy pages tidy-up); since 2026-11-21 the level's full advice that also says them is not on this page. #}
 {% if submission.questionnaire.definition.result_note %}
 <p class="source-note">{{ submission.questionnaire.definition.result_note }}</p>
 {% endif %}

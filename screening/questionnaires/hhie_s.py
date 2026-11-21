@@ -127,7 +127,7 @@ DEFINITION = Definition(
     short_names=SHORT_NAMES,
     advice=ADVICE,
     next_steps=NEXT_STEPS,
-    # Under the next steps, as HHIA-S's: the full advice is folded away.
+    # Under the next steps, as HHIA-S's: the full advice is not on the result page.
     result_note=LIFE_IMPACT_LIMITS,
     trend_chart=True,
     records_tab_age="65 歲以上",
