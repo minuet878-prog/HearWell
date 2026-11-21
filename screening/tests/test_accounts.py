@@ -87,7 +87,6 @@ class LoginRequiredTests(TestCase):
         # Like the consent page (the 405 on tingpal.tw, 2026-11-13): signed out meanwhile, a
         # form that takes only POST would be opened with GET after logging in.
         sent = (
-            (reverse("journey_todo_tick"), {"next": "/"}, "/"),
             (reverse("route_answer"), {"next": reverse("guide")}, reverse("guide")),
             (reverse("report_share_create"), {}, reverse("index")),
             (reverse("report_share_cancel", args=[1]), {}, reverse("index")),
@@ -104,7 +103,6 @@ class LoginRequiredTests(TestCase):
         # #552 acceptance 8: form_address took the place of require_http_methods(["POST"]).
         self.client.force_login(consented_user(username="sender"))
         for url in (
-            reverse("journey_todo_tick"),
             reverse("route_answer"),
             reverse("report_share_create"),
             reverse("report_share_cancel", args=[1]),

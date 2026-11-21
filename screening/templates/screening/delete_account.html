@@ -15,7 +15,6 @@
     <li>問卷紀錄 {{ submission_count }} 筆（每一題的作答和分數）</li>
     <li>聽力圖 {{ audiogram_count }} 張</li>
     <li>助聽器與補助資料（您在選配路線上的回答，以及看過哪幾個選配指引章節）</li>
-    <li>照顧旅程的待辦打勾</li>
     <li>同意紀錄</li>
     {# Spec #505 (the #507 mockup W17): the ways to sign in go with it. #}
     {% if sign_in_methods %}<li>登入方式（{% for method in sign_in_methods %}{{ method.get_provider_display }}{% if not forloop.last %}、{% endif %}{% endfor %}）</li>{% endif %}

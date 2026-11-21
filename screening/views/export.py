@@ -9,8 +9,6 @@ from django.views.decorators.http import require_http_methods
 
 from screening import models
 from screening.forms import Form9Form, Form25Form, NoticeForm, answer_choices
-from screening.journey_todos import TODO_TEXTS, current_rounds
-from screening.main_flow import get_user_state
 from screening.models import Answer, AudiogramPoint, Questionnaire
 from screening.views.common import health_data_page
 from screening.views.guide import GUIDE_CHAPTERS
@@ -66,7 +64,6 @@ def download_my_data(request):
     points = AudiogramPoint.objects.order_by("ear", "conduction", "frequency")
     audiograms = user.audiograms.prefetch_related(Prefetch("points", queryset=points))
     aid = models.AidAndSubsidy.for_user(user)
-    rounds = current_rounds(aid, get_user_state(user, timezone.localdate()).life_impact)
     chapter_titles = {chapter.slug: chapter.title for chapter in GUIDE_CHAPTERS}
     reminder = models.RetestReminder.objects.filter(user=user).first()
     data = {
@@ -160,16 +157,6 @@ def download_my_data(request):
                 for view in user.guide_views.order_by("first_viewed_at")
             ],
         },
-        # #481 (spec #478 acceptance 24): the 手動待辦 ticked, by their words, first ticked first;
-        # an earlier round's too, not in the current one (#482).
-        "journey_todos": [
-            {
-                "todo": TODO_TEXTS.get(tick.key, tick.key),
-                "ticked_at": _taipei(tick.ticked_at),
-                "current_round": rounds.get(tick.key) == tick.round_key,
-            }
-            for tick in user.todo_ticks.order_by("ticked_at", "id")
-        ],
         # Spec #656 acceptance 44: on or off and since when; not the cancel code, which would let
         # anyone holding the file turn it off.
         "retest_reminder": {

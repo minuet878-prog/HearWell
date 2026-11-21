@@ -37,10 +37,6 @@ def greets(greeting, title):
     return rf'<p class="bird-lead">{greeting}，</p>\s*<h1 class="bird-title">{title}</h1>'
 
 
-# The 現在這一步 card's 待辦 (spec #478), left to test_journey_todos: these check its one thing.
-TODOS = re.compile(r'<div class="todos">.*?</div>', re.S)
-
-
 class HomeJourneyTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -119,11 +115,11 @@ class HomeJourneyTestCase(TestCase):
         ]
 
     def card(self, main):
-        return TODOS.sub("", self.part(main, "journey-card"))
+        return self.part(main, "journey-card")
 
     def items(self, main):
         """Each step's (classes, its HTML) in order."""
-        steps = TODOS.sub("", self.part(main, "journey-steps"))
+        steps = self.part(main, "journey-steps")
         return re.findall(r'<li class="journey-step ([^"]*)"[^>]*>(.*?)</li>', steps, re.S)
 
     def steps(self, main):

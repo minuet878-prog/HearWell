@@ -17,7 +17,7 @@ from screening.tests.helpers import consented_user, fake_definition, register, s
 
 PASSWORD = "Xk9#mPq2vLw"
 TEMPLATES = Path(__file__).resolve().parents[1] / "templates" / "screening"
-# Readability batch 3 (the owner's C2 A, 2026-11-16): the eight highlights in three groups,
+# Readability batch 3 (the owner's C2 A, 2026-11-16): the highlights in three groups,
 # each word as it was; only their order moved to fit the groups. Not a new consent version
 # (ADR 0061): what people are told did not change. Spec #733 (version 9) added the 整體統計 to
 # the first line.
@@ -26,7 +26,6 @@ HIGHLIGHT_GROUPS = (
         "用來做什麼",
         (
             "只用來算分數、給建議、保存您的紀錄，以及做認不出是誰的整體統計；不拿去賣或做廣告。",
-            "照顧旅程的待辦打勾也會保存，跟其他紀錄一樣可以下載或刪除。",  # version 5 (spec #478)
             "結果只是參考，不是醫療診斷。",
         ),
     ),
@@ -417,11 +416,10 @@ class GateTests(TestCase):
         # is no page to come back to; the page it was on (its next) is, else the home page.
         self.client.force_login(self.user)
         sent = (
-            (reverse("journey_todo_tick"), {"next": "/"}, "/"),
             (reverse("route_answer"), {"next": reverse("guide")}, reverse("guide")),
             (reverse("report_share_create"), {}, reverse("index")),
             (reverse("report_share_cancel", args=[1]), {}, reverse("index")),
-            (reverse("journey_todo_tick"), {"next": "https://evil.example.com"}, reverse("index")),
+            (reverse("route_answer"), {"next": "https://evil.example.com"}, reverse("index")),
         )
         for url, data, back in sent:
             with self.subTest(url=url, data=data):
@@ -429,10 +427,9 @@ class GateTests(TestCase):
                     self.client.post(url, data), _consent_url(back), fetch_redirect_response=False
                 )
 
-    def test_agreeing_after_a_tick_lands_on_the_home_page(self):
+    def test_agreeing_after_a_form_sent_lands_on_its_page(self):
         self.client.force_login(self.user)
-        data = {"todo": "form-9-book", "ticked": "1", "next": "/", "round": "0"}
-        consent_page = self.client.post(reverse("journey_todo_tick"), data, follow=True)
+        consent_page = self.client.post(reverse("route_answer"), {"next": "/"}, follow=True)
         agreed = self.client.post(
             reverse("consent"), {"agree": "", "next": consent_page.context["next"]}, follow=True
         )
@@ -562,9 +559,8 @@ class PrivacyPageT361Tests(TestCase):
             self.assertNotIn(vague, self.main)
 
     def test_route_answers_are_a_second_level_list_in_the_same_words(self):
-        # Spec #478 put the to-do ticks between it and 同意紀錄.
         item = re.search(
-            r"<li>(健康資料：.*?)</li>\s*<li>照顧旅程的待辦打勾", self.main, re.S
+            r"<li>(健康資料：.*?)</li>\s*<li>您有沒有打開 email 重測提醒", self.main, re.S
         ).group(1)
         inner = re.search(r"<ul>(.*?)</ul>", item, re.S).group(1)
         self.assertEqual(
@@ -658,7 +654,7 @@ class VpsPrivacyTests(TestCase):
         self.assertEqual(services[:2], ["Vultr", "Sentry"])
 
     def test_it_shows_version_4_and_the_new_date(self):
-        # Spec #478 raised it to 5 since, with its own date (test_journey_todos).
+        # Spec #478 raised it to 5 since, with its own date.
         self.assertGreaterEqual(models.CONSENT_VERSION, 4)
         self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 12))
         version, updated_on = models.CONSENT_VERSION, f"{models.PRIVACY_UPDATED_ON:%Y/%m/%d}"

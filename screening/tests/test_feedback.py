@@ -519,7 +519,6 @@ NOT_PAGES = {
     "line_add",
     "qa_search",
     "route_answer",
-    "journey_todo_tick",
     "report_share_create",
     "report_share_cancel",
     "download_my_data",

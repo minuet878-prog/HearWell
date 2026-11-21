@@ -88,7 +88,6 @@
                     {% endif %}
                 {% endcapture %}
                 {% include "screening/hero_card.html" with body=hero attrs="data-play-in-view" %}
-                {% include "screening/journey_todos.html" with todos=card.todos %}
             </div>
             {% endwith %}
             {% else %}
