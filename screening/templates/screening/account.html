@@ -15,11 +15,15 @@
 
 <section class="mt-6" aria-labelledby="account-title">
     <h2 id="account-title" class="h4">我的帳號</h2>
+    {# #757 (spec #741 P19, the canvas's ProAccount): the name beside the header's avatar, larger, in a pale blue block. #}
+    <div class="account-card">
+        <span class="account-avatar" aria-hidden="true">{{ user.username|first|upper }}</span>
+        <dl class="account-card-name">
+            <dt>使用者名稱</dt>
+            <dd>{{ user.username }}</dd>
+        </dl>
+    </div>
     <dl class="settings-group">
-        <div class="settings-row">
-            <dt class="settings-row-note">使用者名稱</dt>
-            <dd class="settings-row-title">{{ user.username }}</dd>
-        </div>
         {% if user.email_confirmed %}
         <div class="settings-row">
             <dt class="settings-row-note">電子郵件</dt>
@@ -38,7 +42,7 @@
         <div class="settings-row grid grid-cols-[1fr_auto] items-center gap-x-3">
             <dt class="settings-row-note">電子郵件</dt>
             <dd class="settings-row-title">未填</dd>
-            <dd class="col-start-2 row-span-2 row-start-1"><a class="btn btn-outline-primary" href="{% url 'add_email' %}" aria-label="補上電子郵件">補上</a></dd>
+            <dd class="col-start-2 row-span-2 row-start-1"><a class="btn btn-outline-primary btn-pill" href="{% url 'add_email' %}" aria-label="補上電子郵件">補上</a></dd>
         </div>
         {% endif %}
         <div class="settings-row">
@@ -55,11 +59,13 @@
 {# #659 (spec #656 acceptance 1-6, the #657 mockup's C): the state, then one button saying what it does; once on, a text link turns it off. An ordinary form, no JavaScript. Without an email it cannot be turned on. #}
 <section id="retest-reminder" class="mt-6" aria-labelledby="retest-reminder-title">
     <h2 id="retest-reminder-title" class="h4">email 重測提醒</h2>
+    {# #757 (spec #741 P19, the canvas's ProAccount): the whole switch in one grey block; while off, the bell beside what it is for. #}
+    <div class="reminder-box">
     {% if reminder.enabled %}
     <p class="reminder-on"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="wrap-anywhere">已開啟，到期會寄到 {{ user.email }}</span></p>
     {% if retest.retest_due %}
     {# Once on this page only, so Tailwind's own classes (CODING_STANDARDS 21): a pale box asking for it now. #}
-    <div class="mb-2 rounded-(--radius-medium) bg-surface px-4 py-3.5">
+    <div class="mb-2 rounded-(--radius-medium) bg-white px-4 py-3.5">
         <p class="m-0 font-bold text-heading">您現在就可以再做一次</p>
         <p class="mt-1 mb-0">上一次是 {{ retest.life_impact.created_at|date:"Y/m/d" }}，{% if no_mail_this_time %}已經超過半年。這一次不另外寄信，做完之後，半年後會寄提醒給您。{% else %}已經滿半年。{% endif %}</p>
         <a class="btn btn-primary w-full mt-3" href="{% url 'screening' retest.retest_questionnaire.pk %}">再做一次</a>
@@ -78,7 +84,10 @@
         <button class="btn btn-link px-0" type="submit">關掉提醒</button>
     </form>
     {% else %}
-    {% include "screening/retest_reminder_purpose.html" %}
+    <div class="reminder-purpose">
+        <span class="reminder-bell" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"/></svg></span>
+        {% include "screening/retest_reminder_purpose.html" %}
+    </div>
     <dl class="settings-group">
         <div class="settings-row">
             <dt class="settings-row-note">目前</dt>
@@ -100,6 +109,7 @@
     <a class="btn btn-outline-primary w-full" href="{% url 'add_email' %}">補上 email</a>
     {% endif %}
     {% endif %}
+    </div>
 </section>
 
 {# Spec #505 acceptance 22, 27, 28 (the #507 mockup 5, D5, W12) and #506 acceptance 15, 18 (the #539 mockup 5, D4): one row per way to sign in, 帳號密碼, Google, LINE; adding is a small blue frame, removing a red text link. A provider without its keys has no row; admin accounts have no group, nor anyone when no provider has keys. #}
@@ -123,7 +133,7 @@
                 <button class="danger-link" type="submit" aria-label="移除 {{ row.name }} 登入">移除</button>
             </form>
             {% elif row.add_url %}
-            <a class="btn btn-outline-primary" href="{{ row.add_url }}" aria-label="新增 {{ row.name }} 登入">新增</a>
+            <a class="btn btn-outline-primary btn-pill" href="{{ row.add_url }}" aria-label="新增 {{ row.name }} 登入">新增</a>
             {% endif %}
         </li>
         {% endfor %}

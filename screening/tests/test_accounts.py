@@ -288,7 +288,8 @@ class LoginViewTests(TestCase):
     # forgot-password page, in place of #360's line asking people to write in.
     def test_forgotten_password_link_under_the_login_button(self):
         main = self.client.get(self.url).content.decode().split('id="main-content"', 1)[1]
-        link = re.search(r'<a class="inline-link" href="([^"]*)">忘記密碼？</a>', main)
+        # #757: bold, as the canvas's ProLogin.
+        link = re.search(r'<a class="inline-link font-bold" href="([^"]*)">忘記密碼？</a>', main)
         self.assertIsNotNone(link)
         self.assertEqual(link.group(1), reverse("password_reset"))
         self.assertLess(main.index('type="submit">登入</button>'), link.start())

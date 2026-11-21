@@ -1818,13 +1818,16 @@
     font-weight: 700;
   }
   .birth-age:empty { display: none; }
+  /* #757 (spec #741 P20, the canvas's ProLogin): registering in a grey block of its own. */
   .auth-alt {
     margin-top: 1.25rem;
-    padding-top: 1.25rem;
-    border-top: 1px solid var(--color-line);
+    padding: 0.8889rem;
+    border-radius: var(--radius-large);
+    background-color: var(--color-surface);
     text-align: center;
   }
-  .auth-alt p { margin-bottom: 1rem; color: var(--color-heading); }
+  /* 12px between the words and the wide button under them (#453). */
+  .auth-alt p { margin-bottom: 0.6667rem; color: var(--color-heading); }
 
   /* Answer choices: large horizontal buttons; the whole label is clickable. */
   div.choice-group {
@@ -4738,6 +4741,94 @@
 
   .settings-card-danger .action-card-icon svg {
     stroke: var(--color-severe);
+  }
+
+  /* #757 (spec #741 P19, the canvas's ProAccount): the account's name in a pale blue block
+     beside a larger copy of the header's avatar (.site-avatar), on the brand's deep gradient. */
+  .account-card {
+    display: flex;
+    align-items: center;
+    gap: 0.7778rem;
+    padding: 0.8889rem;
+    border-radius: var(--radius-large);
+    background-color: var(--color-brand-soft);
+  }
+
+  .account-avatar {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 3.5556rem;
+    height: 3.5556rem;
+    border-radius: 50%;
+    background-image: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+    color: #fff;
+    font-size: 1.6667rem;
+    font-weight: 700;
+  }
+
+  .account-card-name {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .account-card-name dt {
+    color: var(--color-muted);
+    font-size: 1rem;
+    font-weight: 400;
+  }
+
+  .account-card-name dd {
+    margin: 0;
+    color: var(--color-heading);
+    font-size: 1.3333rem;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  /* A row's own button (補上, 新增, 重寄確認信): round-ended as the canvas draws it, still the
+     site's 56px button height (#453 acceptance 32, ADR 0043 S1). */
+  .btn-pill {
+    border-radius: var(--radius-pill);
+  }
+
+  /* The email 重測提醒 in one grey block; while off, the bell in a white circle beside what it
+     is for. */
+  .reminder-box {
+    padding: 0.8889rem;
+    border-radius: var(--radius-large);
+    background-color: var(--color-surface);
+  }
+
+  .reminder-purpose {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6667rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .reminder-bell {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: var(--spacing-touch);
+    height: var(--spacing-touch);
+    border-radius: 50%;
+    background-color: #fff;
+  }
+
+  .reminder-bell svg {
+    width: 1.5rem;
+    height: 1.5rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 
   /* Questionnaire list (spec phase9_ui_refresh_4b_questionnaire_cards.md 4.1); the continue
@@ -7767,5 +7858,241 @@
     --btn-active-color: #fff;
     --btn-active-bg: rgba(255, 255, 255, 0.24);
     --btn-active-border-color: #fff;
+  }
+}
+
+/* #753 (spec #741 P3, P4; the canvas's ProScreening): 幫我選 in the bird's bubble, and the
+   stacked cards (card-stack.js), one blue card in front and the next ones peeking behind it. */
+@layer components {
+  .bird-pick {
+    display: flex;
+    align-items: center;
+    gap: 0.6667rem;
+    margin-top: 0.6667rem;
+    min-height: 3.5556rem;
+    padding: 0.4444rem 0.7778rem 0.4444rem 0.4444rem;
+    border: 2px solid var(--color-primary);
+    border-radius: 1.7778rem;
+    background-color: #fff;
+    color: var(--color-primary);
+    font-size: 1.1111rem;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 0.3333rem 0.7778rem rgba(23, 59, 106, 0.18);
+    transition: background-color 0.15s;
+  }
+
+  @media (hover: hover) {
+    .bird-pick:hover {
+      background-color: var(--color-brand-soft);
+      color: var(--color-primary-hover);
+    }
+  }
+
+  .bird-pick:active {
+    background-color: var(--color-brand-soft-deep);
+  }
+
+  .bird-pick svg {
+    display: block;
+    width: 1.4444rem;
+    height: 1.4444rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .bird-pick-icon {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5556rem;
+    height: 2.5556rem;
+    border-radius: 50%;
+    background-image: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+    color: #fff;
+  }
+
+  .bird-pick-text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .bird-pick-arrow svg {
+    stroke-width: 2.5;
+  }
+
+  .card-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7778rem;
+    margin: 1.25rem 0;
+    /* The cards peeking out on either side stay inside the page: no sideways scrolling. */
+    overflow-x: clip;
+  }
+
+  /* Every card in one grid cell, so the stack is as tall as its tallest card at any text
+     size, and every card that tall. */
+  .card-stack-cards {
+    display: grid;
+    padding: 0.5rem 0 0.75rem;
+  }
+
+  .card-stack-card {
+    grid-area: 1 / 1;
+    margin: 0;
+  }
+
+  .card-stack-card .btn {
+    margin-top: auto;
+  }
+
+  .hero-card .recommended-audience {
+    color: #fff;
+  }
+
+  /* Without JavaScript, or before it runs, the first card alone (spec #741 acceptance 58). */
+  .card-stack:not([data-ready]) .card-stack-card:not(:first-child) {
+    display: none;
+  }
+
+  .card-stack[data-ready] .card-stack-cards {
+    /* Sideways is the card's; up and down still scrolls the page. */
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: grab;
+  }
+
+  .card-stack[data-ready] .card-stack-card {
+    justify-self: center;
+    width: calc(100% - min(2.5rem, 14%));
+    transition: transform 0.4s cubic-bezier(0.3, 0.7, 0.2, 1), opacity 0.3s, filter 0.3s;
+  }
+
+  .card-stack-card[data-offset="0"] {
+    z-index: 3;
+    transform: translateX(var(--card-stack-drag, 0px));
+  }
+
+  .card-stack-card:is([data-offset="1"], [data-offset="-1"]) {
+    z-index: 2;
+    opacity: 0.55;
+    filter: brightness(0.8);
+  }
+
+  .card-stack-card[data-offset="1"] {
+    transform: translateX(min(1.25rem, 7%)) scale(0.9);
+  }
+
+  .card-stack-card[data-offset="-1"] {
+    transform: translateX(max(-1.25rem, -7%)) scale(0.9);
+  }
+
+  .card-stack-card:is([data-offset="2"], [data-offset="-2"]) {
+    z-index: 1;
+    opacity: 0;
+    transform: scale(0.8);
+  }
+
+  /* The front card follows the finger; the rest wait. */
+  .card-stack[data-dragging] .card-stack-card {
+    transition: none;
+  }
+
+  /* Reduced motion: the card changes without sliding (card-stack.js does not let it follow
+     the finger either). */
+  @media (prefers-reduced-motion: reduce) {
+    .card-stack[data-ready] .card-stack-card,
+    .card-stack-dots > span {
+      transition: none;
+    }
+  }
+
+  .card-stack-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6667rem;
+  }
+
+  .card-stack-prev,
+  .card-stack-next {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.1111rem;
+    height: 3.1111rem;
+    padding: 0;
+    border: 2px solid var(--color-primary);
+    border-radius: 50%;
+    background-color: #fff;
+    color: var(--color-primary);
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+
+  .card-stack-prev svg,
+  .card-stack-next svg {
+    display: block;
+    width: 1.5556rem;
+    height: 1.5556rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .card-stack-controls button:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  @media (hover: hover) {
+    .card-stack-controls button:hover:not(:disabled) {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .card-stack-controls button:active:not(:disabled) {
+    background-color: var(--color-brand-soft-deep);
+  }
+
+  .card-stack-where {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3333rem;
+    min-width: 0;
+    text-align: center;
+  }
+
+  .card-stack-position {
+    margin: 0;
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
+  .card-stack-dots {
+    display: flex;
+    gap: 0.4444rem;
+  }
+
+  .card-stack-dots > span {
+    width: 0.5556rem;
+    height: 0.5556rem;
+    border-radius: 0.2778rem;
+    background-color: var(--color-border);
+    transition: width 0.3s, background-color 0.3s;
+  }
+
+  .card-stack-dots > [data-current] {
+    width: 1.5556rem;
+    background-color: var(--color-primary);
   }
 }
