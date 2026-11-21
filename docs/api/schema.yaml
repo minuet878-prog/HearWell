@@ -509,8 +509,6 @@ components:
           $ref: '#/components/schemas/QuestionnaireSummary'
         wearing_hearing_aid:
           type: boolean
-        wearing_text:
-          type: string
         scores:
           $ref: '#/components/schemas/Scores'
         level:
@@ -523,7 +521,6 @@ components:
       - questionnaire
       - scores
       - wearing_hearing_aid
-      - wearing_text
     Interpretation:
       type: object
       properties:

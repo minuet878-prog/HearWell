@@ -175,7 +175,6 @@ describe("showGuestResult (the guest result page)", () => {
   const SCORED = {
     questionnaire: { code: "hhie-s", name: "HHIE-S" },
     wearing_hearing_aid: false,
-    wearing_text: "沒戴助聽器",
     scores: { total: 16, emotional: 12, social: 4 },
     level: { code: "mild_to_moderate", text: "輕度到中度影響", color: "mild_to_moderate" },
     html: `<div class="result-banner">總分 16 分</div>${CLEAR_ROW}`,
@@ -187,7 +186,6 @@ describe("showGuestResult (the guest result page)", () => {
     document.body.innerHTML = `
       <div id="guest-result" data-code="hhie-s" data-score-url="/api/guest-scores/" data-home-url="/">
         <div data-guest-shown hidden>
-          <p>HHIE-S・<span data-guest-date></span> 作答・<span data-guest-wearing></span></p>
           <div data-guest-section></div>
         </div>
         <p role="alert" data-guest-error></p>
@@ -215,8 +213,6 @@ describe("showGuestResult (the guest result page)", () => {
       just_finished: false,
     });
     expect(root.querySelector("[data-guest-section]").innerHTML).toBe(SCORED.html);
-    expect(root.querySelector("[data-guest-date]").textContent).toBe("2026/11/13");
-    expect(root.querySelector("[data-guest-wearing]").textContent).toBe("沒戴助聽器");
     expect(root.querySelector("[data-guest-shown]").hidden).toBe(false);
     expect(navigate).not.toHaveBeenCalled();
   });
@@ -468,7 +464,7 @@ describe("saveGuestResults (the save page)", () => {
 // #498 (#492 acceptance 16, 17; the #493 mockup's E1): the red row under the result opens its
 // question; 不要 changes nothing, 清除 forgets only this questionnaire's result and goes home.
 describe("清除這次結果 (the guest result page)", () => {
-  const SCORED = { wearing_text: "沒戴助聽器", html: `<div class="result-banner">總分 16 分</div>${CLEAR_ROW}` };
+  const SCORED = { html: `<div class="result-banner">總分 16 分</div>${CLEAR_ROW}` };
   let root;
   let navigate;
 
@@ -476,7 +472,6 @@ describe("清除這次結果 (the guest result page)", () => {
     document.body.innerHTML = `
       <div id="guest-result" data-code="hhie-s" data-score-url="/api/guest-scores/" data-home-url="/">
         <div data-guest-shown hidden>
-          <p>HHIE-S・<span data-guest-date></span> 作答・<span data-guest-wearing></span></p>
           <div data-guest-section></div>
         </div>
         <p role="alert" data-guest-error></p>

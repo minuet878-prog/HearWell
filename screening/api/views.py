@@ -34,7 +34,6 @@ from screening.models import (
     count_guest_saved,
 )
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
-from screening.scoring import TREND_STATUS_TEXT
 from screening.views.common import JUST_SAVED, works_here
 
 
@@ -263,7 +262,6 @@ class GuestScore(GenericAPIView):
                 {
                     "questionnaire": questionnaire,
                     "wearing_hearing_aid": wearing,
-                    "wearing_text": TREND_STATUS_TEXT[wearing],
                     "result": result,
                     "html": html,
                 }

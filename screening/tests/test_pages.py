@@ -10,7 +10,6 @@ from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
-from django.utils import timezone
 from django.utils.html import strip_tags
 
 from screening.models import (
@@ -704,13 +703,12 @@ class PageFlowTests(TestCase):
         # level block, the 建議下一步, then 看每一題的回答, 這個分數怎麼算 with the score detail,
         # every step and the folded full advice, then the list rows.
         submission = self._submit([4, 4, 2, 2, 0, 0, 0, 0, 0, 0])  # 12
-        day = timezone.localtime(submission.created_at).strftime("%Y/%m/%d")
         main = self._result(submission)
         steps = hhie_s.NEXT_STEPS["mild_to_moderate"]
         self._assert_in_order(
             main,
             (
-                f"{day} 作答",
+                "看看聽力對生活的影響",
                 '總分 <span class="result-number">12</span> 分（滿分 40）',
                 "輕度到中度影響",
                 "建議您下一步",

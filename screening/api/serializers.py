@@ -348,7 +348,6 @@ class GuestScoreSerializer(serializers.Serializer):
 
     questionnaire = QuestionnaireSummarySerializer()
     wearing_hearing_aid = serializers.BooleanField()
-    wearing_text = serializers.CharField()  # as the result page's header says it
     scores = ScoresSerializer(source="result")
     level = GuestLevelSerializer(source="result.level")
     html = serializers.CharField()  # graded_result.html

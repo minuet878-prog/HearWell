@@ -526,12 +526,11 @@ class IoiHaResultRedesignTests(TestCase):
         ungrouped = self._main(self._result(self.TWO_BELOW_ONE_ABOVE, grouped=False))
         self.assertIn(IoiHaTests.UNGROUPED_NOTE, self._summary(ungrouped))
 
-    def test_title_is_the_topic_with_code_and_date_below(self):
+    def test_title_is_the_topic_alone(self):
         main = self._main(self._result(self.TWO_BELOW_ONE_ABOVE))
-        # #750 (canvas ProResult): 看看 the topic.
+        # #750 (canvas ProResult): 看看 the topic; no line under it (spec #741's 實作中本人補充).
         self.assertRegex(main, r"<h1[^>]*>看看助聽器使用成效</h1>")
-        self.assertIn("IOI-HA・2026/10/15 作答", main)
-        self.assertLess(main.index("助聽器使用成效</h1>"), main.index("IOI-HA・2026/10/15"))
+        self.assertNotIn("IOI-HA・2026/10/15 作答", main)
 
     def test_grouped_summary_and_groups(self):
         # Acceptance 1.

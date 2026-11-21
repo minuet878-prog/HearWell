@@ -184,8 +184,6 @@ export async function showGuestResult({
   }
   const body = response ? await response.json().catch(() => ({})) : {};
   if (response?.ok) {
-    root.querySelector("[data-guest-date]").textContent = day(result.finishedAt);
-    root.querySelector("[data-guest-wearing]").textContent = body.wearing_text;
     root.querySelector("[data-guest-section]").innerHTML = body.html;
     // The save card's days left (save_card.html): only this browser knows when it was finished.
     const days = root.querySelector("[data-guest-days-left]");

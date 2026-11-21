@@ -161,7 +161,7 @@ class RecordPageUnchangedTests(ResultFromAnswersTestCase):
     def test_queries_and_the_account_parts(self):
         self.client.force_login(self.user)
         for code in LEVELS:
-            for wearing, queries in ((False, 19), (True, 19), (None, 18)):
+            for wearing, queries in ((False, 18), (True, 18), (None, 17)):
                 with self.subTest(code=code, wearing=wearing):
                     submission_with_answers(self.user, code, [0] * 10, wearing_hearing_aid=wearing)
                     record = submission_with_answers(

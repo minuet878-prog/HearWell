@@ -247,11 +247,10 @@ class GuestScoreTests(GuestTestCase):
         data = response.json()
         self.assertEqual(
             set(data),
-            {"questionnaire", "wearing_hearing_aid", "wearing_text", "scores", "level", "html"},
+            {"questionnaire", "wearing_hearing_aid", "scores", "level", "html"},
         )
         self.assertEqual(data["questionnaire"], {"code": hhia_s.CODE, "name": "HHIA-S"})
         self.assertIs(data["wearing_hearing_aid"], True)
-        self.assertEqual(data["wearing_text"], "有戴助聽器")
         self.assertEqual(data["level"]["code"], "normal")
 
     def test_invalid_answers_get_the_signed_in_errors(self):

@@ -1287,7 +1287,6 @@ describe("guest", () => {
   const SCORED = {
     questionnaire: { code: "hhie-s", name: "HHIE-S" },
     wearing_hearing_aid: true,
-    wearing_text: "有戴助聽器",
     scores: { total: 40, emotional: 20, social: 20 },
     level: { code: "severe", text: "顯著影響", color: "severe" },
     html: "<div>結果</div>",

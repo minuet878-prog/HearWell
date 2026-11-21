@@ -17042,10 +17042,10 @@ class ChangeLabelT646Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
                         self.assertLessEqual(width_now, room, path)
 
 
-class AttemptNumberT647Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
-    """#647 (spec #644 H3, acceptance 18): 這是您第 N 次做這份問卷。 under every result page's
-    header line fits a phone, moves the result box down by that one line only, and leaves the
-    solid button above the tab bar (the owner's pick A)."""
+class ResultFirstScreenT647Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """From #647 (spec #644 H3, acceptance 18): every result page fits a phone at 200% text, and
+    the solid button stays above the tab bar (the owner's pick A). Its sentence 這是您第 N 次做
+    這份問卷。 went with the line above it (spec #741's 實作中本人補充, 2026-11-21: 這塊不要)."""
 
     fixtures = ("questions_fixture.json",)
     record = ResultPagesT461Test.record
@@ -17058,15 +17058,6 @@ class AttemptNumberT647Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
         "ioi-ha": 7,
         "sadl": 15,
     }
-    # The result box is the element after the sentence; its top with the sentence, then without.
-    MOVED = """() => {
-        const sentence = document.querySelector("main .result-attempt");
-        const box = sentence.nextElementSibling;
-        const withIt = box.getBoundingClientRect().top;
-        const line = parseFloat(getComputedStyle(sentence).lineHeight);
-        sentence.remove();
-        return [withIt - box.getBoundingClientRect().top, line];
-    }"""
 
     def setUp(self):
         call_command("seed_questionnaires", verbosity=0)
@@ -17087,25 +17078,12 @@ class AttemptNumberT647Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
                 for width in (320, 390):
                     with self.subTest(code=code, width=width):
                         self.open(f"/submission/{record.pk}", (width, 844))
-                        expect(self.main().locator(".result-attempt")).to_have_text(
-                            "這是您第 2 次做這份問卷。"
-                        )
                         self.assert_fits_a_phone_at_double_text_size(code, width)
 
-    def test_the_result_box_moves_down_one_line_at_most(self):
-        # At 390px and the usual text size, the sentence takes one line and no more.
-        with self.saving_artifacts():
-            for code, record in self.latest.items():
-                with self.subTest(code=code):
-                    self.open(f"/submission/{record.pk}")
-                    moved, line = self.page.evaluate(self.MOVED)
-                    self.assertGreater(moved, 0, code)
-                    self.assertLessEqual(moved, line + 0.5, code)
-
     def test_the_solid_button_stays_above_the_tab_bar(self):
-        # The owner's pick A (2026-11-16): with the sentence added, the space outside the boxes
-        # shrinks so the one solid button stays on a 390 x 844 phone's first screen, above the
-        # floating tab bar, as ResultPagesT461Test asks of HHIE-S. Its records: 18, then 14.
+        # The owner's pick A (2026-11-16): the one solid button stays on a 390 x 844 phone's
+        # first screen, above the floating tab bar, as ResultPagesT461Test asks of HHIE-S. Just
+        # sent, with the green line on top. Its records: 18, then 14.
         self.sign_in(consented_user(username="t647_first"))
         latest = {}
         for code, earlier, now in (
@@ -17120,9 +17098,6 @@ class AttemptNumberT647Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
                 with self.subTest(code=code):
                     self.just_sent(record)
                     self.open(f"/submission/{record.pk}")
-                    expect(self.main().locator(".result-attempt")).to_have_text(
-                        "這是您第 2 次做這份問卷。"
-                    )
                     # #749: white on the blue hero card.
                     button = self.main().locator(".btn-hero").bounding_box()
                     tab_bar = self.page.get_by_role("navigation", name="主要導覽").bounding_box()

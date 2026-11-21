@@ -43,7 +43,6 @@ class Result:
     # line as its row; None: the date alone.
     card_template = None
     page_template = None
-    page_shows_wearing = True  # the result page's header says how the hearing aids were worn
 
     def __init__(self, submission, answers=None):
         self.submission = submission
@@ -341,7 +340,6 @@ class NormResult(Result):
 
     row_template = "screening/record_rows/norm.html"
     page_template = "screening/result_ioi_ha.html"
-    page_shows_wearing = False  # not asked: IOI-HA is answered about the hearing aids worn
 
     @property
     def norm_group(self):
@@ -459,7 +457,6 @@ class SubscaleResult(Result):
     row_template = "screening/record_rows/subscale.html"
     card_template = "screening/summaries/subscale.html"
     page_template = "screening/sadl_result.html"
-    page_shows_wearing = False  # not asked: always worn (always_aided)
     not_applicable_choice = "不適用"
 
     @cached_property

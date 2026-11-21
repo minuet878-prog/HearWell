@@ -60,19 +60,17 @@ class ResultPagesTests(TestCase):
     def _text(self, html):
         return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", html)).strip()
 
-    def test_every_result_page_is_headed_by_its_topic_then_name_date_and_wearing(self):
+    def test_every_result_page_is_headed_by_its_topic_alone(self):
         for code, (_, topic, name) in QUESTIONNAIRES.items():
             with self.subTest(code=code):
                 main = self._main(code)
                 day = timezone.localtime(self.submissions[code].created_at).strftime("%Y/%m/%d")
-                header = re.search(
-                    r"<h1[^>]*>(.*?)</h1>\s*</div>\s*</div>\s*<p[^>]*>(.*?)</p>", main, re.S
-                )
+                header = re.search(r"<h1[^>]*>(.*?)</h1>", main, re.S)
                 # #750 (canvas ProResult): 看看 the topic.
                 self.assertEqual(self._text(header.group(1)), f"看看{topic}")
-                # IOI-HA and SADL are always answered wearing hearing aids: not said again.
-                wearing = "" if code in ALWAYS_AIDED else "・沒戴助聽器"
-                self.assertEqual(self._text(header.group(2)), f"{name}・{day} 作答{wearing}")
+                # Spec #741's 實作中本人補充 (2026-11-21: 這塊不要): no line under it with the
+                # questionnaire, the date and the wearing.
+                self.assertNotIn(f"{name}・{day} 作答", self._text(main))
 
     def test_no_result_page_is_titled_screening_result(self):
         # THI is not a screening (GLOSSARY): the page says which questionnaire it is.

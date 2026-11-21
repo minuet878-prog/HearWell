@@ -668,55 +668,23 @@ class ResultPageDataTests(ResultTestCase):
         return self.client.get(reverse("result", args=[record.pk]))
 
     def test_every_result_page_has_the_shared_data(self):
-        # Wearing is said only where it was asked: not on IOI-HA (norm group instead) or SADL
-        # (always worn), whose header line ends at the date.
+        # Spec #741's 實作中本人補充 (owner, 2026-11-21: 這塊不要): no line under the bird with the
+        # questionnaire, the date and the wearing, nor which time this is.
         sadl_scores = [4] * 15
-        for code, scores, fields, wearing_text in (
-            (hhie_s.CODE, [2] * 10, {"wearing_hearing_aid": False}, "沒戴助聽器"),
-            (ssq12_tw.CODE, [6] * 12, {"wearing_hearing_aid": True}, "有戴助聽器"),
-            (ioi_ha.CODE, [3] * 7, {"norm_group": NormGroup.UNGROUPED}, None),
-            (sadl.CODE, sadl_scores, {"wearing_hearing_aid": True}, None),
+        for code, scores, fields in (
+            (hhie_s.CODE, [2] * 10, {"wearing_hearing_aid": False}),
+            (ssq12_tw.CODE, [6] * 12, {"wearing_hearing_aid": True}),
+            (ioi_ha.CODE, [3] * 7, {"norm_group": NormGroup.UNGROUPED}),
+            (sadl.CODE, sadl_scores, {"wearing_hearing_aid": True}),
         ):
             with self.subTest(code=code):
                 record = submission_with_answers(self.user, code, scores, **fields)
                 response = self.page(record)
                 self.assertEqual(response.context["submission"], record)
-                self.assertEqual(response.context["wearing_text"], wearing_text)
                 self.assertIs(response.context["show_comparison"], False)
                 self.assertTrue(response.context["next_step"].card.title)
-                header = f"{record.questionnaire.questionnaire_name}・"
-                header += f"{record.created_at.astimezone():%Y/%m/%d} 作答"
-                header += f"・{wearing_text}</p>" if wearing_text else "</p>"
-                self.assertContains(response, header)
-
-    def test_the_result_type_says_whether_its_page_shows_wearing(self):
-        # IOI-HA is answered about the hearing aids worn, SADL always worn: their pages say neither.
-        self.assertEqual(
-            {
-                kind: kind.page_shows_wearing
-                for kind in (GradedResult, AverageResult, NormResult, SubscaleResult)
-            },
-            {GradedResult: True, AverageResult: True, NormResult: False, SubscaleResult: False},
-        )
-        sadl_scores = [4] * 15
-        for code, scores, fields in (
-            (hhie_s.CODE, [2] * 10, {}),
-            (ssq12_tw.CODE, [6] * 12, {}),
-            (ioi_ha.CODE, [3] * 7, {"norm_group": NormGroup.UNGROUPED}),
-            (sadl.CODE, sadl_scores, {}),
-        ):
-            with self.subTest(code=code):
-                record = submission_with_answers(self.user, code, scores, **fields)
-                self.assertNotIn("wearing_text", record.result.page_context())
-
-        class NoWearing(GradedResult):
-            page_shows_wearing = False
-
-        record = submission_with_answers(self.user, thi.CODE, [0] * 25, wearing_hearing_aid=True)
-        with register(replace(thi.DEFINITION, result=NoWearing)):
-            response = self.page(record)
-        self.assertIsNone(response.context["wearing_text"])
-        self.assertNotContains(response, "有戴助聽器</p>")
+                self.assertNotContains(response, f"{record.created_at.astimezone():%Y/%m/%d} 作答")
+                self.assertNotContains(response, "次做這份問卷")
 
     def test_the_result_type_picks_the_page_and_its_data(self):
         # A type of its own draws its own page with its own data: the page asks the result.
@@ -732,7 +700,6 @@ class ResultPageDataTests(ResultTestCase):
         self.assertTemplateUsed(response, "screening/ssq12_result.html")
         self.assertTemplateNotUsed(response, "screening/result.html")
         self.assertEqual(response.context["answers"], ("own",))
-        self.assertEqual(response.context["wearing_text"], "助聽器未記錄")
 
 
 class ApiFieldsTests(ResultTestCase):
