@@ -2504,7 +2504,8 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                 ("unconfirmed", "重寄確認信"),
                 ("off", "打開提醒"),
                 ("on", "關掉提醒"),
-                ("on and due", "您現在就可以再做一次"),
+                # Spec #741 (the owner at acceptance, 2026-11-21): due, the block asks nothing more.
+                ("on and due", "關掉提醒"),
             ):
                 with self.subTest(state=state):
                     if state == "unconfirmed":
@@ -2526,6 +2527,8 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                         )
                     self.page.goto(f"{self.live_server_url}/account")
                     expect(self.page.locator(section)).to_contain_text(words)
+                    expect(self.page.locator(section)).not_to_contain_text("再做一次")
+                    expect(self.page.locator(section)).not_to_contain_text("下次篩檢")
                     self.assert_fits_a_phone_at_double_text_size(state)
 
     # #662 (spec #656 acceptance 40): an email's cancel link, opened without signing in, and the
@@ -11538,6 +11541,30 @@ class ChooserAndAnsweringT362Test(SavesFailureArtifacts, LayoutOnAPhone, StaticL
                 self.assertEqual(locator.evaluate(f"e => getComputedStyle(e).{side}"), "0px")
 
 
+def assert_address_only_without_javascript(test, path, button, url_end):
+    """Spec #741 (the owner at acceptance, 2026-11-21): on a 320px phone without JavaScript the
+    buttons stay hidden, so the address is written out whole, text to select that wraps anywhere
+    and fits at 200% text; with JavaScript it is not, and the copy button (no share sheet) is."""
+    address = re.compile(rf"^網址：http://\S+{url_end}$")
+    for javascript in (False, True):
+        with test.subTest(javascript=javascript):
+            # LayoutOnAPhone's own open: ReportShareLearnT366Test's sets the script itself.
+            LayoutOnAPhone.open(
+                test, path, (320, 640), script=test.NO_SHARE_SHEET, java_script_enabled=javascript
+            )
+            line = test.main().get_by_text(address)
+            copy = test.main().get_by_role("button", name=button, exact=True)
+            if javascript:
+                expect(line).to_have_count(0)
+                expect(copy).to_be_visible()
+                continue
+            expect(line).to_be_visible()
+            expect(copy).to_be_hidden()
+            test.assertEqual(test.style(line, "userSelect"), "auto")
+            test.assertEqual(test.style(line, "overflowWrap"), "anywhere")
+            test.assert_fits_a_phone_at_double_text_size(f"{path} without javascript")
+
+
 class ReportShareLearnT366Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """#366 (spec #354, 報告、了解與選配指引): the share page's buttons, the family's cover
     title and 「先看重點」 box, and the 了解 page's card titles."""
@@ -11577,6 +11604,12 @@ class ReportShareLearnT366Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
             copy_box = copy.bounding_box()
             self.assertGreaterEqual(line_top - (copy_box["y"] + copy_box["height"]), gap)
             self.assertGreaterEqual(cancel.bounding_box()["y"] - line_bottom, gap)
+
+    # Spec #741 (the owner at acceptance, 2026-11-21): with a live link, the address is written
+    # out only without JavaScript.
+    def test_address_written_out_only_without_javascript(self):
+        path = f"/shared/{self.share.token}"
+        assert_address_only_without_javascript(self, "/share", "複製連結", path)
 
     # With the share sheet, 再傳一次給家人 stays the main button and 複製連結 the outline one.
     def test_copy_stays_the_outline_button_beside_the_share_sheet(self):
@@ -11831,6 +11864,11 @@ class FamilyAndAccountT361Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
             section = self.main()
             expect(section.get_by_role("button", name="傳給家人")).to_be_visible()
             expect(section.get_by_role("button", name="複製網址")).to_be_hidden()
+
+    # Spec #741 (the owner at acceptance, 2026-11-21): without JavaScript neither button shows,
+    # so the address is written out to copy by hand; with it, the page is as before.
+    def test_address_written_out_only_without_javascript(self):
+        assert_address_only_without_javascript(self, "/family", "複製網址", r"/family")
 
     # Acceptance 6: on a desktop the password field and the buttons start where the text does,
     # and 請輸入密碼確認 is a field name like login's and register's: bold, in the heading colour.

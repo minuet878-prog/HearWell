@@ -76,8 +76,9 @@
     </ul>
 </nav>
 
-{# The page's one solid button. #361: where there is no share sheet (a computer), 複製網址 shows in its place; without JavaScript neither does, and the address below is there to copy. #}
+{# The page's one solid button. #361: where there is no share sheet (a computer), 複製網址 shows in its place; without JavaScript neither does, and #741 (owner, 2026-11-21): only then is the address written out, to copy by hand. #}
 <p class="mt-4 mb-0"><button id="share-button" type="button" class="btn btn-primary btn-lg w-full" hidden>傳給家人</button><button id="copy-link" type="button" class="btn btn-primary btn-lg w-full" data-url="{{ family_url }}" data-without-share-sheet hidden>複製網址</button></p>
+<noscript><p class="mt-4 mb-0 wrap-anywhere">網址：<span class="font-bold">{{ family_url }}</span></p></noscript>
 <p id="copy-status" class="visually-hidden" aria-live="polite"></p>
 
 {# Never folded (the #468 mockup). #}
