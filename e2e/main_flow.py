@@ -567,7 +567,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             self.page.emulate_media(media="screen")
             self.page.evaluate("window.dispatchEvent(new Event('afterprint'))")
             self.main().get_by_role("link", name="分享報告給家人", exact=True).click()
-            self.main().get_by_role("button", name="我知道了，產生連結", exact=True).click()
+            self.main().get_by_role("button", name="產生分享連結", exact=True).click()
             expect(self.main().get_by_role("button", name="取消分享", exact=True)).to_be_visible()
             share = unaided.user.report_shares.get()
             with self.browser.new_context() as family_context:
@@ -670,12 +670,14 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         self.assert_fits_a_phone_at_double_text_size("answer page without javascript")
 
     def test_family_guide_without_share_sheet(self):
-        """Spec phase8_c1_family_guide.md acceptance 5: no button, the address is the fallback."""
+        """Spec phase8_c1_family_guide.md acceptance 5: no share sheet, no 傳給家人; since spec
+        #741 (the owner at acceptance) 複製網址 is the way, no address line to copy by hand."""
         with self.saving_artifacts():
             self.page.add_init_script("delete Navigator.prototype.share;")
             self.page.goto(f"{self.live_server_url}/family")
             expect(self.page.get_by_role("button", name="傳給家人")).to_be_hidden()
-            expect(self.main().get_by_text("/family")).to_be_visible()
+            expect(self.page.get_by_role("button", name="複製網址")).to_be_visible()
+            expect(self.main().get_by_text("可以複製這個網址")).to_have_count(0)
 
     def test_family_guide_share_sheet(self):
         """Acceptance 6: the button hands this page's address and title to a stubbed share sheet."""
@@ -2333,7 +2335,7 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             self.page.goto(f"{self.live_server_url}/report")
             self.main().get_by_role("link", name="分享報告給家人", exact=True).click()
             expect(self.page).to_have_url(f"{self.live_server_url}/share")
-            self.main().get_by_role("button", name="我知道了，產生連結", exact=True).click()
+            self.main().get_by_role("button", name="產生分享連結", exact=True).click()
             expect(self.page).to_have_url(f"{self.live_server_url}/share")
             share = self.user.report_shares.get()
             self.main().get_by_role("button", name="複製連結", exact=True).click()
@@ -2342,8 +2344,6 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             copied = self.page.evaluate("navigator.clipboard.readText()")
             # The link takes the page's own scheme: http on the test server, https on the site.
             self.assertEqual(copied, f"{self.live_server_url}/shared/{share.token}")
-            # The copy button takes the address's place; it comes back only if copying fails.
-            expect(self.page.locator("#share-url")).to_be_hidden()
 
             family = self.browser.new_context(viewport={"width": 390, "height": 900})
             self.addCleanup(family.close)
@@ -6975,6 +6975,28 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 # The bands and their names never move.
                 for still in (".recharts-reference-area", ".trend-band-name"):
                     self.assertEqual(self.style(plot.locator(still).first, "animationName"), "none")
+
+    # #756 follow-up: halfway through, the line and points are partly uncovered, a wipe from the
+    # left. A clip-path ending at none cannot be tweened, so they popped in all at once instead.
+    def test_trend_line_is_half_drawn_halfway(self):
+        earlier = self.submission(self.hhie_s, [4] * 5 + [0] * 5)
+        Submission.objects.filter(pk=earlier.pk).update(
+            created_at=timezone.now() - timedelta(days=40)
+        )
+        self.submission(self.hhie_s, [4] * 3 + [0] * 7)
+        self.open(motion=True, width=390)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
+            plot = self.page.locator("#trend-plot")
+            expect(plot.locator(".trend-dot")).to_have_count(2)
+            for name, layer in (("line", "_400"), ("points", "_600")):
+                with self.subTest(part=name):
+                    # Frozen 0.3 s delay + 0.5 s of the 1 s wipe in.
+                    clip = plot.locator(f".recharts-zIndex-layer{layer}").evaluate(
+                        "el => { const a = el.getAnimations()[0]; a.pause();"
+                        " a.currentTime = 800; return getComputedStyle(el).clipPath; }"
+                    )
+                    self.assertRegex(clip, r"^inset\(0px [1-9]\d?(\.\d+)?% 0px 0px\)$")
 
     # Result pages tidy-up: THI's five levels in three colours draw five gauge arcs (#750; score
     # bar segments before), the higher of two in one colour deeper; every dropdown on the page is
@@ -11895,20 +11917,16 @@ class FamilyAndAccountT361Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
         with self.saving_artifacts():
             self.open("/family", self.DESKTOP, script=self.NO_SHARE_SHEET)
             section = self.main()
-            address = section.get_by_text(re.compile(r"^http://.*/family$"))
             # Found by id: its name turns into 已複製 once pressed.
             button = section.locator("#copy-link")
-            expect(address).to_be_visible()
             expect(button).to_be_visible()
             expect(button).to_have_accessible_name("複製網址")
             expect(section.get_by_role("button", name="傳給家人")).to_be_hidden()
-            self.assertLess(button.bounding_box()["y"], address.bounding_box()["y"])
             button.click()
             expect(button).to_have_text("已複製")
             expect(self.page.locator("#copy-status")).to_have_text("已複製")
             copied = self.page.evaluate("navigator.clipboard.readText()")
-            self.assertEqual(copied, address.inner_text())
-            expect(address).to_be_visible()
+            self.assertRegex(copied, r"^http://.*/family$")
 
     # Acceptance 3: with the phone's share sheet, 傳給家人 is the only button.
     def test_no_copy_button_with_a_share_sheet(self):

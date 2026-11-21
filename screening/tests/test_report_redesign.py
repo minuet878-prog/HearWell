@@ -199,21 +199,10 @@ class ShareStepsTests(TestCase):
 
         self.assertIn("家人會看到什麼</h2>", one)
         self.assertNotIn("<details", one)
-        self.assertIn("我知道了，產生連結</button>", two)
+        self.assertIn("產生分享連結</button>", two)
         self.assertIn('<span class="step-list-number is-later" aria-hidden="true">3</span>', three)
         self.assertIn("產生連結後才能傳。", three)
         self.assertEqual(main.count("btn-primary"), 1)
-
-    def test_the_latest_report_notice_moves_under_the_steps(self):
-        for shared in (False, True):
-            if shared:
-                ReportShare.objects.create(user=self.user)
-            with self.subTest(shared=shared):
-                main = self._main()
-                self.assertIn(
-                    "連結有效期間，家人看到的是您最新的報告，之後新增的紀錄也會看到。",
-                    main[main.index("</ol>") :],
-                )
 
     def test_while_shared_what_the_family_sees_folds_and_sending_is_the_solid_button(self):
         share = ReportShare.objects.create(user=self.user)
@@ -222,7 +211,7 @@ class ShareStepsTests(TestCase):
 
         fold = re.search(r"<details.*?</details>", one, re.S).group(0)
         self.assertIn("家人會看到什麼</h2></summary>", fold)
-        self.assertIn("<li>聽力圖</li>", fold)
+        self.assertIn("</svg>聽力圖</li>", fold)
         self.assertIn("有效到", two)
         self.assertEqual(main.count("btn-primary"), 1)
         self.assertRegex(three, r'class="btn btn-primary btn-lg w-full"[^>]*hidden>再傳一次給家人<')

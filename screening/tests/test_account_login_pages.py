@@ -55,16 +55,18 @@ class AccountSettingsLookTests(TestCase):
         self.assertLess(main.index('class="account-card"'), main.index("電子郵件"))
         self.assertIn("民國 39 年（1950）", _text(main))
 
-    def test_the_reminder_purpose_sits_beside_a_bell_in_a_grey_box(self):
+    def test_the_reminder_is_a_bell_beside_its_title_in_a_grey_box(self):
+        # Spec #741 (the owner's pick at acceptance, compare-reminder.html C): no long purpose.
         main = self._main()
         section = main[main.index('id="retest-reminder"') : main.index('id="sign-in-methods"')]
 
         self.assertRegex(
             section,
-            r'<div class="reminder-box">\s*<div class="reminder-purpose">\s*'
+            r'<div class="reminder-box">\s*<div class="reminder-head">\s*'
             r'<span class="reminder-bell" aria-hidden="true"><svg[^>]*>.*?</svg></span>\s*'
-            r"(?:\{#.*?#\}\s*)?<p[^>]*>打開後，上次做完滿半年的那天早上",
+            r'<div>\s*<h2 id="retest-reminder-title" class="reminder-title">email 重測提醒</h2>',
         )
+        self.assertNotIn("打開後，上次做完滿半年", section)
 
     def test_adding_an_email_or_a_way_to_sign_in_is_a_small_round_ended_button(self):
         main = self._main()
