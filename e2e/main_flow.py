@@ -7159,6 +7159,15 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
                     self.assertEqual(tick["backgroundColor"], self.PRIMARY)
                     self.assertIn("svg", tick["backgroundImage"])
                     self.assertGreater(float(tick["width"].removesuffix("px")), 0)
+                    if where not in self.ANSWER_PAGE:
+                        # #759 (the owner's addition): off the answer page only the chosen look
+                        # changes; the round radio button shows at its size, the answer too.
+                        radio = choice.get_by_role("radio")
+                        self.assertEqual(
+                            [self.style(radio, prop) for prop in ("opacity", "width")],
+                            ["1", "27px"],  # 1.5rem
+                        )
+                        self.assertEqual(self.style(choice, "minHeight"), "54px")  # 3rem
                     group = choice.locator(
                         "xpath=ancestor::div[contains(@class, 'choice-group')][1]"
                     )
@@ -7174,6 +7183,38 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
                             for prop in ("backgroundColor", "backgroundImage")
                         ]
                         self.assertEqual(room, [self.CLEAR, "none"])
+
+    ANSWER_PAGE = ("#answer-app", "#answer-form")
+
+    # #759 acceptance 2: off the answer page, which #755 covers, the keyboard still chooses an
+    # answer, and it is still a radio button named by its words and checked.
+    def test_a_keyboard_chooses_and_a_screen_reader_hears_it_chosen(self):
+        with self.saving_artifacts():
+            for name, javascript, path, where, opener in self.answer_pages():
+                if where in self.ANSWER_PAGE:
+                    continue
+                with self.subTest(name):
+                    self.open(javascript=javascript)
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    if opener:
+                        opener(self.page)
+                    choices = self.choices(self.page.locator(where))
+                    expect(choices.first).to_be_visible()
+                    checked = choices.evaluate_all("ls => ls.map((l) => l.control.checked)")
+                    choice = choices.nth(checked.index(False))
+                    words = choice.inner_text().strip()
+                    radio = choice.get_by_role("radio")
+                    radio.focus()
+                    self.page.keyboard.press("Space")
+                    expect(radio).to_be_checked()
+                    expect(
+                        self.page.locator(where).get_by_role(
+                            "radio", name=words, checked=True, exact=True
+                        )
+                    ).to_have_count(1)
+                    # The keyboard's ring around the whole answer, over the chosen look.
+                    self.assertEqual(self.style(choice, "outlineStyle"), "solid")
+                    self.assertEqual(self.style(choice, "backgroundColor"), self.BRAND_SELECTED)
 
     # C1: at 200% text on a 320px phone the chosen answer, tick and all, stays on the screen.
     def test_chosen_answer_fits_a_phone_at_double_text_size(self):
@@ -14568,8 +14609,13 @@ class ScreeningAnsweringT463Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLi
                     self.assertEqual(self.style(choice, "borderTopColor"), self.EDGE)
                     choice.locator("input").check()
                     # #755 (canvas ProAnswer), and the wizard's too since #759: chosen is the
-                    # soft blue with a blue edge and the headings' dark words.
+                    # soft blue with a double blue edge, the headings' dark words and a tick.
                     self.assertEqual(self.style(choice, "borderTopColor"), "rgb(31, 78, 140)")
+                    self.assertEqual(
+                        self.style(choice, "boxShadow"), "rgb(31, 78, 140) 0px 0px 0px 2px inset"
+                    )
+                    tick = choice.evaluate("el => getComputedStyle(el, '::after').backgroundColor")
+                    self.assertEqual(tick, "rgb(31, 78, 140)")
                     self.assertEqual(self.style(choice, "backgroundColor"), "rgb(232, 238, 247)")
                     self.assertEqual(self.style(choice, "color"), "rgb(33, 37, 41)")
 
