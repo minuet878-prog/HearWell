@@ -51,6 +51,7 @@ from screening.scoring import (
     LIFE_IMPACT_BUTTON,
     NEXT_SCREENING,
     NEXT_STEP_REASONS,
+    NEXT_STOP_NAMES,
     RECORD_FITTING_DATE,
     RECORD_THE_NOTICE,
     RETEST_BUTTON_TEXT,
@@ -561,10 +562,11 @@ def _way_on(slug, aid):
 
 def _done_card(slug, route, card):
     """Grill Q13: the answer card of the stop just finished, stamped, and 接著往下一站 the stop
-    card is at now (its title before any 「：」), pressed to move on."""
+    card is at now, pressed to move on."""
     title = here_stop(replace(route, stop=slug)).title
     question = _answer_card(slug, route.aid)
-    return JourneyCard(title, "", question=question, moved_on=card.title.split("：")[0])
+    moved_on = NEXT_STOP_NAMES.get(route.home_stop, card.title)
+    return JourneyCard(title, "", question=question, moved_on=moved_on)
 
 
 def next_step(user, today):

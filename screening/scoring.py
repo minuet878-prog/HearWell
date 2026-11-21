@@ -196,6 +196,9 @@ FIRST_IOI_HA_NOTE = "建議先戴一週再寫"
 FORM_25_FROM = "起可以做二十五號表"
 FORM_25_BY = "{day:%Y/%m/%d} 前要完成，才能核銷補助"
 FORM_25_BUTTON = "看二十五號表要帶什麼"
+# 接著往下一站's name for a stop (grill Q13): the form alone where the title goes on to say what
+# it is for; any other stop by its title.
+NEXT_STOP_NAMES = {"form-9": "九號表", "form-25": "二十五號表"}
 # My guide's 要不要找聽力師評估 by 建議評估選配 (ADR 0067): the owner's words in spec #693,
 # 建議 apart for an ear over 40 dB HL and for 輕度 with a life impact.
 FITTING_ADVICE_OVER_MILD = "您有一耳以上的四頻平均超過 40 dB HL，建議找聽力師評估選配助聽器。"
