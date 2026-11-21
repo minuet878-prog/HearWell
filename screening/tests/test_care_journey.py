@@ -584,7 +584,6 @@ class RetestStepTests(CareJourneyTestCase):
         self.assertEqual(journey.card.countdown, wait)
         self.assertEqual(journey.card.because, "")
         self.assertIsNone(journey.card.button)
-        self.assertEqual(journey.progress, 6)
         # Step 7 opened before it is the 現在這一步 shows the same card (the canvas's 5-a).
         self.assertEqual(journey.next_screening.countdown, wait)
 

@@ -90,7 +90,6 @@
 <section class="journey" aria-labelledby="journey-title">
     <div class="journey-head">
         <h2 id="journey-title" class="h4">照顧旅程</h2>
-        <p class="journey-count"><span class="visually-hidden">進度 </span>{{ journey.progress }} / {{ journey.steps|length }}</p>
     </div>
     {# N3 dots on a line, blue as far as the 現在這一步 (#459 I2): done ones a blue tick and their day, the 現在這一步 marked 現在 (its card is the hero card on top, #751), the rest pale. Every step opens to say what it is (I1); care-journey.js keeps one open at a time. On a tab's first visit the ticks, the line and the ring play once, when the 現在這一步's row is in view (ADR 0028's 2026-11-12 exception, ADR 0029). #}
     <ol class="journey-steps" role="list">

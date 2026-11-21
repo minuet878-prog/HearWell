@@ -317,9 +317,9 @@ class JourneyHomeTests(HomeJourneyTestCase):
         self.make(NORMAL, NORMAL, tested_on=date(2026, 9, 1))
         main = self.main()
         self.assertEqual(SOLID.findall(main), [])
-        self.assertIn(
-            '<p class="journey-count"><span class="visually-hidden">進度 </span>6 / 7</p>', main
-        )
+        # Only the hero card says how far (第 N 步，共 7 步): no count beside the journey's
+        # heading (spec #741's 實作中本人補充).
+        self.assertEqual(self.text(self.part(main, "journey-head")), "照顧旅程")
         self.assertEqual(
             self.steps(main),
             [
@@ -748,7 +748,8 @@ class StepInteractionTests(HomeJourneyTestCase):
         self.assertNotIn("<details open", main)
 
     def test_the_line_is_blue_up_to_the_current_step_without_a_progress_bar(self):
-        # I2: the walked steps, numbered for the entrance's timing; 「3 / 7」 stays.
+        # I2: the walked steps, numbered for the entrance's timing; 「3 / 7」 is gone, the hero
+        # card saying how far (spec #741's 實作中本人補充).
         self.step_4_with_three_done()
         main = self.main()
         # Played once the 現在這一步's row is in view (ADR 0029; since #751 its card is the hero
@@ -777,7 +778,7 @@ class StepInteractionTests(HomeJourneyTestCase):
                 ("is-later", "6"),
             ],
         )
-        self.assertIn('<span class="visually-hidden">進度 </span>3 / 7</p>', main)
+        self.assertNotIn("3 / 7", main)
         self.assertNotIn("journey-bar", main)
 
     def test_only_the_journey_loads_its_script(self):

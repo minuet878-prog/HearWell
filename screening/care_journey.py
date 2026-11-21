@@ -249,11 +249,6 @@ class CareJourney:
     next_screening: NextScreening | None
     audiogram: AudiogramResult | None = None  # step 3 done: what opening it shows
 
-    @property
-    def progress(self):
-        """The steps passed, done or 目前不需要: at most 6 of 7, as step 7 is never done."""
-        return sum(step.state in (DONE, NOT_NEEDED) for step in self.steps)
-
 
 def _hospital_entry():
     return Entry(FIND_A_HOSPITAL, reverse("qa_answer", args=[WHERE_TO_TEST]), "pin")

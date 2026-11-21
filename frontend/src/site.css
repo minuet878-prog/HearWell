@@ -6702,13 +6702,6 @@
     margin: 0;
   }
 
-  .journey-count {
-    margin: 0;
-    color: var(--color-heading);
-    font-size: var(--text-button);
-    font-weight: 700;
-  }
-
   .journey-steps {
     --journey-dot: 2rem;
     container-type: inline-size;
