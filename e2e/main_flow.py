@@ -6870,6 +6870,28 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 for still in (".recharts-reference-area", ".trend-band-name"):
                     self.assertEqual(self.style(plot.locator(still).first, "animationName"), "none")
 
+    # #756 follow-up: halfway through, the line and points are partly uncovered, a wipe from the
+    # left. A clip-path ending at none cannot be tweened, so they popped in all at once instead.
+    def test_trend_line_is_half_drawn_halfway(self):
+        earlier = self.submission(self.hhie_s, [4] * 5 + [0] * 5)
+        Submission.objects.filter(pk=earlier.pk).update(
+            created_at=timezone.now() - timedelta(days=40)
+        )
+        self.submission(self.hhie_s, [4] * 3 + [0] * 7)
+        self.open(motion=True, width=390)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
+            plot = self.page.locator("#trend-plot")
+            expect(plot.locator(".trend-dot")).to_have_count(2)
+            for name, layer in (("line", "_400"), ("points", "_600")):
+                with self.subTest(part=name):
+                    # Frozen 0.3 s delay + 0.5 s of the 1 s wipe in.
+                    clip = plot.locator(f".recharts-zIndex-layer{layer}").evaluate(
+                        "el => { const a = el.getAnimations()[0]; a.pause();"
+                        " a.currentTime = 800; return getComputedStyle(el).clipPath; }"
+                    )
+                    self.assertRegex(clip, r"^inset\(0px [1-9]\d?(\.\d+)?% 0px 0px\)$")
+
     # Result pages tidy-up: THI's five levels in three colours draw five gauge arcs (#750; score
     # bar segments before), the higher of two in one colour deeper; every dropdown on the page is
     # a full touch target.
