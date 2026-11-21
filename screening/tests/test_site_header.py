@@ -165,6 +165,19 @@ class TabBarTests(TestCase):
         nav = self.NAV.search(self.client.get(reverse("login")).content.decode()).group(0)
         self.assertRegex(nav, rf'<a href="{reverse("my_hearing")}" aria-current="page">')
 
+    def test_first_paint_waits_for_the_whole_tab_bar(self):
+        # 37, ADR 0028: a slow phone painted before the tab bar was parsed, so the pill did not
+        # slide. The wait is for <main>, which comes after the whole tab bar.
+        for url in (reverse("index"), reverse("learn")):
+            with self.subTest(url=url):
+                content = self.client.get(url).content.decode()
+                head = content[: content.index("</head>")]
+                self.assertIn('<link rel="expect" href="#main-content" blocking="render">', head)
+                self.assertLess(
+                    content.index('<nav aria-label="主要導覽"'),
+                    content.index('<main id="main-content"'),
+                )
+
 
 def hover_rules_outside_hover_media(css):
     """Selectors with :hover that no @media (hover: ...) wraps."""

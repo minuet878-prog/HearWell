@@ -3291,6 +3291,25 @@ class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase)
                     start, end = self.page.evaluate("window.pills['tab-pill']")
                     self.assertNotEqual(start, end)
 
+    # On a slow phone the next page painted before its tab bar was parsed (CI caught it), so only
+    # the old pill was there and it was just gone. The first paint now waits for the tab bar, as
+    # it waits for the switch (ADR 0028), so the pill slides every time.
+    def test_tab_pill_slides_on_a_slow_phone(self):
+        self.open()
+        self.slow_down()
+        tabs = self.page.get_by_role("navigation", name="主要導覽")
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/learn")
+            # Back and forth: one change can slide by luck on a fast enough machine.
+            for tab in ("問卷", "了解") * 3:
+                self.assertEqual(
+                    self.changes_page(tabs.get_by_role("link", name=tab).click), "transition"
+                )
+                wait_until(self.page, "window.settled")
+                self.assertEqual(self.page.evaluate("window.moving"), TAB_PILL_PARTS, tab)
+                start, end = self.page.evaluate("window.pills['tab-pill']")
+                self.assertNotEqual(start, end)
+
     def test_reduced_motion_tab_pill_does_not_slide(self):
         self.open(reduced_motion="reduce")
         tabs = self.page.get_by_role("navigation", name="主要導覽")
