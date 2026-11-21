@@ -22,7 +22,7 @@ from screening.views.qa_assistant import RESULTS_SESSION_KEY
 
 BIRD = re.compile(
     r'<div class="bird-dialogue"[^>]*>\s*<span class="bird-avatar" aria-hidden="true"></span>\s*'
-    r'<div class="bird-bubble">.*?<p class="bird-lead">(.+?)</p>\s*'
+    r'<div class="bird-bubble">.*?(?:<p class="bird-lead">(.+?)</p>\s*)?'
     r'<h1 class="bird-title"[^>]*>(.+?)</h1>',
     re.S,
 )
@@ -41,9 +41,10 @@ def _text(html):
 
 
 def bird(response):
-    """(lead, title) of the page's bird dialogue, as text; None without one."""
+    """(lead, title) of the page's bird dialogue, as text, the lead None without one; None
+    without a bird dialogue."""
     found = BIRD.search(_main(response))
-    return found and (_text(found[1]), _text(found[2]))
+    return found and (found[1] and _text(found[1]), _text(found[2]))
 
 
 class BirdDialogueTests(TestCase):
@@ -164,7 +165,10 @@ class EveryPageTests(TestCase):
         found = bird(response)
         self.assertIsNotNone(found, "no bird dialogue")
         lead, title = found
-        self.assertTrue(lead and title, found)
+        # The two home pages' bubbles are one line, as the canvas (spec #741's 實作中本人補充).
+        home = response.request["PATH_INFO"] == reverse("index")
+        self.assertTrue(title, found)
+        self.assertEqual(lead is None, home, found)
         main = _main(response)
         # The bubble's title is the page's one h1, and nothing above it is a heading.
         self.assertEqual(len(re.findall(r"<h1\b", main)), 1)

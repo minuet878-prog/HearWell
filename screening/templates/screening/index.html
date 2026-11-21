@@ -16,7 +16,7 @@
 {% if journey %}
 {# #459 (ADR 0044, mockup #458): the 照顧旅程, its 現在這一步 the one thing to do today. #}
 {# Spec #741 (#751, page grill P12): the bird greets the account by name, its title. #}
-{% include "screening/bird_dialogue.html" with lead="index"|page_lead title=greeting %}
+{% include "screening/bird_dialogue.html" with title=greeting %}
 {# Spec #741 (#751, the canvas's ProHome): the 現在這一步's card is the page's blue hero card, on top; after its words, 「第 N 步，共 7 步」 and a bar of the seven, filled as far as this step, its own segment growing once in view (ADR 0077). #}
 {# #journey-now: an answer that finishes its stop comes back here, its stamp in view (#745). #}
 {% with card=journey.card %}
@@ -137,7 +137,7 @@
 {% else %}
 {# #459 (mockup #458 A): the 空狀態首頁, for a signed-in user without a questionnaire or an audiogram. The dashed box is a preview, not a link. Since spec #655 (#673) a visitor sees the two doors below instead. #}
 {% if user.is_authenticated %}
-{% include "screening/bird_dialogue.html" with lead="index_empty"|page_lead title="從一份問卷開始" %}
+{% include "screening/bird_dialogue.html" with title="從一份問卷開始" %}
 {# #749 (ADR 0076): the one thing to do, in the blue hero card. #}
 {% capture hero %}
     <p>聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。</p>
@@ -159,7 +159,7 @@
 </ul>
 {% else %}
 {# Spec #741 (#752, the canvas's ProGuest, grill P14, P15): the bird, the blue hero card that starts a questionnaire with no account first, and two doors under it. The card's 開始 and both doors are plain links; door-count.js counts a press of each (P15). #}
-{% include "screening/bird_dialogue.html" with lead="index_guest"|page_lead title="聽力變化常常容易被忽略" %}
+{% include "screening/bird_dialogue.html" with title="聽力變化常常容易被忽略" %}
 {# P14: a guest result kept in this browser for 7 days, drawn by guest-home.js above the card. #}
 <div id="guest-home" class="grid gap-3" hidden></div>
 {% capture hero %}

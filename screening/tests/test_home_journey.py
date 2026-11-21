@@ -36,7 +36,6 @@ STAMP = '<span class="done-stamp play-once-stamp" data-play-in-view>'
 GUIDE_WORDS = "統整助聽器補助流程供您參考。"
 NORMAL_WORDS = "您的聽力檢測結果為正常，但若有耳鳴、耳悶等其他症狀，仍建議尋求醫師協助。"
 MILD_WORDS = "您的聽力未達補助資格，但依舊可以考慮配戴助聽器。"
-HOME_LEAD = "今天也陪您照顧聽力。"
 
 
 class HomeJourneyTestCase(TestCase):
@@ -638,17 +637,17 @@ class LoggedInHomeTests(HomeJourneyTestCase):
     """#751 (spec #741 acceptance 40, 41, the canvas's ProHome, page grill P12, P13)."""
 
     def bubble(self, main):
-        """The bird's (lead, title), as text."""
-        found = re.search(
-            r'<p class="bird-lead">(.*?)</p>\s*<h1 class="bird-title">(.*?)</h1>', main, re.S
-        )
-        return self.text(found[1]), self.text(found[2])
+        """The bird's bubble, as its lines of text."""
+        found = re.search(r'<div class="bird-bubble">(.*?)</h1>', main, re.S)
+        return re.findall(r"<(?:p|h1)\b[^>]*>([^<]*)", found[1])
 
     def test_the_bird_greets_the_account_by_name_at_9_in_taiwan(self):
-        # Acceptance 40: the clock pinned at 9 a.m. Asia/Taipei (TIME_ZONE).
+        # Acceptance 40: the clock pinned at 9 a.m. Asia/Taipei (TIME_ZONE); as the canvas, one
+        # line with no lead (spec #741's 實作中本人補充).
         self.fresh_user("jason")
         self.answer()
-        self.assertEqual(self.bubble(self.main()), (HOME_LEAD, "早安，jason"))
+        self.assertEqual(self.bubble(self.main()), ["早安，jason"])
+        self.assertNotIn("bird-lead", self.main())
 
     def test_a_name_over_8_characters_leaves_the_greeting_alone(self):
         for name, title in (
@@ -659,7 +658,7 @@ class LoggedInHomeTests(HomeJourneyTestCase):
             with self.subTest(name=name):
                 self.fresh_user(name)
                 self.answer()
-                self.assertEqual(self.bubble(self.main())[1], title)
+                self.assertEqual(self.bubble(self.main()), [title])
 
     def test_the_greeting_follows_the_time_of_day_in_taiwan(self):
         # #458 D2: 早安 from 5 to before 12, 午安 to before 18, 晚安 through the night.
@@ -675,7 +674,7 @@ class LoggedInHomeTests(HomeJourneyTestCase):
         ):
             with self.subTest(hour=hour):
                 self.now = timezone.make_aware(datetime(2026, 11, 12, hour, 30))
-                self.assertEqual(self.bubble(self.main())[1], f"{greeting}，jason")
+                self.assertEqual(self.bubble(self.main()), [f"{greeting}，jason"])
 
     def hero(self, main):
         return self.part(main, "hero-card")

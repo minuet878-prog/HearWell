@@ -41,8 +41,9 @@ class SignedOutHomeTests(TestCase):
         self.main = content[content.index("<main") : content.index("</main>")]
 
     def test_the_bird_says_changes_in_hearing_are_easily_missed(self):
+        # As the canvas, one line with no lead (spec #741's 實作中本人補充).
         bird = re.search(r'<div class="bird-dialogue">.*?</h1>', self.main, re.S).group(0)
-        self.assertIn('<p class="bird-lead">您好，歡迎來到聽伴。</p>', bird)
+        self.assertNotIn("bird-lead", bird)
         self.assertIn('<h1 class="bird-title">聽力變化常常容易被忽略</h1>', bird)
 
     def test_the_hero_card_asks_and_starts_a_questionnaire_without_an_account(self):
