@@ -13,6 +13,7 @@ from django.urls import reverse
 from screening import questionnaires
 from screening.models import ReportShare
 from screening.questionnaires import hhia_s, hhie_s, thi
+from screening.scoring import classify
 from screening.tests.helpers import consented_user, submission_with_answers
 
 # The large level on the result page and what a screen reader reads in its place.
@@ -46,7 +47,7 @@ class ShortLevelNameTests(TestCase):
             definition = questionnaires.get(code)
             with self.subTest(code=code):
                 self.assertEqual(
-                    [definition.short_name(level) for _, _, level in definition.thresholds],
+                    [classify(upper, code)["short"] for upper, _, _ in definition.thresholds],
                     short,
                 )
 
