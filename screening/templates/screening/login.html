@@ -55,7 +55,7 @@
         {# Spec #506 (the #539 mockup D3): inside LINE, where Google is blocked, the way out to Safari or Chrome under the form. #}
         {% if open_outside_url %}<div class="mt-6">{% include "screening/line_open_outside.html" %}</div>{% endif %}
         {# #527 (spec #355, mockup #524 D1): the self-service reset, where #360's line asking people to write in was; the mail address moved to the forgot-password page. 1.5rem above, as the link's tap padding reaches up into the gap (#453's 12px). #}
-        <p class="mt-6 mb-0 text-center"><a class="inline-link" href="{% url 'password_reset' %}">忘記密碼？</a></p>
+        <p class="mt-6 mb-0 text-center"><a class="inline-link font-bold" href="{% url 'password_reset' %}">忘記密碼？</a></p>
         <div class="auth-alt">
             <p>還沒有帳號？</p>
             <a href="{% url 'register' %}{% if next %}?next={{ next|urlencode }}{% endif %}" class="w-full btn btn-lg btn-outline-primary">註冊新帳號</a>
