@@ -191,8 +191,14 @@ DEFINITION = Definition(
     concern=TINNITUS,
     trend_chart=True,
     # The hospital form's numbering (not the English original's): 5 絕望, 11 憂鬱, 23 無法忍受,
-    # answered 經常, whatever the total (spec #208 Q6).
-    support_message=SupportMessage(items=(5, 11, 23), score=4, text=SUPPORT_MESSAGE),
+    # answered 經常, whatever the total (spec #208 Q6). At 重度 and 極重度 always: with 看完整建議
+    # gone from result pages, their 1925 line is here alone (the owner, #741 acceptance 2026-11-21).
+    support_message=SupportMessage(
+        items=(5, 11, 23),
+        score=4,
+        text=SUPPORT_MESSAGE,
+        levels=("severe", "catastrophic"),
+    ),
     # Saved as background only (spec #208 Q4): tinnitus cannot be answered as if unaided.
     wearing_question="您現在有沒有配戴助聽器？",
     wearing_error="請選擇您現在有沒有配戴助聽器",
