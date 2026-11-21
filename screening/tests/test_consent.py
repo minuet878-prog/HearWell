@@ -216,6 +216,13 @@ class PrivacyHighlightsTests(TestCase):
         # #400 moved it again the same way (test_qa_log).
         self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 10, 25))
 
+    def test_the_date_includes_the_spec_741_wording(self):
+        # Spec #741 (the owner at acceptance, 2026-11-21): the guide pages and the hospital search
+        # read, the to-do ticks gone; a minor fix, so the date moved to the day it goes live and
+        # the version stayed 9.
+        self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 22))
+        self.assertEqual(models.CONSENT_VERSION, 9)
+
     def test_the_new_name_raises_the_version_so_everyone_agrees_again(self):
         # ADR 0039: who is collecting now reads 聽伴, so version 3 (#452 raised it to 4).
         self.assertGreaterEqual(models.CONSENT_VERSION, 3)
