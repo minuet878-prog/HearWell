@@ -263,10 +263,14 @@ def care_journey(user, today, done_now=None):
     life_impact = main.life_impact
     fitted_on = route.aid.fitted_on if route.fitted else None
     three_months = add_months(fitted_on, FITTING_MONTHS) if fitted_on is not None else None
-    # The second IOI-HA, 3 months on from the fitting date (ADR 0074); the latest gives the day.
+    # A second IOI-HA since the fitting date, the later one 3 months on (ADR 0074), gives the
+    # day. A first one filled after 3 months is only 配戴之後's (spec #741's cross review).
+    since_fitting = (
+        list(ioi_ha_since(user, fitted_on).order_by("-created_at")[:2]) if fitted_on else []
+    )
     ioi_ha = (
-        ioi_ha_since(user, three_months).order_by("-created_at").first()
-        if three_months is not None
+        since_fitting[0]
+        if len(since_fitting) == 2 and _day(since_fitting[0]) >= three_months
         else None
     )
     not_needed_now = route.waiting and route.advice in NOT_NEEDED_ADVICE

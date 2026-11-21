@@ -567,6 +567,24 @@ class EffectStepTests(CareJourneyTestCase):
         self.answer(code=ioi_ha.CODE, on=date(2026, 11, 12))
         self.assertEqual(self.states()[5], D)
 
+    def test_a_first_ioi_ha_filled_after_3_months_finishes_only_after_fitting(self):
+        # Cross review of spec #741, item 1: the owner's rule is a second IOI-HA. Fitted
+        # 2026/8/1 without the disability subsidy, the first IOI-HA on day 100 (2026/11/9)
+        # finishes 配戴之後 (step 5) alone; step 6 asks for the next one.
+        self.answer()
+        AidAndSubsidy.objects.create(
+            user=self.user, fitted_on=date(2026, 8, 1), subsidy=Subsidy.OTHER
+        )
+        self.answer(code=ioi_ha.CODE, on=date(2026, 11, 9))
+        journey = self.journey()
+        self.assertEqual(journey.current, 6)
+        self.assertEqual(self.states()[4:6], [D, C])
+        ioi = self.questionnaires[ioi_ha.CODE]
+        self.assertEqual(journey.card.button, ("做效益問卷", f"/questionnaire/{ioi.pk}"))
+        self.answer(code=ioi_ha.CODE, on=date(2026, 11, 12))
+        self.assertEqual(self.states()[4:7], [D, D, C])
+        self.assertEqual(self.journey().steps[5].done_on, date(2026, 11, 12))
+
 
 class RetestStepTests(CareJourneyTestCase):
     def normal_range(self, answered_on):

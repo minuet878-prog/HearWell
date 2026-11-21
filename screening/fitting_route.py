@@ -174,8 +174,7 @@ def keep_view(user, chapter):
 
 
 def ioi_ha_since(user, day):
-    """The user's IOI-HA submissions taken on day or later: the fitting date's (ADR 0074) for the
-    first, 3 months on for the second."""
+    """The user's IOI-HA submissions taken on day or later, the fitting date (ADR 0074)."""
     return user.submissions.filter(questionnaire__code=IOI_HA, created_at__date__gte=day)
 
 
