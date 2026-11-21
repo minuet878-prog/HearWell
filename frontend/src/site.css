@@ -649,7 +649,7 @@
     }
   }
 
-  .site-header[data-scrolled] :is(.site-back, .site-avatar, .site-login) {
+  .site-header[data-scrolled] :is(.site-back, .site-avatar, .site-login, .site-leave) {
     pointer-events: auto;
   }
 
@@ -866,6 +866,61 @@
   /* A site button as any (#453 acceptance 32, ADR 0043 S1): 56px tall, a rounded square. */
   .site-login {
     flex: none;
+  }
+
+  /* #755 (canvas ProAnswer, spec #741 P21): the answer page's 離開, a white pill framed in blue
+     at the top left all the time; scrolled, it floats over the page with the shadow of the
+     frosted buttons. The topic on the right goes then, as 聽伴 does. */
+  .site-leave {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 0.125rem;
+    min-height: var(--spacing-touch);
+    padding: 0 0.875rem 0 0.5rem;
+    border: 2px solid var(--color-primary);
+    border-radius: var(--radius-pill);
+    background-color: #fff;
+    color: var(--color-primary);
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .site-leave svg {
+    flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .site-leave:hover {
+    color: var(--color-primary-hover);
+  }
+
+  .site-leave:active {
+    background-color: var(--color-brand-soft-deep);
+  }
+
+  .site-header[data-scrolled] .site-leave {
+    box-shadow: 0 0.375rem 1rem rgba(33, 37, 41, 0.18);
+  }
+
+  .site-header-title {
+    min-width: 0;
+    margin: 0;
+    color: var(--color-heading);
+    font-weight: 700;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+
+  .site-header[data-scrolled] .site-header-title {
+    opacity: 0;
+    visibility: hidden;
   }
 
   /* Scrolled: frosted glass as the tab bar (ADR 0045, 0079), 88% white, solid where the browser
@@ -1944,13 +1999,30 @@
   }
 
   /* React answer page (#326 B4): ✓ 已儲存 follows the progress on its line. Its box is there even
-     when empty, so the line wraps the same with or without it and nothing jumps. */
+     when empty, so the line wraps the same with or without it and nothing jumps. #755 (canvas
+     ProAnswer): the count in the headings' dark and weight, this question's number large and
+     blue, how many follow at the line's end; the bar under it. */
   .question-progress-line {
-    display: block;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.5rem;
     font-size: 1rem;
   }
   .question-progress-line .question-progress {
     display: inline;
+    color: var(--color-heading);
+    font-size: 1.1111rem;
+    font-weight: 700;
+  }
+  .question-number {
+    color: var(--color-primary);
+    font-size: 1.5556rem;
+  }
+  .question-left {
+    margin-left: auto;
+    color: var(--color-muted);
+    font-weight: 400;
   }
   .answer-saved {
     display: inline-block;
@@ -1958,6 +2030,11 @@
     margin-left: 0.5em;
     white-space: nowrap;
     color: var(--color-normal);
+  }
+  /* Empty, it still holds a line (#755): at double text size the count's line wraps it onto a
+     row of its own, which would otherwise grow when ✓ 已儲存 appears. */
+  .answer-saved:empty::before {
+    content: "\00a0";
   }
   @media (prefers-reduced-motion: no-preference) {
     .answer-saved > span {
@@ -2774,7 +2851,7 @@
 
   /* While React loads, the Django form stays hidden (spec phase5_answer_flash.md); without JS the
      class is never added and the empty note takes no space. */
-  .answer-loading #answer-form {
+  .answer-loading :is(#answer-form, #answer-intro-fold) {
     display: none;
   }
 
@@ -7243,9 +7320,16 @@
     margin-top: 0.75rem;
   }
 
-  /* Without JavaScript the intro and its source stay above the questions, apart from them. */
+  /* Without React the intro and its source are folded under the questions (#755), set in as
+     React's fold body is. */
   #answer-intro {
-    margin-bottom: 2rem;
+    padding: 0 0.25rem 1rem;
+  }
+
+  /* Its sentence is drawn hidden and shown only once React keeps a draft (spec #611 Q2): till
+     then, or when the form comes back, the empty line takes no room. */
+  .answer-reassure:has(> [hidden]:only-child) {
+    display: none;
   }
 
   /* The answer page's line under its title: the code, count and minutes in the muted grey; the
@@ -7292,6 +7376,47 @@
 
   :is(.answer-app, #answer-form, .wizard-form) div.choice-group {
     gap: 0.625rem;
+  }
+
+  /* #755 (canvas ProAnswer, spec #741 P10): the answer page's choices are large white buttons,
+     the words bold, with no round radio button showing; the radio stays under the words for
+     the keyboard and screen readers, its focus ringing the whole button. Chosen: the soft blue
+     with a double blue edge and a solid blue round tick at the end, so the edge and the tick
+     tell it, not the colour alone. Every answer keeps the tick's room, so choosing moves
+     nothing; colour only (ADR 0006, 0028). */
+  :is(.answer-app, #answer-form) div.choice-group label {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 3.75rem;
+    padding: 0.5rem 0.75rem 0.5rem 1rem;
+    border-radius: 0.8889rem;
+    font-weight: 700;
+  }
+
+  :is(.answer-app, #answer-form) div.choice-group input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  :is(.answer-app, #answer-form) div.choice-group label::after {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+
+  :is(.answer-app, #answer-form) div.choice-group label:has(input:checked) {
+    border-color: var(--color-primary);
+    box-shadow: inset 0 0 0 2px var(--color-primary);
+    background-color: var(--color-brand-selected);
+    color: var(--color-heading);
+  }
+
+  :is(.answer-app, #answer-form) div.choice-group label:has(input:checked)::after {
+    background: var(--color-primary) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 1rem no-repeat;
   }
 
   /* While answering a phone shows no tab bar (#462 5B): 下一題 stays in the first screen, and 聽伴
