@@ -1,33 +1,32 @@
 {% extends "screening/layout.html" %}
 {% load static custom_filters %}
 
-{% block title %}選問卷｜聽伴{% endblock %}
+{% block title %}{% if step %}選問卷{% else %}問卷{% endif %}｜聽伴{% endblock %}
 
 {% block extra_head %}{% include "screening/continue_notice.html" %}
 {# The elder card's landing (spec #677): arrival-count.js counts its mark once and takes it off. #}
-<script type="module" src="{% static 'screening/frontend/arrival-count.js' %}"></script>{% endblock %}
+<script type="module" src="{% static 'screening/frontend/arrival-count.js' %}"></script>
+{% if stack|length > 1 %}<script type="module" src="{% static 'screening/frontend/card-stack.js' %}"></script>{% endif %}{% endblock %}
 
 {% block body %}
 {% if continue_notice %}<div id="continue-notice"></div>{% endif %}
 {% if not step %}
-{% include "screening/bird_dialogue.html" with lead="questionnaire_list"|page_lead title="選問卷" %}
-{# The 2026-11-14 walkthrough (mockup 8A): 幫我選 under the title, where it was the list's last row (ADR 0030, #462). #}
-<a class="btn btn-outline-primary btn-lg w-full" href="{% url 'questionnaire_list' %}?wizard=1">不確定做哪一份？幫我選</a>
-{# The catalogue (ADR 0030), the returning user's 推薦問卷 above the list when one fits (#347): one in the blue hero card (#749), two in a pale blue block (#463). #}
-{% if recommendation.questionnaires|length > 1 %}
-<section aria-labelledby="catalogue-recommended" class="recommended-block mt-6">
-    <h2 id="catalogue-recommended" class="recommended-label">推薦您做這一份</h2>
-    {# The age is unknown: one reason, then each questionnaire a row saying whom it suits; no solid button, as there would be two (#462). #}
-    <p class="recommended-why"><strong>為什麼推薦：</strong>{{ recommendation.why }}</p>
-    <div class="recommended-list">{% for questionnaire in recommendation.questionnaires %}{% include "screening/questionnaire_card.html" %}{% endfor %}</div>
+{# #753 (P3, P4): 幫我選 in the bird's bubble, under the page's title (ADR 0030's wizard). #}
+{% capture pick %}<a class="bird-pick" href="{% url 'questionnaire_list' %}?wizard=1"><span class="bird-pick-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 13v8M12 3v3M18 6a2 2 0 0 1 1.4.6l2.3 2.2a1 1 0 0 1 0 1.4l-2.3 2.2A2 2 0 0 1 18 13H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/></svg></span><span class="bird-pick-text">幫我選</span><span class="bird-pick-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M9 6l6 6-6 6"/></svg></span></a>{% endcapture %}
+{% include "screening/bird_dialogue.html" with lead="questionnaire_list"|page_lead title="問卷" after=pick %}
+{# #753 (spec #741 acceptance 44-46, 56, 58): the stacked cards, the page's one blue thing (ADR 0076) shown a card at a time: the 推薦問卷 (#347) first, then the ones that suit this person (stack_cards). Without JavaScript the first card shows alone, the whole catalogue below. #}
+{% if stack %}
+<section class="card-stack" aria-roledescription="輪播" aria-label="問卷卡片">
+    <div class="card-stack-cards">
+    {% for questionnaire, why in stack %}
+        <article class="hero-card card-stack-card" role="group" aria-roledescription="卡片" aria-label="第 {{ forloop.counter }} 張，共 {{ stack|length }} 張：{{ questionnaire.definition.topic }}（{{ questionnaire }}）">
+            {% if why %}<p class="hero-card-label">推薦您做這一份</p>{% endif %}
+            {% include "screening/recommended_questionnaire.html" with level=2 title_id="stack-"|add:questionnaire.code audience=True %}
+        </article>
+    {% endfor %}
+    </div>
+    {% if stack|length > 1 %}{% include "screening/card_stack_controls.html" with cards=stack %}{% endif %}
 </section>
-{% elif recommendation %}
-{# #749 (ADR 0076): one recommended, the page's one thing in the blue hero card. #}
-{% capture hero %}
-    <h2 id="catalogue-recommended" class="recommended-label">推薦您做這一份</h2>
-    {% include "screening/recommended_questionnaire.html" with questionnaire=recommendation.questionnaires.0 level=3 title_id="recommended-title" why=recommendation.why %}
-{% endcapture %}
-{% include "screening/hero_card.html" with body=hero attrs='aria-labelledby="catalogue-recommended"' %}
 {% endif %}
 {% for title, members in groups %}
 <h2 class="catalogue-group h4">{{ title }}</h2>

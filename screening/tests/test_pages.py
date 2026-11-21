@@ -318,7 +318,7 @@ class RedesignLayoutTests(TestCase):
     def test_page_titles(self):
         suffix = "\uff5c聽伴"  # U+FF5C FULLWIDTH VERTICAL LINE, as written in the spec
         expected = {
-            reverse("questionnaire_list"): "選問卷" + suffix,
+            reverse("questionnaire_list"): "問卷" + suffix,
             reverse("screening", args=[self.questionnaire.id]): "HHIE-S 作答" + suffix,
             reverse("result", args=[self.submission.id]): "HHIE-S 結果" + suffix,
             reverse("my_hearing"): "我的紀錄" + suffix,
@@ -630,10 +630,11 @@ class PageFlowTests(TestCase):
     # Questionnaire list (4-5)
     def test_questionnaire_list_shows_info(self):
         main = self._main(self.client.get(reverse("questionnaire_list") + "?choose=self"))
+        # The catalogue, below the stacked cards (#753).
+        self.assertLess(main.index("問卷</h1>"), main.index('class="catalogue-group'))
         self._assert_in_order(
-            main,
+            main[main.index('class="catalogue-group') :],
             (
-                "選問卷",
                 "聽力對生活的影響",
                 "65 歲以上（HHIE-S）",
                 "適合 65 歲以上的長輩。",
@@ -651,7 +652,8 @@ class PageFlowTests(TestCase):
         with register(fake_definition("short")):
             main = self._main(self.client.get(reverse("questionnaire_list") + "?choose=self"))
             page = self._main(self.client.get(reverse("screening", args=[self.short.id])))
-        start = main.index("短問卷")
+        # The catalogue's card, below the stacked ones (#753).
+        start = main.index("短問卷", main.index('class="catalogue-group'))
         card = main[start : main.index("</a>", start)]
         self.assertIn("<span>3 題・約 4 分鐘</span>", card)
         self.assertIn("短問卷・共 3 題・", page)
