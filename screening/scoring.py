@@ -55,6 +55,19 @@ UNKNOWN_ADVICE = (
 )
 
 # Short column names for the norm chart on the history page.
+# An IOI-HA result page's 和上一次比較 (#746): the totals, a higher one better, as every item is
+# best at 5; and each item's change, by the sign of this answer less the last one.
+IOI_HA_ITEM_CHANGE = {1: "變好", -1: "變差", 0: "一樣"}
+
+
+def ioi_ha_since_last_text(difference):
+    if difference > 0:
+        return f"這一次比上一次多 {difference} 分（分數越高越好）"
+    if difference < 0:
+        return f"這一次比上一次少 {-difference} 分（分數越高越好）"
+    return "兩次的總分一樣"
+
+
 IOI_HA_ITEM_NAMES = {
     1: "使用時間",
     2: "幫助程度",

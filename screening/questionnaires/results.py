@@ -322,6 +322,38 @@ class NormResult(Result):
             "below_text": NORM_VERSUS_TEXT["below"],
             "others": [item for item in items if item not in below],
             "scale_ends": SCALE_ENDS,
+            "since_last": self._since_last(),
+        }
+
+    def _since_last(self):
+        # #746 (spec #741 acceptance 25, grill Q17): against this person's IOI-HA just before
+        # this one, as the HHI comparison: both totals, and each item better, worse or the same.
+        # Every item is best at 5 (ADR 0074). None for the first.
+        from screening.models import Submission
+        from screening.scoring import IOI_HA_ITEM_CHANGE, IOI_HA_ITEM_NAMES, ioi_ha_since_last_text
+
+        submission = self.submission
+        previous = (
+            Submission.objects.filter(
+                user_id=submission.user_id, questionnaire_id=submission.questionnaire_id
+            )
+            .earlier_than(submission)
+            .with_scores()
+            .first()
+        )
+        if previous is None:
+            return None
+        before = dict(previous.answers.values_list("question__question_number", "score"))
+        items = []
+        for answer in self._answers():
+            number = answer.question.question_number
+            change = (answer.score > before[number]) - (answer.score < before[number])
+            items.append({"name": IOI_HA_ITEM_NAMES[number], "change": IOI_HA_ITEM_CHANGE[change]})
+        difference = submission.total_answer_score - previous.total_answer_score
+        return {
+            "previous": previous,
+            "text": ioi_ha_since_last_text(difference),
+            "items": items,
         }
 
 

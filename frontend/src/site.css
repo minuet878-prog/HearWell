@@ -3489,6 +3489,26 @@
     list-style: none;
   }
 
+  /* #746: 和上一次比較, the two totals, then each item and its change, a row each. */
+  .ioi-since-last {
+    margin: 1.25rem 0;
+  }
+
+  .ioi-since-last-items {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ioi-since-last-items li {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-line);
+  }
+
   .ioi-versus {
     margin-bottom: 0.25rem;
     color: var(--color-primary);
