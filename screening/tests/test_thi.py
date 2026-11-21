@@ -233,7 +233,9 @@ class ThiScoringTests(ThiTestCase):
         submission, page = self._web_result(scores)
         self.assertContains(page, f'<div class="result-banner result-banner-{color}">')
         self.assertContains(page, f'aria-describedby="result-score">{text}</h2>')
-        self.assertContains(page, f'總分 <span class="result-number">{total}</span> 分（滿分 100）')
+        self.assertContains(
+            page, f'總分 <span class="result-number" data-count-up>{total}</span> 分（滿分 100）'
+        )
         record = self._api_result(submission)
         self.assertEqual(record["scores"]["total"], total)
         self.assertEqual(record["level"], {"code": code, "text": text})

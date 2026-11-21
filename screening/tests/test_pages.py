@@ -715,7 +715,7 @@ class PageFlowTests(TestCase):
             main,
             (
                 f"{day} 作答",
-                '總分 <span class="result-number">12</span> 分（滿分 40）',
+                '總分 <span class="result-number" data-count-up>12</span> 分（滿分 40）',
                 "輕度到中度影響",
                 steps[0]["text"],
                 "建議您下一步",
@@ -789,7 +789,7 @@ class PageFlowTests(TestCase):
 
     def test_result_zero_score(self):
         main = self._result(self._submit([0] * 10))
-        self.assertIn('總分 <span class="result-number">0</span> 分（滿分 40）', main)
+        self.assertIn('總分 <span class="result-number" data-count-up>0</span> 分（滿分 40）', main)
         self.assertIn("無／極輕微影響", main)
 
     def test_result_without_thresholds_has_no_max(self):
@@ -798,7 +798,7 @@ class PageFlowTests(TestCase):
         submission = self._submit([2] * 10, questionnaire=unknown)
         with self.assertLogs("screening.scoring", "ERROR"):
             main = self._result(submission)
-        self.assertIn('總分 <span class="result-number">20</span> 分', main)
+        self.assertIn('總分 <span class="result-number" data-count-up>20</span> 分', main)
         self.assertNotIn("滿分", main)
 
     # IDOR (14) is covered by SubmissionResultAccessTests; one more for the redesigned page.

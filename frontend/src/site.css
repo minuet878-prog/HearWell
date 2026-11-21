@@ -657,6 +657,87 @@
     animation-play-state: paused;
   }
 
+  /* The play-once entrance animations (spec #741, ADR 0077), shared by every page: each element
+     carries one class and data-play-in-view on itself or a box around it (in-view.js says how),
+     so it plays once, when in view. Reduced motion: none of them moves.
+     - play-once-slide-up: a block slides up a little as it fades in.
+     - play-once-stamp: the 已完成 stamp presses down; its own tilt (transform) is left alone.
+     - play-once-ring, play-once-gauge: an SVG stroke draws itself from its start. Give the path
+       pathLength="1" and draw only the arc of the value, so the stroke ends where the value is. */
+  @media (prefers-reduced-motion: no-preference) {
+    .play-once-slide-up {
+      animation: play-once-slide-up 0.6s ease-out both;
+    }
+
+    .play-once-stamp {
+      animation: play-once-stamp 0.45s 0.25s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+    }
+
+    .play-once-ring,
+    .play-once-gauge {
+      stroke-dasharray: 1;
+      animation: play-once-draw 0.9s 0.2s ease-out both;
+    }
+
+    .play-once-gauge {
+      animation-delay: 0.3s;
+    }
+  }
+
+  @keyframes play-once-slide-up {
+    from {
+      opacity: 0;
+      translate: 0 0.75rem;
+    }
+  }
+
+  @keyframes play-once-stamp {
+    0% {
+      opacity: 0;
+      scale: 2.4;
+    }
+    55% {
+      scale: 0.9;
+    }
+    75% {
+      scale: 1.04;
+    }
+  }
+
+  @keyframes play-once-draw {
+    from {
+      stroke-dashoffset: 1;
+    }
+  }
+
+  /* A number counting up (data-count-up, in-view.js): its text is the end value all along, for
+     screen readers, but hidden while the count (data-count-now, 0 until in-view.js starts it) is
+     drawn over it as text they skip (the "" after the slash). No JavaScript, reduced motion,
+     in-view.js not taking over within 3 seconds (layout.html), or a browser that cannot skip
+     drawn text: the number is simply there. */
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (content: "0" / "") {
+      :root.play-in-view [data-count-up]:not([data-count-done]) {
+        position: relative;
+        -webkit-text-fill-color: transparent;
+      }
+
+      :root.play-in-view [data-count-up]:not([data-count-done])::after {
+        content: "0" / "";
+        position: absolute;
+        inset: 0;
+        text-align: end;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+        -webkit-text-fill-color: currentColor;
+      }
+
+      :root.play-in-view [data-count-up][data-count-now]:not([data-count-done])::after {
+        content: attr(data-count-now) / "";
+      }
+    }
+  }
+
   /* The header wave chosen in #136 (values in docs/verification/issue-136.md): bars jump and a
      soft light sweeps once, about 3.7 seconds, then the bars stay level and low. The resting look
      is the plain style, so no animation (reduced motion, a tab's later pages) means a still row.
