@@ -211,11 +211,13 @@ class FamilyZoneHomeRedesignTests(TestCase):
             'id="copy-link"',
             'id="urgent-title"',
             DISCLAIMER,
-            "可以複製這個網址傳給家人：",
             '<details class="result-details family-sources">',
         )
         positions = [self.main.index(marker) for marker in markers]
         self.assertEqual(positions, sorted(positions))
+        # The owner (2026-11-21, spec #741 acceptance): no line with the address to copy; the
+        # share and copy buttons carry it.
+        self.assertNotIn("可以複製這個網址傳給家人", self.main)
         start = self.main.index('id="urgent-title"')
         box = self.main[
             self.main.rindex("<section", 0, start) : self.main.index("</section>", start)
