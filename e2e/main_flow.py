@@ -3798,7 +3798,9 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                         ]
                     )
                     button = card.get_by_role("link", name="看九號表的流程")
-                    self.assertEqual(self.main().locator(".btn-primary").count(), 1)
+                    # The page's main button: solid, or white on the home page's hero card (#749).
+                    main_button = self.main().locator(":is(.btn-primary, .btn-hero)")
+                    self.assertEqual(main_button.count(), 1)
                     self.assertLess(button.bounding_box()["y"], todos.bounding_box()["y"])
                     manual, auto = todos.locator(".todo-manual"), todos.locator(".todo-auto")
                     self.assertEqual(style(manual, "backgroundColor"), "rgb(255, 255, 255)")
@@ -3828,8 +3830,9 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
         def button_in_card():
             self.page.goto(f"{self.live_server_url}/")
             card = self.main().locator(".journey-card")
-            expect(card.locator(".btn-primary")).to_have_count(1)
-            button, box = card.locator(".btn-primary").bounding_box(), card.bounding_box()
+            # #749: white on the blue hero card.
+            expect(card.locator(".btn-hero")).to_have_count(1)
+            button, box = card.locator(".btn-hero").bounding_box(), card.bounding_box()
             at = (button["x"] - box["x"], button["y"] - box["y"], button["width"], button["height"])
             return at, card.locator(".todos").count()
 
@@ -3982,7 +3985,12 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             for path in ("/",):
                 with self.subTest(path=path):
                     self.page.goto(f"{self.live_server_url}{path}")
-                    reason = self.main().locator(".journey-card-because")
+                    # #749: the sentence under the title on the blue hero card.
+                    reason = (
+                        self.main()
+                        .locator(".journey-card .hero-card > p")
+                        .filter(has_text="第一次去找聽力師前")
+                    )
                     expect(reason).to_contain_text(
                         "第一次去找聽力師前先準備好，看診時比較不會漏問。"
                     )
@@ -4958,16 +4966,16 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.assertEqual(self.style(self.page.locator("main"), "maxWidth"), "720px")
 
     def test_heading_classes_and_muted_text_look_as_before(self):
-        # T1 (#454, ADR 0043): a page title (h1.h3) is 28px and a section title (.h4) 22px at any
-        # width, bold and dark, line height 1.3, with no bar beside them; the .5rem bottom margin
-        # and .text-body (the body text colour) as before (#124).
+        # T1 (#454, ADR 0043): a page title is 28px and a section title (.h4) 22px at any width,
+        # bold and dark, with no bar beside them; .text-body (the body text colour) as before
+        # (#124). Since #749 the page title is the bird's bubble's: line height 1.35, no margin.
         self.open(javascript=False)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/questionnaire_list")
-            title = self.page.locator("h1.h3")
+            title = self.page.locator("h1.bird-title")
             self.assertEqual(
                 self.styles(title, "fontSize", "lineHeight", "marginBottom"),
-                {"fontSize": "28.0008px", "lineHeight": "36.401px", "marginBottom": "9px"},
+                {"fontSize": "28.0008px", "lineHeight": "37.8011px", "marginBottom": "0px"},
             )
             self.assertEqual(
                 self.styles(title, "fontWeight", "color", "borderLeftWidth", "paddingLeft"),
@@ -5988,6 +5996,9 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 with self.saving_artifacts():
                     self.page.goto(f"{self.live_server_url}/")
                     expect(self.page.locator(".journey-step.is-walked")).to_have_count(1)
+                    # #749: the bird and the taller hero card take the card past the first
+                    # screen; brought into view, it plays.
+                    self.page.locator(".journey-card").scroll_into_view_if_needed()
                     animations = self.page.evaluate(self.JOURNEY_ANIMATIONS)
                     if not motion:
                         self.assertEqual(animations, [])
@@ -6028,7 +6039,9 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 "買了助聽器、戴滿 3 個月後"
             )
             expect(self.page.locator(".journey-card")).to_be_visible()
-            expect(self.page.get_by_role("main").locator(".btn-primary")).to_have_count(1)
+            # #749: its button white on the blue hero card, the page's only main button.
+            expect(self.page.get_by_role("main").locator(".btn-hero")).to_have_count(1)
+            expect(self.page.get_by_role("main").locator(".btn-primary")).to_have_count(0)
 
     def test_reduced_motion_keeps_the_header_still(self):
         self.open()  # reduced motion
@@ -7599,24 +7612,21 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.assert_unlined(self.main().get_by_role("listitem").filter(has_text=text))
             self.assert_flat(self.main().locator("p").filter(has_text="設計與審定"))
 
-    # #459 (ADR 0044): the 現在這一步's card is pale blue, flat and not a link, its one button
-    # solid; 上次結果 is the tile to tap, in its level's pale colour with a blue arrow; what
-    # 您還可以 offered is a row of text links that look like links.
+    # #459 (ADR 0044): the 現在這一步's card is not a link; since #749 (ADR 0076) it is the blue
+    # hero card, its one button white; 上次結果 is the tile to tap, in its level's pale colour
+    # with a blue arrow; what 您還可以 offered is a row of text links that look like links.
     def test_journey_home_card_tiles_and_links(self):
         with self.saving_artifacts():
             self.visit(True, lambda test: test.returning_home())
-            card = self.main().locator(".journey-card")
-            self.assertEqual(self.style(card, "backgroundColor"), self.BLUE_SOFT)
-            self.assertEqual(self.style(card, "boxShadow"), "none")
-            # The 2026-11-14 walkthrough (mockup 2A): its solid button, then 還沒 in outline;
-            # spec #702 (#703 mockup 1C) put 從 iPhone 匯入 between them, outlined too.
-            self.assertEqual(
-                self.style(card.locator("a.btn-primary"), "backgroundColor"), self.PRIMARY
-            )
-            outlined = card.locator("a.btn-outline-primary")
+            card = self.main().locator(".journey-card .hero-card")
+            self.assert_hero_card(card)
+            # The 2026-11-14 walkthrough (mockup 2A): its main button, then 還沒 framed;
+            # spec #702 (#703 mockup 1C) put 從 iPhone 匯入 between them, framed too.
+            outlined = card.locator("a.btn-hero-outline")
             expect(outlined).to_have_text(["從 iPhone 匯入", "還沒，看要去哪裡檢查"])
             for button in outlined.all():
-                self.assertEqual(self.style(button, "backgroundColor"), "rgb(255, 255, 255)")
+                self.assertEqual(self.style(button, "backgroundColor"), "rgba(0, 0, 0, 0)")
+                self.assertEqual(self.style(button, "borderTopColor"), "rgb(255, 255, 255)")
             tile = self.main().locator("a.journey-tile")
             self.assertEqual(self.style(tile, "boxShadow"), "none")
             arrow = tile.locator(".journey-tile-arrow")
@@ -7671,21 +7681,33 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.assert_result_next_step_box()
 
     def assert_result_next_step_box(self):
-        """#461 (the #460 mockup R1): pale blue, no frame, no reason, only its solid button to
-        tap, the page's one solid button."""
-        box = self.main().locator(".result-next")
-        self.assertEqual(self.style(box, "backgroundColor"), self.BLUE_SOFT)
+        """#461 (the #460 mockup R1): no frame, no reason, only its buttons to tap; since #749
+        (ADR 0076) the blue hero card, its white button the page's main one, no solid one."""
+        box = self.main().locator(".hero-card")
+        expect(box).to_contain_text("建議您下一步")
+        self.assert_hero_card(box)
         self.assertEqual(self.style(box, "borderTopWidth"), "0px")
         expect(box.get_by_text("因為：", exact=False)).to_have_count(0)
-        # The 2026-11-14 walkthrough (mockup 2A): without an audiogram, 還沒 in outline too.
+        # The 2026-11-14 walkthrough (mockup 2A): without an audiogram, 還沒 framed too.
         links = box.get_by_role("link")
         self.assertEqual(
-            links.count(), 1 + box.locator("a.btn-outline-primary").count(), "only the buttons"
+            links.count(), 1 + box.locator("a.btn-hero-outline").count(), "only the buttons"
         )
-        self.assertLessEqual(box.locator("a.btn-outline-primary").count(), 1)
-        self.assertEqual(self.style(box.locator("a.btn-primary"), "backgroundColor"), self.PRIMARY)
+        self.assertLessEqual(box.locator("a.btn-hero-outline").count(), 1)
         # In the page's content: 回到頂端 is the site's own, out of sight until scrolled.
-        expect(self.main().locator(".btn-primary")).to_have_count(1)
+        expect(self.main().locator(".btn-primary")).to_have_count(0)
+
+    def assert_hero_card(self, card):
+        """#749 (ADR 0076): the deep blue card, white words, its one white button."""
+        self.assertEqual(
+            self.style(card, "backgroundImage"),
+            "linear-gradient(160deg, rgb(31, 78, 140), rgb(23, 59, 106))",
+        )
+        self.assertEqual(self.style(card, "color"), "rgb(255, 255, 255)")
+        button = card.locator("a.btn-hero")
+        expect(button).to_have_count(1)
+        self.assertEqual(self.style(button, "backgroundColor"), "rgb(255, 255, 255)")
+        self.assertEqual(self.style(button, "color"), self.PRIMARY)
 
     # #299: no sideways scrolling or cut text on a phone at 200% text, on both homes and every
     # questionnaire's result page.
@@ -8681,8 +8703,8 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     title = self.main().get_by_role("heading", level=1, name=button)
                     self.assertEqual(self.style(title, "color"), self.HEADING)
 
-    # #300: the suggested questionnaire with its 開始作答 button, since #463 in a pale blue block
-    # with no shadow (ADR 0043: a single thing to tap in a colour block); whole cards are list
+    # #300: the suggested questionnaire with its 開始作答 button, since #463 in a colour block
+    # with a single thing to tap, since #749 the blue hero card (ADR 0076); whole cards are list
     # rows (ADR 0043).
     def test_suggested_questionnaire_is_flat_and_questionnaire_cards_are_list_rows(self):
         with self.saving_artifacts():
@@ -8693,12 +8715,8 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 .filter(has=self.page.get_by_role("link", name="開始作答", exact=True))
             )
             expect(suggested).to_be_visible()
-            self.assertEqual(self.style(suggested, "backgroundColor"), "rgb(238, 243, 250)")
-            self.assertEqual(self.style(suggested, "boxShadow"), "none")
-            self.assertEqual(
-                self.style(suggested.get_by_role("link", name="開始作答"), "backgroundColor"),
-                self.PRIMARY,
-            )
+            self.assert_hero_card(suggested)
+            expect(suggested.get_by_role("link")).to_have_text(["開始作答"])
             for path in (
                 "/questionnaire_list?concern=hearing_aid&age_group=older",
                 "/questionnaire_list?choose=self",
@@ -9517,9 +9535,10 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
 
     # #338 review: the layout changing without a scroll (here the text going back to its usual
     # size; a fold opening, a late font or a chart growing does the same) brings the journey's
-    # 現在這一步 into view, and it plays.
+    # 現在這一步 into view, and it plays. #749: taller for the bird and the blue hero card above
+    # the step's end.
     def test_journey_plays_when_the_layout_brings_it_into_view(self):
-        self.open("/", width=320, height=1100, double=True)
+        self.open("/", width=320, height=1400, double=True)
         with self.saving_artifacts():
             expect(self.page.locator(self.JOURNEY)).to_be_attached()
             self.page.wait_for_timeout(300)
@@ -10510,9 +10529,10 @@ class AnswerHeadFirstScreenTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiv
 
     def assert_head_folded(self):
         title, meta, guest = self.head()
-        # Still there for screen readers, one pixel on screen.
+        # Still there for screen readers, one pixel on screen: the bird with the title in its
+        # bubble (#749).
         expect(title).to_have_count(1)
-        for part in (title, meta):
+        for part in (self.main().locator(".bird-dialogue"), meta):
             self.assertLessEqual(part.bounding_box()["height"], 1)
         expect(guest).to_be_hidden()
 
@@ -10556,8 +10576,10 @@ class AnswerHeadFirstScreenTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiv
                     self.assertGreater(title.bounding_box()["height"], 10)
                     self.main().locator(".answer-app").get_by_role("radio").first.check()
                     self.next()
-                    expect(title).to_have_class(re.compile(r"\bvisually-hidden\b"))
-                    self.assertLessEqual(title.bounding_box()["height"], 1)
+                    # #749: the bird folds with the title in its bubble.
+                    bird = self.main().locator(".bird-dialogue")
+                    expect(bird).to_have_class(re.compile(r"\bvisually-hidden\b"))
+                    self.assertLessEqual(bird.bounding_box()["height"], 1)
 
     def test_without_javascript_the_form_keeps_its_head(self):
         self.sign_in(consented_user(username="answer_head_nojs", birth_year=1950))
@@ -11389,8 +11411,9 @@ class FittingGuideT367Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServ
         for width in (self.PHONE[0], self.DESKTOP[0]):
             with self.subTest(width=width):
                 self.visit(False, "/guide/after-fitting", width=width)
-                title = self.main().get_by_role("heading", level=1).bounding_box()
-                box = self.main().locator("article > h1 + *").bounding_box()
+                # #749: the title is in the bird's bubble; from the bird on.
+                title = self.main().locator("article > .bird-dialogue").bounding_box()
+                box = self.main().locator("article > .bird-dialogue + *").bounding_box()
                 self.assertAlmostEqual(box["y"] - (title["y"] + title["height"]), 27, delta=0.5)
 
 
@@ -13850,7 +13873,9 @@ class ResultPagesT461Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             ):
                 self.assertGreaterEqual(self.font_size(words), self.rem())
             # In the page's content: 回到頂端 is the site's own, out of sight until scrolled.
-            solid = self.main().locator(".btn-primary")
+            # #749: the main button is white on the blue hero card, and the only one.
+            expect(self.main().locator(".btn-primary")).to_have_count(0)
+            solid = self.main().locator(".btn-hero")
             expect(solid).to_have_count(1)
             box = solid.bounding_box()
             # 56px (S1's 3.1111rem, a hair under it when rounded).
@@ -14310,16 +14335,18 @@ class ScreeningAnsweringT463Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLi
             self.open("/questionnaire_list")
             expect(self.main().locator(".recommended-block .questionnaire-card")).to_have_count(2)
             expect(self.main().locator(".btn-primary")).to_have_count(0)
-            # Due for a retest: one solid 開始作答 in the first screen.
+            # Due for a retest: one 開始作答 in the first screen, white on the blue hero card
+            # since #749.
             self.record("hhie-s", wearing=False, days_ago=200)
             self.open("/questionnaire_list")
-            solid = self.main().locator(".btn-primary")
+            expect(self.main().locator(".btn-primary")).to_have_count(0)
+            solid = self.main().locator(".btn-hero")
             expect(solid).to_have_count(1)
             box = solid.bounding_box()
             tab_bar = self.page.locator(".site-nav ul").bounding_box()
             self.assertLessEqual(box["y"] + box["height"], tab_bar["y"])
             self.open("/questionnaire_list?concern=hearing_aid")
-            expect(self.main().locator(".btn-primary")).to_have_count(1)
+            expect(self.main().locator(".btn-hero")).to_have_count(1)
 
     def test_pages_fit_a_phone_at_double_text_size(self):
         self.record("hhie-s", wearing=False, days_ago=200)
@@ -16625,7 +16652,8 @@ class AttemptNumberT647Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
                     expect(self.main().locator(".result-attempt")).to_have_text(
                         "這是您第 2 次做這份問卷。"
                     )
-                    button = self.main().locator(".btn-primary").bounding_box()
+                    # #749: white on the blue hero card.
+                    button = self.main().locator(".btn-hero").bounding_box()
                     tab_bar = self.page.get_by_role("navigation", name="主要導覽").bounding_box()
                     self.assertLessEqual(button["y"] + button["height"], tab_bar["y"], code)
 
@@ -16940,14 +16968,15 @@ class NarrowOverflowsT668Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveS
                 with self.subTest(width=width):
                     self.open("/questionnaire_list", (width, 844))
                     self.assert_fits_a_phone_at_double_text_size("catalogue", width)
-                    facts = self.main().locator(".recommended-block .recommended-facts")
+                    # #749: on the blue hero card.
+                    facts = self.main().locator(".hero-card .recommended-facts")
                     expect(facts).to_contain_text(f"上次 {old:%Y/%m/%d}")
                     words_end, room_end = facts.locator(".inline-block").evaluate(self.WORDS_END)
                     # Half a pixel for sub-pixel rounding of the text's box.
                     self.assertLessEqual(words_end, room_end + 0.5, f"{width}px")
                     # Acceptance 4: the block keeps its 1.125rem sides where the date fits: at
                     # 390px even at 200% (40.5px), and at the usual size (20.25px).
-                    block = self.main().locator(".recommended-block")
+                    block = self.main().locator(".hero-card")
                     if width == 390:
                         for side in ("paddingLeft", "paddingRight"):
                             self.assertEqual(self.style(block, side), "40.5px", "390px at 200%")
@@ -17339,3 +17368,39 @@ class ContentSecurityPolicyTest(SavesFailureArtifacts, StaticLiveServerTestCase)
         with self.saving_artifacts():
             self.context.add_cookies([signed_in_without_records(self, "csp_user")])
             self.assert_no_violations(("/", "/my_hearing", "/audiograms/new", "/account"))
+
+
+class BirdAndHeroCardTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#749 (ADR 0076): the bird's bubble and the blue hero card wrap their words at 200% text on
+    a 320px phone, with nothing cut off and no sideways scroll."""
+
+    fixtures = ("questions_fixture.json",)
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+        user = consented_user(username="bird_hero_user_with_a_long_name", birth_year=1950)
+        self.record = submission_with_answers(user, "hhie-s", [4] * 10)
+        self.sign_in(user)
+
+    def test_the_bubble_and_the_card_wrap_on_a_phone_at_double_text_size(self):
+        pages = (
+            ("/", True, True),
+            (f"/submission/{self.record.pk}", True, True),
+            ("/questionnaire_list?concern=life_impact", True, True),
+            ("/account", True, False),
+            ("/login", False, False),
+        )
+        for path, signed_in, hero in pages:
+            with self.subTest(path=path):
+                self.open(path, size=(320, 640), signed_in=signed_in)
+                with self.saving_artifacts():
+                    self.assert_fits_a_phone_at_double_text_size(path)
+                    parts = [".bird-bubble", ".bird-title", ".bird-lead"]
+                    if hero:
+                        parts += [".hero-card", ".hero-card .btn"]
+                    for part in parts:
+                        for element in self.main().locator(part).all():
+                            box = element.bounding_box()
+                            self.assertLessEqual(box["x"] + box["width"], 320, part)
+                            cut = element.evaluate("el => el.scrollWidth - el.clientWidth")
+                            self.assertLessEqual(cut, 0, part)

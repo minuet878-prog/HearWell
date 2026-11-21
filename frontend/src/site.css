@@ -137,18 +137,14 @@
     h3, .h3 { font-size: 1.75rem; }
     h4, .h4 { font-size: 1.5rem; }
   }
-  /* T1 (#454, ADR 0043): a page title (h1.h3) 28px and a section title (.h4) 22px, bold in the
-     heading colour, at every width; no bar beside them, the size alone sets them apart. At 200%
-     text on a narrow phone a long Latin word breaks rather than widen the page (#204). */
-  h1.h3, .h4 {
+  /* T1 (#454, ADR 0043): a section title (.h4) 22px, bold in the heading colour, at every
+     width; no bar beside it, the size alone sets it apart. The page title is the bird's bubble's
+     since #749 (.bird-title, ADR 0076). */
+  .h4 {
     color: var(--color-heading);
+    font-size: var(--text-section-title);
     font-weight: 700;
     line-height: 1.3;
-  }
-  h1.h3 { font-size: var(--text-page-title); }
-  .h4 { font-size: var(--text-section-title); }
-  @media (max-width: 47.99em) {
-    h1.h3 { overflow-wrap: anywhere; }
   }
   p { margin: 0 0 1rem; }
   ol, ul { padding-left: 2rem; }
@@ -2289,13 +2285,13 @@
 
   /* Guide chapters: each titled part flat on the page (ADR 0043), the parts apart by spacing.
      Sources and the check date in small print. */
-  .guide-chapter > :not(h1) + * {
+  .guide-chapter > :not(.bird-dialogue) + * {
     margin-top: 2rem;
   }
 
   /* #367 (spec #354): a chapter opening straight on a titled part (配戴之後), or on its key cards
-     (#467), keeps its title off it. */
-  .guide-chapter > h1 + :is(section, div) {
+     (#467), keeps its title off it; the title is in the bird's bubble since #749. */
+  .guide-chapter > .bird-dialogue + :is(section, div) {
     margin-top: 1.5rem;
   }
 
@@ -7502,7 +7498,7 @@
     flex-wrap: wrap;
     align-items: flex-start;
     gap: 0.6667rem;
-    margin: 0.5rem 0 1.25rem;
+    margin: 0.5rem 0 0.8889rem;
   }
 
   /* The logo's bird (ADR 0039) on the brand's deep pebble. */
@@ -7543,6 +7539,12 @@
     fill: var(--color-brand-soft);
   }
 
+  /* On paper (the health report): the title and its lead only, no colour (#137). */
+  @media print {
+    .bird-avatar, .bird-bubble-tail { display: none; }
+    .bird-bubble { margin: 0; padding: 0; background: none; }
+  }
+
   .bird-lead {
     margin: 0;
     color: var(--color-body);
@@ -7566,7 +7568,7 @@
     margin: 1.25rem 0;
     /* As .recommended-block (#668): narrower sides where a date that cannot break would not
        fit, on a 320px phone at 200% text. */
-    padding: 1.1111rem clamp(0.5rem, (100% - 9rem) * 100, 1.1111rem);
+    padding: 1.125rem clamp(0.5rem, (100% - 9rem) * 100, 1.125rem);
     border-radius: 1.3333rem;
     background-image: linear-gradient(160deg, var(--color-primary), var(--color-primary-hover));
     color: #fff;
