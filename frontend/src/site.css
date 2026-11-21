@@ -885,9 +885,11 @@
     font-weight: 700;
   }
 
-  /* Under a finger or a mouse colour only (ADR 0006). */
-  :is(.site-back, .site-avatar):hover {
-    color: var(--color-primary-hover);
+  /* Under a finger or a mouse colour only (ADR 0006); the hover colour only with a mouse. */
+  @media (hover: hover) {
+    :is(.site-back, .site-avatar):hover {
+      color: var(--color-primary-hover);
+    }
   }
 
   :is(.site-back, .site-avatar):active {
@@ -928,8 +930,10 @@
     stroke-linejoin: round;
   }
 
-  .site-leave:hover {
-    color: var(--color-primary-hover);
+  @media (hover: hover) {
+    .site-leave:hover {
+      color: var(--color-primary-hover);
+    }
   }
 
   .site-leave:active {
