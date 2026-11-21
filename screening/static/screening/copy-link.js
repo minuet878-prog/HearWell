@@ -3,7 +3,8 @@
 // page to copy by hand.
 // #332 (spec #326 B3): the button itself turns green with ✓ 已複製 for 2 seconds, and every
 // press writes 已複製 into a status area anew, so a screen reader says it each time.
-// Share page (#193): 複製連結 (#copy-link) copies the link and hides the written address.
+// Share page (#193): 複製連結 (#copy-link) copies the link; #741: no address is written beside it,
+// so one the browser refuses goes away, as 複製信箱 does.
 // #366 (spec #354): without the phone's share sheet (share-button.js keeps its button hidden),
 // copying is the way to send, so that button becomes the solid main one.
 // #361: the family page's 複製網址 (data-without-share-sheet) shows only where the phone's share
@@ -45,14 +46,12 @@
   const linkButton = document.getElementById("copy-link");
   const withoutShareSheet = linkButton && "withoutShareSheet" in linkButton.dataset;
   if (linkButton && !(withoutShareSheet && navigator.share)) {
-    const address = document.getElementById("share-url");
-    if (address) address.hidden = true;
     if (!navigator.share && !withoutShareSheet) {
       linkButton.classList.replace("btn-outline-primary", "btn-primary");
     }
     const toCopy = linkButton.dataset.text ?? linkButton.dataset.url;
     showCopyButton(linkButton, toCopy, document.getElementById("copy-status"), () => {
-      if (address) address.hidden = false;
+      linkButton.hidden = true;
     });
   }
 
