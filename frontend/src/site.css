@@ -7057,6 +7057,11 @@
     outline-offset: 0.1875rem;
   }
 
+  /* Reduced motion: the colour changes at once (ADR 0028). */
+  @media (prefers-reduced-motion: reduce) {
+    .entry-card { transition: none; }
+  }
+
   /* ADR 0075: the vermilion 已完成 stamp, tilted and framed twice like an ink seal, centred
      where a done step opens; play-once-stamp (ADR 0077) presses it down once. */
   .done-stamp {
@@ -7310,6 +7315,11 @@
   .answer-choice:focus-visible {
     outline: 0.1875rem solid var(--color-primary);
     outline-offset: 0.1875rem;
+  }
+
+  /* Reduced motion: the colour changes at once (ADR 0028). */
+  @media (prefers-reduced-motion: reduce) {
+    .answer-choice { transition: none; }
   }
 
   /* #745: a calendar date card, a calendar sheet beside what its day is from and the line
@@ -8585,6 +8595,11 @@
     background-color: var(--color-brand-soft-deep);
   }
 
+  /* Reduced motion: the colour changes at once (ADR 0028). */
+  @media (prefers-reduced-motion: reduce) {
+    .bird-pick { transition: none; }
+  }
+
   .bird-pick svg {
     display: block;
     width: 1.4444rem;
@@ -8699,8 +8714,7 @@
   /* Reduced motion: the card changes without sliding (card-stack.js does not let it follow
      the finger either). */
   @media (prefers-reduced-motion: reduce) {
-    .card-stack[data-ready] .card-stack-card,
-    .card-stack-dots > span {
+    .card-stack[data-ready] .card-stack-card {
       transition: none;
     }
   }
@@ -8800,5 +8814,15 @@
   .card-stack-dots > [data-current] {
     width: 1.5556rem;
     background-color: var(--color-primary);
+  }
+
+  /* Reduced motion: the dot grows and the buttons change colour at once (ADR 0028). After the
+     rules above, which would otherwise win as they are just as specific. */
+  @media (prefers-reduced-motion: reduce) {
+    .card-stack-prev,
+    .card-stack-next,
+    .card-stack-dots > span {
+      transition: none;
+    }
   }
 }

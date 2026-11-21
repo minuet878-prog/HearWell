@@ -6209,6 +6209,72 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             expect(self.page.get_by_role("banner")).to_be_visible()
             self.assertEqual(self.page.evaluate("document.getAnimations().length"), 0)
 
+    # Spec #741 acceptance 54 (#758; ADR 0006, 0028, 0077): with reduced motion nothing on the
+    # redesigned pages moves, scrolled through to the foot and with every 照顧旅程 step opened:
+    # no animation runs, no colour or size fades in on a hover or a press (it changes at once),
+    # and a number that would count up shows its end value. Two HHIE-S records, an audiogram
+    # reaching the assessment threshold and my guide opened: the home page has its hero card at
+    # the 身障鑑定 answer card and its tiles, the result 和上一次比, and 紀錄 its trend chart.
+    STILL_PAGE = """() => ({
+        animations: document.getAnimations().map(a => a.animationName ?? a.transitionProperty),
+        fading: [...new Set([...document.querySelectorAll('*')]
+            .filter(e => getComputedStyle(e).transitionDuration.split(',')
+                .some(d => parseFloat(d) > 0))
+            .map(e => `${e.className} ${getComputedStyle(e).transitionProperty}`))],
+        counting: [...document.querySelectorAll('[data-count-up]')]
+            .filter(n => !n.hasAttribute('data-count-done')
+                         || getComputedStyle(n, '::after').content !== 'none')
+            .map(n => n.textContent),
+    })"""
+
+    def test_reduced_motion_nothing_moves_on_the_redesigned_pages(self):
+        self.submission(self.hhie_s, [4] * 5 + [0] * 5)
+        latest = self.submission(self.hhie_s, [4] * 3 + [0] * 7)
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=55)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000)
+        )
+        GuideChapterView.objects.create(user=self.user, chapter="guide")
+        self.open(width=390)  # reduced motion
+        still = {"animations": [], "fading": [], "counting": []}
+
+        def assert_still(where):
+            self.assertEqual(self.page.evaluate(self.STILL_PAGE), still, where)
+
+        with self.saving_artifacts():
+            for path in (
+                "/",
+                f"/submission/{latest.pk}",
+                "/my_hearing",
+                "/learn",
+                "/questionnaire_list",
+            ):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    self.page.wait_for_load_state("load")
+                    if path == "/":
+                        card = self.page.get_by_role("main").locator(".journey-card .answer-card")
+                        expect(card.locator("legend")).to_have_text("您有身心障礙證明嗎？")
+                        days = self.page.get_by_role("main").locator(
+                            ".journey-tiles [data-count-up]"
+                        )
+                        expect(days).to_have_text(re.compile(r"^\d+$"))
+                    if path == "/my_hearing":
+                        expect(self.page.locator("#trend-plot .recharts-surface")).to_be_visible()
+                    height = self.page.evaluate("document.documentElement.scrollHeight")
+                    for y in range(0, height + 400, 400):
+                        self.page.evaluate("y => scrollTo({ top: y, behavior: 'instant' })", y)
+                        assert_still(f"scrolled to {y}")
+                    if path == "/":
+                        rows = self.page.locator(".journey-about > summary")
+                        expect(rows).to_have_count(7)
+                        for number, row in enumerate(rows.all(), start=1):
+                            row.click()
+                            row.evaluate("el => el.scrollIntoView({ block: 'start' })")
+                            assert_still(f"step {number} open")
+
     # #139 (2a): primary buttons follow choice C in #136 (docs/verification/issue-136.md); every
     # button is a pill and only changes colour.
     @staticmethod
@@ -17802,3 +17868,29 @@ class BirdAndHeroCardTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
                             self.assertLessEqual(box["x"] + box["width"], 320, part)
                             cut = element.evaluate("el => el.scrollWidth - el.clientWidth")
                             self.assertLessEqual(cut, 0, part)
+
+    # Spec #741 acceptance 57 (#758): on the three pages it names, the small cards keep their
+    # words inside too: the home page's white entry card and two tiles, the front stacked card
+    # and the list's cards, the result's rows; each at least once. The answer card's boxes are
+    # in HearingAidGuideTest.
+    def test_the_small_cards_wrap_on_a_phone_at_double_text_size(self):
+        pages = (
+            ("/", (".entry-card", ".journey-tile")),
+            ("/questionnaire_list", ('.card-stack-card[data-offset="0"]', ".questionnaire-card")),
+            (f"/submission/{self.record.pk}", (".action-card",)),
+        )
+        for path, parts in pages:
+            with self.subTest(path=path):
+                self.open(path, size=(320, 640))
+                with self.saving_artifacts():
+                    self.assert_fits_a_phone_at_double_text_size(path)
+                    for part in parts:
+                        shown = [e for e in self.main().locator(part).all() if e.is_visible()]
+                        self.assertTrue(shown, part)
+                        for element in shown:
+                            words = element.text_content().split()[0]
+                            box = element.bounding_box()
+                            self.assertGreaterEqual(box["x"], 0, words)
+                            self.assertLessEqual(box["x"] + box["width"], 320, words)
+                            cut = element.evaluate("el => el.scrollWidth - el.clientWidth")
+                            self.assertLessEqual(cut, 0, words)
