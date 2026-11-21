@@ -143,7 +143,13 @@ CARE_JOURNEY_STEPS = (
 LIFE_IMPACT_BECAUSE = "先做一份生活影響問卷，了解聽力對您生活的影響。"
 LIFE_IMPACT_BUTTON = "去做問卷"
 IOI_HA_BUTTON = "做效益問卷"
-IOI_HA_DUE_BECAUSE = "您已經戴滿 3 個月，可以做使用效益問卷（IOI-HA），看助聽器幫了多少。"
+# Step 6's countdown card before 3 months worn (spec #741, the canvas).
+FITTING_COMPARE = "和上一次進行比較"
+FITTING_AGAIN_FROM = "起可以再做一次"
+# Step 7's card (spec #741, the canvas): its countdown's words, due, or no life impact yet.
+NEXT_SCREENING = "下次篩檢"
+RETEST_TIME_UP = "時間到了！"  # noqa: RUF001
+FIRST_SCREENING_NOT_DONE = "還沒有完成第一次篩檢。"
 # Steps 2 to 4's cards (spec #741, the canvas's 照顧旅程展開): white entry cards.
 FIND_A_HOSPITAL = "查詢醫療院所"
 AUDIOGRAM_SOURCES = "聽力圖來源"
@@ -175,12 +181,6 @@ FITTING_ADVICE_NORMAL = (
 FITTING_ADVICE_BEFORE_YOU_GO = "去之前要準備什麼"
 
 
-def fitting_countdown_text(days):
-    return f"再 {days} 天滿 3 個月，到時候做使用效益問卷（IOI-HA）。"
-
-
-# Step 5's card while counting down (#458 D8): the 下次篩檢 tile already says the day.
-RETEST_COUNTDOWN_TEXT = "時間到了，這裡會出現「再做一次」的按鈕。"
 # What each step is, said when it is opened on the home page (#459 I1), step 1 first: step 3's,
 # 4's and 6's the canvas's (spec #741); step 2's a draft the owner settles on review.
 CARE_JOURNEY_ABOUT = (
@@ -191,7 +191,7 @@ CARE_JOURNEY_ABOUT = (
     # #598 (spec #593): no subsidy on everyone's way, the owner's wording on #595.
     "照選配路線一站一站走，從找聽力師到開始戴助聽器。",
     "戴滿 3 個月後，再做一次問卷和第一次比較，看看助聽器的幫助。",
-    RETEST_COUNTDOWN_TEXT,
+    "",  # step 7's is what its card says, by its countdown (care_journey)
 )
 
 

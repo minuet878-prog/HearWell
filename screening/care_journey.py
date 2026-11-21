@@ -2,6 +2,7 @@
 state, the 現在這一步 and its card, and the home page's two tiles, the one place the home page and
 the result pages ask. It reads the 選配路線 and the main flow's state; it judges nothing anew."""
 
+import math
 from dataclasses import dataclass, replace
 from datetime import date
 
@@ -23,22 +24,23 @@ from screening.scoring import (
     CARE_JOURNEY_ABOUT,
     CARE_JOURNEY_STEPS,
     FIND_A_HOSPITAL,
+    FIRST_SCREENING_NOT_DONE,
+    FITTING_AGAIN_FROM,
+    FITTING_COMPARE,
     GUIDE_BECAUSE,
     GUIDE_ENTRY,
     HOSPITAL_REPORT,
     INELIGIBLE_MILD,
     INELIGIBLE_NORMAL,
     IOI_HA_BUTTON,
-    IOI_HA_DUE_BECAUSE,
     LIFE_IMPACT_BECAUSE,
     LIFE_IMPACT_BUTTON,
+    NEXT_SCREENING,
     NEXT_STEP_REASONS,
     RETEST_BUTTON_TEXT,
-    RETEST_COUNTDOWN_TEXT,
-    RETEST_DUE_TEXT,
+    RETEST_TIME_UP,
     TYPES_AND_PRICES_ENTRY,
     UNKNOWN,
-    fitting_countdown_text,
 )
 from screening.views.guide import here_stop
 
@@ -108,6 +110,40 @@ class AudiogramResult:
     ears: tuple[EarResult, ...]
 
 
+# The countdown ring's drawing (countdown_ring.html): its centre and radius in the SVG's units.
+RING_CENTRE = 52
+RING_RADIUS = 44
+
+
+@dataclass(frozen=True)
+class Countdown:
+    """A countdown card (countdown_card.html, spec #741): the day it counts to, the days left,
+    the share of the wait gone (the ring's arc, 0 to under 1), and its words above or below the
+    day."""
+
+    on: date
+    days_left: int
+    elapsed: float
+    above: str = ""
+    below: str = ""
+
+    @property
+    def ring_path(self):
+        """The ring's arc of the wait gone, clockwise from the top, as site.css's
+        play-once-ring draws it."""
+        angle = 2 * math.pi * self.elapsed
+        x = round(RING_CENTRE + RING_RADIUS * math.sin(angle), 1)
+        y = round(RING_CENTRE - RING_RADIUS * math.cos(angle), 1)
+        large = int(self.elapsed > 0.5)
+        top = RING_CENTRE - RING_RADIUS
+        return f"M{RING_CENTRE} {top}A{RING_RADIUS} {RING_RADIUS} 0 {large} 1 {x:g} {y:g}"
+
+
+def countdown(start, end, today, **words):
+    """The countdown from start to end, as it stands today (before end)."""
+    return Countdown(end, (end - today).days, (today - start).days / (end - start).days, **words)
+
+
 @dataclass(frozen=True)
 class JourneyStep:
     title: str
@@ -117,6 +153,7 @@ class JourneyStep:
     ineligible: bool = False  # step 4 says 不符資格 beside its title while not done
     entries: tuple[Entry, ...] = ()  # entry cards under the about or the stamp when opened
     entries_title: str = ""  # the entry cards' small heading
+    countdown: Countdown | None = None  # step 7's countdown card, in place of its about
 
 
 @dataclass(frozen=True)
@@ -131,6 +168,7 @@ class JourneyCard:
     href: str | None = None
     button: tuple[str, str] | None = None
     entries: tuple[Entry, ...] = ()
+    countdown: Countdown | None = None
 
     @property
     def has_action(self):
@@ -141,12 +179,13 @@ class JourneyCard:
 @dataclass(frozen=True)
 class NextScreening:
     """下次篩檢, from the latest life-impact record: the day and the days left, both None once
-    due."""
+    due; and step 7's countdown card till then."""
 
     on: date | None
     days_left: int | None
     due: bool
     href: str  # 再做一次: the same life-impact questionnaire
+    countdown: Countdown | None = None
 
 
 @dataclass(frozen=True)
@@ -223,6 +262,15 @@ def care_journey(user, today):
     current = next(
         (n for n in range(first, LAST_STEP) if not done[n] and not not_needed(n)), LAST_STEP
     )
+    life_impact_href = _life_impact_href(user, main)
+    if life_impact is None:
+        next_screening = None
+    elif main.retest_due:
+        next_screening = NextScreening(None, None, True, life_impact_href)
+    else:
+        on = main.next_suggested_date
+        wait = countdown(_day(life_impact), on, today, above=NEXT_SCREENING)
+        next_screening = NextScreening(on, (on - today).days, False, life_impact_href, wait)
     steps = tuple(
         _step(
             number,
@@ -233,20 +281,22 @@ def care_journey(user, today):
             not_needed(number),
             eligibility,
             route.audiogram is None,
+            next_screening,
         )
         for number, (title, about) in enumerate(
             zip(CARE_JOURNEY_STEPS, CARE_JOURNEY_ABOUT, strict=True), start=1
         )
     )
-    life_impact_href = _life_impact_href(user, main)
-    if life_impact is None:
-        next_screening = None
-    elif main.retest_due:
-        next_screening = NextScreening(None, None, True, life_impact_href)
-    else:
-        on = main.next_suggested_date
-        next_screening = NextScreening(on, (on - today).days, False, life_impact_href)
-    card = _card(current, route, eligibility, today, three_months, next_screening, life_impact_href)
+    card = _card(
+        current,
+        route,
+        eligibility,
+        today,
+        fitted_on,
+        three_months,
+        next_screening,
+        life_impact_href,
+    )
     return CareJourney(
         steps,
         current,
@@ -269,8 +319,10 @@ def _eligibility(route, not_needed_now):
     return None
 
 
-def _step(number, title, about, current, done_on, not_needed, eligibility, no_audiogram):
-    entries, entries_title, ineligible = (), "", False
+def _step(
+    number, title, about, current, done_on, not_needed, eligibility, no_audiogram, next_screening
+):
+    entries, entries_title, ineligible, wait = (), "", False, None
     if number == 2:
         entries = (_hospital_entry(),)
     if number == 3 and no_audiogram:
@@ -280,6 +332,14 @@ def _step(number, title, about, current, done_on, not_needed, eligibility, no_au
     if number == 4:
         about, entries = _guide_words(eligibility)
         ineligible = eligibility is not None
+    if number == LAST_STEP:
+        # What its card says (spec #741, the canvas's 5-a), without its button.
+        if next_screening is None:
+            about = FIRST_SCREENING_NOT_DONE
+        elif next_screening.due:
+            about = RETEST_TIME_UP
+        else:
+            about, wait = "", next_screening.countdown
     if done_on is not None:
         state = DONE
     elif not_needed:
@@ -288,7 +348,7 @@ def _step(number, title, about, current, done_on, not_needed, eligibility, no_au
         state = CURRENT if number == current else LATER
     if state == DONE and number != 4:
         entries = ()  # a done step opens to its stamp; step 4's keeps the way to my guide
-    return JourneyStep(title, state, done_on, about, ineligible, entries, entries_title)
+    return JourneyStep(title, state, done_on, about, ineligible, entries, entries_title, wait)
 
 
 def _guide_words(eligibility):
@@ -334,7 +394,9 @@ def first_questionnaire_url(user, today):
     return _life_impact_href(user, get_user_state(user, today))
 
 
-def _card(current, route, eligibility, today, three_months, next_screening, life_impact_href):
+def _card(
+    current, route, eligibility, today, fitted_on, three_months, next_screening, life_impact_href
+):
     title = CARE_JOURNEY_STEPS[current - 1]
     if current == 1:
         button = (LIFE_IMPACT_BUTTON, life_impact_href)
@@ -352,21 +414,22 @@ def _card(current, route, eligibility, today, three_months, next_screening, life
     if current == 5:
         return _route_card(route)
     if current == 6:
-        # #746 draws this step's countdown card; until then its sentence counts the days.
+        # The canvas: counting down to 3 months worn, then its button alone (spec #741).
         if today < three_months:
-            because = fitting_countdown_text((three_months - today).days)
-            return JourneyCard(title, because, "clipboard")
+            wait = countdown(fitted_on, three_months, today, below=FITTING_AGAIN_FROM)
+            return JourneyCard(title, FITTING_COMPARE, "clipboard", countdown=wait)
         ioi_ha = Questionnaire.objects.get(code=IOI_HA)
         button = (IOI_HA_BUTTON, reverse("screening", args=[ioi_ha.pk]))
-        return JourneyCard(title, IOI_HA_DUE_BECAUSE, "clipboard", button=button)
+        return JourneyCard(title, "", "clipboard", button=button)
+    # Step 7 by the canvas (spec #741 acceptance 26).
     if next_screening is None:
         # Without a life-impact record step 7 is due: one to do first (spec #453).
         button = (LIFE_IMPACT_BUTTON, life_impact_href)
-        return JourneyCard(title, LIFE_IMPACT_BECAUSE, "clipboard", button=button)
+        return JourneyCard(title, FIRST_SCREENING_NOT_DONE, "clipboard", button=button)
     if not next_screening.due:
-        return JourneyCard(title, RETEST_COUNTDOWN_TEXT, "clipboard")
+        return JourneyCard(title, "", "clipboard", countdown=next_screening.countdown)
     button = (RETEST_BUTTON_TEXT, next_screening.href)
-    return JourneyCard(title, RETEST_DUE_TEXT, "clipboard", button=button)
+    return JourneyCard(title, RETEST_TIME_UP, "clipboard", button=button)
 
 
 def _route_card(route):
