@@ -541,6 +541,7 @@ components:
       - door_self
       - door_family
       - send_opened
+      - door_aids
       type: string
       description: |-
         * `clinic_elder` - clinic_elder
@@ -548,6 +549,7 @@ components:
         * `door_self` - door_self
         * `door_family` - door_family
         * `send_opened` - send_opened
+        * `door_aids` - door_aids
     Level:
       type: object
       properties:
