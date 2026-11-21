@@ -12,7 +12,13 @@ from django.utils import timezone
 
 from screening import oidc
 from screening.models import SignInMethod, User
-from screening.tests.helpers import GOOGLE_AUTHORIZE, FakeGoogle, consented_user, google_on
+from screening.tests.helpers import (
+    GOOGLE_AUTHORIZE,
+    FakeGoogle,
+    assert_toggle_follows_its_input,
+    consented_user,
+    google_on,
+)
 from screening.views import confirm_identity
 
 OWN_SUB = "google-own"
@@ -297,6 +303,10 @@ class ConfirmWithPasswordTests(TestCase):
         )
         self.assertContains(response, 'name="password"')
         self.assertNotContains(response, "使用 Google 帳戶確認")
+
+    def test_tab_reaches_the_password_before_its_show_button(self):
+        # #741: the 顯示 button after the box, as on the login page.
+        assert_toggle_follows_its_input(self, self.client.get(CONFIRM_DELETE), "id_password")
 
     def test_wrong_password_confirms_nothing(self):
         response = self.client.post(CONFIRM_DELETE, {"password": "wrong"})

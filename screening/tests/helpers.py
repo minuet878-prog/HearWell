@@ -117,6 +117,23 @@ def step_bar(response):
     return segments.count(" is-done"), len(segments)
 
 
+# What the Tab key stops on, in the page's HTML.
+FOCUSABLE = re.compile(r'<(?:input(?![^>]*type="hidden")|button|a|select|textarea)[\s>]')
+
+
+def assert_toggle_follows_its_input(test, response, input_id):
+    """The 顯示 button for input_id is the next thing Tab reaches after that box (#741)."""
+    content = response.content.decode()
+    box = re.search(rf'<input[^>]*id="{input_id}"[^>]*>', content)
+    toggle = re.search(
+        rf'<button[^>]*class="[^"]*password-toggle[^>]*aria-controls="{input_id}"', content
+    )
+    test.assertIsNotNone(box, input_id)
+    test.assertIsNotNone(toggle, input_id)
+    test.assertLess(box.end(), toggle.start(), f"the 顯示 button comes before {input_id}")
+    test.assertIsNone(FOCUSABLE.search(content, box.end(), toggle.start()), input_id)
+
+
 # Spec #505: Google sign-in. Tests turn Google on with these settings; test_settings leaves it off.
 GOOGLE_CLIENT_ID = "test-client.apps.googleusercontent.com"
 google_on = override_settings(
