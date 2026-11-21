@@ -5702,8 +5702,9 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 self.assertEqual(self.style(element, f"border{side}Color"), colour)
 
     # L1 (ADR 0043): the result banner is a whole block of the level's pale colour, no frame;
-    # #149: a level badge keeps its frame in the level's own colour.
-    def test_result_banner_is_a_level_block_and_level_badges_are_framed(self):
+    # spec #741 (the owner at acceptance, 2026-11-21): on screen a level badge has no frame
+    # either (#149's frame stays on paper, test_printed_report_writes_the_level_in_a_frame).
+    def test_result_banner_is_a_level_block_and_level_badges_have_no_frame(self):
         records = {
             level: self.submission(self.hhie_s, scores) for level, scores, _, _ in self.BANNERS[:3]
         }
@@ -5721,7 +5722,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 badge = self.page.locator(f".level-badge-{level}").first
                 expect(badge).to_be_visible()
                 with self.subTest(page="my_hearing", level=level):
-                    self.assert_framed_in_its_text_colour(badge)
+                    for side in ("Top", "Right", "Bottom", "Left"):
+                        self.assertEqual(self.style(badge, f"border{side}Width"), "0px")
 
     # #149: on paper, often black and white, the level stays written out in a frame.
     def test_printed_report_writes_the_level_in_a_frame(self):

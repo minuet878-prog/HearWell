@@ -5849,10 +5849,12 @@
     margin-bottom: -0.6rem;
   }
 
-  /* On paper a level stays the plain bordered word it was before the badges. */
+  /* On paper a level stays the plain bordered word it was before the badges: the frame is gone on
+     screen (spec #741), but paper, often black and white, keeps it (#149; the owner, 2026-11-21). */
   @media print {
     .health-report .level-badge {
       padding: 0 0.4rem;
+      border: 2px solid currentColor;
       border-radius: var(--radius-small);
       background: none;
       color: inherit;
