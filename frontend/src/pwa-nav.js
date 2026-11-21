@@ -1,21 +1,13 @@
 // The home-screen app has no browser toolbar: no back button on an iPhone, no pull to
-// refresh on either phone (spec docs/specs/phase-10/phase10_pwa_back_refresh.md).
+// refresh on either phone (spec docs/specs/phase-10/phase10_pwa_back_refresh.md). Its back
+// button became every page's ‹ in the header (#748, site-header.js).
 export const PULL_THRESHOLD = 80;
-const HOME = "/";
 
 const isStandalone = (win) =>
   win.navigator.standalone === true || win.matchMedia?.("(display-mode: standalone)").matches;
 
 // Reloading would throw away whatever was typed or picked, so pages with inputs opt out.
 const hasInputs = (doc) => doc.querySelector("main :is(form, input, select, textarea)") !== null;
-
-// history.length can count entries the app cannot go back to (after an iPhone reloads a
-// page from the background); canGoBack does not. Older iPhones lack the Navigation API.
-function goBack(win) {
-  const canGoBack = win.navigation?.canGoBack ?? win.history.length > 1;
-  if (canGoBack) win.history.back();
-  else win.location.assign(HOME);
-}
 
 function setUpPullToRefresh(win) {
   const hint = win.document.getElementById("pwa-pull");
@@ -64,10 +56,5 @@ export function setUpPwaNav(win = window) {
   }
   // Ticket #160: e.g. the home page's "加到手機主畫面"; without JavaScript they stay.
   for (const item of win.document.querySelectorAll("[data-hide-in-app]")) item.hidden = true;
-  const back = win.document.getElementById("pwa-back");
-  if (back) {
-    back.hidden = false;
-    back.addEventListener("click", () => goBack(win));
-  }
   setUpPullToRefresh(win);
 }

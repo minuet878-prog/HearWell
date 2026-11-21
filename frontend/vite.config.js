@@ -42,6 +42,7 @@ export default defineConfig({
         "wear-motion": "src/wear-motion-main.js",
         "arrival-count": "src/arrival-count-main.js",
         "door-count": "src/door-count-main.js",
+        "card-stack": "src/card-stack-main.js",
       },
       output: { entryFileNames: "[name].js", assetFileNames: "[name][extname]" },
     },

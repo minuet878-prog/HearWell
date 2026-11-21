@@ -210,4 +210,9 @@
         <span class="link-card-arrow" aria-hidden="true">›</span>
     </a></li>
 </ul>
+{# #748 (spec #741 P8): logout moved here from the header, the last thing on the page. #}
+<form id="logout-form" action="{% url 'logout' %}" method="post">
+    {% csrf_token %}
+    <button class="btn btn-outline-primary w-full mt-6" type="submit">登出</button>
+</form>
 {% endblock %}

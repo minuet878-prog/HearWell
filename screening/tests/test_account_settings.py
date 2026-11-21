@@ -89,10 +89,9 @@ class AccountSettingsTests(TestCase):
     def test_header_and_footer_lead_to_settings(self):
         content = self.client.get(reverse("index")).content.decode()
         header = content.split("</header>", 1)[0]
-        self.assertRegex(
-            header,
-            r'<a[^>]*href="/account"[^>]*aria-label="目前登入：settings_a，帳號設定"[^>]*>'
-            r"\s*目前登入：<strong>settings_a</strong>\s*</a>",
+        # #748: the avatar, the name's first letter.
+        self.assertIn(
+            '<a class="site-avatar" href="/account" aria-label="帳號設定：settings_a">S</a>', header
         )
         self.assertRegex(test_layout._footer(content), ACCOUNT_LINK)
         self.client.logout()

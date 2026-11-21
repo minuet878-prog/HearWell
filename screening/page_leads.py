@@ -11,7 +11,7 @@ LEADS = {
     "index_guest": "您好，歡迎來到聽伴。",
     "index_empty": "歡迎來到聽伴。",
     # 問卷
-    "questionnaire_list": "每一份都不長，慢慢回答就好。",
+    "questionnaire_list": "不確定做哪一份？我可以幫您選。",
     "questionnaire_wizard": "回答幾個問題，我幫您挑。",
     "questionnaire_recommended": "照您的回答，這一份最適合。",
     "screening": "慢慢來，不用急。",

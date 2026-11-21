@@ -163,10 +163,11 @@ class AnswerPageTests(GuestTestCase):
                     self.nav_labels(response),
                     list(test_pages.RedesignLayoutTests.LOGGED_OUT_ITEMS),
                 )
-                # The walkthrough's 篩檢 tab: a guest's answering and result sit under it.
+                # The walkthrough's 問卷 tab (篩檢 before #748): a guest's answering and result
+                # sit under it.
                 content = response.content.decode()
                 nav = re.search(r'<nav aria-label="主要導覽".*?</nav>', content, re.S).group(0)
-                self.assertRegex(nav, r'(?s)aria-current="page"[^>]*>.*?<span>篩檢</span>')
+                self.assertRegex(nav, r'(?s)aria-current="page"[^>]*>.*?<span>問卷</span>')
 
     def test_its_questions_are_open_to_a_guest(self):
         # The React answer page reads them from the API.

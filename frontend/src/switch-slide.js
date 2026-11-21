@@ -2,7 +2,8 @@
 // transition, in which only the blue pill of 問卷｜聽力圖 and 右耳｜左耳 takes part. Left alone,
 // every change of page would run one, and leaving a page with a pill would fade that pill out.
 // So the page being left skips the transition unless the last thing pressed was a switch.
-const SWITCHES = ".records-switch, .ear-switch";
+// #748 (spec #741 P9): the tab bar's solid blue pill slides the same way.
+const SWITCHES = ".records-switch, .ear-switch, .site-nav";
 
 export function setUpSwitchSlide(win) {
   const doc = win.document;

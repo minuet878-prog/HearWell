@@ -39,7 +39,7 @@ class ReturningUserGuideEntryTests(TestCase):
         nav = self.content[
             self.content.index('<nav aria-label="主要導覽"') : self.content.index("</nav>")
         ]
-        self.assertEqual(re.findall(r"<span>(.*?)</span>", nav), ["首頁", "篩檢", "紀錄", "了解"])
+        self.assertEqual(re.findall(r"<span>(.*?)</span>", nav), ["首頁", "問卷", "紀錄", "了解"])
 
 
 class NewUserGuideEntryTests(TestCase):
