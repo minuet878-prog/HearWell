@@ -69,12 +69,17 @@ export function setUpCardStack(root, win = window) {
   track.addEventListener("pointerdown", (event) => {
     startX = event.clientX;
     moved = false;
-    track.setPointerCapture?.(event.pointerId);
   });
   track.addEventListener("pointermove", (event) => {
-    if (startX === null) return;
+    // No button held: a press let go off the cards, before the drag held the pointer.
+    if (startX === null || event.buttons === 0) return;
     let dx = event.clientX - startX;
-    if (Math.abs(dx) > MOVED) moved = true;
+    // Held only once it is a drag: a captured pointer's click goes to the track, not the link
+    // tapped.
+    if (!moved && Math.abs(dx) > MOVED) {
+      moved = true;
+      track.setPointerCapture?.(event.pointerId);
+    }
     // Past either end the card gives a little, then stops.
     if ((index === 0 && dx > 0) || (index === last && dx < 0)) dx /= 3;
     if (moved) follow(dx);

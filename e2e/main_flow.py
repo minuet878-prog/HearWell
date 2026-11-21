@@ -1424,6 +1424,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
 
     fixtures = ("questions_fixture.json",)
     TAIPEI = ZoneInfo("Asia/Taipei")
+    HHIE_CARD = "第 1 張，共 3 張：聽力對生活的影響（HHIE-S）"
     REMINDER = "距離上次的生活影響評估已經滿 6 個月，建議再做一次追蹤。"
     RETEST_BUTTON = "再做一次（大約 3 分鐘）"
 
@@ -1512,23 +1513,24 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
             expect(cards.first.locator(".inline-block")).to_have_text(
                 f"上次 {self.old_date}・顯著影響"
             )
-            # #347: the retest is due, so HHIE-S is recommended on top, and still a card below.
-            recommended = self.main().get_by_role("region", name="推薦您做這一份")
-            expect(recommended).to_contain_text("HHIE-S")
+            # #347, #753: the retest is due, so HHIE-S is the first stacked card, and still a
+            # card below.
+            recommended = self.main().get_by_role("group", name=self.HHIE_CARD)
+            expect(recommended).to_contain_text("推薦您做這一份")
             expect(recommended).to_contain_text(self.REMINDER)
             self.assert_fits_a_phone_at_double_text_size("catalogue")
             tag = cards.first.locator(".inline-block")
             self.assertEqual(tag.evaluate("e => e.getClientRects().length"), 1)
             self.assertLessEqual(tag.evaluate("e => e.getBoundingClientRect().right"), 320)
-            self.main().get_by_role("link", name="不確定做哪一份？幫我選").click()
+            self.main().get_by_role("link", name="幫我選").click()
             expect(self.main().get_by_role("group", name="您最想了解什麼？")).to_be_visible()
             self.main().get_by_role("link", name="上一步").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/questionnaire_list")
             expect(cards).to_have_count(6)
 
     def test_both_recommended_life_impact_questionnaires_fit_a_phone(self):
-        """#347 (#339 acceptance 5, 22): only THI and no birth year, so the recommendation lists
-        HHIE-S and HHIA-S, each a row with its ages (#463: no solid button); 320px at 200%
+        """#347 (#339 acceptance 5, 22): only THI and no birth year, so HHIE-S and HHIA-S are
+        both recommended, the first two stacked cards (#753), each with its ages; 320px at 200%
         text."""
         call_command("seed_questionnaires", verbosity=0)
         user = consented_user(username="thi_only_e2e")
@@ -1538,16 +1540,94 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         self.open(viewport={"width": 320, "height": 640})
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/questionnaire_list")
-            recommended = self.main().get_by_role("region", name="推薦您做這一份")
-            starts = recommended.locator("a.questionnaire-card")
-            expect(starts).to_have_count(2)
-            expect(starts.first).to_contain_text("HHIE-S")
+            stack = self.main().get_by_role("region", name="問卷卡片")
             expect(self.main().locator(".btn-primary")).to_have_count(0)
-            expect(recommended).to_contain_text("適合 65 歲以上的長輩。")
-            expect(recommended).to_contain_text("適合 18–64 歲成人")
             self.assert_fits_a_phone_at_double_text_size("catalogue, both recommended")
-            content_width, box_width = recommended.evaluate("e => [e.scrollWidth, e.clientWidth]")
-            self.assertLessEqual(content_width, box_width, "推薦您做這一份")
+            for place, code, ages in (
+                (1, "HHIE-S", "適合 65 歲以上的長輩。"),
+                (2, "HHIA-S", "適合 18–64 歲成人"),
+            ):
+                card = stack.get_by_role("group", name=re.compile(rf"^第 {place} 張"))
+                expect(card).to_contain_text(code)
+                expect(card).to_contain_text("推薦您做這一份")
+                expect(card).to_contain_text(ages)
+                content_width, box_width = card.evaluate("e => [e.scrollWidth, e.clientWidth]")
+                self.assertLessEqual(content_width, box_width, code)
+                stack.get_by_role("button", name="下一張").click()
+
+    def stack_card(self, place):
+        # The front stacked card, checked to be the one at this place of three (#753).
+        expect(self.main().locator(".card-stack-position")).to_have_text(f"第 {place} 張，共 3 張")
+        card = self.main().get_by_role("group", name=re.compile(rf"^第 {place} 張，共 3 張："))
+        expect(card).to_be_visible()
+        return card
+
+    def drag_front_card(self, dx):
+        box = self.main().locator('.card-stack-card[data-offset="0"]').bounding_box()
+        x, y = box["x"] + box["width"] * 0.75, box["y"] + box["height"] / 3
+        self.page.mouse.move(x, y)
+        self.page.mouse.down()
+        self.page.mouse.move(x + dx, y, steps=8)
+        self.page.mouse.up()
+
+    def test_the_stacked_cards_change_by_drag_keys_and_buttons_then_start_answering(self):
+        """#753 (spec #741 acceptance 44, 46): HHIE-S recommended, then the two for anyone;
+        a short drag snaps back, a long one changes card, and so do 上一張, 下一張 and the
+        arrow keys."""
+        call_command("seed_questionnaires", verbosity=0)
+        self.open(viewport={"width": 390, "height": 844})
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            stack = self.main().get_by_role("region", name="問卷卡片")
+            expect(stack).not_to_contain_text("HHIA-S")
+            expect(self.stack_card(1)).to_contain_text("HHIE-S")
+            self.drag_front_card(-20)
+            self.stack_card(1)
+            self.drag_front_card(-120)
+            expect(self.stack_card(2)).to_contain_text("SSQ12-TW")
+            self.drag_front_card(120)
+            self.stack_card(1)
+            stack.get_by_role("button", name="下一張").click()
+            self.stack_card(2)
+            self.page.keyboard.press("ArrowRight")
+            expect(self.stack_card(3)).to_contain_text("THI")
+            # At the end 下一張 can no longer be pressed, and the focus goes to 上一張.
+            expect(stack.get_by_role("button", name="下一張")).to_be_disabled()
+            expect(stack.get_by_role("button", name="上一張")).to_be_focused()
+            self.page.keyboard.press("ArrowLeft")
+            card = self.stack_card(2)
+            card.get_by_role("link", name="開始作答").click()
+            ssq12 = Questionnaire.objects.get(code="ssq12-tw")
+            expect(self.page).to_have_url(f"{self.live_server_url}/questionnaire/{ssq12.pk}")
+
+    def test_without_javascript_the_first_stacked_card_and_the_list(self):
+        """#753 (spec #741 acceptance 58)."""
+        call_command("seed_questionnaires", verbosity=0)
+        self.open(java_script_enabled=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            cards = self.main().locator(".card-stack-card")
+            expect(cards).to_have_count(3)
+            expect(cards.first).to_be_visible()
+            expect(cards.first).to_contain_text("推薦您做這一份")
+            expect(cards.nth(1)).to_be_hidden()
+            expect(cards.nth(2)).to_be_hidden()
+            expect(self.main().locator(".card-stack-controls")).to_be_hidden()
+            expect(self.main().locator("a.questionnaire-card")).to_have_count(6)
+
+    def test_reduced_motion_changes_card_without_sliding(self):
+        """#753 (P3, P4's 從其他決定推出): the card changes, nothing slides."""
+        call_command("seed_questionnaires", verbosity=0)
+        self.open(reduced_motion="reduce")
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            cards = self.main().locator(".card-stack-card")
+            for i in range(3):
+                self.assertEqual(
+                    cards.nth(i).evaluate("e => getComputedStyle(e).transitionDuration"), "0s"
+                )
+            self.main().get_by_role("button", name="下一張").click()
+            self.stack_card(2)
 
     def test_history_fits_a_phone_at_double_text_size(self):
         """#163 acceptance 3: 我的紀錄 due, with the reminder and its button, and after the

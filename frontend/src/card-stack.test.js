@@ -48,9 +48,11 @@ const position = () => document.querySelector(".card-stack-position").textConten
 const prev = () => document.querySelector(".card-stack-prev");
 const next = () => document.querySelector(".card-stack-next");
 
+// The button is held from pointerdown until pointerup.
 function pointer(type, x, target = current()) {
+  const buttons = type === "pointerup" ? 0 : 1;
   target.dispatchEvent(
-    new PointerEvent(type, { bubbles: true, clientX: x, clientY: 100, pointerId: 1 }),
+    new PointerEvent(type, { bubbles: true, clientX: x, clientY: 100, pointerId: 1, buttons }),
   );
 }
 
@@ -126,6 +128,16 @@ describe("setUpCardStack", () => {
     expect(stack().style.getPropertyValue("--card-stack-drag")).toBe(`${-DRAG_THRESHOLD + 10}px`);
     pointer("pointerup", 300 - DRAG_THRESHOLD + 10);
     expect(shown()).toBe("HHIE-S");
+    expect(stack().style.getPropertyValue("--card-stack-drag")).toBe("");
+  });
+
+  it("does not drag under a mouse moved with no button held", () => {
+    // A press let go off the cards never reaches them as a pointerup.
+    setUpCardStack(page(), fakeWindow());
+    pointer("pointerdown", 300);
+    current().dispatchEvent(
+      new PointerEvent("pointermove", { bubbles: true, clientX: 200, pointerId: 1, buttons: 0 }),
+    );
     expect(stack().style.getPropertyValue("--card-stack-drag")).toBe("");
   });
 
