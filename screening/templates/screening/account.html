@@ -68,15 +68,6 @@
         </div>
     </div>
     {% if reminder.enabled %}
-    {% if retest.retest_due %}
-    {# Once on this page only, so Tailwind's own classes (CODING_STANDARDS 21): a pale box asking for it now. #}
-    <div class="mb-2 rounded-(--radius-medium) bg-white px-4 py-3.5">
-        <p class="m-0 font-bold text-heading">您現在就可以再做一次</p>
-        <p class="mt-1 mb-0">上一次是 {{ retest.life_impact.created_at|date:"Y/m/d" }}，{% if no_mail_this_time %}已經超過半年。這一次不另外寄信，做完之後，半年後會寄提醒給您。{% else %}已經滿半年。{% endif %}</p>
-        <a class="btn btn-primary w-full mt-3" href="{% url 'screening' retest.retest_questionnaire.pk %}">再做一次</a>
-    </div>
-    {% endif %}
-    {% if retest.next_suggested_date %}<p class="field-help mt-0 mb-2">下次篩檢 {{ retest.next_suggested_date|date:"Y/m/d" }}，那天早上 9 點寄信。</p>{% endif %}
     <form method="post" action="{% url 'retest_reminder' %}">
         {% csrf_token %}
         <input type="hidden" name="enabled" value="0">

@@ -120,12 +120,19 @@ class ReminderSwitchTests(TestCase):
         for words in GONE:
             self.assertNotIn(words, text)
 
-    def test_the_day_it_falls_due_is_the_home_page_s(self):
+    # Spec #741 (the owner at acceptance, 2026-11-21): on and not yet due, the block names no
+    # date; the home page's countdown says when.
+    def test_on_and_not_due_names_no_date(self):
         self._hhie_s(date(2026, 6, 1))
         self._turn("1")
-        text = self._section()
-        self.assertIn("下次篩檢 2026/12/01，那天早上 9 點寄信。", text)
-        self.assertNotIn("您現在就可以再做一次", text)
+        page = self._page()
+        text = test_layout._text(page)
+        for words in ("下次篩檢", "2026/12/01", "早上 9 點寄信"):
+            with self.subTest(words=words):
+                self.assertNotIn(words, text)
+        self.assertEqual(STATE_LINE.findall(page), [(" reminder-state-on", "已打開")])
+        self.assertEqual(BUTTON.findall(page), ["關掉提醒"])
+        # Not due yet: the home page has the date.
         home = test_layout._text(self.client.get(reverse("index")).content.decode())
         self.assertIn("2026/12/01", home)
 
@@ -154,29 +161,35 @@ class ReminderSwitchTests(TestCase):
         self.assertNotEqual(again.cancel_token, first)
         self.assertGreaterEqual(len(again.cancel_token), 43)  # token_urlsafe(32)
 
-    # 4
-    def test_already_due_says_do_it_now_and_links_to_it(self):
+    # Spec #741 (the owner at acceptance, 2026-11-21): on and due, the block no longer asks for
+    # it now nor links to it, whether it fell due before the day it was turned on or that day;
+    # the home page asks for the retest.
+    def test_on_and_due_neither_asks_for_it_now_nor_names_a_date(self):
         record = self._hhie_s(date(2026, 3, 10))
         self._turn("1")
-        page = self._page()
-        text = test_layout._text(page)
-        self.assertIn("您現在就可以再做一次", text)
-        self.assertIn("上一次是 2026/03/10", text)
-        self.assertIn(f'href="{reverse("screening", args=[record.questionnaire.pk])}"', page)
-        self.assertNotIn("下次篩檢", text)
-        # Due before the day it was turned on: the schedule does not send this one (23).
-        self.assertIn("這一次不另外寄信", text)
-
-    # 4, 23: due the day it is turned on, so the schedule sends it (cross review, Codex 5).
-    def test_due_the_day_it_is_turned_on_does_not_say_no_mail(self):
-        record = self._hhie_s(date(2026, 5, 17))  # + 6 months: 2026/11/17, today
-        self._turn("1")
-        page = self._page()
-        text = test_layout._text(page)
-        self.assertIn("您現在就可以再做一次", text)
-        self.assertIn("上一次是 2026/05/17", text)
-        self.assertIn(f'href="{reverse("screening", args=[record.questionnaire.pk])}"', page)
-        self.assertNotIn("不另外寄信", text)
+        for last in (date(2026, 3, 10), date(2026, 5, 17)):  # due before 11/17, due on 11/17
+            with self.subTest(last=last):
+                moment = datetime(last.year, last.month, last.day, 12, tzinfo=TAIPEI)
+                Submission.objects.filter(pk=record.pk).update(created_at=moment)
+                page = self._page()
+                text = test_layout._text(page)
+                for words in (
+                    "您現在就可以再做一次",
+                    "再做一次",
+                    "上一次是",
+                    "不另外寄信",
+                    "下次篩檢",
+                ):
+                    with self.subTest(words=words):
+                        self.assertNotIn(words, text)
+                screening = reverse("screening", args=[record.questionnaire.pk])
+                self.assertNotIn(f'href="{screening}"', page)
+                self.assertNotIn("<a ", page)
+                self.assertEqual(STATE_LINE.findall(page), [(" reminder-state-on", "已打開")])
+                self.assertEqual(BUTTON.findall(page), ["關掉提醒"])
+                # Due indeed: the home page asks for it.
+                home = self.client.get(reverse("index")).content.decode()
+                self.assertIn(f'href="{screening}">再做一次', home)
 
     def test_off_says_nothing_of_doing_it_now(self):
         self._hhie_s(date(2026, 3, 10))
