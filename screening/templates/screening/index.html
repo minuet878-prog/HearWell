@@ -15,18 +15,48 @@
 {% if continue_notice %}<div id="continue-notice"></div>{% endif %}
 {% if journey %}
 {# #459 (ADR 0044, mockup #458): the 照顧旅程, its 現在這一步 the one thing to do today. #}
-{# #749 (ADR 0076): the greeting is the bird's lead, the rest of the old title the page's title; something to press, a button or an entry card (#744), is a thing to do today. #}
-{% capture bird_lead %}{{ greeting }}，{% endcapture %}
-{% include "screening/bird_dialogue.html" with lead=bird_lead title=journey.card.has_action|yesno:"今天只要做一件事,今天沒有要做的事" %}
-{# 上次結果 is the latest life-impact record, its whole tile a link in its level's colour (L1); 下次篩檢 is grey, information only. Without a life-impact record both are grey and say not yet (#458 D6). #}
+{# Spec #741 (#751, page grill P12): the bird greets the account by name, its title. #}
+{% include "screening/bird_dialogue.html" with lead="index"|page_lead title=greeting %}
+{# Spec #741 (#751, the canvas's ProHome): the 現在這一步's card is the page's blue hero card, on top; after its words, 「第 N 步，共 7 步」 and a bar of the seven, filled as far as this step, its own segment growing once in view (ADR 0077). #}
+{# #journey-now: an answer that finishes its stop comes back here, its stamp in view (#745). #}
+{% with card=journey.card %}
+<div class="journey-card" id="journey-now">
+    {% capture hero %}
+        <p class="hero-card-label">現在這一步</p>
+        <h2 class="hero-card-title">{{ card.title }}</h2>
+        {% if card.because %}<p>{{ card.because }}</p>{% endif %}
+        <div class="journey-progress">
+            <span class="journey-progress-bar" aria-hidden="true">{% for step in journey.steps %}<span class="journey-progress-segment{% if forloop.counter <= journey.current %} is-filled{% endif %}{% if forloop.counter == journey.current %} play-once-grow{% endif %}"></span>{% endfor %}</span>
+            <p class="journey-progress-text">第 {{ journey.current }} 步，共 {{ journey.steps|length }} 步</p>
+        </div>
+        {# Spec #741 (#745): step 5's certificate, form 9 and notice are answer cards; form 25 a calendar date card. #}
+        {% if card.question %}{% include "screening/answer_card.html" with question=card.question done=card.moved_on %}{% endif %}
+        {% if card.date %}{% include "screening/date_card.html" with day=card.date %}{% endif %}
+        {# Steps 6 and 7 counting down (#746). #}
+        {% if card.countdown %}{% include "screening/countdown_card.html" with countdown=card.countdown %}{% endif %}
+        {# Spec #741: steps 2 and 4 are white entry cards, nothing else. #}
+        {% if card.entries %}<ul class="journey-entries" role="list">{% for entry in card.entries %}<li>{% include "screening/entry_card.html" with icon=entry.icon text=entry.text href=entry.href come_back=entry.come_back note=entry.note %}</li>{% endfor %}</ul>{% endif %}
+        {% if card.button %}
+        <a class="btn btn-hero btn-lg" href="{{ card.button.1 }}">{{ card.button.0 }}</a>
+        {% endif %}
+        {# Grill Q13: the stop just finished moves on only when this is pressed. #}
+        {% if card.moved_on %}<a class="journey-card-link" href="{% url 'index' %}#journey-now">接著往下一站：{{ card.moved_on }}<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a>{% endif %}
+    {% endcapture %}
+    {% include "screening/hero_card.html" with body=hero attrs="data-play-in-view" %}
+</div>
+{% endwith %}
+{# 上次結果 is the latest life-impact record, its whole tile a link in its level's colour (L1); 下次篩檢 is grey, information only. Without a life-impact record both are grey and say not yet (#458 D6). Since #751 (the canvas's ProHome) 上次結果 is the semicircle gauge with the score in it and the level's short name, its full name read (P11); 離下次篩檢 the countdown ring and the day. #}
 <div class="journey-tiles">
     {% with submission=journey.last_result %}
     {% if submission %}
     {% with result=submission.result %}
     <a class="journey-tile result-banner-{{ result.level.color }}" href="{% url 'result' submission.id %}">
         <span class="journey-tile-label">上次結果</span>
-        <span class="journey-tile-score">{{ result.total }} <small>分</small></span>
-        <span class="journey-tile-level">{{ result.level.text }}</span>
+        <div class="journey-tile-gauge">
+            {% if result.gauge %}{% include "screening/semicircle_gauge.html" with gauge=result.gauge %}{% endif %}
+            <span class="journey-tile-score"><span data-count-up>{{ result.total }}</span> <small>分</small></span>
+        </div>
+        <span class="journey-tile-level" aria-hidden="true">{{ result.level.short }}</span><span class="visually-hidden">{{ result.level.text }}</span>
         <span class="journey-tile-arrow" aria-hidden="true">›</span>
     </a>
     {% endwith %}
@@ -50,8 +80,7 @@
         {# #458 D4: at step 7 the card's button is the same thing, so no second way here. #}
         {% if journey.current != 7 %}<a class="journey-tile-link" href="{{ screening.href }}">再做一次</a>{% endif %}
         {% else %}
-        {# The days left big, as 上次結果's score; the day small under them. #}
-        <span class="journey-tile-score">{{ screening.days_left }} <small>天</small></span>
+        {% include "screening/countdown_ring.html" with countdown=screening.countdown %}
         <span class="journey-tile-small">{{ screening.on|date:"Y/m/d" }}</span>
         {% endif %}
         {% endwith %}
@@ -62,42 +91,17 @@
         <h2 id="journey-title" class="h4">照顧旅程</h2>
         <p class="journey-count"><span class="visually-hidden">進度 </span>{{ journey.progress }} / {{ journey.steps|length }}</p>
     </div>
-    {# N3 dots on a line, blue as far as the 現在這一步 (#459 I2): done ones a blue tick and their day, the 現在這一步 a pale blue card beside the line, always open, the rest pale. Every other step opens to say what it is (I1); care-journey.js keeps one open at a time. On a tab's first visit the ticks, the line and the ring play once, when the 現在這一步 is in view (ADR 0028's 2026-11-12 exception, ADR 0029). #}
+    {# N3 dots on a line, blue as far as the 現在這一步 (#459 I2): done ones a blue tick and their day, the 現在這一步 marked 現在 (its card is the hero card on top, #751), the rest pale. Every step opens to say what it is (I1); care-journey.js keeps one open at a time. On a tab's first visit the ticks, the line and the ring play once, when the 現在這一步's row is in view (ADR 0028's 2026-11-12 exception, ADR 0029). #}
     <ol class="journey-steps" role="list">
         {% for step in journey.steps %}
-        <li class="journey-step is-{{ step.state }}{% if forloop.counter < journey.current %} is-walked{% endif %}" style="--journey-step: {{ forloop.counter0 }}"{% if step.state == "current" %} aria-current="step" id="journey-now"{% endif %}>
+        <li class="journey-step is-{{ step.state }}{% if forloop.counter < journey.current %} is-walked{% endif %}" style="--journey-step: {{ forloop.counter0 }}"{% if step.state == "current" %} aria-current="step" data-play-in-view{% endif %}>
             {% if step.state == "done" %}
             <span class="journey-dot"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
             {% else %}
             <span class="journey-dot">{{ forloop.counter }}</span>
             {% endif %}
-            {% if step.state == "current" %}
-            {% with card=journey.card %}
-            <div class="journey-card">
-                {# #749 (ADR 0076): the 現在這一步 is the page's one thing, in the blue hero card, its button white. The entrance waits for the card's one thing, not the whole step: #480 moved data-play-in-view here from the step, as the to-dos under it made the step too tall to be in view on arrival (ADR 0029 itself unchanged). #}
-                {% capture hero %}
-                    <p class="hero-card-label">現在這一步</p>
-                    <h3 class="hero-card-title">{{ card.title }}</h3>
-                    {% if card.because %}<p>{{ card.because }}</p>{% endif %}
-                    {# Spec #741 (#745): step 5's certificate, form 9 and notice are answer cards; form 25 a calendar date card. #}
-                    {% if card.question %}{% include "screening/answer_card.html" with question=card.question done=card.moved_on %}{% endif %}
-                    {% if card.date %}{% include "screening/date_card.html" with day=card.date %}{% endif %}
-                    {# Steps 6 and 7 counting down (#746). #}
-                    {% if card.countdown %}{% include "screening/countdown_card.html" with countdown=card.countdown %}{% endif %}
-                    {# Spec #741: steps 2 and 4 are white entry cards, nothing else. #}
-                    {% if card.entries %}<ul class="journey-entries" role="list">{% for entry in card.entries %}<li>{% include "screening/entry_card.html" with icon=entry.icon text=entry.text href=entry.href come_back=entry.come_back note=entry.note %}</li>{% endfor %}</ul>{% endif %}
-                    {% if card.button %}
-                    <a class="btn btn-hero btn-lg" href="{{ card.button.1 }}">{{ card.button.0 }}</a>
-                    {% endif %}
-                    {# Grill Q13: the stop just finished moves on only when this is pressed. #}
-                    {% if card.moved_on %}<a class="journey-card-link" href="{% url 'index' %}#journey-now">接著往下一站：{{ card.moved_on }}<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a>{% endif %}
-                {% endcapture %}
-                {% include "screening/hero_card.html" with body=hero attrs="data-play-in-view" %}
-            </div>
-            {% endwith %}
-            {% else %}
             <details class="journey-about">
-                <summary><span class="journey-step-body"><span>{{ step.title }}</span>{% if step.state == "done" %}<span class="visually-hidden">已完成</span> <span class="journey-when">{{ step.done_on|date:"Y/m/d" }}</span>{% elif step.ineligible %} <span class="journey-when">不符資格</span>{% elif step.state == "not-needed" %} <span class="journey-when">目前不需要</span>{% endif %}</span><span class="journey-about-arrow" aria-hidden="true">›</span></summary>
+                <summary><span class="journey-step-body"><span>{{ step.title }}</span>{% if step.state == "current" %} <span class="journey-now-label">現在</span>{% elif step.state == "done" %}<span class="visually-hidden">已完成</span> <span class="journey-when">{{ step.done_on|date:"Y/m/d" }}</span>{% elif step.ineligible %} <span class="journey-when">不符資格</span>{% elif step.state == "not-needed" %} <span class="journey-when">目前不需要</span>{% endif %}</span><span class="journey-about-arrow" aria-hidden="true">›</span></summary>
                 {# Spec #741 (the canvas): a done step opens to its stamp, step 3 also to its audiogram's result; any other to what it is. Then its entry cards, if any. #}
                 <div class="journey-about-body">
                     {% if step.state == "done" %}
@@ -119,7 +123,6 @@
                     {% endif %}
                 </div>
             </details>
-            {% endif %}
         </li>
         {% endfor %}
     </ol>

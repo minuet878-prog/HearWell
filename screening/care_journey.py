@@ -223,11 +223,6 @@ class JourneyCard:
     # result page's 建議下一步.
     away: tuple[str, str] | None = None
 
-    @property
-    def has_action(self):
-        """Something to press today: its button, an entry card or an answer card."""
-        return bool(self.button or self.entries or self.question)
-
 
 @dataclass(frozen=True)
 class NextScreening:

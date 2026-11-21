@@ -10,14 +10,20 @@ from screening import questionnaires
 from screening.care_journey import care_journey
 from screening.views.answering import continue_notice
 
+# Page grill P12: a longer account name and the bird says its greeting alone.
+GREETING_NAME_LIMIT = 8
 
-def greeting(hour):
-    """#458 D2: by the hour in Taiwan (TIME_ZONE); 晚安 runs past midnight until 5."""
+
+def greeting(hour, name):
+    """#458 D2: by the hour in Taiwan (TIME_ZONE); 晚安 runs past midnight until 5. Spec #741
+    (#751, P12): 「早安，jason」, the name left out past GREETING_NAME_LIMIT characters."""
     if 5 <= hour < 12:
-        return "早安"
-    if 12 <= hour < 18:
-        return "午安"
-    return "晚安"
+        words = "早安"
+    elif 12 <= hour < 18:
+        words = "午安"
+    else:
+        words = "晚安"
+    return f"{words}，{name}" if len(name) <= GREETING_NAME_LIMIT else words
 
 
 def index(request):
@@ -48,7 +54,7 @@ def index(request):
         "screening/index.html",
         {
             "journey": journey,
-            "greeting": greeting(timezone.localtime().hour),
+            "greeting": greeting(timezone.localtime().hour, user.username),
             "continue_notice": continue_notice(user),
         },
     )

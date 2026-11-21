@@ -3347,8 +3347,9 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
         self.open(390)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
-            journey = self.page.get_by_role("region", name="照顧旅程")
-            journey.locator(".journey-card").get_by_role("link", name="看助聽器選配與補助").click()
+            # #751: the 現在這一步's card is the hero card on top.
+            card = self.main().locator(".journey-card")
+            card.get_by_role("link", name="看助聽器選配與補助").click()
 
             expect(self.page).to_have_url(f"{self.live_server_url}/guide")
             expect(self.main().get_by_role("heading", level=1)).to_have_text("助聽器選配與補助")
@@ -3967,7 +3968,8 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     expect(card.locator(".done-stamp")).to_have_text("已完成")
                     expect(box).to_have_attribute("aria-pressed", "true")
                     card.get_by_role("link", name=f"接著往下一站：{next_stop}").click()
-                    expect(card.get_by_role("heading", level=3)).to_contain_text(next_stop)
+                    # #751: the card is the hero card on top, its title an h2.
+                    expect(card.get_by_role("heading", level=2)).to_contain_text(next_stop)
                     expect(card.locator(".done-stamp")).to_have_count(0)
 
     # #258: the 目前這一站's ring lights only when motion is welcome. This user has answered
@@ -6068,9 +6070,10 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 with self.saving_artifacts():
                     self.page.goto(f"{self.live_server_url}/")
                     expect(self.page.locator(".journey-step.is-walked")).to_have_count(1)
-                    # #749: the bird and the taller hero card take the card past the first
-                    # screen; brought into view (wholly, above the tab bar), it plays.
-                    self.page.locator(".journey-card .hero-card").evaluate(
+                    # #751: the hero card and the two tiles on top take the 現在這一步's
+                    # row past the first screen; brought into view (wholly, above the tab bar),
+                    # it plays.
+                    self.page.locator(".journey-step.is-current").evaluate(
                         "el => el.scrollIntoView({ block: 'center', behavior: 'instant' })"
                     )
                     animations = self.page.evaluate(self.JOURNEY_ANIMATIONS)
@@ -6096,22 +6099,23 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
 
     # #459 I1: a step opens in place, one at a time; the 現在這一步's card stays as it is.
     # #744 (spec #741): seven steps, a done one opening to its stamp, step 3 to its sources.
+    # #751: the 現在這一步's card is on top, so its row opens too.
     def test_care_journey_steps_open_one_at_a_time(self):
         self.submission(self.hhie_s, (2,) * 10)
         self.open(width=390)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
             rows = self.page.locator(".journey-about > summary")
-            expect(rows).to_have_count(6)
+            expect(rows).to_have_count(7)
             self.assertGreaterEqual(rows.first.bounding_box()["height"], 44)
             rows.nth(0).click()
             stamp = self.page.locator(".journey-about").nth(0).locator(".done-stamp")
             expect(stamp).to_have_text("已完成")
             expect(stamp).to_be_visible()
-            rows.nth(1).click()
+            rows.nth(2).click()
             expect(stamp).to_be_hidden()
             expect(self.page.locator(".journey-about[open]")).to_have_count(1)
-            sources = self.page.locator(".journey-about").nth(1).locator(".entry-card")
+            sources = self.page.locator(".journey-about").nth(2).locator(".entry-card")
             expect(sources).to_have_text(["醫院檢查報告", "AirPods 自我檢測"])
             expect(self.page.locator(".journey-card")).to_be_visible()
             expect(self.page.locator(".journey-card .entry-card")).to_have_text("查詢醫療院所")
@@ -6137,6 +6141,11 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.assertEqual(self.page.evaluate(self.STAMP_ANIMATIONS), [])
                     row.click()
                     expect(stamp).to_be_visible()
+                    # #751: the hero card and tiles on top leave the opened step low on the
+                    # screen; brought wholly into view, the stamp plays (ADR 0029).
+                    stamp.evaluate(
+                        "el => el.scrollIntoView({block: 'center', behavior: 'instant'})"
+                    )
                     played = self.page.evaluate(self.STAMP_ANIMATIONS)
                     self.assertEqual(played, ["play-once-stamp"] if motion else [])
                     # Its tilt and colour at rest, the vermilion #b3261e.
@@ -6150,8 +6159,10 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     # #746 (spec #741, ADR 0075, 0077): step 7's countdown ring draws when its step first opens,
     # once, the days counting up; reduced motion shows both at rest. A screen reader hears
     # 還有 N 天, the ring itself hidden.
+    # #751: the 離下次篩檢 tile's ring is another, outside the journey.
     RING_ANIMATIONS = """() => document.getAnimations()
-        .filter(a => a.effect.target.classList.contains('countdown-ring-arc'))
+        .filter(a => a.effect.target.classList.contains('countdown-ring-arc')
+                     && a.effect.target.closest('.journey-steps'))
         .map(a => a.animationName)"""
 
     def test_the_countdown_ring_draws_once_and_says_the_days(self):
@@ -6164,10 +6175,11 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 with self.saving_artifacts():
                     self.page.goto(f"{self.live_server_url}/")
                     row = self.page.locator(".journey-about > summary").last
-                    ring = self.page.locator(".countdown-ring")
+                    ring = self.page.locator(".journey-steps .countdown-ring")
                     expect(ring).to_be_hidden()
                     row.click()
                     expect(ring).to_be_visible()
+                    ring.evaluate("el => el.scrollIntoView({block: 'center', behavior: 'instant'})")
                     played = self.page.evaluate(self.RING_ANIMATIONS)
                     self.assertEqual(played, ["play-once-draw"] if motion else [])
                     expect(ring).to_match_aria_snapshot(f"- paragraph: 還有 {days} 天")
@@ -9570,9 +9582,9 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
     # #480: what waits to be in view is the card's top, the to-dos and question below it left out.
     STOP_MARK = '[aria-current="step"] [data-play-in-view]'
     JOURNEY = ".journey-steps"
-    # The journey waits for its 現在這一步's one thing (#459, #480), and its first tick shows the
-    # end.
-    JOURNEY_HERE = '.journey-step[aria-current="step"] [data-play-in-view]'
+    # The journey waits for its 現在這一步's row (#459; since #751 its card is on top), and its
+    # first tick shows the end.
+    JOURNEY_HERE = '.journey-step[aria-current="step"][data-play-in-view]'
     TICK = ".journey-step.is-done .journey-dot path"
 
     @classmethod
@@ -9719,9 +9731,9 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
     # #338 review: the layout changing without a scroll (here the text going back to its usual
     # size; a fold opening, a late font or a chart growing does the same) brings the journey's
     # 現在這一步 into view, and it plays. #749: taller for the bird and the blue hero card above
-    # the step's end.
+    # the step's end; #751: taller again for the two tiles, one under the other at 320px.
     def test_journey_plays_when_the_layout_brings_it_into_view(self):
-        self.open("/", width=320, height=1400, double=True)
+        self.open("/", width=320, height=1600, double=True)
         with self.saving_artifacts():
             expect(self.page.locator(self.JOURNEY)).to_be_attached()
             self.page.wait_for_timeout(300)
@@ -10782,7 +10794,8 @@ class AnswerHeadFirstScreenTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiv
 
 class NextScreeningTileTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """Readability batch 1 (docs/planning/redesign/mockup-readability-batch1.html, the owner's B):
-    the home page's 離下次篩檢 tile, the days left big on one line, the day small under them."""
+    the home page's 離下次篩檢 tile, the days left big on one line, the day small under them;
+    since #751 (the canvas's ProHome) the days in the countdown ring."""
 
     fixtures = ("questions_fixture.json",)
 
@@ -10810,16 +10823,16 @@ class NextScreeningTileTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
                 with self.subTest(width=width):
                     self.open("/", (width, 844))
                     expect(self.tile()).to_contain_text("離下次篩檢")
-                    days = self.tile().locator(".journey-tile-score")
+                    days = self.tile().locator(".countdown-ring-number")
                     self.assert_one_line(days)
-                    self.assertRegex(days.inner_text(), r"^\d+ 天$")
+                    self.assertRegex(days.inner_text(), r"^\d+$")
                     self.assert_one_line(self.tile().locator(".journey-tile-small"))
 
     def test_double_text_size_spills_nothing(self):
         with self.saving_artifacts():
             self.open("/", (320, 640))
             self.assert_fits_a_phone_at_double_text_size("/ 離下次篩檢")
-            self.assert_one_line(self.tile().locator(".journey-tile-score"))
+            self.assert_one_line(self.tile().locator(".countdown-ring-number"))
 
 
 class TalkTipsSideBySideTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):

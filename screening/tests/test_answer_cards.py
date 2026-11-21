@@ -105,19 +105,19 @@ class CertificateCardTests(AnswerCardTestCase):
         self.assertRedirects(response, address, fetch_redirect_response=False)
         self.assertEqual(AidAndSubsidy.objects.get(user=self.user).certificate, Certificate.YES)
         card = self.home_card(address)
-        self.assertIn('<h3 class="hero-card-title">身障鑑定與鑑定醫院</h3>', card)
+        self.assertIn('<h2 class="hero-card-title">身障鑑定與鑑定醫院</h2>', card)
         self.assertIn(("certificate", "yes", True, "有"), self.choices(card))
         self.assertIn(STAMP, card)
         self.assertEqual(self.links(card), [(NOW, "接著往下一站：九號表")])
         # 接著往下一站 opens the home page itself, at the next stop.
         card = self.home_card()
-        self.assertIn('<h3 class="hero-card-title">九號表：申請助聽器補助</h3>', card)
+        self.assertIn('<h2 class="hero-card-title">九號表：申請助聽器補助</h2>', card)
         self.assertNotIn(STAMP, card)
 
     def test_applying_shows_it_chosen_with_finding_a_hospital_and_stays(self):
         # Acceptance 13.
         card = self.answered("assessment", "certificate", "applying")
-        self.assertIn('<h3 class="hero-card-title">身障鑑定與鑑定醫院</h3>', card)
+        self.assertIn('<h2 class="hero-card-title">身障鑑定與鑑定醫院</h2>', card)
         self.assertIn(("certificate", "applying", True, "正在申請"), self.choices(card))
         self.assertEqual(
             HERO_BUTTON.findall(card), [("/guide/assessment#hospitals-title", "查詢鑑定醫院")]
@@ -131,7 +131,7 @@ class CertificateCardTests(AnswerCardTestCase):
         self.assertIn(STAMP, card)
         self.assertEqual(self.links(card), [(NOW, "接著往下一站：去找聽力師之前")])
         self.assertFalse(fitting_state(self.user, TODAY).subsidy_shown)
-        self.assertIn('<h3 class="hero-card-title">去找聽力師之前</h3>', self.home_card())
+        self.assertIn('<h2 class="hero-card-title">去找聽力師之前</h2>', self.home_card())
 
 
 class Form9AndNoticeCardTests(AnswerCardTestCase):
@@ -170,7 +170,7 @@ class Form9AndNoticeCardTests(AnswerCardTestCase):
         )
         self.assertNotIn(STAMP, card)
         self.aid(approved_ears="both", level=AidLevel.MID)
-        self.assertIn('<h3 class="hero-card-title">去找聽力師之前</h3>', self.home_card())
+        self.assertIn('<h2 class="hero-card-title">去找聽力師之前</h2>', self.home_card())
 
     def test_notice_no_offers_types_and_prices(self):
         # Acceptance 16.
@@ -190,7 +190,7 @@ class OtherStopCardTests(AnswerCardTestCase):
         self.assertEqual(self.text(card), "現在這一步 去找聽力師之前 了解須知")
         self.assertEqual(HERO_BUTTON.findall(card), [("/guide/before-you-go", "了解須知")])
         self.client.get(reverse("guide_chapter", args=["before-you-go"]))
-        self.assertIn('<h3 class="hero-card-title">配戴助聽器之後</h3>', self.home_card())
+        self.assertIn('<h2 class="hero-card-title">配戴助聽器之後</h2>', self.home_card())
 
     def test_after_fitting_is_its_sentence_and_two_cards_until_an_ioi_ha(self):
         # Acceptance 21, 22.
@@ -201,7 +201,7 @@ class OtherStopCardTests(AnswerCardTestCase):
             with self.subTest(fields=fields):
                 self.aid(**fields)
                 card = self.home_card()
-                self.assertIn('<h3 class="hero-card-title">配戴助聽器之後</h3>', card)
+                self.assertIn('<h2 class="hero-card-title">配戴助聽器之後</h2>', card)
                 self.assertIn(
                     "<p>配戴一個月後才能做二十五號表，配合問卷使用更能知道助聽器的效果。</p>", card
                 )
@@ -213,7 +213,7 @@ class OtherStopCardTests(AnswerCardTestCase):
                     ],
                 )
         self.answer(code=ioi_ha.CODE, on=date(2026, 11, 8))
-        self.assertIn('<h3 class="hero-card-title">戴滿 3 個月做效益問卷</h3>', self.home_card())
+        self.assertIn('<h2 class="hero-card-title">戴滿 3 個月做效益問卷</h2>', self.home_card())
 
     def test_form_25_is_a_calendar_date_card_its_deadline_and_what_to_bring(self):
         # Acceptance 23: fitted 10 days ago with the subsidy, the first IOI-HA done.
@@ -287,7 +287,7 @@ class AnswerCardFormTests(AnswerCardTestCase):
         )
         card = self.home_card()
         self.assertNotIn(STAMP, card)
-        self.assertIn('<h3 class="hero-card-title">九號表：申請助聽器補助</h3>', card)
+        self.assertIn('<h2 class="hero-card-title">九號表：申請助聽器補助</h2>', card)
 
     def test_the_address_stamps_only_a_stop_that_is_done(self):
         # ?done= only says which stop to stamp: one not done, or not the user's, stamps nothing.
@@ -296,4 +296,4 @@ class AnswerCardFormTests(AnswerCardTestCase):
             with self.subTest(stop=stop):
                 card = self.home_card(DONE_AT.format(stop))
                 self.assertNotIn(STAMP, card)
-                self.assertIn('<h3 class="hero-card-title">身障鑑定與鑑定醫院</h3>', card)
+                self.assertIn('<h2 class="hero-card-title">身障鑑定與鑑定醫院</h2>', card)

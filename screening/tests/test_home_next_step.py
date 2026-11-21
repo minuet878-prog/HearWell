@@ -95,7 +95,7 @@ class EveryStopNextStepTests(TestCase):
         ):
             with self.subTest(stop=stop), self.at(stop):
                 content = self.client.get(reverse("index")).content.decode()
-                self.assertIn(f'<h3 class="hero-card-title">{title}</h3>', content)
+                self.assertIn(f'<h2 class="hero-card-title">{title}</h2>', content)
                 self.assertIn(thing, content)
 
     def test_each_reworded_stop_is_a_result_page_s_suggestion_too(self):

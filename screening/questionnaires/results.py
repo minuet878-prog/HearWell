@@ -126,6 +126,13 @@ class GradedResult(Result):
         return classify(self.total, self.submission.questionnaire.code)
 
     @cached_property
+    def gauge(self):
+        """The semicircle gauge's drawing (#750): the result page's, and since #751 the home
+        page's 上次結果."""
+        definition = self.submission.questionnaire.definition
+        return semicircle_gauge(definition, self.total, self.level["level"])
+
+    @cached_property
     def since_last(self):
         # Against this questionnaire's record just before this one worn the same way, even when
         # a newer one exists (spec #453 acceptance 26; the owner on #461: worn against not worn
@@ -201,7 +208,7 @@ class GradedResult(Result):
         return {
             "answers": answers,
             "max_score": max_score(code),
-            "gauge": semicircle_gauge(definition, self.total, level),
+            "gauge": self.gauge,
             "next_steps": next_steps,
             "advice_step": advice_step,
             "where_to_test": WHERE_TO_TEST,

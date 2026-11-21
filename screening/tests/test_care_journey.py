@@ -839,7 +839,13 @@ class SelfReview693UnreadableLifeImpactTests(test_fitting_advice.LifeImpactTestC
         response = self.client.get(reverse("index"))
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
-        self.assertIn('<span class="journey-tile-score">44 <small>分</small></span>', content)
+        # #751: a 無法判讀 score has no gauge to draw; the score stands alone.
+        self.assertIn(
+            '<span class="journey-tile-score"><span data-count-up>44</span> '
+            "<small>分</small></span>",
+            content,
+        )
+        self.assertNotIn('<div class="gauge"', content)
         self.assertIn(f">{LIFE_IMPACT_BUTTON}</a>", content)
 
     def test_the_result_page_opens(self):

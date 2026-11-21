@@ -2,7 +2,6 @@
 第幾台 they were counted by."""
 
 import json
-import re
 from datetime import date, timedelta
 
 from django.db import connection
@@ -31,8 +30,6 @@ class NoTodosOnThePagesTests(test_home_journey.HomeJourneyTestCase):
         return content[content.index("<main") : content.index("</main>")]
 
     def assert_no_todos(self, page):
-        # The home page's greeting may say 今天沒有要做的事; only the list is gone.
-        page = re.sub(r"<h1\b.*?</h1>", "", page, flags=re.S)
         self.assertNotIn("要做的事", page)
         for mark in TODO_MARKS:
             self.assertNotIn(mark, page)

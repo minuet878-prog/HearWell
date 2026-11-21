@@ -686,7 +686,8 @@
        pathLength="1" and draw only the arc of the value, so the stroke ends where the value is.
      - play-once-wave: on an SVG, its shapes (up to 14) fade in one after another.
      - play-once-trace: on the trend chart's box (#756), its line draws from the left with its
-       points, then the scores fade in. */
+       points, then the scores fade in.
+     - play-once-grow: a bar grows from its left end. */
   @media (prefers-reduced-motion: no-preference) {
     .play-once-slide-up {
       animation: play-once-slide-up 0.6s ease-out both;
@@ -704,6 +705,11 @@
 
     .play-once-gauge {
       animation-delay: 0.3s;
+    }
+
+    .play-once-grow {
+      transform-origin: left center;
+      animation: play-once-grow 0.6s 0.3s ease-out both;
     }
 
     /* play-once-wave: an SVG sound wave's bars fade in one after another (the guest home's hero
@@ -761,6 +767,12 @@
     }
     75% {
       scale: 1.04;
+    }
+  }
+
+  @keyframes play-once-grow {
+    from {
+      scale: 0 1;
     }
   }
 
@@ -6511,9 +6523,9 @@
   to { visibility: visible; }
 }
 
-/* #459 care journey home (ADR 0044, mockup #458): the two tiles on top, the 照顧旅程 as N3 dots
-   on a line with the 現在這一步 a pale blue card beside it, the row of text links, and the
-   空狀態首頁's dashed preview. */
+/* #459 care journey home (ADR 0044, mockup #458; since #751 the canvas's ProHome): the
+   現在這一步's hero card and the two tiles on top, the 照顧旅程 as N3 dots on a line, the row of
+   text links, and the 空狀態首頁's dashed preview. */
 @layer components {
   /* Side by side on a phone, one under the other once the text is large (#458 D1). */
   /* The 2026-11-14 walkthrough (mockup 10): 我的紀錄's one questionnaire, where its tabs would be. */
@@ -6560,8 +6572,7 @@
     color: var(--color-muted);
   }
 
-  /* 上次結果's score (#453 Q13), and since readability batch 1 the days to the next screening: a
-     size above the tile's other words. */
+  /* 上次結果's score (#453 Q13): a size above the tile's other words. */
   .journey-tile-score {
     font-size: 2.2222rem;
     font-weight: 700;
@@ -6574,6 +6585,47 @@
 
   .journey-tile-level {
     font-weight: 700;
+  }
+
+  /* #751 (the canvas's ProHome): 上次結果's semicircle gauge across the tile without its scale's
+     ends, the score in its arch and the level's short name centred under it; 離下次篩檢's ring
+     centred over its day. A 無法判讀 result has no gauge: its score stands alone. */
+  .journey-tile-gauge {
+    position: relative;
+    margin-top: 0.25rem;
+  }
+
+  /* No wider than in a side-by-side tile when the tiles stack. */
+  .journey-tile-gauge:has(.gauge) {
+    align-self: center;
+    width: min(100%, 11rem);
+  }
+
+  .journey-tile-gauge .gauge-ends {
+    display: none;
+  }
+
+  .journey-tile-gauge:has(.gauge) .journey-tile-score {
+    position: absolute;
+    inset: auto 0 0;
+    font-size: 1.8889rem;
+    line-height: 1;
+    text-align: center;
+  }
+
+  .journey-tile-gauge:has(.gauge) + .journey-tile-level {
+    margin-top: 0.25rem;
+    font-size: var(--text-button);
+    text-align: center;
+  }
+
+  .journey-tile .countdown-ring {
+    align-self: center;
+    margin: 0.5rem 0 0.25rem;
+  }
+
+  .journey-tile .countdown-ring ~ .journey-tile-small {
+    text-align: center;
   }
 
   .journey-tile-arrow {
@@ -6729,18 +6781,16 @@
     color: var(--color-muted);
   }
 
-  /* The 現在這一步: its dot level with the card's first line, the line on from under it and the
-     line above reaching down to it. */
-  .journey-step.is-current .journey-dot {
-    margin-top: 0.875rem;
-  }
-
-  .journey-step.is-current:not(:last-child)::after {
-    top: calc(var(--journey-dot) + 1rem);
-  }
-
-  .journey-step:has(+ .is-current)::after {
-    bottom: -0.75rem;
+  /* #751 (the canvas's ProHome): the 現在這一步's row says 現在 in a blue pill, its card being
+     the hero card on top. */
+  .journey-now-label {
+    padding: 0 0.6667rem;
+    border-radius: var(--radius-pill);
+    background-color: var(--color-primary);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.8;
   }
 
   /* #459 I2: the line is blue as far as the 現在這一步, the way walked. */
@@ -6817,17 +6867,16 @@
      with reduced motion, the end at once. Longhands, not the animation shorthand: that would
      set the play state back to running and so outrank the hold until in view. */
   @media (prefers-reduced-motion: no-preference) {
-    /* Held, as in-view.js holds any, until the 現在這一步 (data-play-in-view) is in view: the
-       whole list is taller than half a phone's screen and would wait for a scroll, yet the way
-       walked ends at that card. #480: the mark is on the card's one thing, not the whole step,
-       which the to-dos under it made too tall to be in view on arrival; so the ring on the dot,
-       outside the mark now, is held here too. Only the card's mark: a done step's stamp (#744)
-       waits for its step to open, not the way walked. */
-    :root.play-in-view .journey-steps:has(.journey-card [data-play-in-view]:not([data-in-view]))
+    /* Held, as in-view.js holds any, until the 現在這一步's row (data-play-in-view) is in
+       view: the whole list is taller than half a phone's screen and would wait for a scroll, yet
+       the way walked ends at that row. Since #751 its card is the hero card on top, playing on
+       its own. Only the row's mark: a done step's stamp (#744) waits for its step to open, not
+       the way walked. */
+    :root.play-in-view .journey-steps:has(.is-current[data-play-in-view]:not([data-in-view]))
       .journey-dot,
-    :root.play-in-view .journey-steps:has(.journey-card [data-play-in-view]:not([data-in-view]))
+    :root.play-in-view .journey-steps:has(.is-current[data-play-in-view]:not([data-in-view]))
       .journey-dot path,
-    :root.play-in-view .journey-steps:has(.journey-card [data-play-in-view]:not([data-in-view]))
+    :root.play-in-view .journey-steps:has(.is-current[data-play-in-view]:not([data-in-view]))
       .journey-step::after {
       animation-play-state: paused;
     }
@@ -6858,14 +6907,37 @@
     }
   }
 
-  /* #749 (ADR 0076): the 現在這一步 is the blue hero card, its to-dos under it. */
-  .journey-card {
-    flex: 1;
-    min-width: 0;
+  /* #751 (the canvas's ProHome): in the 現在這一步's hero card, 「第 N 步，共 7 步」 beside a
+     bar of the seven, white as far as this step, pale after it. */
+  .journey-progress {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.75rem;
+    margin: 0.25rem 0;
   }
 
-  .journey-card .hero-card {
+  .journey-progress-bar {
+    flex: 1 1 8rem;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.3333rem;
+  }
+
+  .journey-progress-segment {
+    height: 0.4444rem;
+    border-radius: var(--radius-pill);
+    background-color: rgba(255, 255, 255, 0.32);
+  }
+
+  .journey-progress-segment.is-filled {
+    background-color: #fff;
+  }
+
+  .journey-progress-text {
     margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
   }
 
   /* #745 (grill Q13): 接著往下一站 under the stamp, centred, its arrow after the words. */
@@ -7378,10 +7450,6 @@
 
     .journey-step:not(:last-child)::after {
       display: none;
-    }
-
-    .journey-step.is-current .journey-dot {
-      margin-top: 0;
     }
   }
 
