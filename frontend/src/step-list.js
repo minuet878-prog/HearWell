@@ -33,7 +33,7 @@ export function openOneAtATime(doc, list, item) {
 }
 
 // Spec #741 (ADR 0075, 0077): a done step's 已完成 stamp presses down, and step 7's countdown
-// ring draws (#746), when the step first opens (in-view.js and site.css's play-once-stamp and
+// semicircle draws (#746), when the step first opens (in-view.js and site.css's play-once-stamp and
 // play-once-ring); a closed step is not drawn, so opening it again would play them again. Once
 // played they keep their place at rest.
 export function playOnceOpened(doc, list) {

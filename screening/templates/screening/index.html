@@ -46,7 +46,7 @@
     {% include "screening/hero_card.html" with body=hero attrs="data-play-in-view" %}
 </div>
 {% endwith %}
-{# 上次結果 is the latest life-impact record, its whole tile a link in its level's colour (L1); 下次篩檢 is grey, information only. Without a life-impact record both are grey and say not yet (#458 D6). Since #751 (the canvas's ProHome) 上次結果 is the semicircle gauge with the score in it and the level's short name, its full name read (P11); 離下次篩檢 the countdown ring and the day. #}
+{# 上次結果 is the latest life-impact record, its whole tile a link in its level's colour (L1); 下次篩檢 is grey, information only. Without a life-impact record both are grey and say not yet (#458 D6). Since #751 (the canvas's ProHome) 上次結果 is the semicircle gauge with the score in it and the level's short name, its full name read (P11); 離下次篩檢 the countdown semicircle (drawn as the gauge, the owner 2026-11-21) and the day. #}
 <div class="journey-tiles">
     {% with submission=journey.last_result %}
     {% if submission %}
@@ -81,7 +81,7 @@
         {# #458 D4: at step 7 the card's button is the same thing, so no second way here. #}
         {% if journey.current != 7 %}<a class="journey-tile-link" href="{{ screening.href }}">再做一次</a>{% endif %}
         {% else %}
-        {% include "screening/countdown_ring.html" with countdown=screening.countdown %}
+        {% include "screening/countdown_gauge.html" with countdown=screening.countdown %}
         <span class="journey-tile-small">{{ screening.on|date:"Y/m/d" }}</span>
         {% endif %}
         {% endwith %}
@@ -91,7 +91,7 @@
     <div class="journey-head">
         <h2 id="journey-title" class="h4">照顧旅程</h2>
     </div>
-    {# N3 dots on a line, blue as far as the 現在這一步 (#459 I2): done ones a blue tick and their day, the 現在這一步 marked 現在 (its card is the hero card on top, #751), the rest pale. Every step opens to say what it is (I1); care-journey.js keeps one open at a time. On a tab's first visit the ticks, the line and the ring play once, when the 現在這一步's row is in view (ADR 0028's 2026-11-12 exception, ADR 0029). #}
+    {# N3 dots on a line, blue as far as the 現在這一步 (#459 I2): done ones a blue tick and their day, the 現在這一步 marked 現在 (its card is the hero card on top, #751), the rest pale. Every step opens to say what it is (I1); care-journey.js keeps one open at a time. On a tab's first visit the ticks, the line and the countdown semicircle play once, when the 現在這一步's row is in view (ADR 0028's 2026-11-12 exception, ADR 0029). #}
     <ol class="journey-steps" role="list">
         {% for step in journey.steps %}
         <li class="journey-step is-{{ step.state }}{% if forloop.counter < journey.current %} is-walked{% endif %}" style="--journey-step: {{ forloop.counter0 }}"{% if step.state == "current" %} aria-current="step" data-play-in-view{% endif %}>
