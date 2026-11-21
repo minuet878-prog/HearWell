@@ -7485,7 +7485,23 @@
   }
 
   .empty-credit {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     color: var(--color-muted);
+  }
+
+  /* Spec #741's 實作中本人補充: the canvas's shield and tick, in the brand blue. */
+  .empty-credit svg {
+    flex: none;
+    width: 1.3333rem;
+    height: 1.3333rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    color: var(--color-primary);
   }
 }
 

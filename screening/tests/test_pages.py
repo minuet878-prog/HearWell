@@ -1193,7 +1193,7 @@ class HomeTests(TestCase):
     # 6, changed in the brand refresh (design picker round 3), and in #471 a plain grey line.
     def test_trust_block(self):
         main = self._main()
-        self.assertIn('<p class="empty-credit">內容由台灣執業聽力師設計與審定。</p>', main)
+        self.assertIn("內容由台灣執業聽力師設計與審定。</p>", main)  # test_home_doors: its icon
         self.assertEqual(main.count("內容由台灣執業"), 1)
         gone_texts = (
             "由聽力師開發",

@@ -1,6 +1,8 @@
 import re
 from html import unescape
+from pathlib import Path
 
+from django.conf import settings
 from django.test import TestCase
 
 from screening.tests.helpers import consented_user, submission_with_answers
@@ -45,6 +47,20 @@ class SignedOutHomeTests(TestCase):
         bird = re.search(r'<div class="bird-dialogue">.*?</h1>', self.main, re.S).group(0)
         self.assertNotIn("bird-lead", bird)
         self.assertIn('<h1 class="bird-title">聽力變化常常容易被忽略</h1>', bird)
+
+    def test_the_audiologist_line_opens_with_a_blue_shield_tick(self):
+        # Spec #741's 實作中本人補充: decorative, in the brand blue (the canvas drew it green).
+        credit = re.search(r'<p class="empty-credit">(.*?)</p>', self.main, re.S).group(1)
+        self.assertEqual(
+            credit,
+            '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
+            '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM8.5 12l2.5 2.5 4.5-5"/></svg>'
+            "內容由台灣執業聽力師設計與審定。",
+        )
+        css = (Path(settings.BASE_DIR) / "frontend/src/site.css").read_text()
+        rule = re.search(r"\.empty-credit svg \{(.*?)\}", css, re.S)
+        self.assertIsNotNone(rule)
+        self.assertIn("color: var(--color-primary);", rule.group(1))
 
     def test_the_hero_card_asks_and_starts_a_questionnaire_without_an_account(self):
         card = hero_card(self.main)
