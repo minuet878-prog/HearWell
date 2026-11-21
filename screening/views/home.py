@@ -8,7 +8,6 @@ from django.utils.cache import add_never_cache_headers
 from screening import questionnaires
 from screening.care_journey import care_journey
 from screening.views.answering import continue_notice
-from screening.views.guide import HOME_DONE_NOW
 
 
 def greeting(hour):
@@ -39,8 +38,9 @@ def index(request):
     # #459 (ADR 0044): the 照顧旅程 for anyone with a questionnaire or an audiogram, else the
     # 空狀態首頁.
     has_records = user.submissions.defined().exists() or user.audiograms.exists()
-    # #745: the stop an answer card here just finished, stamped this once (grill Q13).
-    done_now = request.session.pop(HOME_DONE_NOW, None)
+    # #745 (grill Q13): the stop an answer card here just finished (route_answer's ?done=),
+    # stamped only while it is done and step 5 is still the 現在這一步.
+    done_now = request.GET.get("done")
     journey = care_journey(user, timezone.localdate(), done_now) if has_records else None
     response = render(
         request,

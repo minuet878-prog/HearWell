@@ -231,8 +231,8 @@ def _audiogram_sources():
 
 
 def care_journey(user, today, done_now=None):
-    """done_now: the route stop an answer on the home page's card just finished (HOME_DONE_NOW),
-    which the card then shows stamped, its way on to the next stop."""
+    """done_now: the route stop an answer on the home page's card just finished (route_answer's
+    ?done=), which the card then shows stamped, its way on to the next stop."""
     route = fitting_state(user, today)
     main = get_user_state(user, today)
     life_impact = main.life_impact

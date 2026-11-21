@@ -24,6 +24,10 @@ from screening.tests.helpers import consented_user
 PTA_55 = test_home_journey.PTA_55
 STAMP = test_home_journey.STAMP
 TODAY = test_home_journey.TODAY
+# The home page at the 現在這一步, where an answer comes back to and 接著往下一站 goes; an
+# answer that finishes its stop comes back with the stop in the address.
+NOW = "/#journey-now"
+DONE_AT = "/?done={}#journey-now"
 HERO_BUTTON = re.compile(r'<a class="btn btn-hero btn-lg" href="([^"]*)">([^<]*)</a>')
 
 
@@ -43,11 +47,17 @@ class AnswerCardTestCase(test_home_journey.HomeJourneyTestCase):
     def send(self, stop, field, value, client=None):
         """Press a box on the home page's answer card, as its form sends it."""
         client = client or self.client
-        data = {"stop": stop, field: value, "next": reverse("index")}
+        data = {"stop": stop, field: value, "next": NOW}
         return client.post(reverse("route_answer"), data)
 
-    def home_card(self):
-        return self.card(self.main())
+    def home_card(self, address=None):
+        """The 現在這一步's card on the home page, or at the address an answer came back to."""
+        content = self.client.get(address or reverse("index")).content.decode()
+        return self.card(content[content.index("<main") : content.index("</main>")])
+
+    def answered(self, stop, field, value):
+        """Press a box: the card where the answer comes back to."""
+        return self.home_card(self.send(stop, field, value)["Location"])
 
     def choices(self, card):
         """Each box's (name, value, pressed, words)."""
@@ -91,22 +101,22 @@ class CertificateCardTests(AnswerCardTestCase):
     def test_yes_is_kept_stamped_and_moves_on_only_when_pressed(self):
         # Acceptance 12.
         response = self.send("assessment", "certificate", "yes")
-        self.assertRedirects(response, reverse("index"), fetch_redirect_response=False)
+        address = DONE_AT.format("assessment")
+        self.assertRedirects(response, address, fetch_redirect_response=False)
         self.assertEqual(AidAndSubsidy.objects.get(user=self.user).certificate, Certificate.YES)
-        card = self.home_card()
+        card = self.home_card(address)
         self.assertIn('<h3 class="hero-card-title">身障鑑定與鑑定醫院</h3>', card)
         self.assertIn(("certificate", "yes", True, "有"), self.choices(card))
         self.assertIn(STAMP, card)
-        self.assertEqual(self.links(card), [(reverse("index"), "接著往下一站：九號表")])
-        # The stamp is shown once: the home page again is at the next stop.
+        self.assertEqual(self.links(card), [(NOW, "接著往下一站：九號表")])
+        # 接著往下一站 opens the home page itself, at the next stop.
         card = self.home_card()
         self.assertIn('<h3 class="hero-card-title">九號表：申請助聽器補助</h3>', card)
         self.assertNotIn(STAMP, card)
 
     def test_applying_shows_it_chosen_with_finding_a_hospital_and_stays(self):
         # Acceptance 13.
-        self.send("assessment", "certificate", "applying")
-        card = self.home_card()
+        card = self.answered("assessment", "certificate", "applying")
         self.assertIn('<h3 class="hero-card-title">身障鑑定與鑑定醫院</h3>', card)
         self.assertIn(("certificate", "applying", True, "正在申請"), self.choices(card))
         self.assertEqual(
@@ -117,10 +127,9 @@ class CertificateCardTests(AnswerCardTestCase):
 
     def test_none_is_done_folds_the_subsidy_stops_and_goes_on_to_before_you_go(self):
         # Acceptance 14.
-        self.send("assessment", "certificate", "no_subsidy")
-        card = self.home_card()
+        card = self.answered("assessment", "certificate", "no_subsidy")
         self.assertIn(STAMP, card)
-        self.assertEqual(self.links(card), [(reverse("index"), "接著往下一站：去找聽力師之前")])
+        self.assertEqual(self.links(card), [(NOW, "接著往下一站：去找聽力師之前")])
         self.assertFalse(fitting_state(self.user, TODAY).subsidy_shown)
         self.assertIn('<h3 class="hero-card-title">去找聽力師之前</h3>', self.home_card())
 
@@ -134,17 +143,15 @@ class Form9AndNoticeCardTests(AnswerCardTestCase):
             self.text(card),
             "現在這一步 九號表：申請助聽器補助 您的九號表完成了嗎？ 是 已經完成 否 還沒有",
         )
-        self.send("form-9", "form_9_done", "True")
-        card = self.home_card()
+        card = self.answered("form-9", "form_9_done", "True")
         self.assertIn(("form_9_done", "True", True, "是 已經完成"), self.choices(card))
         self.assertIn(STAMP, card)
-        self.assertEqual(self.links(card), [(reverse("index"), "接著往下一站：等待核定公文")])
+        self.assertEqual(self.links(card), [(NOW, "接著往下一站：等待核定公文")])
 
     def test_form_9_no_offers_its_steps(self):
         # Acceptance 15.
         self.aid(certificate=Certificate.YES)
-        self.send("form-9", "form_9_done", "False")
-        card = self.home_card()
+        card = self.answered("form-9", "form_9_done", "False")
         self.assertIn(("form_9_done", "False", True, "否 還沒有"), self.choices(card))
         self.assertEqual(HERO_BUTTON.findall(card), [("/guide/form-9", "看九號表的流程")])
         self.assertNotIn(STAMP, card)
@@ -156,8 +163,7 @@ class Form9AndNoticeCardTests(AnswerCardTestCase):
             self.text(self.home_card()),
             "現在這一步 等待核定公文 您收到核定公文了嗎？ 是 已經收到 否 還沒收到",
         )
-        self.send("notice", "notice_received", "True")
-        card = self.home_card()
+        card = self.answered("notice", "notice_received", "True")
         self.assertIn(("notice_received", "True", True, "是 已經收到"), self.choices(card))
         self.assertEqual(
             HERO_BUTTON.findall(card), [("/guide#stop-notice", "記下核定的耳朵與等級")]
@@ -169,8 +175,7 @@ class Form9AndNoticeCardTests(AnswerCardTestCase):
     def test_notice_no_offers_types_and_prices(self):
         # Acceptance 16.
         self.aid(certificate=Certificate.YES, form_9_done=True)
-        self.send("notice", "notice_received", "False")
-        card = self.home_card()
+        card = self.answered("notice", "notice_received", "False")
         self.assertIn(("notice_received", "False", True, "否 還沒收到"), self.choices(card))
         self.assertEqual(
             HERO_BUTTON.findall(card), [("/guide/types-and-prices", "先了解助聽器種類與價格")]
@@ -248,7 +253,8 @@ class AnswerCardFormTests(AnswerCardTestCase):
         )
         data["certificate"] = "yes"
         response = client.post(form.group(1), data)
-        self.assertRedirects(response, reverse("index"), fetch_redirect_response=False)
+        address = DONE_AT.format("assessment")
+        self.assertRedirects(response, address, fetch_redirect_response=False)
         self.assertEqual(AidAndSubsidy.objects.get(user=self.user).certificate, Certificate.YES)
 
     def test_only_the_signed_in_user_s_record_changes(self):
@@ -282,3 +288,12 @@ class AnswerCardFormTests(AnswerCardTestCase):
         card = self.home_card()
         self.assertNotIn(STAMP, card)
         self.assertIn('<h3 class="hero-card-title">九號表：申請助聽器補助</h3>', card)
+
+    def test_the_address_stamps_only_a_stop_that_is_done(self):
+        # ?done= only says which stop to stamp: one not done, or not the user's, stamps nothing.
+        self.aid(certificate=Certificate.APPLYING)
+        for stop in ("assessment", "form-9", "after-fitting", "nonsense"):
+            with self.subTest(stop=stop):
+                card = self.home_card(DONE_AT.format(stop))
+                self.assertNotIn(STAMP, card)
+                self.assertIn('<h3 class="hero-card-title">身障鑑定與鑑定醫院</h3>', card)
