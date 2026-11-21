@@ -6284,6 +6284,29 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             main = self.page.get_by_role("main")
             expect(main.locator(".btn-primary, .btn-hero")).to_have_count(0)
 
+    # Spec #741 acceptance 21 (Codex cross review, item 3): 配戴之後's two cards are the same size.
+    def test_after_fitting_s_two_cards_are_the_same_size(self):
+        self.submission(self.hhie_s, (2,) * 10)
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=55)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000)
+        )
+        GuideChapterView.objects.create(user=self.user, chapter="guide")
+        GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
+        AidAndSubsidy.objects.create(user=self.user, certificate="no_subsidy")
+        self.open(width=390)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            cards = self.page.locator(".journey-card .entry-card")
+            expect(cards).to_have_text(["記下開始配戴的日期", "填問卷建議先戴一週再寫"])
+            date_card, form_card = (cards.nth(n).bounding_box() for n in (0, 1))
+            self.assertEqual(
+                (date_card["width"], date_card["height"]),
+                (form_card["width"], form_card["height"]),
+            )
+
     # Spec #741 acceptance 27 (ADR 0075, 0077): the 已完成 stamp presses down when its step first
     # opens, once; opening it again, and reduced motion, show it at rest.
     STAMP_ANIMATIONS = """() => document.getAnimations()
