@@ -17236,6 +17236,12 @@ class LastResultT649Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
                     for place in range(3):
                         if place:
                             self.main().get_by_role("button", name="下一張").click()
+                            # Measured once the cards stop sliding: scrollWidth is the card's
+                            # own width, its left edge a card still scaled down behind (#758).
+                            self.main().locator(".card-stack").evaluate(
+                                "e => Promise.all(e.getAnimations({ subtree: true })"
+                                ".map(a => a.finished))"
+                            )
                         for tag in tags.all():
                             if tag.evaluate("e => !!e.closest('[inert]')"):
                                 continue
