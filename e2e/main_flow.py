@@ -6264,7 +6264,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
 
             self.open()
             self.page.goto(f"{self.live_server_url}/questionnaire_list?choose=self")
-            icon = self.page.locator(".questionnaire-icon").first
+            icon = self.page.locator(".questionnaire-card .questionnaire-icon").first
             self.assertEqual(self.style(icon, "backgroundColor"), self.BRAND_SOFT)
             self.assertEqual(self.style(icon, "borderTopLeftRadius"), "50%")
             stroke = self.style(icon.locator("svg"), "stroke")
@@ -7560,7 +7560,8 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     )
     # #453 acceptance 32: the sizes a button, and anything else to tap, keeps at least.
     SIZES = """() => {
-        const shown = (el) => el.checkVisibility() && el.getBoundingClientRect().width > 1;
+        const shown = (el) => el.checkVisibility() && el.getBoundingClientRect().width > 1
+            && !el.closest("[inert]");
         const height = (el) => el.getBoundingClientRect().height;
         const name = (el) => `${el.tagName.toLowerCase()}.${el.getAttribute("class")} `
             + el.textContent.trim().replace(/\\s+/g, " ").slice(0, 20);
@@ -14325,19 +14326,21 @@ class ScreeningAnsweringT463Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLi
 
     def test_one_solid_button_on_the_catalogue_and_the_wizards_result(self):
         with self.saving_artifacts():
-            # Two recommended (no birth year): rows, no solid button.
+            # Two recommended (no birth year): the first two stacked cards (#753), no solid
+            # blue button.
             self.user.birth_year = None
             self.user.save()
             self.record("thi")
             self.open("/questionnaire_list")
-            expect(self.main().locator(".recommended-block .questionnaire-card")).to_have_count(2)
+            cards = self.main().locator(".card-stack-card", has_text="推薦您做這一份")
+            expect(cards).to_have_count(2)
             expect(self.main().locator(".btn-primary")).to_have_count(0)
-            # Due for a retest: one 開始作答 in the first screen, white on the blue hero card
-            # since #749.
+            # Due for a retest: one 開始作答 to reach in the first screen, white on the front
+            # stacked card (#749, #753).
             self.record("hhie-s", wearing=False, days_ago=200)
             self.open("/questionnaire_list")
             expect(self.main().locator(".btn-primary")).to_have_count(0)
-            solid = self.main().locator(".btn-hero")
+            solid = self.main().get_by_role("link", name="開始作答")
             expect(solid).to_have_count(1)
             box = solid.bounding_box()
             tab_bar = self.page.locator(".site-nav ul").bounding_box()
@@ -16739,7 +16742,7 @@ class LastResultT649Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
     # Where the words end, overflow too, and where their card or the recommended block ends.
     WORDS_END = """e => [
         e.getBoundingClientRect().left + e.scrollWidth,
-        e.closest("a, section").getBoundingClientRect().right,
+        e.closest("a, article, section").getBoundingClientRect().right,
     ]"""
 
     def setUp(self):
@@ -16762,7 +16765,9 @@ class LastResultT649Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
             for width in (320, 390):
                 with self.subTest(width=width):
                     self.open("/questionnaire_list", (width, 844))
-                    recommended = self.main().get_by_role("region", name="推薦您做這一份")
+                    # #753: the first stacked card.
+                    recommended = self.main().locator(".card-stack-card").first
+                    expect(recommended).to_contain_text("推薦您做這一份")
                     expect(recommended.locator(".inline-block")).to_have_text(
                         f"上次 {self.days['hhie-s']}・輕度到中度影響"
                     )
@@ -16772,11 +16777,18 @@ class LastResultT649Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
                         last = f"上次 {self.days[code]}" + (f"・{said}" if said else "")
                         expect(card.locator(".inline-block")).to_have_text(last)
                     self.assert_fits_a_phone_at_double_text_size("catalogue", width)
-                    # Each 上次 and its words end inside their card or the recommended block; the
-                    # recommended block's words alone in NarrowOverflowsT668Test (#668).
-                    for tag in self.main().locator(".inline-block", has_text="上次").all():
-                        words_end, box_end = tag.evaluate(self.WORDS_END)
-                        self.assertLessEqual(words_end, box_end, tag.text_content())
+                    # Each 上次 and its words end inside their card; the recommended card's words
+                    # alone in NarrowOverflowsT668Test (#668). A stacked card is measured in
+                    # front, not drawn smaller behind it (#753).
+                    tags = self.main().locator(".inline-block", has_text="上次")
+                    for place in range(3):
+                        if place:
+                            self.main().get_by_role("button", name="下一張").click()
+                        for tag in tags.all():
+                            if tag.evaluate("e => !!e.closest('[inert]')"):
+                                continue
+                            words_end, box_end = tag.evaluate(self.WORDS_END)
+                            self.assertLessEqual(words_end, box_end, tag.text_content())
 
 
 class FittingDayT650Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
@@ -16965,15 +16977,16 @@ class NarrowOverflowsT668Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveS
                 with self.subTest(width=width):
                     self.open("/questionnaire_list", (width, 844))
                     self.assert_fits_a_phone_at_double_text_size("catalogue", width)
-                    # #749: on the blue hero card.
-                    facts = self.main().locator(".hero-card .recommended-facts")
+                    # #749, #753: on the front stacked card, blue.
+                    front = self.main().locator('.card-stack-card[data-offset="0"]')
+                    facts = front.locator(".recommended-facts")
                     expect(facts).to_contain_text(f"上次 {old:%Y/%m/%d}")
                     words_end, room_end = facts.locator(".inline-block").evaluate(self.WORDS_END)
                     # Half a pixel for sub-pixel rounding of the text's box.
                     self.assertLessEqual(words_end, room_end + 0.5, f"{width}px")
                     # Acceptance 4: the block keeps its 1.125rem sides where the date fits: at
                     # 390px even at 200% (40.5px), and at the usual size (20.25px).
-                    block = self.main().locator(".hero-card")
+                    block = front
                     if width == 390:
                         for side in ("paddingLeft", "paddingRight"):
                             self.assertEqual(self.style(block, side), "40.5px", "390px at 200%")
