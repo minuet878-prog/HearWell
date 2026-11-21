@@ -14,15 +14,26 @@ from screening.fitting_route import (
     add_months,
     fitting_state,
 )
+from screening.forms import STOP_QUESTIONS
 from screening.main_flow import get_user_state, life_impact_questionnaire
-from screening.models import Questionnaire, Submission
+from screening.models import Certificate, Questionnaire, Submission
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.scoring import (
+    AFTER_FITTING_WORDS,
     AIRPODS_SELF_TEST,
+    ANSWER_CARDS,
     AUDIOGRAM_SOURCES,
+    BEFORE_YOU_GO_BUTTON,
     CARE_JOURNEY_ABOUT,
     CARE_JOURNEY_STEPS,
     FIND_A_HOSPITAL,
+    FIND_AN_ASSESSMENT_HOSPITAL,
+    FIRST_IOI_HA,
+    FIRST_IOI_HA_NOTE,
+    FORM_9_STEPS,
+    FORM_25_BUTTON,
+    FORM_25_BY,
+    FORM_25_FROM,
     GUIDE_BECAUSE,
     GUIDE_ENTRY,
     HOSPITAL_REPORT,
@@ -33,10 +44,13 @@ from screening.scoring import (
     LIFE_IMPACT_BECAUSE,
     LIFE_IMPACT_BUTTON,
     NEXT_STEP_REASONS,
+    RECORD_FITTING_DATE,
+    RECORD_THE_NOTICE,
     RETEST_BUTTON_TEXT,
     RETEST_COUNTDOWN_TEXT,
     RETEST_DUE_TEXT,
     TYPES_AND_PRICES_ENTRY,
+    TYPES_AND_PRICES_FIRST,
     UNKNOWN,
     fitting_countdown_text,
 )
@@ -89,6 +103,40 @@ class Entry:
     href: str
     icon: str
     come_back: bool = False
+    note: str = ""  # a small line beside the words
+
+
+@dataclass(frozen=True)
+class Choice:
+    """A box on an answer card: the value its stop's form takes, its word, the small line under
+    it, its icon (answer_card.html) and whether it is the answer kept."""
+
+    value: str
+    text: str
+    note: str
+    icon: str
+    chosen: bool
+
+
+@dataclass(frozen=True)
+class AnswerCard:
+    """A 目前這一站's question on step 5's card (answer_card.html), sent to route_answer as the
+    stop's question at the foot of its chapter is: the stop, its form's field and the boxes."""
+
+    stop: str
+    field: str
+    question: str
+    icon: str  # an action_icon.html icon
+    choices: tuple[Choice, ...]
+
+
+@dataclass(frozen=True)
+class DateCard:
+    """A calendar date card (date_card.html): the day, what it is from, and the line under it."""
+
+    on: date
+    text: str
+    note: str
 
 
 @dataclass(frozen=True)
@@ -121,21 +169,26 @@ class JourneyStep:
 
 @dataclass(frozen=True)
 class JourneyCard:
-    """The 現在這一步's one thing: title and why, the place it lives (a route stop's page, else
-    None), its button (text, url) or its entry cards; neither while counting down or
-    waiting."""
+    """The 現在這一步's one thing: title and why, its button (text, url), its entry cards, a
+    route stop's answer card or date card; nothing to press while counting down or waiting."""
 
     title: str
     because: str
     icon: str  # an action_icon.html icon
-    href: str | None = None
     button: tuple[str, str] | None = None
     entries: tuple[Entry, ...] = ()
+    question: AnswerCard | None = None
+    date: DateCard | None = None
+    # The question's stop just finished from this card: the stamp, and 接著往下一站 this one.
+    moved_on: str = ""
+    # An answer card's stop as the route offers it (text, url), where the card is not shown: a
+    # result page's 建議下一步.
+    away: tuple[str, str] | None = None
 
     @property
     def has_action(self):
-        """Something to press today: its button or an entry card."""
-        return bool(self.button or self.entries)
+        """Something to press today: its button, an entry card or an answer card."""
+        return bool(self.button or self.entries or self.question)
 
 
 @dataclass(frozen=True)
@@ -177,7 +230,9 @@ def _audiogram_sources():
     )
 
 
-def care_journey(user, today):
+def care_journey(user, today, done_now=None):
+    """done_now: the route stop an answer on the home page's card just finished (HOME_DONE_NOW),
+    which the card then shows stamped, its way on to the next stop."""
     route = fitting_state(user, today)
     main = get_user_state(user, today)
     life_impact = main.life_impact
@@ -238,7 +293,8 @@ def care_journey(user, today):
             zip(CARE_JOURNEY_STEPS, CARE_JOURNEY_ABOUT, strict=True), start=1
         )
     )
-    life_impact_href = _life_impact_href(user, main)
+    questionnaires = list(Questionnaire.objects.defined())
+    life_impact_href = _life_impact_href(user, main, questionnaires)
     if life_impact is None:
         next_screening = None
     elif main.retest_due:
@@ -246,7 +302,18 @@ def care_journey(user, today):
     else:
         on = main.next_suggested_date
         next_screening = NextScreening(on, (on - today).days, False, life_impact_href)
-    card = _card(current, route, eligibility, today, three_months, next_screening, life_impact_href)
+    card = _card(
+        current,
+        route,
+        eligibility,
+        today,
+        three_months,
+        next_screening,
+        life_impact_href,
+        questionnaires,
+    )
+    if current == 5 and done_now in ANSWER_CARDS and done_now in route.done:
+        card = _done_card(done_now, route, card)
     return CareJourney(
         steps,
         current,
@@ -317,12 +384,10 @@ def _day(submission):
     return timezone.localtime(submission.created_at).date()
 
 
-def _life_impact_href(user, main):
+def _life_impact_href(user, main, questionnaires):
     # Step 1's 去做問卷, also the empty pages' 做第一份問卷 (#648), so both go to one place: the
     # one to do again, or by age; the catalogue, which recommends one, while the age is unknown.
-    questionnaire = life_impact_questionnaire(
-        user, list(Questionnaire.objects.defined()), main, None
-    )
+    questionnaire = life_impact_questionnaire(user, questionnaires, main, None)
     if questionnaire is None:
         return reverse("questionnaire_list")
     return reverse("screening", args=[questionnaire.pk])
@@ -331,10 +396,20 @@ def _life_impact_href(user, main):
 def first_questionnaire_url(user, today):
     """An empty page's 做第一份問卷 (#648: 我的紀錄, the report, the share page): where the home
     page's step 1 goes."""
-    return _life_impact_href(user, get_user_state(user, today))
+    questionnaires = list(Questionnaire.objects.defined())
+    return _life_impact_href(user, get_user_state(user, today), questionnaires)
 
 
-def _card(current, route, eligibility, today, three_months, next_screening, life_impact_href):
+def _card(
+    current,
+    route,
+    eligibility,
+    today,
+    three_months,
+    next_screening,
+    life_impact_href,
+    questionnaires,
+):
     title = CARE_JOURNEY_STEPS[current - 1]
     if current == 1:
         button = (LIFE_IMPACT_BUTTON, life_impact_href)
@@ -350,7 +425,7 @@ def _card(current, route, eligibility, today, three_months, next_screening, life
         because, entries = _guide_words(eligibility)
         return JourneyCard(title, because, "guide", entries=entries)
     if current == 5:
-        return _route_card(route)
+        return _stop_card(route, questionnaires)
     if current == 6:
         # #746 draws this step's countdown card; until then its sentence counts the days.
         if today < three_months:
@@ -369,24 +444,87 @@ def _card(current, route, eligibility, today, three_months, next_screening, life
     return JourneyCard(title, RETEST_DUE_TEXT, "clipboard", button=button)
 
 
-def _route_card(route):
-    # The 目前這一站 with the route's own button and the home page's 「因為」 for it (#261), the
-    # home page's: past 助聽器的種類與價格 (ADR 0074). Never 記錄聽力圖, which is step 3: step 5
-    # comes once step 3 is done, or from 配戴之後 for someone wearing hearing aids. #745 draws
-    # each stop's own card.
+def _stop_card(route, questionnaires):
+    # Spec #741 (the canvas's 照顧旅程展開): the home page's 目前這一站, past 助聽器的種類與價格
+    # (ADR 0074), and its one thing. Never 記錄聽力圖, which is step 3: step 5 comes once step 3
+    # is done, or from 配戴之後 for someone wearing hearing aids; never 等待補助發放, at which
+    # step 5 is done (ROUTE_DONE_AT).
     stop = here_stop(replace(route, stop=route.home_stop))
-    because = NEXT_STEP_REASONS[stop.slug]
-    if stop.slug == "form-25":
-        because = because.format(deadline=route.form_25[1])
-    return JourneyCard(stop.title, because, "guide", href=stop.url, button=stop.action)
+    slug, aid = stop.slug, route.aid
+    if slug in ANSWER_CARDS:
+        question = _answer_card(slug, aid)
+        return JourneyCard(
+            stop.title, "", "guide", _way_on(slug, aid), question=question, away=stop.action
+        )
+    if slug == "before-you-go":
+        return JourneyCard(stop.title, "", "guide", (BEFORE_YOU_GO_BUTTON, stop.url))
+    if slug == "after-fitting":
+        # Grill Q15, Q16, Q18: the date and the first IOI-HA, both needed, side by side.
+        # IOI-HA from the questionnaires already read; the catalogue where it is not offered.
+        ioi_ha = next((q for q in questionnaires if q.code == IOI_HA), None)
+        ioi_ha_href = (
+            reverse("screening", args=[ioi_ha.pk]) if ioi_ha else reverse("questionnaire_list")
+        )
+        entries = (
+            Entry(RECORD_FITTING_DATE, f"{stop.url}#stop-question", "calendar"),
+            Entry(FIRST_IOI_HA, ioi_ha_href, "clipboard", note=FIRST_IOI_HA_NOTE),
+        )
+        return JourneyCard(stop.title, AFTER_FITTING_WORDS, "guide", entries=entries)
+    # Form 25: from when it can be done, a calendar's day, and the deadline under it; with no
+    # date (no 身障補助 at a level that needs it) only what to bring.
+    day = None
+    if route.form_25 is not None:
+        opens, closes = route.form_25
+        day = DateCard(opens, FORM_25_FROM, FORM_25_BY.format(day=closes))
+    return JourneyCard(stop.title, "", "guide", (FORM_25_BUTTON, stop.url), date=day)
+
+
+def _answer_card(slug, aid):
+    """The stop's answer card: its question form's field and choices, the kept one chosen."""
+    question, icon, words = ANSWER_CARDS[slug]
+    form_class = STOP_QUESTIONS[slug][0]
+    name = next(iter(form_class.base_fields))
+    kept = "" if aid is None else str(getattr(aid, name))
+    choices = tuple(
+        Choice(str(value), *words[str(value)], chosen=str(value) == kept)
+        for value, _ in form_class.base_fields[name].choices
+    )
+    return AnswerCard(slug, name, question, icon, choices)
+
+
+def _way_on(slug, aid):
+    """Under an answer that leaves the stop to do: where to go on (text, url), else None."""
+    if aid is None:
+        return None
+    if slug == "assessment" and aid.certificate == Certificate.APPLYING:
+        hospitals = reverse("guide_chapter", args=["assessment"]) + "#hospitals-title"
+        return FIND_AN_ASSESSMENT_HOSPITAL, hospitals
+    if slug == "form-9" and aid.form_9_done is False:
+        return FORM_9_STEPS, reverse("guide_chapter", args=["form-9"])
+    if slug == "notice" and aid.notice_received is True:
+        # The ears and the level, asked on my guide where the notice is the 目前這一站.
+        return RECORD_THE_NOTICE, f"{reverse('guide')}#stop-notice"
+    if slug == "notice" and aid.notice_received is False:
+        return TYPES_AND_PRICES_FIRST, reverse("guide_chapter", args=[TYPES_AND_PRICES])
+    return None
+
+
+def _done_card(slug, route, card):
+    """Grill Q13: the answer card of the stop just finished, stamped, and 接著往下一站 the stop
+    card is at now (its title before any 「：」), pressed to move on."""
+    title = here_stop(replace(route, stop=slug)).title
+    question = _answer_card(slug, route.aid)
+    return JourneyCard(title, "", "guide", question=question, moved_on=card.title.split("：")[0])
 
 
 def next_step(user, today):
-    """The result pages' 建議下一步 (ADR 0044): the 現在這一步's card, its button or its entry
-    card; without either sharing the report, printing it once any link was ever made (#261)."""
+    """The result pages' 建議下一步 (ADR 0044): the 現在這一步's card, its button (an answer card's
+    stop, the route's) or its entry card; without either sharing the report, printing it once
+    any link was ever made (#261)."""
     card = care_journey(user, today).card
-    if card.button is not None:
-        text, href = card.button
+    button = card.button or card.away
+    if button is not None:
+        text, href = button
         return NextStep(HomeCard(card.title, href), text, None)
     if card.entries:
         # Steps 2 and 4 have one each (#745 draws the cards that have two).

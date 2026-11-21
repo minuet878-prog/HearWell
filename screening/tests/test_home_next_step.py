@@ -1,6 +1,6 @@
-"""#261 (spec #257): the reason for every 目前這一站, on the home page's 現在這一步 card since
-#459 (ADR 0044) and on a result page's 建議您下一步. The rest of the home page is
-test_home_journey's."""
+"""#261 (spec #257): every 目前這一站 on the home page's 現在這一步 card since #459 (ADR 0044),
+each its own card since #745 (the canvas's 照顧旅程展開), and on a result page's 建議您下一步.
+The rest of the home page is test_home_journey's, each card's answers test_answer_cards'."""
 
 import re
 from dataclasses import replace
@@ -24,15 +24,6 @@ from screening.questionnaires import hhie_s
 from screening.tests import test_guide_summary
 from screening.tests.helpers import consented_user
 
-# Spec #291's drafts, one for each stop of the nine-stop route but form 25 (#296); #363
-# (spec #354) made four of them say why: the drafts the owner settles on review.
-BEFORE_YOU_GO = "因為：第一次去找聽力師前先準備好，看診時比較不會漏問。"
-ASSESSMENT = "因為：先確認有沒有身障證明，才知道能不能申請補助。"
-FORM_9 = "因為：您已經有身障證明，可以準備申請九號表的助聽器補助。"
-NOTICE = "因為：九號表送出後要等公所的核定公文，先了解接下來會發生什麼。"
-AFTER_FITTING = "因為：記下開始戴的日期，才算得出什麼時候要做使用效益驗證。"
-PAYOUT = "因為：驗證做完了，接下來看補助什麼時候發、怎麼發。"
-
 # A result page's 建議您下一步 (#461): title, button link and text.
 RESULT_NEXT_STEP = re.compile(
     r'<h2 class="hero-card-title">([^<]*)</h2>\s*'
@@ -41,8 +32,9 @@ RESULT_NEXT_STEP = re.compile(
 
 
 class EveryStopNextStepTests(TestCase):
-    """#292 (spec #291 acceptance 21): a reason for every stop of the nine but 助聽器的種類與價格,
-    which the home page passes by (ADR 0074), so the home page never fails on one. Stops need
+    """#292 (spec #291 acceptance 21): a card for every stop of the nine but 助聽器的種類與價格,
+    which the home page passes by (ADR 0074), and 等待補助發放, at which step 5 is done, so the
+    home page never fails on one. Stops need
     answers the later tickets add, so the route's stop is set here on the state the records
     give: an assessment suggested, my guide opened and not fitted, so the 現在這一步 is step 5,
     the 目前這一站 (#459, #744)."""
@@ -90,37 +82,39 @@ class EveryStopNextStepTests(TestCase):
 
         return patch("screening.care_journey.fitting_state", state_at)
 
-    def test_each_stop_on_the_guide_says_why(self):
-        # On the home page's card, without 「因為：」 (#458 D10).
+    def test_each_stop_has_its_card_with_something_to_press(self):
+        # #745: an answer card, a button or entry cards, under the stop's title.
         self.make(test_guide_summary.PTA_55, test_guide_summary.PTA_55)
-        for stop, because in (
-            ("before-you-go", BEFORE_YOU_GO),
-            ("assessment", ASSESSMENT),
-            ("form-9", FORM_9),
-            ("notice", NOTICE),
-            ("after-fitting", AFTER_FITTING),
-            ("payout", PAYOUT),
+        for stop, title, thing in (
+            ("before-you-go", "去找聽力師之前", "了解須知"),
+            ("assessment", "身障鑑定與鑑定醫院", "您有身心障礙證明嗎？"),
+            ("form-9", "九號表：申請助聽器補助", "您的九號表完成了嗎？"),
+            ("notice", "等待核定公文", "您收到核定公文了嗎？"),
+            ("after-fitting", "配戴助聽器之後", "記下開始配戴的日期"),
+            ("form-25", "二十五號表：使用效益驗證", "看二十五號表要帶什麼"),
         ):
             with self.subTest(stop=stop), self.at(stop):
                 content = self.client.get(reverse("index")).content.decode()
-                self.assertIn(
-                    f"<p>{because.removeprefix('因為：')}</p>",
-                    content,
-                )
+                self.assertIn(f'<h3 class="hero-card-title">{title}</h3>', content)
+                self.assertIn(thing, content)
 
     def test_each_reworded_stop_is_a_result_page_s_suggestion_too(self):
         # #363 (spec #354): the reworded stops, on a result page's box. Since #455 (ADR 0044) a
         # result page suggests the 照顧旅程's 現在這一步: here step 5 (an assessment suggested),
         # the stop with the route's own button. 等待核定公文 has no button on the route, so the
         # page suggests sharing instead (spec #453 acceptance 22).
-        # #461 (the #460 mockup R1): the result page's box has no 「因為」.
+        # #461 (the #460 mockup R1): the result page's box has no 「因為」. #745: the button or
+        # first entry card of the home page's card; where that is an answer card, which the
+        # result page does not show, the route's own button.
         submission = Submission.objects.get(user=self.user)
         self.make(test_guide_summary.PTA_55, test_guide_summary.PTA_55)
         for stop, expected in (
-            ("before-you-go", ("去找聽力師之前", "/guide/before-you-go", "去之前要準備什麼")),
+            ("before-you-go", ("去找聽力師之前", "/guide/before-you-go", "了解須知")),
+            ("assessment", ("身障鑑定與鑑定醫院", "/guide/assessment", "找鑑定醫院")),
+            ("form-9", ("九號表：申請助聽器補助", "/guide/form-9", "看九號表的流程")),
             (
                 "after-fitting",
-                ("配戴助聽器之後", "/guide/after-fitting#record-title", "記錄配戴的效果"),
+                ("配戴助聽器之後", "/guide/after-fitting#stop-question", "記下開始配戴的日期"),
             ),
             ("notice", ("分享報告給家人", "/share", "去分享")),
         ):

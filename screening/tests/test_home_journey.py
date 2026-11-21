@@ -15,7 +15,6 @@ from screening.models import (
     AidAndSubsidy,
     Answer,
     Category,
-    GuideChapterView,
     Question,
     Questionnaire,
     Submission,
@@ -451,35 +450,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
         )
         self.assertIn("配戴助聽器之後", steps[4][1])
 
-    def test_step_5_s_card_is_the_stop_its_reason_and_its_button(self):
-        # Spec #453 acceptance 6; the owner on #458: no 目前這一站 label, no 「因為：」 (D10).
-        self.answer()
-        self.make(PTA_55, PTA_55)
-        GuideChapterView.objects.create(user=self.user, chapter="guide")
-        AidAndSubsidy.objects.create(user=self.user, certificate="yes")
-        card = self.card(self.main())
-        self.assertEqual(
-            self.text(card),
-            "現在這一步 九號表：申請助聽器補助 您已經有身障證明，可以準備申請九號表的助聽器補助。 "
-            "看九號表的流程",
-        )
-        self.assertIn(
-            '<a class="btn btn-hero btn-lg" href="/guide/form-9">看九號表的流程</a>', card
-        )
-        self.assertNotIn("checkbox", card)
-
-    def test_a_stop_without_a_button_links_to_its_page_in_words(self):
-        # 等待核定公文 has nothing to do but wait (#455): a text link, no solid button.
-        self.answer()
-        self.make(PTA_55, PTA_55)
-        GuideChapterView.objects.create(user=self.user, chapter="guide")
-        AidAndSubsidy.objects.create(user=self.user, certificate="yes", form_9_done=True)
-        main = self.main()
-        self.assertEqual(SOLID.findall(main), [])
-        self.assertIn(
-            '<a class="journey-card-link" href="/guide/form-9#steps-title">看這一站的說明</a>',
-            self.card(main),
-        )
+    # Step 5's card by each stop (#745): test_answer_cards.
 
     def test_steps_6_and_7_keep_their_words_and_button(self):
         # #746 draws their countdown cards; until then, their sentences and buttons.

@@ -149,6 +149,8 @@ GUIDE_CHAPTERS = (
 # #336 (spec #326 E5): the stop an answer on the route just made 已完成, ticked once on the
 # route it goes back to. Kept in the session, which logging out or in as someone else empties.
 DONE_NOW = "screening.route_done_now"
+# #745 (grill Q13): the same, answered on the home page's card, stamped there once.
+HOME_DONE_NOW = "screening.home_done_now"
 
 
 def guide(request):
@@ -555,10 +557,15 @@ def route_answer(request):
         today = timezone.localdate()
         here = fitting_state(request.user, today).stop
         form.save()
-        on_route = urlsplit(next_url).path in ("", reverse("guide"))
+        # The route's, or the home page's answer card (#745), which stamps it the same way.
+        done_now = {
+            "": DONE_NOW,
+            reverse("guide"): DONE_NOW,
+            reverse("index"): HOME_DONE_NOW,
+        }.get(urlsplit(next_url).path)
         # #336: only the 您在這裡 stop turning 已完成, which a stop turning 不適用 is not.
-        if on_route and here == stop and stop in fitting_state(request.user, today).done:
-            request.session[DONE_NOW] = stop
+        if done_now and here == stop and stop in fitting_state(request.user, today).done:
+            request.session[done_now] = stop
         return HttpResponseRedirect(next_url or f"{reverse('guide')}#stop-{stop}")
     if urlsplit(next_url).path == reverse("guide_chapter", args=[stop]):
         chapter = next(c for c in GUIDE_CHAPTERS if c.slug == stop)

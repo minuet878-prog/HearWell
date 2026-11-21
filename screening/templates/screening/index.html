@@ -79,13 +79,16 @@
                     <p class="hero-card-label">現在這一步</p>
                     <h3 class="hero-card-title">{{ card.title }}</h3>
                     {% if card.because %}<p>{{ card.because }}</p>{% endif %}
+                    {# Spec #741 (#745): step 5's certificate, form 9 and notice are answer cards; form 25 a calendar date card. #}
+                    {% if card.question %}{% include "screening/answer_card.html" with question=card.question done=card.moved_on %}{% endif %}
+                    {% if card.date %}{% include "screening/date_card.html" with day=card.date %}{% endif %}
                     {# Spec #741: steps 2 and 4 are white entry cards, nothing else. #}
-                    {% if card.entries %}<ul class="journey-entries" role="list">{% for entry in card.entries %}<li>{% include "screening/entry_card.html" with icon=entry.icon text=entry.text href=entry.href come_back=entry.come_back %}</li>{% endfor %}</ul>{% endif %}
+                    {% if card.entries %}<ul class="journey-entries" role="list">{% for entry in card.entries %}<li>{% include "screening/entry_card.html" with icon=entry.icon text=entry.text href=entry.href come_back=entry.come_back note=entry.note %}</li>{% endfor %}</ul>{% endif %}
                     {% if card.button %}
                     <a class="btn btn-hero btn-lg" href="{{ card.button.1 }}">{{ card.button.0 }}</a>
-                    {% elif card.href %}
-                    <a class="journey-card-link" href="{{ card.href }}">看這一站的說明</a>
                     {% endif %}
+                    {# Grill Q13: the stop just finished moves on only when this is pressed. #}
+                    {% if card.moved_on %}<a class="journey-card-link" href="{% url 'index' %}">接著往下一站：{{ card.moved_on }}<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a>{% endif %}
                 {% endcapture %}
                 {% include "screening/hero_card.html" with body=hero attrs="data-play-in-view" %}
             </div>

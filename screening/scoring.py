@@ -118,16 +118,6 @@ CATALOGUE_REASONS = {
 # owner settles the drafted ones on review.
 NEXT_STEP_REASONS = {
     "edit": "這張聽力圖缺少頻率，資料不足，無法判斷。",
-    # 申請補助與配戴助聽器, by the 目前這一站 (a stop's slug), spec #291's drafts; none
-    # judges the audiogram, as the route no longer does. Form 25's takes its deadline, the
-    # last day it can be done. #363 (spec #354): four reworded to say why, drafts too.
-    "before-you-go": "第一次去找聽力師前先準備好，看診時比較不會漏問。",
-    "assessment": "先確認有沒有身障證明，才知道能不能申請補助。",
-    "form-9": "您已經有身障證明，可以準備申請九號表的助聽器補助。",
-    "notice": "九號表送出後要等公所的核定公文，先了解接下來會發生什麼。",
-    "after-fitting": "記下開始戴的日期，才算得出什麼時候要做使用效益驗證。",
-    "form-25": "您的助聽器要在 {deadline:%Y/%m/%d} 前做使用效益驗證（二十五號表），才能核銷補助。",
-    "payout": "驗證做完了，接下來看補助什麼時候發、怎麼發。",
 }
 # The 照顧旅程's seven steps (ADR 0074), step 1 first.
 CARE_JOURNEY_STEPS = (
@@ -155,6 +145,43 @@ TYPES_AND_PRICES_ENTRY = "看助聽器的種類與價格"
 # 不符資格 (GLOSSARY): step 4's two cases by the audiogram's estimates (grill Q12, Q22).
 INELIGIBLE_NORMAL = "您的聽力檢測結果為正常，但若有耳鳴、耳悶等其他症狀，仍建議尋求醫師協助。"
 INELIGIBLE_MILD = "您的聽力未達補助資格，但依舊可以考慮配戴助聽器。"
+# Step 5's card by the 目前這一站 (spec #741, the canvas's 照顧旅程展開; grill Q13, Q15, Q18,
+# Q21, "驗收時再調"). The answer cards: each stop's question, its icon (action_icon.html), and by
+# the value its question's form sends, the box's word, the small line under it and its icon.
+ANSWER_CARDS = {
+    "assessment": (
+        "您有身心障礙證明嗎？",
+        "id-card",
+        {
+            "yes": ("有", "", "yes"),
+            "applying": ("正在申請", "", "clock"),
+            "no_subsidy": ("沒有", "", "no"),
+        },
+    ),
+    "form-9": (
+        "您的九號表完成了嗎？",
+        "clipboard",
+        {"True": ("是", "已經完成", "yes"), "False": ("否", "還沒有", "no")},
+    ),
+    "notice": (
+        "您收到核定公文了嗎？",
+        "mail",
+        {"True": ("是", "已經收到", "yes"), "False": ("否", "還沒收到", "no")},
+    ),
+}
+# The way on after an answer that leaves the stop to do.
+FIND_AN_ASSESSMENT_HOSPITAL = "查詢鑑定醫院"
+FORM_9_STEPS = "看九號表的流程"
+RECORD_THE_NOTICE = "記下核定的耳朵與等級"
+TYPES_AND_PRICES_FIRST = "先了解助聽器種類與價格"
+BEFORE_YOU_GO_BUTTON = "了解須知"
+AFTER_FITTING_WORDS = "配戴一個月後才能做二十五號表，配合問卷使用更能知道助聽器的效果。"
+RECORD_FITTING_DATE = "記下開始配戴的日期"
+FIRST_IOI_HA = "填問卷"
+FIRST_IOI_HA_NOTE = "建議先戴一週再寫"
+FORM_25_FROM = "起可以做二十五號表"
+FORM_25_BY = "{day:%Y/%m/%d} 前要完成，才能核銷補助"
+FORM_25_BUTTON = "看二十五號表要帶什麼"
 # My guide's 要不要找聽力師評估 by 建議評估選配 (ADR 0067): the owner's words in spec #693,
 # 建議 apart for an ear over 40 dB HL and for 輕度 with a life impact.
 FITTING_ADVICE_OVER_MILD = "您有一耳以上的四頻平均超過 40 dB HL，建議找聽力師評估選配助聽器。"

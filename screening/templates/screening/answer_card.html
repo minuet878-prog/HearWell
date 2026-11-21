@@ -1,0 +1,17 @@
+{# Spec #741 (#745, the canvas's 照顧旅程展開, grill Q4, Q13, Q21): a route stop's question on the home page's card, its answers big boxes. It is the stop's own question (#293), sent to route_answer with the same form and checks; each box is a submit button, so one press sends it without JavaScript, and the answer kept shows pressed. `question`: an AnswerCard; `done`: the stop was just finished from here, so the stamp is pressed under the boxes, on the white card where its red reads. #}
+<div class="answer-card">
+    <form method="post" action="{% url 'route_answer' %}" class="answer-card-form">
+        {% csrf_token %}
+        <input type="hidden" name="stop" value="{{ question.stop }}">
+        <input type="hidden" name="next" value="{% url 'index' %}">
+        <fieldset>
+            <legend class="answer-card-question">{% include "screening/action_icon.html" with icon=question.icon %}<span>{{ question.question }}</span></legend>
+            <div class="answer-choices">
+                {% for choice in question.choices %}
+                <button type="submit" name="{{ question.field }}" value="{{ choice.value }}" class="answer-choice{% if choice.chosen %} is-chosen{% endif %}"{% if choice.chosen %} aria-pressed="true"{% endif %}><svg class="answer-choice-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9.5"/>{% if choice.icon == "yes" %}<path d="M7.8 12.4l2.8 2.8 5.6-5.8"/>{% elif choice.icon == "clock" %}<path d="M12 7v5l3 2"/>{% else %}<path d="M8.5 12h7"/>{% endif %}</svg><span class="answer-choice-text">{{ choice.text }}</span>{% if choice.note %}<span class="answer-choice-note">{{ choice.note }}</span>{% endif %}</button>
+                {% endfor %}
+            </div>
+        </fieldset>
+    </form>
+    {% if done %}{% include "screening/done_stamp.html" %}{% endif %}
+</div>
