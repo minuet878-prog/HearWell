@@ -63,7 +63,7 @@ class RecommendationTests(TestCase):
                 )
                 Answer.objects.create(submission=submission, question=question, score=0)
                 page = self.client.get(reverse("result", args=[submission.pk]))
-                self.assertContains(page, "看我的紀錄")
+                self.assertContains(page, ">看紀錄")
                 if not wearing:
                     self.assertContains(page, OPTIONAL_SSQ12)
                     self.assertContains(page, reverse("screening", args=[self.ssq.pk]))

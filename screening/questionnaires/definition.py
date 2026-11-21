@@ -68,6 +68,10 @@ class Definition:
     # orange, severe red), which badges, banners, the score bar and the trend chart draw. A level
     # not listed is coloured by its own code: HHIE-S and HHIA-S levels are named like the colours.
     level_colors: dict = field(default_factory=dict)
+    # Graded only: level -> its short name, written in large type (the result page's level, the
+    # home page's last result, 紀錄's latest); the full name (thresholds) everywhere else: reports,
+    # the download, the shared page and screen readers (spec #741, page grill P11).
+    short_names: dict = field(default_factory=dict)
     advice: dict = field(default_factory=dict)  # Graded only: level -> advice text
     # Graded only: level -> numbered "接下來建議您" steps (ADR 0010). Each step is a dict with
     # "text" and, where it links to a next action, "action_label" and "action_url" (a URL name
@@ -116,6 +120,9 @@ class Definition:
 
     def color(self, level):
         return self.level_colors.get(level, level)
+
+    def short_name(self, level):
+        return self.short_names[level]
 
     def shade(self, level):
         """ "pale" or "deep": levels sharing a colour alternate from the lowest up, so the score

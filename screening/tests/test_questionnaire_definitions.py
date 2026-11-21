@@ -237,7 +237,7 @@ class RealDefinitionsTests(TestCase):
                 url = reverse("screening", args=[self.questionnaires[code].pk])
                 content = self.client.get(url).content.decode()
                 start = content.index('<div id="answer-intro">')
-                end = content.index('id="answer-app"', start)
+                end = content.index("</details>", start)
                 intro, below = content[start:end], content[end : content.index("</main>")]
                 for sentence in sentences:
                     self.assertIn(sentence, intro)

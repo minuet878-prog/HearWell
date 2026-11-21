@@ -7,8 +7,10 @@ import AnswerApp from "./AnswerApp.jsx";
 // failed or slow load leaves a working form (spec docs/specs/phase-05/phase5_answer_flash.md).
 const container = document.getElementById("answer-app");
 const fallback = document.getElementById("answer-form");
-// The questionnaire's intro: React shows it per step (#153), so the page's copy goes once React is in.
+// The questionnaire's intro: React shows it per step (#153), so the page's fold of it (#755) goes
+// once React is in.
 const intro = document.getElementById("answer-intro");
+const introFold = document.getElementById("answer-intro-fold");
 // IOI-HA's norm basis (#463): a template of its own for item 1, where the fold leaves out the
 // intro's copy of it, so it is not said twice.
 const norm = document.getElementById("answer-norm");
@@ -54,7 +56,6 @@ if (container && fallback) {
       questionnaireId={Number(container.dataset.questionnaireId)}
       userId={Number(container.dataset.userId)}
       csrfToken={fallback.querySelector("[name=csrfmiddlewaretoken]").value}
-      minutes={Number(container.dataset.minutes)}
       introHtml={intro.innerHTML}
       normHtml={norm?.innerHTML}
       introWithoutNormHtml={introWithoutNorm?.innerHTML}
@@ -73,7 +74,7 @@ if (container && fallback) {
           return;
         }
         fallback.hidden = true;
-        intro.hidden = true;
+        introFold.hidden = true;
         if (draftLine) draftLine.hidden = false;
         showForm();
       }}
