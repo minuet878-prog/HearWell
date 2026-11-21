@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { openOneAtATime, playOnceATab } from "./step-list.js";
+import { openOneAtATime, playOnceATab, stampOnce } from "./step-list.js";
 
 // Steps on a line: the home page's 照顧旅程 (#459) and my guide's 選配路線 (#467), the owner's
 // pick I1 + I2 on the step interactions page (ADR 0028's 2026-11-12 exception).
@@ -95,4 +95,28 @@ describe("openOneAtATime", () => {
       });
     });
   }
+});
+
+describe("stampOnce", () => {
+  // Spec #741 (ADR 0075, 0077): a done step's stamp presses down the first time it opens only;
+  // opening the step again shows it at rest.
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <ol class="journey-steps">
+        <li><details class="journey-about"><summary>1</summary>
+          <span class="done-stamp play-once-stamp">已完成</span></details></li>
+      </ol>`;
+    stampOnce(document, ".journey-steps");
+  });
+
+  const stamp = () => document.querySelector(".done-stamp");
+
+  it("keeps the stamp at rest once it has pressed down", () => {
+    stamp().dispatchEvent(new Event("animationend", { bubbles: true }));
+    expect(stamp().classList.contains("play-once-stamp")).toBe(false);
+  });
+
+  it("leaves it to play until then", () => {
+    expect(stamp().classList.contains("play-once-stamp")).toBe(true);
+  });
 });

@@ -117,10 +117,8 @@ CATALOGUE_REASONS = {
 # Why the home page suggests its 建議下一步 (#261), word for word from spec #257's table; the
 # owner settles the drafted ones on review.
 NEXT_STEP_REASONS = {
-    # The 2026-11-14 walkthrough (mockup 2A): asked, as the two buttons answer it.
-    "record": "手上有醫院的聽力檢查報告了嗎？",
     "edit": "這張聽力圖缺少頻率，資料不足，無法判斷。",
-    # 了解助聽器選配與補助, by the 目前這一站 (a stop's slug), spec #291's drafts; none
+    # 申請補助與配戴助聽器, by the 目前這一站 (a stop's slug), spec #291's drafts; none
     # judges the audiogram, as the route no longer does. Form 25's takes its deadline, the
     # last day it can be done. #363 (spec #354): four reworded to say why, drafts too.
     "before-you-go": "第一次去找聽力師前先準備好，看診時比較不會漏問。",
@@ -131,11 +129,13 @@ NEXT_STEP_REASONS = {
     "form-25": "您的助聽器要在 {deadline:%Y/%m/%d} 前做使用效益驗證（二十五號表），才能核銷補助。",
     "payout": "驗證做完了，接下來看補助什麼時候發、怎麼發。",
 }
-# The 照顧旅程's five steps (ADR 0044), step 1 first.
+# The 照顧旅程's seven steps (ADR 0074), step 1 first.
 CARE_JOURNEY_STEPS = (
     "填生活影響問卷",
+    "到醫院進行聽力檢查",
     "記錄聽力圖",
     "了解助聽器選配與補助",
+    "申請補助與配戴助聽器",
     "戴滿 3 個月做效益問卷",
     "半年後再篩檢",
 )
@@ -143,12 +143,18 @@ CARE_JOURNEY_STEPS = (
 LIFE_IMPACT_BECAUSE = "先做一份生活影響問卷，了解聽力對您生活的影響。"
 LIFE_IMPACT_BUTTON = "去做問卷"
 IOI_HA_BUTTON = "做效益問卷"
-# Step 2's two answers to 「手上有醫院的聽力檢查報告了嗎？」 (the 2026-11-14 walkthrough,
-# mockup 2A); 還沒 opens the Q&A on where a hearing test is done.
-RECORD_AUDIOGRAM_YES = "有，記錄聽力圖"
-NO_REPORT_YET = "還沒，看要去哪裡檢查"
-IMPORT_FROM_IPHONE = "從 iPhone 匯入"  # spec #702
 IOI_HA_DUE_BECAUSE = "您已經戴滿 3 個月，可以做使用效益問卷（IOI-HA），看助聽器幫了多少。"
+# Steps 2 to 4's cards (spec #741, the canvas's 照顧旅程展開): white entry cards.
+FIND_A_HOSPITAL = "查詢醫療院所"
+AUDIOGRAM_SOURCES = "聽力圖來源"
+HOSPITAL_REPORT = "醫院檢查報告"
+AIRPODS_SELF_TEST = "AirPods 自我檢測"
+GUIDE_BECAUSE = "統整助聽器補助流程供您參考。"
+GUIDE_ENTRY = "看助聽器選配與補助"
+TYPES_AND_PRICES_ENTRY = "看助聽器的種類與價格"
+# 不符資格 (GLOSSARY): step 4's two cases by the audiogram's estimates (grill Q12, Q22).
+INELIGIBLE_NORMAL = "您的聽力檢測結果為正常，但若有耳鳴、耳悶等其他症狀，仍建議尋求醫師協助。"
+INELIGIBLE_MILD = "您的聽力未達補助資格，但依舊可以考慮配戴助聽器。"
 # My guide's 要不要找聽力師評估 by 建議評估選配 (ADR 0067): the owner's words in spec #693,
 # 建議 apart for an ear over 40 dB HL and for 輕度 with a life impact.
 FITTING_ADVICE_OVER_MILD = "您有一耳以上的四頻平均超過 40 dB HL，建議找聽力師評估選配助聽器。"
@@ -175,14 +181,16 @@ def fitting_countdown_text(days):
 
 # Step 5's card while counting down (#458 D8): the 下次篩檢 tile already says the day.
 RETEST_COUNTDOWN_TEXT = "時間到了，這裡會出現「再做一次」的按鈕。"
-# What each step is, said when it is opened on the home page (#459 I1): drafts the owner
-# settles on review, step 1 first.
+# What each step is, said when it is opened on the home page (#459 I1), step 1 first: step 3's,
+# 4's and 6's the canvas's (spec #741); step 2's a draft the owner settles on review.
 CARE_JOURNEY_ABOUT = (
     LIFE_IMPACT_BECAUSE,
-    "選配指引要用聽力圖才能整理下一步。",
+    "到醫院做聽力檢查，拿到聽力圖報告。",
+    "記錄您在醫院做的聽力檢查或 AirPods 自我測試結果。",
+    GUIDE_BECAUSE,
     # #598 (spec #593): no subsidy on everyone's way, the owner's wording on #595.
     "照選配路線一站一站走，從找聽力師到開始戴助聽器。",
-    "買了助聽器、戴滿 3 個月後，做使用效益問卷（IOI-HA），看助聽器幫了多少。",
+    "戴滿 3 個月後，再做一次問卷和第一次比較，看看助聽器的幫助。",
     RETEST_COUNTDOWN_TEXT,
 )
 

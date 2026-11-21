@@ -11,10 +11,11 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from screening.fitting_route import fitting_state
+from screening.fitting_route import GUIDE_PAGE, fitting_state
 from screening.models import (
     Answer,
     Category,
+    GuideChapterView,
     Question,
     Questionnaire,
     Submission,
@@ -43,8 +44,8 @@ class EveryStopNextStepTests(TestCase):
     """#292 (spec #291 acceptance 21): a reason for every stop of the nine but 助聽器的種類與價格,
     which the home page passes by (ADR 0074), so the home page never fails on one. Stops need
     answers the later tickets add, so the route's stop is set here on the state the records
-    give: an assessment suggested and not fitted, so the 現在這一步 is step 3, the 目前這一站
-    (#459)."""
+    give: an assessment suggested, my guide opened and not fitted, so the 現在這一步 is step 5,
+    the 目前這一站 (#459, #744)."""
 
     def setUp(self):
         self.user = consented_user(username="every_stop_user")
@@ -56,6 +57,7 @@ class EveryStopNextStepTests(TestCase):
 
         self.enterContext(patch("django.utils.timezone.localdate", localdate))
         self.answer()
+        GuideChapterView.objects.create(user=self.user, chapter=GUIDE_PAGE)
 
     @classmethod
     def setUpTestData(cls):
@@ -108,9 +110,9 @@ class EveryStopNextStepTests(TestCase):
 
     def test_each_reworded_stop_is_a_result_page_s_suggestion_too(self):
         # #363 (spec #354): the reworded stops, on a result page's box. Since #455 (ADR 0044) a
-        # result page suggests the 照顧旅程's 現在這一步: here step 3 (an assessment suggested),
+        # result page suggests the 照顧旅程's 現在這一步: here step 5 (an assessment suggested),
         # the stop with the route's own button. 等待核定公文 has no button on the route, so the
-        # page suggests sharing instead (spec #453 acceptance 22); 等待補助發放 is never step 3's.
+        # page suggests sharing instead (spec #453 acceptance 22).
         # #461 (the #460 mockup R1): the result page's box has no 「因為」.
         submission = Submission.objects.get(user=self.user)
         self.make(test_guide_summary.PTA_55, test_guide_summary.PTA_55)

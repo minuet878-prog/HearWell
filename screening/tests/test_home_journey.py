@@ -27,9 +27,15 @@ from screening.tests.helpers import consented_user
 
 TODAY = date(2026, 11, 12)
 NORMAL = (20, 20, 20, 20)
+PTA_45 = (45, 45, 45, 45)  # 建議評估選配, the estimate short of the threshold
 PTA_55 = test_guide_summary.PTA_55
 # The page's main button: solid, or white on the blue hero card (#749, ADR 0076).
 SOLID = re.compile(r'class="btn btn-(?:primary|hero)(?=[ "])')
+
+STAMP = '<span class="done-stamp play-once-stamp" data-play-in-view>'
+GUIDE_WORDS = "統整助聽器補助流程供您參考。"
+NORMAL_WORDS = "您的聽力檢測結果為正常，但若有耳鳴、耳悶等其他症狀，仍建議尋求醫師協助。"
+MILD_WORDS = "您的聽力未達補助資格，但依舊可以考慮配戴助聽器。"
 
 
 def greets(greeting, title):
@@ -114,13 +120,37 @@ class HomeJourneyTestCase(TestCase):
             main.index('<div class="journey-tiles">') : main.index('<section class="journey"')
         ]
 
-    def card(self, main):
-        return self.part(main, "journey-card")
-
     def items(self, main):
-        """Each step's (classes, its HTML) in order."""
+        """Each step's (classes, its HTML) in order; a step's entry cards are a list of their
+        own, so each step runs to the next one."""
         steps = self.part(main, "journey-steps")
-        return re.findall(r'<li class="journey-step ([^"]*)"[^>]*>(.*?)</li>', steps, re.S)
+        return [
+            re.match(r'<li class="journey-step ([^"]*)"[^>]*>(.*)', item, re.S).groups()
+            for item in re.split(r'(?=<li class="journey-step )', steps)[1:]
+        ]
+
+    def card(self, main):
+        """The 現在這一步's card, without its dot."""
+        body = next(body for classes, body in self.items(main) if classes.startswith("is-current"))
+        return body[body.index('<div class="journey-card">') :]
+
+    def body(self, main, index):
+        """What step `index` (0 first) opens to."""
+        body = self.items(main)[index][1]
+        return body[body.index('<div class="journey-about-body">') :]
+
+    def opened(self, main, index):
+        """What step `index` opens to: its words and its plain links."""
+        body = self.body(main, index)
+        return self.text(body), re.findall(r'<a href="([^"]*)">', body)
+
+    def entries(self, html):
+        """Each entry card's (link, words)."""
+        return re.findall(
+            r'<a class="entry-card" href="([^"]*)">.*?<span class="entry-card-text">([^<]*)</span>',
+            html,
+            re.S,
+        )
 
     def steps(self, main):
         """Each step's (state, its words): the 現在這一步's card, any other step's row."""
@@ -192,13 +222,14 @@ class JourneyHomeTests(HomeJourneyTestCase):
             self.text(tiles), "上次結果 還沒做 生活影響問卷 下次篩檢 還沒排 做完問卷後算出"
         )
         self.assertEqual(
-            self.steps(main)[:2],
+            self.steps(main)[:3],
             [
                 (
                     "current",
                     "1 現在這一步 填生活影響問卷 "
                     "先做一份生活影響問卷，了解聽力對您生活的影響。 去做問卷",
                 ),
+                ("done", "到醫院進行聽力檢查 已完成 2026/09/01"),
                 ("done", "記錄聽力圖 已完成 2026/09/01"),
             ],
         )
@@ -234,8 +265,8 @@ class JourneyHomeTests(HomeJourneyTestCase):
         self.assertIn('<span class="journey-tile-date">已到期</span>', tiles)
         self.assertNotIn("離下次篩檢", tiles)
 
-    def test_a_retest_due_before_step_5_says_due_with_a_text_link(self):
-        # Spec #453 acceptance 16: step 3 stays the 現在這一步, the one solid button its.
+    def test_a_retest_due_before_step_7_says_due_with_a_text_link(self):
+        # Spec #453 acceptance 16: step 4 stays the 現在這一步.
         self.answer(on=date(2026, 5, 12))
         self.make(PTA_55, PTA_55)
         main = self.main()
@@ -243,10 +274,9 @@ class JourneyHomeTests(HomeJourneyTestCase):
         tiles = self.tiles(main)
         self.assertIn('<span class="journey-tile-date">已到期</span>', tiles)
         self.assertIn(f'<a class="journey-tile-link" href="{hhie}">再做一次</a>', tiles)
-        self.assertEqual(self.steps(main)[2][0], "current")
-        self.assertEqual(len(SOLID.findall(main)), 1)
+        self.assertEqual(self.steps(main)[3][0], "current")
 
-    def test_a_retest_due_at_step_5_has_no_second_way_on_top(self):
+    def test_a_retest_due_at_step_7_has_no_second_way_on_top(self):
         # #458 D4: the card's button is the same thing.
         self.answer(on=date(2026, 5, 12))
         self.make(NORMAL, NORMAL)
@@ -260,28 +290,33 @@ class JourneyHomeTests(HomeJourneyTestCase):
             self.card(main),
         )
 
-    def test_counting_down_there_is_nothing_to_do_today_and_no_solid_button(self):
-        # Spec #453 acceptance 14 and 7, #458 D2: 目前不需要 said beside steps 3 and 4.
+    def test_normal_hearing_steps_4_to_6_and_step_7_counting_down(self):
+        # Spec #741 acceptance 9, #458 D2: step 4 says 不符資格, steps 5 and 6 目前不需要, and
+        # counting down there is nothing to do today.
         self.answer(on=date(2026, 9, 12))
         self.make(NORMAL, NORMAL, tested_on=date(2026, 9, 1))
         main = self.main()
         self.assertRegex(main, greets("早安", "今天沒有要做的事"))
         self.assertEqual(SOLID.findall(main), [])
         self.assertIn(
-            '<p class="journey-count"><span class="visually-hidden">進度 </span>4 / 5</p>', main
+            '<p class="journey-count"><span class="visually-hidden">進度 </span>6 / 7</p>', main
         )
         self.assertEqual(
             self.steps(main),
             [
                 ("done", "填生活影響問卷 已完成 2026/09/12"),
+                ("done", "到醫院進行聽力檢查 已完成 2026/09/01"),
                 ("done", "記錄聽力圖 已完成 2026/09/01"),
-                ("not-needed", "了解助聽器選配與補助 目前不需要"),
+                ("not-needed", "了解助聽器選配與補助 不符資格"),
+                ("not-needed", "申請補助與配戴助聽器 目前不需要"),
                 ("not-needed", "戴滿 3 個月做效益問卷 目前不需要"),
-                ("current", "5 現在這一步 半年後再篩檢 時間到了，這裡會出現「再做一次」的按鈕。"),
+                ("current", "7 現在這一步 半年後再篩檢 時間到了，這裡會出現「再做一次」的按鈕。"),
             ],
         )
+        self.assertEqual(self.opened(main, 3), (f"{NORMAL_WORDS}", []))
 
-    def test_with_a_button_there_is_one_thing_to_do_today(self):
+    def test_with_something_to_press_there_is_one_thing_to_do_today(self):
+        # An entry card counts, as a button does.
         self.answer()
         self.assertRegex(self.main(), greets("早安", "今天只要做一件事"))
 
@@ -300,11 +335,127 @@ class JourneyHomeTests(HomeJourneyTestCase):
                 self.now = timezone.make_aware(datetime(2026, 11, 12, hour, 30))
                 self.assertRegex(self.main(), greets(greeting, "今天只要做一件事"))
 
-    def test_step_3_s_card_is_the_stop_its_reason_and_its_button(self):
+    def test_only_hhie_s_the_seven_steps_and_the_hospital_card(self):
+        # Spec #741 acceptance 1: the seven steps' names, step 2 the 現在這一步 with only
+        # 查詢醫療院所, no to-dos.
+        self.answer()
+        main = self.main()
+        self.assertEqual(
+            [words.split(" 已完成")[0] for _, words in self.steps(main)],
+            [
+                "填生活影響問卷",
+                "2 現在這一步 到醫院進行聽力檢查 查詢醫療院所",
+                "記錄聽力圖",
+                "了解助聽器選配與補助",
+                "申請補助與配戴助聽器",
+                "戴滿 3 個月做效益問卷",
+                "半年後再篩檢",
+            ],
+        )
+        card = self.card(main)
+        self.assertEqual(self.entries(card), [("/qa/where-to-get-a-hearing-test", "查詢醫療院所")])
+        self.assertNotIn("<p>", card[card.index("</h3>") : card.index("journey-entries")])
+        self.assertEqual(SOLID.findall(card), [])
+        for gone in ("要做的事", "checkbox", "網站會知道"):
+            self.assertNotIn(gone, main)
+
+    def test_without_an_audiogram_step_3_opens_to_its_two_sources(self):
+        # Spec #741 acceptance 4, story 4: the small heading and two entry cards of one size, to
+        # recording one (coming back here) and to the iPhone import.
+        self.answer()
+        main = self.main()
+        body = self.body(main, 2)
+        self.assertIn('<p class="journey-entries-title">聽力圖來源</p>', body)
+        self.assertEqual(
+            self.entries(body),
+            [
+                ("/audiograms/new?next=/", "醫院檢查報告"),
+                ("/audiograms/import", "AirPods 自我檢測"),
+            ],
+        )
+
+    def test_a_missing_frequency_s_card_is_its_sentence_and_editing_it(self):
+        # Spec #741 acceptance 5.
+        self.answer()
+        audiogram = self.make(NORMAL, NORMAL)
+        audiogram.points.filter(ear="left", frequency=4000).delete()
+        card = self.card(self.main())
+        self.assertEqual(
+            self.text(card),
+            "現在這一步 記錄聽力圖 這張聽力圖缺少頻率，資料不足，無法判斷。 修改這張聽力圖",
+        )
+        edit = reverse("audiogram_edit", args=[audiogram.pk])
+        self.assertIn(f'<a class="btn btn-hero btn-lg" href="{edit}">', card)
+        self.assertEqual(self.entries(card), [])
+
+    def test_step_3_done_opens_to_the_stamp_and_the_audiogram_s_result(self):
+        # Spec #741 acceptance 6.
+        self.answer()
+        audiogram = self.make((40, 40, 35, 35), PTA_55, tested_on=date(2026, 6, 2))
+        body = self.body(self.main(), 2)
+        self.assertIn(STAMP, body)
+        result = self.part(body, "journey-audiogram")
+        self.assertIn(f'href="/audiograms/{audiogram.pk}"', result)
+        self.assertEqual(
+            self.text(result),
+            "聽力圖結果 2026/06/02 右耳 輕度 平均 37.5 dB 左耳 中度 平均 55 dB 看聽力圖",
+        )
+        self.assertIn('<span class="level-badge level-badge-mild_to_moderate">輕度</span>', result)
+
+    def test_eligible_step_4_points_to_my_guide_and_opening_it_finishes_it(self):
+        # Spec #741 acceptance 7, 8.
+        self.answer()
+        self.make(PTA_55, PTA_55)
+        card = self.card(self.main())
+        self.assertEqual(
+            self.text(card),
+            f"現在這一步 了解助聽器選配與補助 {GUIDE_WORDS} 看助聽器選配與補助",
+        )
+        self.assertEqual(self.entries(card), [("/guide", "看助聽器選配與補助")])
+        self.client.get(reverse("guide"))
+        main = self.main()
+        self.assertEqual(self.steps(main)[3][0], "done")
+        # Done, it opens to the stamp and still the way to my guide (the canvas's 3-a1).
+        body = self.body(main, 3)
+        self.assertIn(STAMP, body)
+        self.assertEqual(self.entries(body), [("/guide", "看助聽器選配與補助")])
+        self.assertNotIn(GUIDE_WORDS, body)
+
+    def test_mild_to_moderate_step_4_points_to_types_and_prices(self):
+        # Spec #741 acceptance 10: reading that chapter finishes it, and the route goes on to
+        # 身障鑑定, the 補助站 not folded by the estimate.
+        self.answer()
+        self.make(PTA_45, PTA_45)
+        card = self.card(self.main())
+        self.assertIn(f"<p>{MILD_WORDS}</p>", card)
+        self.assertEqual(self.entries(card), [("/guide/types-and-prices", "看助聽器的種類與價格")])
+        self.client.get(reverse("guide_chapter", args=["types-and-prices"]))
+        main = self.main()
+        self.assertEqual(self.steps(main)[3][0], "done")
+        self.assertIn('<h3 class="hero-card-title">身障鑑定與鑑定醫院</h3>', self.card(main))
+
+    def test_a_done_step_opens_to_the_vermilion_stamp_step_1_to_the_stamp_alone(self):
+        # Spec #741 acceptance 27: played once by site.css's play-once-stamp (ADR 0075, 0077).
+        self.answer(on=date(2026, 9, 26))
+        main = self.main()
+        body = self.body(main, 0)
+        self.assertIn(STAMP, body)
+        self.assertEqual(self.text(body), "已完成")
+
+    def test_wearing_counts_from_step_5_leaving_steps_1_to_4_unticked(self):
+        # Spec #741 acceptance 28: none of steps 1 to 4 is done, none is in the way.
+        self.answer(code=ioi_ha.CODE)
+        steps = self.steps(self.main())
+        self.assertEqual(
+            [state for state, _ in steps], ["later"] * 4 + ["current", "later", "later"]
+        )
+        self.assertIn("配戴助聽器之後", steps[4][1])
+
+    def test_step_5_s_card_is_the_stop_its_reason_and_its_button(self):
         # Spec #453 acceptance 6; the owner on #458: no 目前這一站 label, no 「因為：」 (D10).
         self.answer()
         self.make(PTA_55, PTA_55)
-        GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
+        GuideChapterView.objects.create(user=self.user, chapter="guide")
         AidAndSubsidy.objects.create(user=self.user, certificate="yes")
         card = self.card(self.main())
         self.assertEqual(
@@ -321,7 +472,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
         # 等待核定公文 has nothing to do but wait (#455): a text link, no solid button.
         self.answer()
         self.make(PTA_55, PTA_55)
-        GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
+        GuideChapterView.objects.create(user=self.user, chapter="guide")
         AidAndSubsidy.objects.create(user=self.user, certificate="yes", form_9_done=True)
         main = self.main()
         self.assertEqual(SOLID.findall(main), [])
@@ -330,112 +481,58 @@ class JourneyHomeTests(HomeJourneyTestCase):
             self.card(main),
         )
 
-    def test_each_card_shows_the_journey_s_words_and_button(self):
-        # Spec #453 acceptance 3, 5, 9, 11, 12 on the page; judged in test_care_journey.
-        def no_audiogram():
-            self.answer()
+    def test_steps_6_and_7_keep_their_words_and_button(self):
+        # #746 draws their countdown cards; until then, their sentences and buttons.
+        def fitted(on):
+            def records():
+                self.answer()
+                AidAndSubsidy.objects.create(user=self.user, fitted_on=on, subsidy=Subsidy.OTHER)
+                self.answer(code=ioi_ha.CODE, on=on)
 
-        def missing_frequency():
-            self.answer()
-            audiogram = self.make(NORMAL, NORMAL)
-            audiogram.points.filter(ear="left", frequency=4000).delete()
-            return audiogram
-
-        def wearing_without_a_date():
-            self.answer(wearing=True)
-
-        def fitted_40_days_ago():
-            self.answer()
-            AidAndSubsidy.objects.create(
-                user=self.user, fitted_on=date(2026, 10, 3), subsidy=Subsidy.OTHER
-            )
-
-        def fitted_3_months_ago():
-            self.answer()
-            AidAndSubsidy.objects.create(
-                user=self.user, fitted_on=date(2026, 8, 12), subsidy=Subsidy.OTHER
-            )
+            return records
 
         ioi = reverse("screening", args=[self.questionnaires[ioi_ha.CODE].pk])
-        for records, title, because, button in (
+        for name, records, because, button in (
             (
-                no_audiogram,
-                "記錄聽力圖",
-                "手上有醫院的聽力檢查報告了嗎？",
-                ("/audiograms/new?next=/", "有，記錄聽力圖"),
-            ),
-            (
-                missing_frequency,
-                "記錄聽力圖",
-                "這張聽力圖缺少頻率，資料不足，無法判斷。",
-                ("edit", "修改這張聽力圖"),
-            ),
-            (
-                wearing_without_a_date,
-                "配戴助聽器之後",
-                "記下開始戴的日期，才算得出什麼時候要做使用效益驗證。",
-                ("/guide/after-fitting#record-title", "記錄配戴的效果"),
-            ),
-            (
-                fitted_40_days_ago,
-                "戴滿 3 個月做效益問卷",
+                "40 days",
+                fitted(date(2026, 10, 3)),
                 "再 52 天滿 3 個月，到時候做使用效益問卷（IOI-HA）。",
-                None,
+                [],
             ),
             (
-                fitted_3_months_ago,
-                "戴滿 3 個月做效益問卷",
+                "3 months",
+                fitted(date(2026, 8, 12)),
                 "您已經戴滿 3 個月，可以做使用效益問卷（IOI-HA），看助聽器幫了多少。",
-                (ioi, "做效益問卷"),
+                [(ioi, "做效益問卷")],
             ),
         ):
-            with self.subTest(records=records.__name__):
-                self.fresh_user(records.__name__)
-                audiogram = records()
+            with self.subTest(fitted=name):
+                self.fresh_user(name)
+                records()
                 card = self.card(self.main())
-                self.assertIn(f'<h3 class="hero-card-title">{title}</h3>', card)
+                self.assertIn('<h3 class="hero-card-title">戴滿 3 個月做效益問卷</h3>', card)
                 self.assertIn(f"<p>{because}</p>", card)
-                self.assertNotIn("因為", card)
-                buttons = re.findall(
-                    r'<a class="btn btn-hero btn-lg" href="([^"]*)">([^<]*)</a>', card
+                self.assertEqual(
+                    re.findall(r'<a class="btn btn-hero btn-lg" href="([^"]*)">([^<]*)</a>', card),
+                    button,
                 )
-                if button is None:
-                    self.assertEqual(buttons, [])
-                    continue
-                href, text = button
-                if href == "edit":
-                    href = reverse("audiogram_edit", args=[audiogram.pk])
-                self.assertEqual(buttons, [(href, text)])
-
-    def test_without_a_report_yet_the_card_has_a_second_way(self):
-        # The 2026-11-14 walkthrough (mockup 2A): 還沒 is an outline button under the solid one,
-        # to where a hearing test is done; an audiogram missing a frequency has none.
-        self.answer()
-        card = self.card(self.main())
-        solid = card.index('href="/audiograms/new?next=/">有，記錄聽力圖</a>')
-        outline = card.index(
-            '<a class="btn btn-hero-outline btn-lg" '
-            'href="/qa/where-to-get-a-hearing-test">還沒，看要去哪裡檢查</a>'
-        )
-        self.assertLess(solid, outline)
-        audiogram = self.make(NORMAL, NORMAL)
-        audiogram.points.filter(ear="left", frequency=4000).delete()
-        self.assertNotIn("還沒，看要去哪裡檢查", self.main())
 
     def test_done_steps_say_their_day(self):
-        # #458 D7: step 3 its fitting date, step 4 its IOI-HA's.
+        # #458 D7.
         self.answer(on=date(2026, 9, 26))
         self.make(PTA_55, PTA_55, tested_on=date(2026, 6, 15))
         AidAndSubsidy.objects.create(
             user=self.user, fitted_on=date(2026, 7, 1), subsidy=Subsidy.OTHER
         )
+        self.answer(code=ioi_ha.CODE, on=date(2026, 7, 15))
         self.answer(code=ioi_ha.CODE, on=date(2026, 10, 15))
         self.assertEqual(
             [body for state, body in self.steps(self.main()) if state == "done"],
             [
                 "填生活影響問卷 已完成 2026/09/26",
+                "到醫院進行聽力檢查 已完成 2026/06/15",
                 "記錄聽力圖 已完成 2026/06/15",
-                "了解助聽器選配與補助 已完成 2026/07/01",
+                "申請補助與配戴助聽器 已完成 2026/07/01",
                 "戴滿 3 個月做效益問卷 已完成 2026/10/15",
             ],
         )
@@ -499,69 +596,63 @@ class StepInteractionTests(HomeJourneyTestCase):
     """#459 I1 + I2 (the owner's pick on the step interactions page, ADR 0028's 2026-11-12
     exception)."""
 
-    def step_3_with_two_done(self):
+    def step_4_with_three_done(self):
         self.answer(on=date(2026, 9, 26), score=4)
         self.make(PTA_55, PTA_55, tested_on=date(2026, 9, 1))
 
     def test_every_step_but_the_current_one_opens_to_say_what_it_is(self):
         # I1: native <details>, so it opens without JavaScript too; the card is no <details>.
-        self.step_3_with_two_done()
-        result = self.user.submissions.get().pk
-        items = self.items(self.main())
-        self.assertEqual(["<details" in body for _, body in items], [True, True, False, True, True])
-
-        def opened(index):
-            body = re.search(r'<div class="journey-about-body">(.*?)</div>', items[index][1], re.S)
-            return self.text(body.group(1)), re.findall(r'<a href="([^"]*)">', body.group(1))
-
+        # A done step opens to its stamp (spec #741 acceptance 27).
+        self.step_4_with_three_done()
+        main = self.main()
+        items = self.items(main)
         self.assertEqual(
-            opened(0),
-            (
-                "先做一份生活影響問卷，了解聽力對您生活的影響。 "
-                "上次結果：無／極輕微影響 看上次結果",
-                [reverse("result", args=[result])],
-            ),
+            ["<details" in body for _, body in items], [True, True, True, False, True, True, True]
+        )
+        self.assertEqual(self.opened(main, 0), ("已完成", []))
+        self.assertEqual(self.opened(main, 1), ("已完成", []))
+        self.assertEqual(
+            self.opened(main, 4), ("照選配路線一站一站走，從找聽力師到開始戴助聽器。", [])
         )
         self.assertEqual(
-            opened(1), ("選配指引要用聽力圖才能整理下一步。 看助聽器選配與補助", ["/guide"])
+            self.opened(main, 5),
+            ("戴滿 3 個月後，再做一次問卷和第一次比較，看看助聽器的幫助。", []),
         )
         self.assertEqual(
-            opened(3),
-            ("買了助聽器、戴滿 3 個月後，做使用效益問卷（IOI-HA），看助聽器幫了多少。", []),
-        )
-        self.assertEqual(
-            opened(4),
+            self.opened(main, 6),
             (
                 "時間到了，這裡會出現「再做一次」的按鈕。 下次篩檢 2027/03/26・還有 134 天",
                 [],
             ),
         )
-        self.assertNotIn("<details open", self.main())
+        self.assertNotIn("<details open", main)
 
     def test_the_line_is_blue_up_to_the_current_step_without_a_progress_bar(self):
-        # I2: the walked steps, numbered for the entrance's timing; 「2 / 5」 stays.
-        self.step_3_with_two_done()
+        # I2: the walked steps, numbered for the entrance's timing; 「3 / 7」 stays.
+        self.step_4_with_three_done()
         main = self.main()
         # Played once the 現在這一步's one thing is in view (ADR 0029; #480 moved the mark there
-        # from the whole step, which the to-dos under it made too tall).
+        # from the whole step, which the to-dos under it made too tall); each stamp waits too.
         self.assertRegex(
             main,
-            r'<li class="journey-step is-current"[^>]*>\s*<span class="journey-dot">3</span>\s*'
+            r'<li class="journey-step is-current"[^>]*>\s*<span class="journey-dot">4</span>\s*'
             r'<div class="journey-card">\s*<section class="hero-card" data-play-in-view>',
         )
-        self.assertEqual(main.count("data-play-in-view"), 1)
+        self.assertEqual(main.count("data-play-in-view"), 1 + main.count(STAMP))
         steps = re.findall(r'<li class="journey-step ([^"]*)" style="--journey-step: (\d)"', main)
         self.assertEqual(
             steps,
             [
                 ("is-done is-walked", "0"),
                 ("is-done is-walked", "1"),
-                ("is-current", "2"),
-                ("is-later", "3"),
+                ("is-done is-walked", "2"),
+                ("is-current", "3"),
                 ("is-later", "4"),
+                ("is-later", "5"),
+                ("is-later", "6"),
             ],
         )
-        self.assertIn('<span class="visually-hidden">進度 </span>2 / 5</p>', main)
+        self.assertIn('<span class="visually-hidden">進度 </span>3 / 7</p>', main)
         self.assertNotIn("journey-bar", main)
 
     def test_only_the_journey_loads_its_script(self):
@@ -572,29 +663,38 @@ class StepInteractionTests(HomeJourneyTestCase):
 
 
 class OneSolidButtonTests(HomeJourneyTestCase):
-    """Spec #453 acceptance 19 and 20 across the states #458 drew."""
+    """Spec #453 acceptance 19 and 20 across the states the journey has."""
 
     def test_every_state_has_at_most_one_solid_button_and_dates_in_full(self):
-        def fitted(on, **fields):
-            return lambda: AidAndSubsidy.objects.create(
-                user=self.user, fitted_on=on, subsidy=Subsidy.OTHER, **fields
-            )
+        def fitted(on, ioi_on=None, **fields):
+            def records():
+                AidAndSubsidy.objects.create(
+                    user=self.user, fitted_on=on, subsidy=Subsidy.OTHER, **fields
+                )
+                if ioi_on:
+                    self.answer(code=ioi_ha.CODE, on=ioi_on)
+
+            return records
 
         states = {
             "audiogram only": [lambda: self.make(PTA_55, PTA_55)],
             "step 2": [lambda: self.answer()],
-            "step 3": [lambda: self.answer(), lambda: self.make(PTA_55, PTA_55)],
-            "step 4 counting": [lambda: self.answer(), fitted(date(2026, 10, 3))],
-            "step 4 due": [lambda: self.answer(), fitted(date(2026, 8, 1))],
-            "step 5 counting": [
+            "step 4": [lambda: self.answer(), lambda: self.make(PTA_55, PTA_55)],
+            "step 5": [lambda: self.answer(), fitted(date(2026, 10, 3))],
+            "step 6 counting": [
+                lambda: self.answer(),
+                fitted(date(2026, 10, 3), date(2026, 10, 3)),
+            ],
+            "step 6 due": [lambda: self.answer(), fitted(date(2026, 8, 1), date(2026, 8, 1))],
+            "step 7 counting": [
                 lambda: self.answer(on=date(2026, 9, 26)),
                 lambda: self.make(NORMAL, NORMAL),
             ],
-            "step 5 due": [
+            "step 7 due": [
                 lambda: self.answer(on=date(2026, 5, 10)),
                 lambda: self.make(NORMAL, NORMAL),
             ],
-            "due at step 3": [
+            "due at step 4": [
                 lambda: self.answer(on=date(2026, 4, 20)),
                 lambda: self.make(PTA_55, PTA_55),
             ],

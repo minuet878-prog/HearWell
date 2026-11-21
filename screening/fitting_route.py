@@ -107,6 +107,8 @@ class FittingState:
     assessment: dict | None
     assessment_exam: Audiogram | None
     home_stop: str | None  # the 目前這一站 on the home page, which passes by HOME_SKIPS
+    # 看過: each chapter the user opened signed in, GUIDE_PAGE among them, and when first.
+    viewed: dict
 
     @property
     def stops(self):
@@ -203,8 +205,8 @@ def fitting_state(user, today):
         exams = user.audiograms.filter(source=AudiogramSource.EXAM).prefetch_related("points")
         exam = exams.first()
     assessment = assessment_estimate(list(exam.points.all())) if exam is not None else None
-    viewed = set(user.guide_views.values_list("chapter", flat=True))
-    done = viewed & DONE_BY_VIEWING
+    viewed = dict(user.guide_views.values_list("chapter", "first_viewed_at"))
+    done = set(viewed) & DONE_BY_VIEWING
     if audiogram is not None and not insufficient:
         done.add(AUDIOGRAM)  # an audiogram that can tell; one missing a frequency is not done
     if aid is not None and aid.certificate in CERTIFICATE_DONE:
@@ -249,6 +251,7 @@ def fitting_state(user, today):
         assessment,
         exam,
         home_stop,
+        viewed,
     )
 
 
