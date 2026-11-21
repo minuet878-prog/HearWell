@@ -51,6 +51,7 @@ class TrendChartPageTests(TestCase):
         return submission
 
     def test_questionnaire_levels_come_from_thresholds(self):
+        # #756 (spec #741, ADR 0078): each band's short name, which the trend chart writes in it.
         response = self.client.get("/api/questionnaires/")
         self.assertEqual(
             response.json()[0]["levels"],
@@ -58,6 +59,7 @@ class TrendChartPageTests(TestCase):
                 {
                     "code": "normal",
                     "text": "無／極輕微影響",
+                    "short": "極輕微",
                     "max": 8,
                     "color": "normal",
                     "shade": "pale",
@@ -65,6 +67,7 @@ class TrendChartPageTests(TestCase):
                 {
                     "code": "mild_to_moderate",
                     "text": "輕度到中度影響",
+                    "short": "輕到中度",
                     "max": 24,
                     "color": "mild_to_moderate",
                     "shade": "pale",
@@ -72,6 +75,7 @@ class TrendChartPageTests(TestCase):
                 {
                     "code": "severe",
                     "text": "顯著影響",
+                    "short": "顯著",
                     "max": 40,
                     "color": "severe",
                     "shade": "pale",

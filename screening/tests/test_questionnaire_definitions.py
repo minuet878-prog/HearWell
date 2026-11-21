@@ -300,6 +300,8 @@ class ResultFromDefinitionTests(TestCase):
                 {
                     "code": "normal",
                     "text": "假的低分級",
+                    # Its definition has no short names: the full one.
+                    "short": "假的低分級",
                     "max": 5,
                     "color": "normal",
                     "shade": "pale",
@@ -307,6 +309,7 @@ class ResultFromDefinitionTests(TestCase):
                 {
                     "code": "severe",
                     "text": "假的高分級",
+                    "short": "假的高分級",
                     "max": 12,
                     "color": "severe",
                     "shade": "pale",
