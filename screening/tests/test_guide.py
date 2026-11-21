@@ -16,15 +16,6 @@ LOGIN_NOTE = (
     "以及有沒有達到身障鑑定門檻。下面的章節不用登入也能看。"
 )
 CONTENTS_TITLE = "選配與補助，一步一步看"
-CHAPTERS = (
-    "去找聽力師之前",
-    "身障鑑定與鑑定醫院",
-    "九號表：申請助聽器補助",
-    "助聽器的種類與價格",
-    # Verification-flow batch F5: in the order they happen, the first weeks before 1-3 months.
-    "配戴助聽器之後",
-    "二十五號表：使用效益驗證",
-)
 BACK = "回到助聽器選配與補助"
 # Shortened in the guide chapters tidy-up (2026-10-23, the owner's request): things to bring
 # as chips, the questions grouped under three labels. #467 (H2): the parts titled as questions,
