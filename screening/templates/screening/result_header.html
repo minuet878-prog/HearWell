@@ -1,6 +1,10 @@
 {% load custom_filters %}
-{# Every result page's top: #750 (spec #741 acceptance 48, canvas ProResult) the green line that it is saved, then the bird and 看看 the topic; then the questionnaire, the date and, where it was asked, whether hearing aids were worn; then which time this is (spec #644 H3; a guest's result page has its own header, without them). #}
+{# Every result page's top: #750 (spec #741 acceptance 48, canvas ProResult) the green line that it is saved (only just sent, views.common.JUST_SAVED), then the bird and 看看 the topic; then the questionnaire, the date and, where it was asked, whether hearing aids were worn; then which time this is (spec #644 H3; a guest's result page has its own header, without them). #}
+{% if just_saved %}
 {% include "screening/success_strip.html" with text="做完了，已存到我的紀錄。" %}
 {% include "screening/bird_dialogue.html" with lead="result"|page_lead title="看看"|add:submission.questionnaire.definition.topic %}
+{% else %}
+{% include "screening/bird_dialogue.html" with lead="result_reopened"|page_lead title="看看"|add:submission.questionnaire.definition.topic %}
+{% endif %}
 <p>{{ submission.questionnaire.questionnaire_name }}・{{ submission.created_at|date:"Y/m/d" }} 作答{% if wearing_text %}・{{ wearing_text }}{% endif %}</p>
 <p class="result-attempt">這是您第 {{ attempt_number }} 次做這份問卷。</p>

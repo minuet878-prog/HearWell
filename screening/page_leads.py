@@ -14,6 +14,8 @@ LEADS = {
     "questionnaire_recommended": "照您的回答，這一份最適合。",
     "screening": "慢慢來，不用急。",
     "result": "做完了，辛苦了。",
+    # The same result opened again later (上次結果, 我的紀錄, a reload): views.common.JUST_SAVED.
+    "result_reopened": "這是您這一次的結果。",
     "guest_save": "這次的結果還在這支手機上。",
     "guest_saved": "存好了。",
     "hhi_comparison": "戴上助聽器，差多少？",

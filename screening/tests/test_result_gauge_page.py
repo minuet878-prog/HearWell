@@ -14,6 +14,7 @@ from django.utils import timezone
 from screening.models import Submission
 from screening.questionnaires import hhie_s, thi
 from screening.tests.helpers import consented_user, submission_with_answers
+from screening.views.common import JUST_SAVED
 
 TAIPEI = timezone.get_fixed_timezone(8 * 60)
 # The score block in its level's colour, up to the 建議下一步 card under it.
@@ -57,7 +58,12 @@ class ResultGaugePageTests(TestCase):
         return content[content.index("<main") : content.index("</main>")]
 
     def test_the_top_says_it_is_saved_and_titles_the_page_as_the_canvas(self):
-        main = self.main(self.record(hhie_s.CODE, [4, 4, 2, 2] + [0] * 6, (2026, 11, 12)))
+        record = self.record(hhie_s.CODE, [4, 4, 2, 2] + [0] * 6, (2026, 11, 12))
+        # Just sent (test_just_saved has how it gets there).
+        session = self.client.session
+        session[JUST_SAVED] = record.pk
+        session.save()
+        main = self.main(record)
         saved = main.index('<p class="result-saved" role="status">')
         self.assertIn("做完了，已存到我的紀錄。", main[saved : main.index("</p>", saved)])
         self.assertLess(saved, main.index('class="bird-dialogue"'))

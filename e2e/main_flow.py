@@ -78,6 +78,7 @@ from screening.tests.helpers import (
     submission_with_answers,
     took_ioi_ha,
 )
+from screening.views.common import JUST_SAVED
 
 # Playwright runs an event loop in this thread, which makes Django refuse database calls.
 # The Django docs' fix for Playwright; this module is only imported by the e2e run.
@@ -809,6 +810,13 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         expect(self.page.get_by_text("總分 20 分")).to_be_visible()
         # The banner only: the score bar below it repeats the level name (ticket #158).
         expect(self.page.locator(".result-banner").get_by_text("輕度到中度影響")).to_be_visible()
+        # Spec #741's 實作中本人補充: just sent, the green line and 做完了; opened again, neither.
+        saved = self.main().locator(".result-saved")
+        expect(saved).to_have_text("做完了，已存到我的紀錄。")
+        expect(self.main().locator(".bird-dialogue")).to_contain_text("做完了，辛苦了。")
+        self.page.reload()
+        expect(saved).to_have_count(0)
+        expect(self.main().locator(".bird-dialogue")).to_contain_text("這是您這一次的結果。")
 
     def step6_history(self):
         nav = self.page.get_by_role("navigation", name="主要導覽")
@@ -819,6 +827,11 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         expect(card).to_contain_text("總分：20")
         # The record card only: the trend summary above it repeats the level text.
         expect(card.get_by_text("輕度到中度影響")).to_be_visible()
+        # Opened from 我的紀錄, it is a result seen later.
+        card.click()
+        expect(self.main().locator(".bird-dialogue")).to_contain_text("這是您這一次的結果。")
+        expect(self.main().locator(".result-saved")).to_have_count(0)
+        nav.get_by_role("link", name="紀錄").click()
 
     def step7_report_prints_without_site_chrome(self):
         # Spec phase8_c3_report.md acceptance 8: only a real browser applies the print styles.
@@ -10374,6 +10387,13 @@ class LayoutOnAPhone(OnAPhone):
             "url": self.live_server_url,
         }
 
+    def just_sent(self, record):
+        """The next result page opened is record's just sent (views.common.JUST_SAVED), with the
+        green line on top, as when the answer page lands there."""
+        session = self.client.session
+        session[JUST_SAVED] = record.pk
+        session.save()
+
     def open(
         self, path, size=PHONE, signed_in=True, script="", java_script_enabled=True, touch=False
     ):
@@ -14117,6 +14137,8 @@ class ResultPagesT461Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
     def test_the_first_screen_has_the_block_the_sentence_and_one_solid_button(self):
         self.record("hhie-s", [4, 4, 4, 4, 2] + [0] * 5, (2026, 3, 26), wearing_hearing_aid=False)
         latest = self.record("hhie-s", [4, 4, 4, 2] + [0] * 6, wearing_hearing_aid=False)
+        # Just sent, the green line on top: the first screen at its fullest.
+        self.just_sent(latest)
         self.open(f"/submission/{latest.pk}")
         with self.saving_artifacts():
             banner = self.main().locator(".result-banner")
@@ -17096,6 +17118,7 @@ class AttemptNumberT647Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
         with self.saving_artifacts():
             for code, record in latest.items():
                 with self.subTest(code=code):
+                    self.just_sent(record)
                     self.open(f"/submission/{record.pk}")
                     expect(self.main().locator(".result-attempt")).to_have_text(
                         "這是您第 2 次做這份問卷。"

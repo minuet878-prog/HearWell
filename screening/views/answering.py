@@ -42,7 +42,7 @@ from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.questionnaires.results import SubscaleResult
 from screening.questionnaires.ssq12_tw import CODE as SSQ12
 from screening.scoring import AIDED_RETAKE_NOTE, AIDED_RETAKE_TITLE, RECOMMENDATION_REASONS
-from screening.views.common import health_data_page
+from screening.views.common import JUST_SAVED, health_data_page
 
 
 def continue_notice(user, questionnaires=None):
@@ -420,6 +420,7 @@ def screening(request, questionnaire_id):
                 if not existing:
                     raise
                 return _already_sent(request, existing)
+            request.session[JUST_SAVED] = submission.pk
             return redirect("result", submission_id=submission.id)
         else:
             # Only questions shown on the page, so the list matches the marked ones. A form

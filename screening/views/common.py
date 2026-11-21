@@ -11,6 +11,12 @@ from django.views.decorators.http import require_http_methods
 
 from screening import oidc
 
+# Spec #741's 實作中本人補充 (2026-11-21): the record whose answers this session has just sent,
+# from the answer page (the API) or the web form, taken by the next result page opened. Only that
+# record's page then shows the green line and 做完了; opened again later, 這是您這一次的結果.
+# In the session, so no address can bring it back; logging out or in as someone else empties it.
+JUST_SAVED = "screening.just_saved"
+
 
 def safe_next(request):
     # Only same-site URLs; anything else is treated as no next (open redirect guard).
