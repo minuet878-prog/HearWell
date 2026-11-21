@@ -5806,6 +5806,28 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     # Spec #741 (the owner at acceptance): a level's tag has no frame.
                     self.assertEqual(self.style(badge, "borderTopWidth"), "0px")
 
+    # Spec #741 (the owner at acceptance; Codex cross review, item 4): an audiogram's source tag
+    # (a self test's) has no frame either.
+    def test_the_audiogram_source_tag_has_no_frame(self):
+        audiogram = Audiogram.objects.create(
+            user=self.user, tested_on=date(2026, 10, 1), source="self_test"
+        )
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=30)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000)
+        )
+        self.open()
+        with self.saving_artifacts():
+            for path in ("/audiograms", f"/audiograms/{audiogram.pk}"):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    tag = self.page.get_by_role("main").locator(".source-tag").first
+                    expect(tag).to_have_text("自我測試")
+                    sides = ("Top", "Right", "Bottom", "Left")
+                    widths = [self.style(tag, f"border{side}Width") for side in sides]
+                    self.assertEqual(widths, ["0px"] * 4)
+
     # #149: each level's text reaches 7:1 on its soft background and on white.
     def test_level_text_reaches_7_to_1_on_its_soft_background_and_on_white(self):
         records = {
