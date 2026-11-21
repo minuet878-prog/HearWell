@@ -15,7 +15,8 @@ from screening.scoring import RETEST_DUE_TEXT
 from screening.tests import test_layout
 from screening.tests.helpers import consented_user
 
-SOLID = re.compile(r'class="btn btn-primary\b')
+# The page's main button: solid, or white on the blue hero card (#749, ADR 0076).
+SOLID = re.compile(r'class="btn btn-(?:primary|hero)(?=[ "])')
 ARROW = "\u203a"  # the rows' arrow sign
 CARD = re.compile(r'<a class="link-card questionnaire-card" href="([^"]+)">(.*?)</a>', re.S)
 
@@ -68,7 +69,9 @@ class CatalogueTests(ScreeningPagesMixin, TestCase):
 
     def recommended(self, main):
         block = re.search(
-            r'<section aria-labelledby="catalogue-recommended"[^>]*>(.*?)</section>', main, re.S
+            r'<section [^>]*aria-labelledby="catalogue-recommended"[^>]*>(.*?)</section>',
+            main,
+            re.S,
         )
         return block and block.group(1)
 
@@ -107,7 +110,7 @@ class CatalogueTests(ScreeningPagesMixin, TestCase):
         user = self.login()
         self.record(user, "thi")
         main = self.catalogue()
-        self.assertIn('<h1 class="h3 mt-2">選問卷</h1>', main)
+        self.assertIn('<h1 class="bird-title">選問卷</h1>', main)
         self.assertEqual(main.count(self.HELP), 1)
         self.assertLess(main.index("選問卷</h1>"), main.index(self.HELP))
         self.assertLess(main.index(self.HELP), main.index('class="link-card questionnaire-card"'))
@@ -140,13 +143,12 @@ class CatalogueTests(ScreeningPagesMixin, TestCase):
         self.assertLess(main.index(self.HELP), main.index("</section>"))
         self.assertLess(main.index("</section>"), main.index('class="catalogue-group'))
 
-    def test_one_recommendation_is_a_pale_blue_block_with_the_only_solid_button(self):
+    def test_one_recommendation_is_the_hero_card_with_the_only_main_button(self):
+        # #749 (ADR 0076): the blue hero card, where it was a pale blue block.
         user = self.login()
         self.record(user, "hhie-s", wearing=False, days_ago=200)
         main = self.catalogue()
-        self.assertIn(
-            '<section aria-labelledby="catalogue-recommended" class="recommended-block', main
-        )
+        self.assertIn('<section class="hero-card" aria-labelledby="catalogue-recommended">', main)
         block = self.recommended(main)
         self.assertIn(
             '<h2 id="catalogue-recommended" class="recommended-label">推薦您做這一份</h2>', block
@@ -191,12 +193,11 @@ class CatalogueTests(ScreeningPagesMixin, TestCase):
 class WizardTests(ScreeningPagesMixin, TestCase):
     """The recommendation wizard (#462 section 2)."""
 
-    def test_the_result_is_a_pale_blue_block_with_the_only_solid_button(self):
+    def test_the_result_is_the_hero_card_with_the_only_main_button(self):
+        # #749 (ADR 0076): the blue hero card, where it was a pale blue block.
         self.login(age=70)
         main = _main(self.client.get(reverse("questionnaire_list"), {"concern": "life_impact"}))
-        self.assertIn(
-            '<section aria-labelledby="recommended-title" class="recommended-block">', main
-        )
+        self.assertIn('<section class="hero-card" aria-labelledby="recommended-title">', main)
         self.assertIn(
             '<h2 id="recommended-title" class="recommended-title">聽力對生活的影響'
             '<span class="recommended-code">HHIE-S</span></h2>',

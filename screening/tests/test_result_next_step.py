@@ -25,10 +25,11 @@ SUGGESTIONS = (
 )
 REPORT_ROW = (reverse("health_report"), "印聽力報告給醫師看")
 SHARE_ROW = (reverse("share_report"), "分享給家人")
+# #749 (ADR 0076): the card is the blue hero card, its buttons white.
 NEXT_STEP = re.compile(
-    r'<div class="result-next">\s*<p class="result-next-label">建議您下一步</p>\s*'
-    r'<h2 class="result-next-title">([^<]*)</h2>\s*'
-    r'<a class="btn btn-primary btn-lg w-full" href="([^"]*)">([^<]*)</a>\s*</div>',
+    r'<section class="hero-card">\s*<p class="hero-card-label">建議您下一步</p>\s*'
+    r'<h2 class="hero-card-title">([^<]*)</h2>\s*'
+    r'<a class="btn btn-hero btn-lg" href="([^"]*)">([^<]*)</a>\s*</section>',
     re.S,
 )
 ROW = re.compile(

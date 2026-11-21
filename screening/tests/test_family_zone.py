@@ -106,11 +106,11 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
 
     def test_visitor_reaches_the_family_zone_by_its_door(self):
         # Spec #655 (#673, grill Q4): the door 我擔心家人的聽力 takes the place of the text link
-        # 我是家人, first on the page, before the login link.
+        # 我是家人; spec #741 (#752): 擔心家人的聽力, the first door under the blue hero card.
         main = self._home()
         self.assertNotIn("我是家人", main)
         door = main.index(f'href="{self.url}" data-door="door_family"')
-        self.assertLess(door, main.index("我已經有帳號，登入"))
+        self.assertLess(main.index('<section class="hero-card"'), door)
 
     def test_new_user_without_records_has_a_family_link(self):
         # #459: the 空狀態首頁 keeps the way in as a text link after the guide's (mockup #458 A).
@@ -688,6 +688,9 @@ class ReviewedPagesTests(SimpleTestCase):
                 "<li>刪除帳號後，您的資料不會再算進",
                 "<li>以後如果要拿資料做學術研究",
                 "<li>把大家的篩檢結果和聽力紀錄",
+                # #749 (ADR 0076): the title in the bird's bubble, the same words.
+                "{% load custom_filters %}",
+                '{% include "screening/bird_dialogue.html" with lead="privacy"',
             ),
             # #471 (the #470 mockup B) folded each part into a row and dropped the 這一頁的段落
             # list; the visible words are the same as main's apart from that list's title.
@@ -695,8 +698,9 @@ class ReviewedPagesTests(SimpleTestCase):
             # 用 Google 登入時, 用 LINE 登入時, 意見回饋 and email 重測提醒 rows. Spec #702 let
             # the health data line change: the page hashes the same on main and after it
             # without that line.
-            # Spec #733 added the tags of the 整體統計 row.
-            "0ade0e274562769048f72d0faa5ecadf53368563f67868fb205e10744e9561e6",
+            # Spec #733 added the tags of the 整體統計 row. #749 took the title's line out (it is
+            # in the allowed lines, the bird's).
+            "6c158d3728edf69e468ac012272b2dabd7b013e5e489f2948f1ac14dd2df51d2",
         ),
     )
 

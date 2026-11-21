@@ -32,8 +32,9 @@ class VisitorHomeTestCase(TestCase):
 
 class GuestHomeStartTests(VisitorHomeTestCase):
     """#492 acceptance 1: without a guest result, the way to screening opens the wizard's age
-    step instead of the register page; 我已經有帳號，登入 as before. Since spec #655 (#673) that
-    way is the door 我想了解自己的聽力, and the three steps are gone (grill Q4)."""
+    step instead of the register page. Since spec #655 (#673) that way is a door and the three
+    steps are gone (grill Q4); since spec #741 (#752) it is the blue hero card's 開始, and
+    我已經有帳號，登入 is gone (grill P15)."""
 
     def test_start_opens_the_wizards_age_step(self):
         start = re.search(r'href="([^"]+)" data-door="door_self"', self._main()).group(1)
@@ -42,10 +43,10 @@ class GuestHomeStartTests(VisitorHomeTestCase):
         self.assertTemplateNotUsed(page, "screening/register.html")
         self.assertContains(page, "您目前的實際年齡？")
 
-    def test_no_three_steps_and_the_login_link(self):
+    def test_no_three_steps_and_no_login_link(self):
         main = self._main()
         self.assertNotIn("empty-preview", main)
-        self.assertEqual(self._link(main, "我已經有帳號，登入"), self.login_url)
+        self.assertNotIn("我已經有帳號，登入", main)
 
 
 class GuestHomeKeptResultTests(VisitorHomeTestCase):
@@ -57,8 +58,9 @@ class GuestHomeKeptResultTests(VisitorHomeTestCase):
         main = self._main()
         place = re.search(r'<div id="guest-home"([^>]*)></div>', main)
         self.assertIn("hidden", place.group(1))
-        # Spec #655 (#673): on top of the two doors.
-        self.assertLess(place.start(), main.index('<h1 class="visually-hidden">聽伴</h1>'))
+        # Spec #741 acceptance 43 (#752, grill P14): above the blue hero card, under the bird.
+        self.assertLess(main.index('<div class="bird-dialogue">'), place.start())
+        self.assertLess(place.start(), main.index('<section class="hero-card"'))
         page = self.client.get(reverse("index")).content.decode()
         data = re.search(
             r'<script id="guest-home-data" type="application/json">(.*?)</script>', page
@@ -98,17 +100,16 @@ class NewUserHomeTests(VisitorHomeTestCase):
         # Spec #655 (#673, grill Q4): the doors take the place of the 空狀態首頁's heading, its
         # three steps, 開始篩檢 and 我是家人 (test_home_doors has the doors themselves).
         main = self._main()
-        self.assertIn('<h1 class="visually-hidden">聽伴</h1>', main)
+        # #749 (the canvas's ProGuest): the bird's bubble is the page's heading.
+        self.assertIn('<h1 class="bird-title">聽力變化常常容易被忽略</h1>', main)
         for gone in ("從一份問卷開始", "empty-preview"):
             with self.subTest(gone=gone):
                 self.assertNotIn(gone, main)
         links = re.search(r'<ul class="home-links" role="list">(.*?)</ul>', main, re.S).group(1)
+        # Spec #741 (#752): 了解助聽器選配與補助 became the door 想了解助聽器; P13 keeps this.
         self.assertEqual(
             re.findall(r'<li([^>]*)><a href="([^"]+)">([^<]+)</a></li>', links),
-            [
-                ("", reverse("guide"), "了解助聽器選配與補助"),
-                (" data-hide-in-app", reverse("add_to_home"), "加到手機主畫面"),
-            ],
+            [(" data-hide-in-app", reverse("add_to_home"), "加到手機主畫面")],
         )
         self.assertIn('<p class="empty-credit">內容由台灣執業聽力師設計與審定。</p>', main)
         self.assertEqual(main.count("btn-primary"), 0)
@@ -116,27 +117,23 @@ class NewUserHomeTests(VisitorHomeTestCase):
             with self.subTest(old=old):
                 self.assertNotIn(old, main)
 
-    def test_login_is_a_text_link_under_the_doors(self):
-        main = self._main()
-        login = re.search(r"<a([^>]*)>\s*我已經有帳號，登入\s*</a>", main)
-        self.assertNotIn("btn", login.group(1))
-        self.assertLess(main.rindex("home-door"), login.start())
-
     # The logo and the one-time ring are drawn by CSS on btn-start and checked in e2e.
     def test_start_button_uses_the_btn_start_class(self):
         # Spec #655 (#673): only a signed-in user's 空狀態首頁 has 開始篩檢; a visitor has doors.
         self.assertNotIn("btn-start", self._main())
         self.client.force_login(consented_user(username="startbutton"))
+        # #749 (ADR 0076): white, in the blue hero card.
         self.assertRegex(
-            self._main(), r'<a class="btn btn-primary btn-lg btn-start w-full"[^>]*>開始篩檢</a>'
+            self._main(), r'<a class="btn btn-hero btn-lg btn-start"[^>]*>開始篩檢</a>'
         )
 
     # The 2026-11-14 walkthrough: someone with an account logs in to see their 照顧旅程, so the
-    # link no longer sends them on to the questionnaire list.
-    def test_login_button_logs_in_then_opens_the_home_page(self):
+    # link no longer sends them on to the questionnaire list. Since spec #741 (#752, grill P15)
+    # that link is the page's 登入 outside the page body, with no next of its own.
+    def test_login_link_logs_in_then_opens_the_home_page(self):
         consented_user(username="returning", password=self.PASSWORD)
-        login = self._link(self._main(), "我已經有帳號，登入")
-        self.assertEqual(login, reverse("login"))
+        login = reverse("login")
+        self.assertContains(self.client.get(reverse("index")), f'<a href="{login}"')
         response = self.client.post(
             login, {"username": "returning", "password": self.PASSWORD}, follow=True
         )

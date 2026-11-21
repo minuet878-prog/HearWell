@@ -275,7 +275,7 @@ class Ssq12ResultRedesignTests(TestCase):
     def test_page_reads_topic_status_average_then_folded_answers_and_disclaimer_last(self):
         latest = self.record((2026, 10, 15), total=78, wearing=True)
         main = self.main(latest)
-        self.assertIn('<h1 class="h3 mt-2 mb-0">日常聆聽能力</h1>', main)
+        self.assertIn('<h1 class="bird-title">日常聆聽能力</h1>', main)
         text = self.text(main)
         order = [
             "SSQ12-TW・2026/10/15 作答・有戴助聽器",

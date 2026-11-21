@@ -113,7 +113,8 @@ class LoginRequiredTests(TestCase):
 
 class LoginNextTests(TestCase):
     NOTE = "請先登入，沒有帳號請按註冊。登入後會帶您回到剛剛的頁面。"
-    # Spec #148 (ticket #150): the home page's small hint became this button.
+    # Spec #148 (ticket #150): the home page's small hint became this button; spec #741 (#752,
+    # grill P15) took it away again, the header's 登入 being the way in.
     LOGIN_BUTTON = "我已經有帳號，登入"
     PASSWORD = "Xk9#mPq2vLw"
     EXTERNAL = (
@@ -224,8 +225,8 @@ class LoginNextTests(TestCase):
         self.assertNotContains(response, "<script>alert(1)</script>")
         self.assertContains(response, "&lt;script&gt;")
 
-    def test_home_login_button_only_for_anonymous(self):
-        self.assertContains(self.client.get(reverse("index")), self.LOGIN_BUTTON)
+    def test_home_has_no_login_button(self):
+        self.assertNotContains(self.client.get(reverse("index")), self.LOGIN_BUTTON)
         self.client.force_login(self.user)
         self.assertNotContains(self.client.get(reverse("index")), self.LOGIN_BUTTON)
 
@@ -297,8 +298,8 @@ class LoginViewTests(TestCase):
     def test_title_greets_and_field_icons_stay_silent(self):
         content = self.client.get(self.url).content.decode()
         top = page_top(content)
-        self.assertIn('<h1 class="h3 mt-4">登入</h1>', top)
-        self.assertIn('<p class="text-(--color-muted)">歡迎回來。</p>', top)
+        self.assertIn('<h1 class="bird-title">登入</h1>', top)
+        self.assertIn('<p class="bird-lead">歡迎回來。</p>', top)
         icons = field_icons(content)
         self.assertEqual(len(icons), 2)
         for icon in icons:
@@ -620,8 +621,9 @@ class RegisterPageGuidanceTests(TestCase):
 
     def test_the_top_holds_the_title_the_line_and_the_step(self):
         top = page_top(self.client.get(self.url).content.decode())
-        self.assertIn('<h1 class="h3 mt-4">註冊</h1>', top)
-        self.assertIn('<p class="text-(--color-muted)">建立帳號，篩檢結果會幫您存起來。</p>', top)
+        self.assertIn('<h1 class="bird-title">註冊</h1>', top)
+        # #749: the line under the title became the bird's lead, above it.
+        self.assertIn('<p class="bird-lead">建立帳號，篩檢結果會幫您存起來。</p>', top)
         self.assertIn("第 1 步／共 2 步：建立帳號", top)
 
     # #360 (spec #354): 出生年 says it is optional in its name; 電子郵件 says what it is for and

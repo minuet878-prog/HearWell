@@ -309,7 +309,7 @@ describe("saveGuestResults (the save page)", () => {
   beforeEach(() => {
     document.body.innerHTML = `
       <div id="guest-save" data-submissions-url="/api/submissions/" data-home-url="/">
-        <h1 data-guest-title>保存這次結果</h1>
+        <div class="bird-dialogue"><h1 data-guest-title>保存這次結果</h1></div>
         <div data-guest-done hidden><h1 tabindex="-1" data-guest-done-title>✓ 結果已經保存</h1></div>
         <p data-guest-saving role="status" tabindex="-1">正在保存，請稍候。</p>
         <div data-guest-failed hidden>
@@ -437,8 +437,10 @@ describe("saveGuestResults (the save page)", () => {
     expect(line.textContent).toBe("正在保存，請稍候。");
     reply({ ok: true, status: 201, json: () => Promise.resolve({}) });
     await saving;
-    // The feedback batch (F3): it stays, the saving line giving way to the box, focus on its title.
+    // The feedback batch (F3): it stays, the saving line giving way to the box, focus on its title;
+    // the bird saying the page's title goes with it (#749), the box's own bird says it is saved.
     expect(line.hidden).toBe(true);
+    expect(root.querySelector(".bird-dialogue").hidden).toBe(true);
     expect(savedShown(root)).toBe(true);
     expect(document.activeElement).toBe(root.querySelector("[data-guest-done-title]"));
     expect(navigate).not.toHaveBeenCalled();
@@ -611,7 +613,7 @@ describe("askToSaveGuestResults (the save page's question)", () => {
   beforeEach(() => {
     document.body.innerHTML = `
       <div id="guest-save" data-submissions-url="/api/submissions/" data-home-url="/" data-asking>
-        <h1 data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">要把這次結果存到這個帳號嗎？</h1>
+        <div class="bird-dialogue"><h1 data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">要把這次結果存到這個帳號嗎？</h1></div>
         <div data-guest-ask hidden>
           <p data-guest-ask-lead></p>
           <div data-guest-ask-list></div>
@@ -784,7 +786,7 @@ describe("startSavePage (how the save page begins)", () => {
   beforeEach(() => {
     document.body.innerHTML = `
       <div id="guest-save" data-submissions-url="/api/submissions/" data-home-url="/" data-asking>
-        <h1 data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">要把這次結果存到這個帳號嗎？</h1>
+        <div class="bird-dialogue"><h1 data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">要把這次結果存到這個帳號嗎？</h1></div>
         <div data-guest-ask hidden>
           <p data-guest-ask-lead></p>
           <div data-guest-ask-list></div>

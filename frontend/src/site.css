@@ -139,18 +139,14 @@
     h3, .h3 { font-size: 1.75rem; }
     h4, .h4 { font-size: 1.5rem; }
   }
-  /* T1 (#454, ADR 0043): a page title (h1.h3) 28px and a section title (.h4) 22px, bold in the
-     heading colour, at every width; no bar beside them, the size alone sets them apart. At 200%
-     text on a narrow phone a long Latin word breaks rather than widen the page (#204). */
-  h1.h3, .h4 {
+  /* T1 (#454, ADR 0043): a section title (.h4) 22px, bold in the heading colour, at every
+     width; no bar beside it, the size alone sets it apart. The page title is the bird's bubble's
+     since #749 (.bird-title, ADR 0076). */
+  .h4 {
     color: var(--color-heading);
+    font-size: var(--text-section-title);
     font-weight: 700;
     line-height: 1.3;
-  }
-  h1.h3 { font-size: var(--text-page-title); }
-  .h4 { font-size: var(--text-section-title); }
-  @media (max-width: 47.99em) {
-    h1.h3 { overflow-wrap: anywhere; }
   }
   p { margin: 0 0 1rem; }
   ol, ul { padding-left: 2rem; }
@@ -665,7 +661,8 @@
      - play-once-slide-up: a block slides up a little as it fades in.
      - play-once-stamp: the 已完成 stamp presses down; its own tilt (transform) is left alone.
      - play-once-ring, play-once-gauge: an SVG stroke draws itself from its start. Give the path
-       pathLength="1" and draw only the arc of the value, so the stroke ends where the value is. */
+       pathLength="1" and draw only the arc of the value, so the stroke ends where the value is.
+     - play-once-wave: on an SVG, its shapes (up to 14) fade in one after another. */
   @media (prefers-reduced-motion: no-preference) {
     .play-once-slide-up {
       animation: play-once-slide-up 0.6s ease-out both;
@@ -683,6 +680,32 @@
 
     .play-once-gauge {
       animation-delay: 0.3s;
+    }
+
+    /* play-once-wave: an SVG sound wave's bars fade in one after another (the guest home's hero
+       card, #752), about 1.3 seconds in all. */
+    .play-once-wave > * {
+      animation: play-once-fade 0.6s ease-out both;
+    }
+
+    .play-once-wave > :nth-child(2) { animation-delay: 0.05s; }
+    .play-once-wave > :nth-child(3) { animation-delay: 0.1s; }
+    .play-once-wave > :nth-child(4) { animation-delay: 0.15s; }
+    .play-once-wave > :nth-child(5) { animation-delay: 0.2s; }
+    .play-once-wave > :nth-child(6) { animation-delay: 0.25s; }
+    .play-once-wave > :nth-child(7) { animation-delay: 0.3s; }
+    .play-once-wave > :nth-child(8) { animation-delay: 0.35s; }
+    .play-once-wave > :nth-child(9) { animation-delay: 0.4s; }
+    .play-once-wave > :nth-child(10) { animation-delay: 0.45s; }
+    .play-once-wave > :nth-child(11) { animation-delay: 0.5s; }
+    .play-once-wave > :nth-child(12) { animation-delay: 0.55s; }
+    .play-once-wave > :nth-child(13) { animation-delay: 0.6s; }
+    .play-once-wave > :nth-child(14) { animation-delay: 0.65s; }
+  }
+
+  @keyframes play-once-fade {
+    from {
+      opacity: 0;
     }
   }
 
@@ -1554,16 +1577,32 @@
     }
   }
 
-  /* Spec #655 (#673, the #669 mockup's A): the signed-out home's two doors, each a single link in
-     a pale blue block (as a single clickable thing sits in a colour block), one above the other,
-     the icon in a white circle. A mouse or a finger deepens the blue instead of turning it pale
-     blue; at large text sizes the words drop under the icon as every action card's do. */
+  /* Spec #741 (#752, the canvas's ProGuest): the signed-out home's two doors under the blue hero
+     card, side by side, each a single link in a pale blue block (as a single clickable thing sits
+     in a colour block): the icon in a white circle and the arrow on top, the words under them. A
+     mouse or a finger deepens the blue instead of turning it pale blue. Where two would be too
+     narrow (large text on a phone) they go one above the other. */
+  .home-doors {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+    gap: 0.6667rem;
+  }
+
   .home-doors > li > .link-card.home-door {
-    min-height: 5.5rem;
-    padding: 1rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    height: 100%;
+    padding: 0.7778rem;
     border: 0;
-    border-radius: var(--radius-medium);
+    border-radius: 1.1111rem;
     background-color: var(--color-brand-soft);
+  }
+
+  .home-door-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
 
   .home-door .action-card-icon {
@@ -1571,7 +1610,7 @@
   }
 
   .home-door .link-card-title {
-    font-size: 1.15rem;
+    line-height: 1.4;
   }
 
   @media (hover: hover) and (pointer: fine) {
@@ -1812,16 +1851,6 @@
   .more-group-title {
     margin: 1.25rem 0 0.5rem;
     color: var(--color-heading);
-    font-size: 1.125rem;
-    font-weight: 700;
-  }
-
-  /* The login link under the start button: a full touch target, still a plain link; #471: at
-     the left edge, under the start button, as the text links below it. */
-  .home-login {
-    display: inline-flex;
-    align-items: center;
-    min-height: var(--spacing-touch);
     font-size: 1.125rem;
     font-weight: 700;
   }
@@ -2372,13 +2401,13 @@
 
   /* Guide chapters: each titled part flat on the page (ADR 0043), the parts apart by spacing.
      Sources and the check date in small print. */
-  .guide-chapter > :not(h1) + * {
+  .guide-chapter > :not(.bird-dialogue) + * {
     margin-top: 2rem;
   }
 
   /* #367 (spec #354): a chapter opening straight on a titled part (配戴之後), or on its key cards
-     (#467), keeps its title off it. */
-  .guide-chapter > h1 + :is(section, div) {
+     (#467), keeps its title off it; the title is in the bird's bubble since #749. */
+  .guide-chapter > .bird-dialogue + :is(section, div) {
     margin-top: 1.5rem;
   }
 
@@ -2720,7 +2749,7 @@
     margin-top: 0.5rem;
   }
 
-  .result-attempt ~ .result-next {
+  .result-attempt ~ .hero-card {
     margin-top: 0.75rem;
   }
 
@@ -6188,24 +6217,6 @@
     margin: 1rem 0 0;
   }
 
-  /* The feedback batch (the owner's F3): a guest result just saved, the save page's box in the
-     success green (ADR 0007, 0028: the moment something is done), its title in large white type
-     (9.6:1). */
-  .guest-saved {
-    margin: 1.5rem 0 1rem;
-    padding: 1.25rem 1rem;
-    border-radius: var(--radius-medium);
-    background-color: var(--color-normal);
-    color: #fff;
-    text-align: center;
-  }
-
-  .guest-saved-title {
-    margin: 0;
-    font-size: 1.45rem;
-    font-weight: 700;
-  }
-
   .journey-tiles {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(8.5rem, 100%), 1fr));
@@ -6541,34 +6552,14 @@
     }
   }
 
+  /* #749 (ADR 0076): the 現在這一步 is the blue hero card, its to-dos under it. */
   .journey-card {
     flex: 1;
     min-width: 0;
-    padding: 0.875rem 1rem 1rem;
-    border-radius: var(--radius-medium);
-    background-color: var(--color-brand-soft);
   }
 
-  .journey-card-label {
+  .journey-card .hero-card {
     margin: 0;
-    color: var(--color-muted);
-    font-weight: 700;
-  }
-
-  .journey-card-title {
-    margin: 0 0 0.375rem;
-    color: var(--color-heading);
-    font-size: var(--text-section-title);
-    font-weight: 700;
-    line-height: 1.35;
-  }
-
-  .journey-card-because {
-    margin: 0;
-  }
-
-  .journey-card .btn {
-    margin-top: 0.75rem;
   }
 
   .journey-card-link {
@@ -7594,5 +7585,192 @@
     .clinic-cards-sheet {
       box-shadow: none;
     }
+  }
+}
+
+/* #749 (ADR 0076, the canvas's Pro boards): every page's top is the bird and its pale blue
+   bubble, the lead above the page's title; a page's one most important thing sits in the deep
+   blue hero card, its white button the page's main button. */
+@layer components {
+  /* The bubble takes the rest of the line, and at large text on a narrow phone, where it would
+     be a few characters wide, it goes under the bird instead. */
+  .bird-dialogue {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.6667rem;
+    margin: 0.5rem 0 0.8889rem;
+  }
+
+  /* The logo's bird (ADR 0039) on the brand's deep pebble. */
+  .bird-avatar {
+    position: relative;
+    flex: none;
+    width: 3.1111rem;
+    height: 3.1111rem;
+    border-radius: 42% 58% 55% 45% / 48% 42% 58% 52%;
+    background-image: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+  }
+
+  .bird-avatar::after {
+    content: "";
+    position: absolute;
+    inset: 0.3333rem;
+    background-color: #fff;
+    -webkit-mask: var(--logo-glyph) center / contain no-repeat;
+    mask: var(--logo-glyph) center / contain no-repeat;
+  }
+
+  .bird-bubble {
+    position: relative;
+    flex: 1 1 10rem;
+    min-width: 0;
+    margin-left: 0.25rem;
+    padding: 0.6667rem 0.8889rem 0.7778rem;
+    border-radius: 1.1111rem;
+    background-color: var(--color-brand-soft);
+  }
+
+  .bird-bubble-tail {
+    position: absolute;
+    top: 1rem;
+    left: -0.6667rem;
+    width: 0.8889rem;
+    height: 1.2222rem;
+    fill: var(--color-brand-soft);
+  }
+
+  /* On paper (the health report): the title and its lead only, no colour (#137). */
+  @media print {
+    .bird-avatar, .bird-bubble-tail { display: none; }
+    .bird-bubble { margin: 0; padding: 0; background: none; }
+  }
+
+  .bird-lead {
+    margin: 0;
+    color: var(--color-body);
+    overflow-wrap: anywhere;
+  }
+
+  .bird-title {
+    margin: 0;
+    color: var(--color-heading);
+    font-size: var(--text-page-title);
+    font-weight: 700;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .hero-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 1.25rem 0;
+    /* As .recommended-block (#668): narrower sides where a date that cannot break would not
+       fit, on a 320px phone at 200% text. */
+    padding: 1.125rem clamp(0.5rem, (100% - 9rem) * 100, 1.125rem);
+    border-radius: 1.3333rem;
+    background-image: linear-gradient(160deg, var(--color-primary), var(--color-primary-hover));
+    color: #fff;
+    box-shadow: 0 0.5556rem 1.3333rem rgba(23, 59, 106, 0.28);
+    overflow-wrap: anywhere;
+  }
+
+  .hero-card > * { margin: 0; }
+
+  .hero-card a:not(.btn) { color: #fff; }
+
+  /* The 照顧旅程's white entry cards (#744) keep their dark words on the blue card. */
+  .hero-card a.entry-card { color: var(--color-heading); }
+
+  .hero-card-label {
+    font-weight: 700;
+  }
+
+  .hero-card-title {
+    color: #fff;
+    font-size: var(--text-page-title);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .hero-card .btn {
+    width: 100%;
+    margin-top: 0.25rem;
+  }
+
+  /* The guest home's card (#752, the canvas's ProGuest): a white sound wave on top, and what
+     the start asks of you in pale chips under the title. */
+  .hero-wave {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin-bottom: 0.5rem;
+    fill: #fff;
+  }
+
+  .hero-wave > :nth-child(even) {
+    opacity: 0.5;
+  }
+
+  .hero-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4444rem;
+    margin: 0.25rem 0 0.5rem;
+  }
+
+  .hero-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3333rem;
+    min-height: 2rem;
+    padding: 0 0.6667rem;
+    border-radius: 1rem;
+    background-color: rgba(255, 255, 255, 0.18);
+    font-weight: 700;
+  }
+
+  .hero-chip svg,
+  .btn-hero svg {
+    flex: none;
+    width: 1.1111rem;
+    height: 1.1111rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .btn-hero svg {
+    margin-left: 0.3333rem;
+    stroke-width: 2.5;
+  }
+
+  /* A recommended questionnaire in the card (questionnaire page): its words white, its icon's
+     circle white so it stays apart. */
+  .hero-card :is(.recommended-label, .recommended-title, .recommended-code, .recommended-facts) {
+    color: #fff;
+  }
+
+  .hero-card .questionnaire-icon {
+    background-color: #fff;
+  }
+
+  /* The hero card's own button: white with blue words (8.6:1); colour only under a mouse and
+     when pressed (ADR 0006). */
+  .btn-hero {
+    --btn-color: var(--color-primary);
+    --btn-bg: #fff;
+    --btn-border-color: #fff;
+    --btn-hover-color: var(--color-primary-hover);
+    --btn-hover-bg: var(--color-brand-soft);
+    --btn-hover-border-color: var(--color-brand-soft);
+    --btn-focus-ring: rgba(255, 255, 255, 0.75);
+    --btn-active-color: var(--color-primary-hover);
+    --btn-active-bg: var(--color-brand-soft-deep);
+    --btn-active-border-color: var(--color-brand-soft-deep);
   }
 }

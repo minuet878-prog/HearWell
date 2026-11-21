@@ -29,11 +29,18 @@ TODAY = date(2026, 11, 12)
 NORMAL = (20, 20, 20, 20)
 PTA_45 = (45, 45, 45, 45)  # 建議評估選配, the estimate short of the threshold
 PTA_55 = test_guide_summary.PTA_55
-SOLID = re.compile(r'class="btn btn-primary\b')
+# The page's main button: solid, or white on the blue hero card (#749, ADR 0076).
+SOLID = re.compile(r'class="btn btn-(?:primary|hero)(?=[ "])')
+
 STAMP = '<span class="done-stamp play-once-stamp" data-play-in-view>'
 GUIDE_WORDS = "統整助聽器補助流程供您參考。"
 NORMAL_WORDS = "您的聽力檢測結果為正常，但若有耳鳴、耳悶等其他症狀，仍建議尋求醫師協助。"
 MILD_WORDS = "您的聽力未達補助資格，但依舊可以考慮配戴助聽器。"
+
+
+def greets(greeting, title):
+    """The bird's lead and the page's title in its bubble (#749)."""
+    return rf'<p class="bird-lead">{greeting}，</p>\s*<h1 class="bird-title">{title}</h1>'
 
 
 class HomeJourneyTestCase(TestCase):
@@ -159,7 +166,7 @@ class EmptyStateHomeTests(HomeJourneyTestCase):
     def test_without_any_record_the_home_page_is_the_empty_state(self):
         # Spec #453 acceptance 1: a preview and the start button, no journey or tiles.
         main = self.main()
-        self.assertIn('<h1 class="h3">從一份問卷開始</h1>', main)
+        self.assertIn('<h1 class="bird-title">從一份問卷開始</h1>', main)
         preview = self.part(main, "empty-preview")
         self.assertEqual(
             self.text(preview),
@@ -169,7 +176,8 @@ class EmptyStateHomeTests(HomeJourneyTestCase):
         self.assertNotIn("<a", preview)  # a preview, not a link
         self.assertRegex(
             main,
-            r'<a class="btn btn-primary btn-lg btn-start w-full" data-play-in-view '
+            r'<section class="hero-card" data-play-in-view>\s*<p>[^<]*</p>\s*'
+            r'<a class="btn btn-hero btn-lg btn-start" '
             rf'href="{reverse("questionnaire_list")}">開始篩檢</a>',
         )
         self.assertEqual(len(SOLID.findall(main)), 1)
@@ -278,7 +286,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
         self.assertNotIn("<a", tiles.split("下次篩檢")[1])
         hhie = reverse("screening", args=[self.questionnaires[hhie_s.CODE].pk])
         self.assertIn(
-            f'<a class="btn btn-primary btn-lg w-full" href="{hhie}">再做一次（大約 3 分鐘）</a>',
+            f'<a class="btn btn-hero btn-lg" href="{hhie}">再做一次（大約 3 分鐘）</a>',
             self.card(main),
         )
 
@@ -288,7 +296,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
         self.answer(on=date(2026, 9, 12))
         self.make(NORMAL, NORMAL, tested_on=date(2026, 9, 1))
         main = self.main()
-        self.assertIn('<h1 class="h3">早安，今天沒有要做的事</h1>', main)
+        self.assertRegex(main, greets("早安", "今天沒有要做的事"))
         self.assertEqual(SOLID.findall(main), [])
         self.assertIn(
             '<p class="journey-count"><span class="visually-hidden">進度 </span>6 / 7</p>', main
@@ -310,7 +318,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
     def test_with_something_to_press_there_is_one_thing_to_do_today(self):
         # An entry card counts, as a button does.
         self.answer()
-        self.assertIn('<h1 class="h3">早安，今天只要做一件事</h1>', self.main())
+        self.assertRegex(self.main(), greets("早安", "今天只要做一件事"))
 
     def test_the_greeting_follows_the_time_of_day_in_taiwan(self):
         # #458 D2: Asia/Taipei, the site's time zone.
@@ -325,7 +333,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
         ):
             with self.subTest(hour=hour):
                 self.now = timezone.make_aware(datetime(2026, 11, 12, hour, 30))
-                self.assertIn(f'<h1 class="h3">{greeting}，今天只要做一件事</h1>', self.main())
+                self.assertRegex(self.main(), greets(greeting, "今天只要做一件事"))
 
     def test_only_hhie_s_the_seven_steps_and_the_hospital_card(self):
         # Spec #741 acceptance 1: the seven steps' names, step 2 the 現在這一步 with only
@@ -346,7 +354,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
         )
         card = self.card(main)
         self.assertEqual(self.entries(card), [("/qa/where-to-get-a-hearing-test", "查詢醫療院所")])
-        self.assertNotIn("journey-card-because", card)
+        self.assertNotIn("<p>", card[card.index("</h3>") : card.index("journey-entries")])
         self.assertEqual(SOLID.findall(card), [])
         for gone in ("要做的事", "checkbox", "網站會知道"):
             self.assertNotIn(gone, main)
@@ -377,7 +385,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
             "現在這一步 記錄聽力圖 這張聽力圖缺少頻率，資料不足，無法判斷。 修改這張聽力圖",
         )
         edit = reverse("audiogram_edit", args=[audiogram.pk])
-        self.assertIn(f'<a class="btn btn-primary btn-lg w-full" href="{edit}">', card)
+        self.assertIn(f'<a class="btn btn-hero btn-lg" href="{edit}">', card)
         self.assertEqual(self.entries(card), [])
 
     def test_step_3_done_opens_to_the_stamp_and_the_audiogram_s_result(self):
@@ -419,12 +427,12 @@ class JourneyHomeTests(HomeJourneyTestCase):
         self.answer()
         self.make(PTA_45, PTA_45)
         card = self.card(self.main())
-        self.assertIn(f'<p class="journey-card-because">{MILD_WORDS}</p>', card)
+        self.assertIn(f"<p>{MILD_WORDS}</p>", card)
         self.assertEqual(self.entries(card), [("/guide/types-and-prices", "看助聽器的種類與價格")])
         self.client.get(reverse("guide_chapter", args=["types-and-prices"]))
         main = self.main()
         self.assertEqual(self.steps(main)[3][0], "done")
-        self.assertIn('<h3 class="journey-card-title">身障鑑定與鑑定醫院</h3>', self.card(main))
+        self.assertIn('<h3 class="hero-card-title">身障鑑定與鑑定醫院</h3>', self.card(main))
 
     def test_a_done_step_opens_to_the_vermilion_stamp_step_1_to_the_stamp_alone(self):
         # Spec #741 acceptance 27: played once by site.css's play-once-stamp (ADR 0075, 0077).
@@ -456,7 +464,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
             "看九號表的流程",
         )
         self.assertIn(
-            '<a class="btn btn-primary btn-lg w-full" href="/guide/form-9">看九號表的流程</a>', card
+            '<a class="btn btn-hero btn-lg" href="/guide/form-9">看九號表的流程</a>', card
         )
         self.assertNotIn("checkbox", card)
 
@@ -502,10 +510,10 @@ class JourneyHomeTests(HomeJourneyTestCase):
                 self.fresh_user(name)
                 records()
                 card = self.card(self.main())
-                self.assertIn('<h3 class="journey-card-title">戴滿 3 個月做效益問卷</h3>', card)
-                self.assertIn(f'<p class="journey-card-because">{because}</p>', card)
+                self.assertIn('<h3 class="hero-card-title">戴滿 3 個月做效益問卷</h3>', card)
+                self.assertIn(f"<p>{because}</p>", card)
                 self.assertEqual(
-                    re.findall(r'<a class="btn btn-primary[^"]*" href="([^"]*)">([^<]*)</a>', card),
+                    re.findall(r'<a class="btn btn-hero btn-lg" href="([^"]*)">([^<]*)</a>', card),
                     button,
                 )
 
@@ -628,8 +636,7 @@ class StepInteractionTests(HomeJourneyTestCase):
         self.assertRegex(
             main,
             r'<li class="journey-step is-current"[^>]*>\s*<span class="journey-dot">4</span>\s*'
-            r'<div class="journey-card">\s*<div class="journey-card-main" '
-            r"data-play-in-view>",
+            r'<div class="journey-card">\s*<section class="hero-card" data-play-in-view>',
         )
         self.assertEqual(main.count("data-play-in-view"), 1 + main.count(STAMP))
         steps = re.findall(r'<li class="journey-step ([^"]*)" style="--journey-step: (\d)"', main)

@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block title %}幫帳號取個名字｜聽伴{% endblock %}
 
@@ -11,7 +11,7 @@
 {% block body %}
 {# Spec #505 acceptance 5-7 (the #507 mockup 3, W8, W9): the register page's name and birth year; the email is Google's and cannot be changed, so it is a row, not a field. No account until 下一步. #}
 <div class="narrow-form">
-    <h1 class="h3 mt-4">幫帳號取個名字</h1>
+    {% include "screening/bird_dialogue.html" with lead="sign_in_name"|page_lead title="幫帳號取個名字" %}
     {% include "screening/step_progress.html" with step=1 total=2 label="建立帳號" %}
     <div class="auth-form">
         <dl class="settings-group mb-4">

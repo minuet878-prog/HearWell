@@ -1,7 +1,8 @@
 {% extends "screening/layout.html" %}
+{% load custom_filters %}
 {% block title %}比較戴與不戴助聽器｜聽伴{% endblock %}
 {% block body %}
-<h1 class="h3 mt-2">比較戴與不戴助聽器</h1>
+{% include "screening/bird_dialogue.html" with lead="hhi_comparison"|page_lead title="比較戴與不戴助聽器" %}
 <p class="mt-2">{{ questionnaire.definition.topic }}（{{ questionnaire }}）</p>
 <p>選一次沒戴、一次有戴時填的同一份問卷。</p>
 {# #465 (the #464 mockup 7): one solid button a state. Opened with nothing in the report, the form's 查看比較; once a pair is looked at (opened with one in the report, that one), it comes first, with the button to put it in the report when it is not there yet, and the form folds under 換別的兩筆 (a draft) with an outlined button. #}

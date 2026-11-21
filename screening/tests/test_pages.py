@@ -110,7 +110,7 @@ class CopyTests(TestCase):
     def test_login_title_in_chinese(self):
         self.client.logout()
         response = self.client.get(reverse("login"))
-        self.assertContains(response, '<h1 class="h3 mt-4">登入</h1>', html=True)
+        self.assertContains(response, '<h1 class="bird-title">登入</h1>', html=True)
         self.assertNotContains(response, "Welcome")
 
     def test_sign_in_status_in_chinese(self):
@@ -556,19 +556,19 @@ class RedesignLayoutTests(TestCase):
 class PageFlowTests(TestCase):
     """Spec docs/specs/phase-04/phase4_ui_flow.md, acceptance 1-14a."""
 
-    # Spec #148 (ticket #150): a login button replaced the small hint for people not signed in.
-    HINT = "我已經有帳號，登入"
     # As changed by phase9_ui_refresh_3_structure.md 4.4, phase9_ui_refresh_4a_home.md 4.1,
     # spec #148 (ticket #150, the account step) and #471 (mockup #458 ⑪: the visitor sees the
     # 空狀態首頁, the steps in its dashed box before the start button).
-    # Spec #655 (#673): a visitor's home is the two doors, then what stays below them.
+    # Spec #655 (#673): a visitor's home is the two doors, then what stays below them. Spec #741
+    # (#752, the canvas's ProGuest): the blue hero card starts, two doors under it, no login link.
     HOME_ORDER = (
-        "我想了解自己的聽力",
-        "大約 3 分鐘，不用註冊",
-        "我擔心家人的聽力",
-        "看看可以怎麼幫他",
-        HINT,
-        "了解助聽器選配與補助",
+        "聽力變化常常容易被忽略",
+        "想了解自己的聽力？",
+        "大約 3 分鐘",
+        "不用註冊",
+        "擔心家人的聽力",
+        "想了解助聽器",
+        "加到手機主畫面",
         "內容由台灣執業聽力師設計與審定。",
     )
 
@@ -672,7 +672,10 @@ class PageFlowTests(TestCase):
     def _assert_progress(self, page):
         # Answer page tidy-up: the topic is the title, the code and count one line under it.
         title = r"<h1[^>]*>\s*聽力對生活的影響\s*</h1>"
-        self.assertRegex(page, title + r"\s*<p[^>]*>HHIE-S・共 10 題・大約 3 分鐘</p>")
+        # #749: the title in the bird's bubble, the line right under the bird.
+        self.assertRegex(
+            page, title + r"\s*</div>\s*</div>\s*<p[^>]*>HHIE-S・共 10 題・大約 3 分鐘</p>"
+        )
         for n in (1, 10):
             with self.subTest(question=n):
                 self.assertRegex(page, rf"<legend[^>]*>(\s*<[^>]+>)*\s*第 {n} 題／共 10 題")

@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 {% block title %}{{ chapter.title }}｜聽伴{% endblock %}
 {% block extra_head %}
 {% include "screening/guide/folds_pending.html" %}
@@ -8,7 +8,7 @@
 {# Every chapter's wording is finalised in #220; change it only after review (ADR 0013). #}
 <p class="mt-4 mb-0"><a href="{% url 'guide' %}">回到助聽器選配與補助</a></p>
 <article class="guide-chapter wrap-anywhere">
-<h1 class="h3 mt-4">{{ chapter.title }}</h1>
+{% include "screening/bird_dialogue.html" with lead="guide_chapter"|page_lead title=chapter.title %}
 {% block chapter %}{% endblock %}
 </article>
 {# #293: the stop's question again, signed in and not yet answered; the route moves on with it. #}

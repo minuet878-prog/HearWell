@@ -8,14 +8,16 @@
 {# #499 (spec #492, the #493 mockup's A1): guest-home.js fills #guest-home with the guest results kept in this browser. #}
 {{ guest_questionnaires|json_script:"guest-home-data" }}
 <script type="module" src="{% static 'screening/frontend/guest-home.js' %}"></script>{% endif %}{% if not user.is_authenticated %}
-{# Spec #655 (#673): door-count.js counts which of the two doors is pressed. #}
+{# Spec #655 (#673): door-count.js counts which door is pressed; since spec #741 (#752) the hero card's 開始 and two doors. #}
 <script type="module" src="{% static 'screening/frontend/door-count.js' %}"></script>{% endif %}{% endblock %}
 
 {% block body %}
 {% if continue_notice %}<div id="continue-notice"></div>{% endif %}
 {% if journey %}
 {# #459 (ADR 0044, mockup #458): the 照顧旅程, its 現在這一步 the one thing to do today. #}
-<h1 class="h3">{{ greeting }}，{% if journey.card.button or journey.card.entries %}今天只要做一件事{% else %}今天沒有要做的事{% endif %}</h1>
+{# #749 (ADR 0076): the greeting is the bird's lead, the rest of the old title the page's title; something to press, a button or an entry card (#744), is a thing to do today. #}
+{% capture bird_lead %}{{ greeting }}，{% endcapture %}
+{% include "screening/bird_dialogue.html" with lead=bird_lead title=journey.card.has_action|yesno:"今天只要做一件事,今天沒有要做的事" %}
 {# 上次結果 is the latest life-impact record, its whole tile a link in its level's colour (L1); 下次篩檢 is grey, information only. Without a life-impact record both are grey and say not yet (#458 D6). #}
 <div class="journey-tiles">
     {% with submission=journey.last_result %}
@@ -72,19 +74,20 @@
             {% if step.state == "current" %}
             {% with card=journey.card %}
             <div class="journey-card">
-                {# The entrance waits for the card's one thing, not the whole step: #480 moved data-play-in-view here from the step, as the to-dos under it made the step too tall to be in view on arrival (ADR 0029 itself unchanged). #}
-                <div class="journey-card-main" data-play-in-view>
-                    <p class="journey-card-label">現在這一步</p>
-                    <h3 class="journey-card-title">{{ card.title }}</h3>
-                    {% if card.because %}<p class="journey-card-because">{{ card.because }}</p>{% endif %}
+                {# #749 (ADR 0076): the 現在這一步 is the page's one thing, in the blue hero card, its button white. The entrance waits for the card's one thing, not the whole step: #480 moved data-play-in-view here from the step, as the to-dos under it made the step too tall to be in view on arrival (ADR 0029 itself unchanged). #}
+                {% capture hero %}
+                    <p class="hero-card-label">現在這一步</p>
+                    <h3 class="hero-card-title">{{ card.title }}</h3>
+                    {% if card.because %}<p>{{ card.because }}</p>{% endif %}
                     {# Spec #741: steps 2 and 4 are white entry cards, nothing else. #}
                     {% if card.entries %}<ul class="journey-entries" role="list">{% for entry in card.entries %}<li>{% include "screening/entry_card.html" with icon=entry.icon text=entry.text href=entry.href come_back=entry.come_back %}</li>{% endfor %}</ul>{% endif %}
                     {% if card.button %}
-                    <a class="btn btn-primary btn-lg w-full" href="{{ card.button.1 }}">{{ card.button.0 }}</a>
+                    <a class="btn btn-hero btn-lg" href="{{ card.button.1 }}">{{ card.button.0 }}</a>
                     {% elif card.href %}
                     <a class="journey-card-link" href="{{ card.href }}">看這一站的說明</a>
                     {% endif %}
-                </div>
+                {% endcapture %}
+                {% include "screening/hero_card.html" with body=hero attrs="data-play-in-view" %}
             </div>
             {% endwith %}
             {% else %}
@@ -126,10 +129,14 @@
 </ul>
 {% else %}
 {# #459 (mockup #458 A): the 空狀態首頁, for a signed-in user without a questionnaire or an audiogram. The dashed box is a preview, not a link. Since spec #655 (#673) a visitor sees the two doors below instead. #}
-{% if guest_questionnaires %}<div id="guest-home" class="grid gap-3 mb-6" hidden></div>{% endif %}
 {% if user.is_authenticated %}
-<h1 class="h3">從一份問卷開始</h1>
-<p>聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。</p>
+{% include "screening/bird_dialogue.html" with lead="index_empty"|page_lead title="從一份問卷開始" %}
+{# #749 (ADR 0076): the one thing to do, in the blue hero card. #}
+{% capture hero %}
+    <p>聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。</p>
+    <a class="btn btn-hero btn-lg btn-start" href="{% url 'questionnaire_list' %}">開始篩檢</a>
+{% endcapture %}
+{% include "screening/hero_card.html" with body=hero attrs="data-play-in-view" %}
 <div class="empty-preview">
     <p class="empty-preview-title">做完第一份問卷，這裡會排出您的照顧旅程</p>
     <ol class="step-list" role="list">
@@ -138,36 +145,39 @@
         <li><span class="step-list-number">3</span><span class="step-list-body">首頁一次告訴您一件該做的事</span></li>
     </ol>
 </div>
-<a class="btn btn-primary btn-lg btn-start w-full" data-play-in-view href="{% url 'questionnaire_list' %}">開始篩檢</a>
 <ul class="home-links" role="list">
     <li><a href="{% url 'guide' %}">了解助聽器選配與補助</a></li>
     <li><a href="{% url 'family_guide' %}">我是家人</a></li>
     <li data-hide-in-app><a href="{% url 'add_to_home' %}">加到手機主畫面</a></li>
 </ul>
 {% else %}
-{# Spec #655 (#673, the #669 mockup's A, grill Q3, Q4): someone not signed in first sees two doors, pale blue blocks one above the other, in the owner's words (#671). They take the place of the heading, the three-step preview, 開始篩檢 and 我是家人; the doors are plain links, and door-count.js counts a press. #}
-<h1 class="visually-hidden">聽伴</h1>
-<ul class="home-doors list-unstyled grid gap-3 m-0" role="list">
-    <li><a class="link-card action-card home-door" href="{% url 'questionnaire_list' %}" data-door="door_self">
-        {% include "screening/action_icon.html" with icon="clipboard" %}
-        <span class="link-card-body">
-            <span class="link-card-title">我想了解自己的聽力</span>
-            <span>大約 3 分鐘，不用註冊</span>
-        </span>
-        <span class="link-card-arrow" aria-hidden="true">›</span>
+{# Spec #741 (#752, the canvas's ProGuest, grill P14, P15): the bird, the blue hero card that starts a questionnaire with no account first, and two doors under it. The card's 開始 and both doors are plain links; door-count.js counts a press of each (P15). #}
+{% include "screening/bird_dialogue.html" with lead="index_guest"|page_lead title="聽力變化常常容易被忽略" %}
+{# P14: a guest result kept in this browser for 7 days, drawn by guest-home.js above the card. #}
+<div id="guest-home" class="grid gap-3" hidden></div>
+{% capture hero %}
+    {# The canvas's sound wave, its bars fading in one after another once (ADR 0077). #}
+    <svg class="hero-wave play-once-wave" viewBox="0 0 318 48" aria-hidden="true" focusable="false"><rect x="0" y="17" width="8" height="14" rx="4"/><rect x="23.8" y="12" width="8" height="24" rx="4"/><rect x="47.7" y="5" width="8" height="38" rx="4"/><rect x="71.5" y="14" width="8" height="20" rx="4"/><rect x="95.4" y="1" width="8" height="46" rx="4"/><rect x="119.2" y="9" width="8" height="30" rx="4"/><rect x="143.1" y="16" width="8" height="16" rx="4"/><rect x="166.9" y="7" width="8" height="34" rx="4"/><rect x="190.8" y="0" width="8" height="48" rx="4"/><rect x="214.6" y="11" width="8" height="26" rx="4"/><rect x="238.5" y="4" width="8" height="40" rx="4"/><rect x="262.3" y="15" width="8" height="18" rx="4"/><rect x="286.2" y="9" width="8" height="30" rx="4"/><rect x="310" y="18" width="8" height="12" rx="4"/></svg>
+    <h2 class="hero-card-title">想了解自己的聽力？</h2>
+    <p class="hero-chips">
+        <span class="hero-chip"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3a9 9 0 100 18 9 9 0 000-18zM12 7v5l3 2"/></svg>大約 3 分鐘</span>
+        <span class="hero-chip"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>不用註冊</span>
+    </p>
+    <a class="btn btn-hero btn-lg" href="{% url 'questionnaire_list' %}" data-door="door_self">開始<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 6l6 6-6 6"/></svg></a>
+{% endcapture %}
+{% include "screening/hero_card.html" with body=hero attrs="data-play-in-view" %}
+<ul class="home-doors list-unstyled m-0" role="list">
+    <li><a class="link-card home-door" href="{% url 'family_guide' %}" data-door="door_family">
+        <span class="home-door-top">{% include "screening/action_icon.html" with icon="family" %}<span class="link-card-arrow" aria-hidden="true">›</span></span>
+        <span class="link-card-title">擔心家人的聽力</span>
     </a></li>
-    <li><a class="link-card action-card home-door" href="{% url 'family_guide' %}" data-door="door_family">
-        {% include "screening/action_icon.html" with icon="family" %}
-        <span class="link-card-body">
-            <span class="link-card-title">我擔心家人的聽力</span>
-            <span>看看可以怎麼幫他</span>
-        </span>
-        <span class="link-card-arrow" aria-hidden="true">›</span>
+    <li><a class="link-card home-door" href="{% url 'guide' %}" data-door="door_aids">
+        <span class="home-door-top">{% include "screening/action_icon.html" with icon="sound" %}<span class="link-card-arrow" aria-hidden="true">›</span></span>
+        <span class="link-card-title">想了解助聽器</span>
     </a></li>
 </ul>
-<p class="mt-4 mb-0"><a class="home-login" href="{% url 'login' %}">我已經有帳號，登入</a></p>
+{# P13: 加到手機主畫面 stays, a small line at the bottom. #}
 <ul class="home-links" role="list">
-    <li><a href="{% url 'guide' %}">了解助聽器選配與補助</a></li>
     <li data-hide-in-app><a href="{% url 'add_to_home' %}">加到手機主畫面</a></li>
 </ul>
 {% endif %}

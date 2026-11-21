@@ -58,7 +58,7 @@ class ReminderCancelTests(TestCase):
         self.assertRedirects(response, reverse("reminder_cancelled"))
         text = test_layout._text(response.content.decode())
         self.assertIn("已取消", text)
-        self.assertLess(text.index("✓ 已取消"), text.index(CANCELLED_WORDS))
+        self.assertLess(text.index("已取消"), text.index(CANCELLED_WORDS))
         reminder = self._reminder()
         self.assertFalse(reminder.enabled)
         self.assertIsNone(reminder.enabled_on)

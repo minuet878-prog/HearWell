@@ -132,7 +132,7 @@ class GuideContentsTests(TestCase):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
-        self.assertIn(f'<h1 class="h3 mt-4">{TITLE}</h1>', content)
+        self.assertIn(f'<h1 class="bird-title">{TITLE}</h1>', content)
         self.assertIn(LOGIN_NOTE, content)
         self.assertIn(CONTENTS_TITLE, content)
         # In the body: the head's description (spec #583) names some chapters too.
@@ -174,7 +174,7 @@ class GuideChapterTests(TestCase):
         self.assertContains(
             response, "<title>第一次配助聽器要準備什麼？去找聽力師之前\uff5c聽伴</title>"
         )
-        self.assertContains(response, '<h1 class="h3 mt-4">去找聽力師之前</h1>')
+        self.assertContains(response, '<h1 class="bird-title">去找聽力師之前</h1>')
         text = article_text(response)
         positions = [text.index(sentence) for sentence in BEFORE_YOU_GO]
         self.assertEqual(positions, sorted(positions))

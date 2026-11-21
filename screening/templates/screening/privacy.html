@@ -1,4 +1,5 @@
 {% extends "screening/layout.html" %}
+{% load custom_filters %}
 
 {% block title %}隱私權說明｜聽伴{% endblock %}
 
@@ -11,7 +12,7 @@ ADR 0034 is the first exception: the question log is new data but not linked to 
 moved only the date (#400).
 {% endcomment %}
 <article class="privacy wrap-anywhere">
-    <h1 class="h3 mt-2">隱私權說明</h1>
+    {% include "screening/bird_dialogue.html" with lead="privacy"|page_lead title="隱私權說明" %}
     <p class="source-note text-body">第 {{ version }} 版，{{ updated_on|date:"Y/m/d" }} 更新</p>
     {# #197: the consent page's four highlights first. #471 (mockup #470 privacy B): they stay open in a 提示框 (P3); every section after them folds into a row of its own, so the rows are the page's contents (the folded list of sections on top went). The words are as they were. #}
     <section class="mb-6" aria-labelledby="highlights-title">
