@@ -133,7 +133,10 @@ class NewUserHomeTests(VisitorHomeTestCase):
     def test_login_link_logs_in_then_opens_the_home_page(self):
         consented_user(username="returning", password=self.PASSWORD)
         login = reverse("login")
-        self.assertContains(self.client.get(reverse("index")), f'<a href="{login}"')
+        # The header's 登入 (#748): the tab bar's and the page's own went (spec #741 P9, P15).
+        self.assertContains(
+            self.client.get(reverse("index")), f'site-login" href="{login}">登入</a>'
+        )
         response = self.client.post(
             login, {"username": "returning", "password": self.PASSWORD}, follow=True
         )
