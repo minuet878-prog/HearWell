@@ -256,7 +256,7 @@ class OnAPhone:
         group = self.page.get_by_role("group")
         expect(group).to_have_count(1)
         if number is not None:
-            expect(group).to_contain_text(f"第 {number} 題／共 {QUESTION_COUNT} 題")
+            expect(group).to_contain_text(f"第 {number} 題，共 {QUESTION_COUNT} 題")
         return group
 
     def answer(self, label, number=None):
@@ -268,12 +268,12 @@ class OnAPhone:
     def answer_ioi_ha(self):
         """On IOI-HA's React page: no wearing step, the norm basis told on item 1 (ADR 0002)."""
         app = self.main().locator(".answer-app")
-        expect(app.get_by_role("group")).to_contain_text("第 1 題／共 7 題")
+        expect(app.get_by_role("group")).to_contain_text("第 1 題，共 7 題")
         expect(app).to_contain_text("本次常模依據：")
         expect(app).not_to_contain_text("有沒有戴助聽器")
         for number in range(1, 8):
             group = app.get_by_role("group")
-            expect(group).to_contain_text(f"第 {number} 題／共 7 題")
+            expect(group).to_contain_text(f"第 {number} 題，共 7 題")
             group.get_by_role("radio").first.check()
             if number < 7:
                 self.next()
@@ -462,7 +462,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             self.next()
             expect(self.main().get_by_role("alert")).to_have_text("請先選一個答案")
             expect(self.main().get_by_role("group").locator("legend")).to_be_focused()
-            expect(self.main().get_by_role("group")).to_contain_text("第 1 題／共 12 題")
+            expect(self.main().get_by_role("group")).to_contain_text("第 1 題，共 12 題")
             self.main().get_by_role("group").get_by_label("不適用", exact=True).check()
             expect(self.main().get_by_role("alert")).to_have_count(0)
             self.next()
@@ -780,7 +780,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         expect(app.get_by_text("本問卷的目的", exact=False)).to_have_count(0)
         expect(about).to_have_attribute("aria-expanded", "false")
         self.assert_step_bar(0, QUESTION_COUNT)
-        expect(progress).to_have_text("第 1 題／共 10 題・還剩大約 3 分鐘")
+        expect(progress).to_have_text("第 1 題，共 10 題")
         about.click()
         expect(about).to_have_attribute("aria-expanded", "true")
         expect(self.page.locator("#answer-intro-text")).to_contain_text("本問卷的目的")
@@ -797,11 +797,10 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             self.next()
             self.answer("有時", number=number)
             if number == 3:
-                # #153 acceptance 1: 3 of 10 segments answered; 3 minutes x 8/10 left, rounded.
+                # #153 acceptance 1: 3 of 10 segments answered.
                 self.assert_step_bar(3, QUESTION_COUNT)
-                expect(progress).to_have_text("第 3 題／共 10 題・還剩大約 2 分鐘")
-        # Rounded down to none on the last question, but never less than a minute.
-        expect(progress).to_have_text("第 10 題／共 10 題・還剩大約 1 分鐘")
+                expect(progress).to_have_text("第 3 題，共 10 題")
+        expect(progress).to_have_text("第 10 題，共 10 題")
 
     def step5_submit(self):
         self.main().get_by_role("button", name="送出").click()
@@ -6779,6 +6778,7 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
     SURFACE = "rgb(244, 246, 248)"
     BRAND_SELECTED = "rgb(232, 238, 247)"
     BRAND_SOFT_DEEP = "rgb(214, 226, 242)"
+    HEADING = "rgb(33, 37, 41)"
     # D1: the thick blue edge on an open dropdown's left, 0.3rem at the 18px base, painted on its
     # background (a 並列區塊 keeps no shadow, ADR 0024).
     OPEN_EDGE = "linear-gradient(to right, rgb(31, 78, 140) 5.4px, rgba(0, 0, 0, 0) 5.4px)"
@@ -7039,7 +7039,8 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
         )
 
     # C1: the chosen answer is dark blue with white words and a white tick on its right; the
-    # others stay white.
+    # others stay white. #755 (canvas ProAnswer, spec #741 P10): on the answer page, the soft
+    # blue with the heading's dark words and a solid blue tick instead.
     def test_chosen_answers_turn_dark_blue_with_a_tick(self):
         with self.saving_artifacts():
             for name, javascript, path, where, opener in self.answer_pages():
@@ -7050,16 +7051,21 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
                         opener(self.page)
                     scope = self.page.locator(where)
                     choice = self.choose_one(scope)
+                    answer_page = where in ("#answer-app", "#answer-form")
                     self.assertEqual(
                         {prop: self.style(choice, prop) for prop in ("backgroundColor", "color")},
-                        {"backgroundColor": self.PRIMARY, "color": self.WHITE},
+                        {"backgroundColor": self.BRAND_SELECTED, "color": self.HEADING}
+                        if answer_page
+                        else {"backgroundColor": self.PRIMARY, "color": self.WHITE},
                     )
                     tick = {
                         prop: self.style(choice, prop, "::after")
                         for prop in ("content", "backgroundColor", "backgroundImage", "width")
                     }
                     self.assertNotEqual(tick["content"], "none")
-                    self.assertEqual(tick["backgroundColor"], self.WHITE)
+                    self.assertEqual(
+                        tick["backgroundColor"], self.PRIMARY if answer_page else self.WHITE
+                    )
                     self.assertIn("svg", tick["backgroundImage"])
                     self.assertGreater(float(tick["width"].removesuffix("px")), 0)
                     group = choice.locator(
@@ -10666,7 +10672,7 @@ class AnswerHeadFirstScreenTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiv
             first_top = self.legend_top()
             self.answer("沒戴")
             self.next()
-            expect(self.main().get_by_role("group")).to_contain_text("第 1 題／共 10 題")
+            expect(self.main().get_by_role("group")).to_contain_text("第 1 題，共 10 題")
             self.assert_head_folded()
             # The question moves up by what the head took.
             self.assertLess(self.legend_top(), first_top - 80)
@@ -11251,7 +11257,7 @@ class ChooserAndAnsweringT362Test(SavesFailureArtifacts, LayoutOnAPhone, StaticL
             self.answer_page("ioi-ha")
             app = self.main().locator(".answer-app")
             fieldset = app.locator("fieldset")
-            expect(fieldset).to_contain_text("第 1 題／共 7 題")
+            expect(fieldset).to_contain_text("第 1 題，共 7 題")
             intro = app.locator("> div").first
             expect(intro).to_contain_text("這是常模比較的分組，不代表聽損程度。")
             gap = fieldset.bounding_box()["y"] - (
@@ -14348,8 +14354,10 @@ class ScreeningAnsweringT463Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLi
                     self.open(self.answer_page(code))
                     self.wait_for_questions()
                     expect(self.nav()).to_be_hidden()
-                    # 聽伴 at the top left leads out.
-                    expect(self.page.locator(".site-brand a")).to_be_visible()
+                    # 離開 at the top left leads out (#755, was 聽伴).
+                    expect(
+                        self.page.get_by_role("banner").get_by_role("link", name="離開")
+                    ).to_be_visible()
             # Wide screens keep their top bar; other pages keep the phone's tab bar.
             self.open(self.answer_page("hhie-s"), self.DESKTOP)
             expect(self.nav()).to_be_visible()
@@ -14412,9 +14420,16 @@ class ScreeningAnsweringT463Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLi
                     choice = self.main().locator("div.choice-group label").first
                     self.assertEqual(self.style(choice, "borderTopColor"), self.EDGE)
                     choice.locator("input").check()
-                    # Chosen stays dark blue with white words (#328).
-                    self.assertEqual(self.style(choice, "backgroundColor"), "rgb(31, 78, 140)")
-                    self.assertEqual(self.style(choice, "color"), "rgb(255, 255, 255)")
+                    if path.startswith("/questionnaire/"):
+                        # #755 (canvas ProAnswer): the answer page's chosen is the soft blue
+                        # with a blue edge and the headings' dark words.
+                        colours = ("rgb(232, 238, 247)", "rgb(33, 37, 41)")
+                        self.assertEqual(self.style(choice, "borderTopColor"), "rgb(31, 78, 140)")
+                    else:
+                        # Chosen stays dark blue with white words (#328).
+                        colours = ("rgb(31, 78, 140)", "rgb(255, 255, 255)")
+                    self.assertEqual(self.style(choice, "backgroundColor"), colours[0])
+                    self.assertEqual(self.style(choice, "color"), colours[1])
 
     def test_continue_and_start_over_stack_the_whole_width(self):
         self.open(self.answer_page("hhie-s"))
@@ -16476,11 +16491,11 @@ class EnterNextFieldTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
 
 class AnswerReassuranceTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """Spec #611 Q2 (the #613 mockup's A): under the count on the answer page's first screen, in
-    its grey; both sentences when signed in, the first only for a guest; gone past the first
-    screen; the first question and 下一題 still on a 390 phone's first screen (acceptance 67)."""
+    its grey; the sentence when signed in, none for a guest; gone past the first screen; the
+    first question and 下一題 still on a 390 phone's first screen (acceptance 67). Its first
+    sentence, 這不是考試，沒有對錯。, went in #755 (spec #741 P21)."""
 
     fixtures = ("questions_fixture.json",)
-    FIRST = "這不是考試，沒有對錯。"
     SECOND = "答到一半離開，答案會留在這支手機，7 天內回來可以接著答。"
     # SADL and IOI-HA start on question 1, whose answers already took 下一題 under a 390 x 844
     # first screen before the line was added (about 950px down); their question stays in it.
@@ -16508,7 +16523,7 @@ class AnswerReassuranceTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
             box = part.bounding_box()
             self.assertLessEqual(box["y"] + box["height"], self.PHONE[1], where)
 
-    def test_signed_in_every_questionnaire_says_both_sentences_then_folds_them(self):
+    def test_signed_in_every_questionnaire_says_the_sentence_then_folds_it(self):
         self.sign_in(consented_user(username="reassurance_e2e", birth_year=1950))
         with self.saving_artifacts():
             for code in ("hhie-s", "hhia-s", "thi", "ssq12-tw", "sadl", "ioi-ha"):
@@ -16517,7 +16532,7 @@ class AnswerReassuranceTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
                     self.wait_for_questions()
                     line = self.reassure()
                     expect(line).to_be_visible()
-                    expect(line).to_have_text(self.FIRST + self.SECOND)
+                    expect(line).to_have_text(self.SECOND)
                     meta = self.main().locator(".answer-meta")
                     self.assertGreaterEqual(
                         line.bounding_box()["y"],
@@ -16534,15 +16549,12 @@ class AnswerReassuranceTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
                     expect(self.main().locator(".answer-app .question-progress")).to_be_visible()
                     expect(line).to_be_hidden()
 
-    def test_a_guest_says_the_first_sentence_above_the_guest_line(self):
+    def test_a_guest_says_none_but_the_guest_line(self):
         with self.saving_artifacts():
             self.open(self.answer_page("hhie-s"), signed_in=False)
             self.wait_for_questions()
-            line = self.reassure()
-            expect(line).to_have_text(self.FIRST)
-            guest = self.main().locator(".answer-guest-line")
-            expect(guest).to_be_visible()
-            self.assertLess(line.bounding_box()["y"], guest.bounding_box()["y"])
+            expect(self.reassure()).to_have_count(0)
+            expect(self.main().locator(".answer-guest-line")).to_be_visible()
             self.assert_first_screen_holds_the_question("guest")
 
     def test_fits_a_phone_at_double_text_size(self):
@@ -16554,8 +16566,87 @@ class AnswerReassuranceTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
                     with self.subTest(where=where):
                         self.open(self.answer_page("hhie-s"), (width, 844), signed_in=signed_in)
                         self.wait_for_questions()
-                        expect(self.reassure()).to_be_visible()
+                        if signed_in:
+                            expect(self.reassure()).to_be_visible()
                         self.assert_fits_a_phone_at_double_text_size(where, width)
+
+
+class AnswerPageLayoutT755Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#755 (spec #741 acceptance 47, P10, P21; canvas ProAnswer): 離開 at the top left all the
+    time, large white choices with a tick on the chosen one, 上一題 and 下一題 side by side, and
+    這份問卷在問什麼？ under them."""
+
+    fixtures = ("questions_fixture.json",)
+    WHITE = "rgb(255, 255, 255)"
+
+    def setUp(self):
+        self.sign_in(consented_user(username="answer_layout_e2e", birth_year=1950))
+        self.url = f"/questionnaire/{Questionnaire.objects.get(code='hhie-s').pk}"
+
+    def app(self):
+        return self.main().locator(".answer-app")
+
+    def leave(self):
+        return self.page.get_by_role("banner").get_by_role("link", name="離開")
+
+    def to_question_1(self):
+        expect(self.page.locator("html.answer-loading")).to_have_count(0)
+        self.app().get_by_label("沒戴").check()
+        self.app().get_by_role("button", name="下一題").click()
+        expect(self.app().get_by_role("group")).to_contain_text("第 1 題，共 10 題")
+
+    def test_leave_stays_at_the_top_left_and_goes_to_the_questionnaires(self):
+        with self.saving_artifacts():
+            self.open(self.url)
+            self.to_question_1()
+            box = self.leave().bounding_box()
+            self.assertLess(box["x"], 40)
+            self.assertLess(box["y"], 40)
+            self.assertGreaterEqual(box["height"], 44)
+            # Scrolled down, it is still there; the floating back button never shows.
+            self.page.evaluate("scrollTo({ top: document.body.scrollHeight, behavior: 'instant' })")
+            expect(self.leave()).to_be_visible()
+            self.assertLess(self.leave().bounding_box()["y"], 40)
+            expect(self.page.locator(".site-back")).to_have_count(0)
+            self.leave().click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/questionnaire_list")
+
+    def test_choices_are_large_white_buttons_and_the_chosen_has_a_tick(self):
+        with self.saving_artifacts():
+            self.open(self.url)
+            self.to_question_1()
+            labels = self.app().locator("div.choice-group label")
+            self.assertEqual(labels.count(), 3)
+            for label in labels.all():
+                self.assertGreaterEqual(label.bounding_box()["height"], 60)
+                self.assertEqual(self.style(label, "backgroundColor"), self.WHITE)
+                self.assertEqual(self.style(label, "fontWeight"), "700")
+                # No round radio button shows; the radio is still there to tab to.
+                self.assertEqual(self.style(label.get_by_role("radio"), "opacity"), "0")
+            labels.nth(1).click()
+            expect(labels.nth(1).get_by_role("radio")).to_be_checked()
+            tick = labels.nth(1).evaluate("el => getComputedStyle(el, '::after').backgroundImage")
+            self.assertIn("svg", tick)
+            self.assertEqual(self.style(labels.nth(0), "backgroundColor"), self.WHITE)
+            # 上一題 and 下一題 side by side.
+            back = self.app().get_by_role("button", name="上一題").bounding_box()
+            forward = self.app().get_by_role("button", name="下一題").bounding_box()
+            self.assertEqual(back["y"], forward["y"])
+            self.assertLess(back["x"] + back["width"], forward["x"])
+            # 這份問卷在問什麼？ under them.
+            about = self.app().get_by_role("button", name="這份問卷在問什麼？").bounding_box()
+            self.assertGreater(about["y"], forward["y"] + forward["height"])
+
+    def test_without_javascript_the_intro_is_folded_under_the_form(self):
+        with self.saving_artifacts():
+            self.open(self.url, java_script_enabled=False)
+            expect(self.leave()).to_be_visible()
+            fold = self.main().locator("#answer-intro-fold")
+            send = self.main().get_by_role("button", name="送出")
+            self.assertGreater(fold.bounding_box()["y"], send.bounding_box()["y"])
+            expect(self.main().get_by_text("本問卷的目的", exact=False)).to_be_hidden()
+            fold.get_by_text("這份問卷在問什麼？").click()
+            expect(self.main().get_by_text("本問卷的目的", exact=False)).to_be_visible()
 
 
 class FeedbackTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):

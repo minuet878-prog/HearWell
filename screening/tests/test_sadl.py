@@ -189,9 +189,10 @@ class SadlScoringTests(SadlTestCase):
     def test_answer_and_result_pages_credit_the_scale_and_its_translators(self):
         credit = "© University of Memphis, 1999；中文版：Fang 等，2013（國泰綜合醫院）"
         page = self.client.get(reverse("screening", args=[self.questionnaire.pk])).content.decode()
-        # With the intro that React folds under 這份問卷在問什麼？ (#463), above the form. Asserted
-        # after the form before #748, which only held while the header's logout form came first.
-        intro = page[page.index("<main") : page.index("<form")]
+        # With the intro that React folds under 這份問卷在問什麼？ (#463), folded under the form
+        # without React too since #755.
+        intro = page[page.index('<details class="questionnaire-fold" id="answer-intro-fold">') :]
+        intro = intro[: intro.index("</details>")]
         self.assertIn(credit, intro)
         self.answer([4] * 15)
         result = self.client.get(reverse("result", args=[Submission.objects.get().pk]))

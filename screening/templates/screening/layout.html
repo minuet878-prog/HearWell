@@ -72,16 +72,21 @@
     <header class="site-header">
         <div class="container site-header-bar">
             {# #748 (ADR 0079): scrolled past the header, the name gives way to a round frosted ‹ (site-header.js). Without JavaScript that is a link home beside the name. #}
+            {# header_start, header_end: the answer page puts its own 離開 and topic here (#755). #}
             <div class="site-header-start">
+                {% block header_start %}
                 <p class="site-brand"><a href="{% url 'index' %}"><span class="site-logo" aria-hidden="true"></span><span>聽<span class="site-wordmark-tint">伴</span></span></a></p>
                 <a class="site-back" href="{% url 'index' %}" aria-label="回首頁" data-site-back><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></a>
+                {% endblock %}
             </div>
             {# #748 (spec #741 P8): signed in, the first letter of the name leads to account settings (logout is at the foot of that page); signed out, 登入 in a blue frame. #}
+            {% block header_end %}
             {% if user.is_authenticated %}
             <a class="site-avatar" href="{% url 'account_settings' %}" aria-label="帳號設定：{{ user.username }}">{{ user.username|first|upper }}</a>
             {% else %}
             <a class="btn btn-outline-primary site-login" href="{% url 'login' %}">登入</a>
             {% endif %}
+            {% endblock %}
         </div>
     </header>
 
