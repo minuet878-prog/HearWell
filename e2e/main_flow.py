@@ -4473,14 +4473,22 @@ class SiteHeaderTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
         for standalone in (False, True):
             with self.subTest(standalone=standalone):
                 self.open(standalone=standalone)
+                self.context.add_init_script(REVEAL_WATCH)
                 with self.saving_artifacts():
                     self.page.goto(f"{self.live_server_url}/learn")
                     nav = self.page.get_by_role("navigation", name="主要導覽")
                     nav.get_by_role("link", name="問卷").click()
                     expect(self.page).to_have_url(f"{self.live_server_url}/questionnaire_list")
-                    # The URL changes as the page starts: scrolled before it has loaded (and its
-                    # tab pill has slid), a slow machine scrolled a page not all there yet.
+                    # The URL changes as the page starts: scrolled before it has loaded, a slow
+                    # machine scrolled a page not all there yet.
                     self.page.wait_for_load_state("load")
+                    # load comes while the tab pill still slides (about 0.25s): over the page
+                    # the slide takes every press, so the click missed the back button, and
+                    # Playwright's retry scrolled it into view: back to the top, where it hides.
+                    wait_until(
+                        self.page,
+                        "window.revealed && (window.revealed !== 'transition' || window.settled)",
+                    )
                     self.scroll_to(400)
                     expect(self.header()).to_have_attribute("data-scrolled", "")
                     self.header().get_by_role("link", name="回上一頁").click()
