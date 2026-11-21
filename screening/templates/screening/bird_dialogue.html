@@ -1,9 +1,10 @@
-{# Every page's top (ADR 0076, spec #741 acceptance 33): the bird and its pale blue bubble, the lead (screening/page_leads.py) above the page's title. `lead`, `title`; `title_attrs`: more attributes on the h1, for a page whose script finds or swaps its title. #}
+{# Every page's top (ADR 0076, spec #741 acceptance 33): the bird and its pale blue bubble, the lead (screening/page_leads.py) above the page's title. `lead`, `title`; `title_attrs`: more attributes on the h1, for a page whose script finds or swaps its title; `after`: what the bird offers under the title, made with {% capture %} (the questionnaires page's 幫我選, #753). #}
 <div class="bird-dialogue">
     <span class="bird-avatar" aria-hidden="true"></span>
     <div class="bird-bubble">
         <svg class="bird-bubble-tail" viewBox="0 0 16 22" aria-hidden="true" focusable="false"><path d="M16 0C12 9 6 13 0 14c7 1 12 4 16 8z"/></svg>
         <p class="bird-lead">{{ lead }}</p>
         <h1 class="bird-title"{% if title_attrs %} {{ title_attrs }}{% endif %}>{{ title }}</h1>
+        {% if after %}{{ after }}{% endif %}
     </div>
 </div>
