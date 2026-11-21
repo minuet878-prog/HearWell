@@ -8662,6 +8662,12 @@
     margin-top: auto;
   }
 
+  /* The owner (2026-11-21, at #741's acceptance): the 了解 page's cards have their words
+     centred; the drawing above was already. */
+  .learn-card {
+    text-align: center;
+  }
+
   .hero-card .recommended-audience {
     color: #fff;
   }

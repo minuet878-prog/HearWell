@@ -11,7 +11,7 @@
 <section class="card-stack" aria-roledescription="輪播" aria-label="了解卡片">
     <div class="card-stack-cards">
     {% for item in stack %}
-        <article class="hero-card card-stack-card" role="group" aria-roledescription="卡片" aria-label="第 {{ forloop.counter }} 張，共 {{ stack|length }} 張：{{ item.title }}"{% if not forloop.first %} inert{% endif %}>
+        <article class="hero-card card-stack-card learn-card" role="group" aria-roledescription="卡片" aria-label="第 {{ forloop.counter }} 張，共 {{ stack|length }} 張：{{ item.title }}"{% if not forloop.first %} inert{% endif %}>
             {% include "screening/learn_drawing.html" with key=item.key %}
             <h2 class="hero-card-title text-balance">{{ item.title }}</h2>
             <p>{{ item.line }}</p>
