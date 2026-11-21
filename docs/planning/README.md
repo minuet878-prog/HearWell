@@ -18,6 +18,7 @@
 | 全站改版第 2 階段（待辦、便當格與聽力護照、故事卡片、家人模式） | [拷問決定](redesign/phase-2-grill-decisions.md) | 待辦 [#478](https://github.com/minuet878-prog/HearWell/issues/478)；其餘待開 |
 | 全站改版第 3 階段（情境日記、配戴與保養、聽損模擬、噪音計） | [拷問決定](redesign/phase-3-grill-decisions.md) | 聽損模擬 [#484](https://github.com/minuet878-prog/HearWell/issues/484)；怎麼戴上、拿下 [#502](https://github.com/minuet878-prog/HearWell/issues/502)；其餘待開 |
 | 照顧旅程展開改版（七步、拿掉待辦、問答卡、蓋章與倒數） | [拷問決定](redesign/journey-redesign-grill-decisions.md) | 待開 |
+| 頁面改版（小鳥對話、藍色大卡、堆疊卡、返回鍵、紀錄頁） | [拷問決定](redesign/page-redesign-grill-decisions.md)，和照顧旅程合成一份母規格 | 待開 |
 | 開放階段（免註冊先篩檢、Google 與 LINE 登入） | [規劃](open-access/plan.md)、[第 1 項拷問決定](open-access/grill-decisions.md)、[登入研究](open-access/login-research.md)、[登入拷問決定](open-access/login-grill-decisions.md) | 免註冊先篩檢 [#492](https://github.com/minuet878-prog/HearWell/issues/492)；Google 登入 [#505](https://github.com/minuet878-prog/HearWell/issues/505)；LINE 登入 [#506](https://github.com/minuet878-prog/HearWell/issues/506) |
 | 自助重設密碼（忘記密碼寄信） | [設計圖選定](password-reset/mockup-524-decisions.md) | [#355](https://github.com/minuet878-prog/HearWell/issues/355) |
 | 讓家屬找得到（收尾、搜尋、關於與回饋、重測提醒、家屬頁面、診間小卡） | [規劃](found-by-family/plan.md)、[第 1 項拷問決定](found-by-family/closing-grill-decisions.md)、[外部監控研究](found-by-family/monitoring-research.md) | 待開 |

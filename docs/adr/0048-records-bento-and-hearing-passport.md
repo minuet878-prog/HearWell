@@ -2,6 +2,8 @@
 
 日期：2026-11-13（本人審定，[第 2 階段拷問決定](../planning/redesign/phase-2-grill-decisions.md) Q15–Q20）
 
+> 整份由 [ADR 0078](0078-records-page-without-bento-or-passport.md) 取代：便當格與聽力護照不做。
+
 ## 情境
 
 「紀錄」分頁現在是「問卷｜聽力圖」二選一（ADR 0019）。定稿紀錄頁是一頁便當格總覽，最下面一格是「聽力護照」，有「給醫師看」按鈕。
