@@ -161,7 +161,8 @@ class CareJourney:
         return sum(step.state in (DONE, NOT_NEEDED) for step in self.steps)
 
 
-HOSPITAL_ENTRY = Entry(FIND_A_HOSPITAL, f"/qa/{WHERE_TO_TEST}", "pin")
+def _hospital_entry():
+    return Entry(FIND_A_HOSPITAL, reverse("qa_answer", args=[WHERE_TO_TEST]), "pin")
 
 
 def _audiogram_sources():
@@ -266,7 +267,7 @@ def _eligibility(route, not_needed_now):
 def _step(number, title, about, current, done_on, not_needed, eligibility, no_audiogram):
     entries, entries_title, ineligible = (), "", False
     if number == 2:
-        entries = (HOSPITAL_ENTRY,)
+        entries = (_hospital_entry(),)
     if number == 3 and no_audiogram:
         # Spec #741 story 4: with no audiogram step 2 is the 現在這一步, never step 3, as they
         # are done together (grill Q9); so step 3 opens to the audiogram's sources.
@@ -334,7 +335,7 @@ def _card(current, route, eligibility, today, three_months, next_screening, life
         button = (LIFE_IMPACT_BUTTON, life_impact_href)
         return JourneyCard(title, LIFE_IMPACT_BECAUSE, "clipboard", button=button)
     if current == 2:
-        return JourneyCard(title, "", "pin", entries=(HOSPITAL_ENTRY,))
+        return JourneyCard(title, "", "pin", entries=(_hospital_entry(),))
     if current == 3:
         # Step 2 is done on any audiogram, step 3 on one that can tell: here it cannot.
         edit = reverse("audiogram_edit", args=[route.audiogram.pk])

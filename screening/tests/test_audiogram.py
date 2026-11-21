@@ -1658,11 +1658,12 @@ class AudiogramPagesT365Test(TestCase):
         self.assertLess(main.index('id="audiogram-app"'), back.start())
 
     def test_from_the_care_journey_the_way_back_is_to_the_page_it_came_from(self):
-        # The 2026-11-14 walkthrough (mockup 2A): sent from the home page or a result page with
-        # next, someone without a report yet goes back there; anything else, to the list.
+        # The 2026-11-14 walkthrough (mockup 2A): sent from the home page with next, someone
+        # without a report yet goes back there; anything else, to the list. Since #744 a result
+        # page sends no one here.
         for next_url, text, href in (
             ("/", "還沒有報告，回首頁", "/"),
-            ("/submission/12", "還沒有報告，回結果", "/submission/12"),
+            ("/submission/12", "不新增了，回聽力圖清單", reverse("audiogram_list")),
             ("https://example.com/", "不新增了，回聽力圖清單", reverse("audiogram_list")),
             ("/my_hearing", "不新增了，回聽力圖清單", reverse("audiogram_list")),
         ):
