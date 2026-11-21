@@ -6112,6 +6112,37 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     expect(stamp).to_be_visible()
                     self.assertEqual(self.page.evaluate(self.STAMP_ANIMATIONS), [])
 
+    # #746 (spec #741, ADR 0075, 0077): step 7's countdown ring draws when its step first opens,
+    # once, the days counting up; reduced motion shows both at rest. A screen reader hears
+    # 還有 N 天, the ring itself hidden.
+    RING_ANIMATIONS = """() => document.getAnimations()
+        .filter(a => a.effect.target.classList.contains('countdown-ring-arc'))
+        .map(a => a.animationName)"""
+
+    def test_the_countdown_ring_draws_once_and_says_the_days(self):
+        self.submission(self.hhie_s, (2,) * 10)  # the next screening 6 months from today
+        today = timezone.localdate()
+        days = (add_months(today, 6) - today).days
+        for motion in (True, False):
+            with self.subTest(motion=motion):
+                self.open(motion=motion, width=390)
+                with self.saving_artifacts():
+                    self.page.goto(f"{self.live_server_url}/")
+                    row = self.page.locator(".journey-about > summary").last
+                    ring = self.page.locator(".countdown-ring")
+                    expect(ring).to_be_hidden()
+                    row.click()
+                    expect(ring).to_be_visible()
+                    played = self.page.evaluate(self.RING_ANIMATIONS)
+                    self.assertEqual(played, ["play-once-draw"] if motion else [])
+                    expect(ring).to_match_aria_snapshot(f"- paragraph: 還有 {days} 天")
+                    expect(ring.locator("[data-count-up]")).to_have_attribute("data-count-done", "")
+                    self.page.wait_for_timeout(1300)
+                    row.click()
+                    row.click()
+                    expect(ring).to_be_visible()
+                    self.assertEqual(self.page.evaluate(self.RING_ANIMATIONS), [])
+
     def test_reduced_motion_keeps_the_header_still(self):
         self.open()  # reduced motion
         with self.saving_artifacts():

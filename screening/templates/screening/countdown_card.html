@@ -3,7 +3,7 @@
     {% include "screening/countdown_ring.html" with countdown=countdown %}
     <div class="countdown-card-when">
         {% if countdown.above %}<p class="countdown-card-words">{{ countdown.above }}</p>{% endif %}
-        <p class="countdown-card-date"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg>{{ countdown.on|date:"Y/m/d" }}</p>
+        <p class="countdown-card-date"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg>{{ countdown.on|date:"Y/" }}<wbr>{{ countdown.on|date:"m/d" }}</p>
         {% if countdown.below %}<p class="countdown-card-words">{{ countdown.below }}</p>{% endif %}
     </div>
 </div>
