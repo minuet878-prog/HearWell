@@ -57,9 +57,9 @@ class ResultReminderTests(TestCase):
             with self.subTest(code=code):
                 url = self._result_url(code)
                 page, block = self._block(url)
-                # Under 建議您下一步, above 看完整說明.
+                # Under 建議您下一步 and the rows under it (#750, page grill P16).
                 self.assertLess(page.index("建議您下一步"), page.index(BLOCK))
-                self.assertLess(page.index(BLOCK), page.index('<details class="result-details"'))
+                self.assertLess(page.index('<div class="result-list">'), page.index(BLOCK))
                 text = test_layout._text(block)
                 self.assertIn("半年後再做一次", text)
                 self.assertIn("下次建議 2027/05/17。", text)

@@ -68,7 +68,8 @@ class ResultPagesTests(TestCase):
                 header = re.search(
                     r"<h1[^>]*>(.*?)</h1>\s*</div>\s*</div>\s*<p[^>]*>(.*?)</p>", main, re.S
                 )
-                self.assertEqual(self._text(header.group(1)), topic)
+                # #750 (canvas ProResult): 看看 the topic.
+                self.assertEqual(self._text(header.group(1)), f"看看{topic}")
                 # IOI-HA and SADL are always answered wearing hearing aids: not said again.
                 wearing = "" if code in ALWAYS_AIDED else "・沒戴助聽器"
                 self.assertEqual(self._text(header.group(2)), f"{name}・{day} 作答{wearing}")
@@ -80,14 +81,15 @@ class ResultPagesTests(TestCase):
         self.assertNotContains(response, "篩檢結果")
 
     def test_every_dropdown_on_a_result_page_is_a_list_row_or_a_line_inside_it(self):
-        # #461: 看完整說明 is a list row; the folds inside it are lines, so a box never sits in a
-        # box (dropdowns tidy-up).
+        # #461: a fold is a list row (#750: a graded page's 看每一題的回答 and 這個分數怎麼算);
+        # the folds inside are lines, so a box never sits in a box (dropdowns tidy-up).
         for code in QUESTIONNAIRES:
             with self.subTest(code=code):
                 tags = re.findall(r"<details[^>]*>", self._main(code))
                 self.assertEqual(tags[0], '<details class="result-details">')
                 for details in tags[1:]:
-                    self.assertIn("dropdown-line", details)
+                    row = details == '<details class="result-details">'
+                    self.assertTrue(row or "dropdown-line" in details, details)
 
     def test_ssq12_without_an_earlier_record_still_says_which_way_is_better(self):
         self.assertIn("分數越高，代表您回報的聆聽能力越好。", self._main("ssq12-tw"))
@@ -116,9 +118,7 @@ class ResultPagesTests(TestCase):
         )
         cards = action_cards_titles(self._main("hhia-s"))
         # The optional SSQ12-TW row (unaided HHIA-S) comes last.
-        self.assertEqual(
-            cards[:4], ["分享給家人", "印聽力報告給醫師看", "看我的紀錄", "比較戴與不戴助聽器"]
-        )
+        self.assertEqual(cards[:4], ["印聽力報告", "分享給家人", "看紀錄", "比較戴與不戴助聽器"])
 
 
 def action_cards_titles(html):

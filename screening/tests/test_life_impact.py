@@ -123,15 +123,12 @@ class LevelColorTests(TestCase):
                 )
                 self.assertContains(page, f'aria-describedby="result-score">{text}</h2>')
 
-    def test_score_bar_segments_take_the_level_colours(self):
+    def test_gauge_arcs_take_the_level_colours(self):
         page = self.client.get(reverse("result", args=[self._submit(4).pk])).content.decode()
         self.assertEqual(
-            re.findall(
-                r'class="score-bar-segment score-bar-segment-([\w-]+(?: score-bar-segment-deep)?)"',
-                page,
-            ),
+            re.findall(r'<path class="gauge-arc gauge-arc-([\w-]+(?: gauge-arc-deep)?)', page),
             # The second of two levels in one colour is the deeper shade (Definition.shade).
-            ["normal", "mild_to_moderate", "mild_to_moderate score-bar-segment-deep"],
+            ["normal", "mild_to_moderate", "mild_to_moderate gauge-arc-deep"],
         )
 
     def test_history_badges_and_trend_bands_take_the_level_colours(self):

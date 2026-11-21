@@ -493,7 +493,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             ).to_be_visible()
             expect(self.main().get_by_text("情緒分數", exact=False)).to_have_count(0)
             self.page.screenshot(path="/tmp/hearwell-ssq12-result.png", full_page=True)
-            self.main().locator(".result-list").get_by_role("link", name="看我的紀錄").click()
+            self.main().locator(".result-list").get_by_role("link", name="看紀錄").click()
             expect(self.main().locator("a.link-card:not(.action-card)")).to_contain_text(
                 "整體平均：6.3"
             )
@@ -1475,7 +1475,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
             self.step1_history_shows_the_reminder()
             self.step2_home_shows_the_reminder()
             self.step3_retest()
-            self.step4_result_steps_and_score_bar()
+            self.step4_result_steps_and_gauge()
             self.step5_home_shows_the_next_date()
             self.step6_history_compares_with_last_time()
 
@@ -1683,40 +1683,39 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         self.main().get_by_role("button", name="送出").click()
         expect(self.page).to_have_url(re.compile(r"/submission/\d+$"))
 
-    def step4_result_steps_and_score_bar(self):
+    def step4_result_steps_and_gauge(self):
         # Every answer 有時 (2 points) x 10.
         expect(self.main().locator("#result-score")).to_contain_text("總分 20 分")
         expect(self.main().locator(".result-banner")).to_contain_text("輕度到中度影響")
-        # HHIE-S 輕度到中度影響's steps (ticket #157), since #461 step 1 under the level and the
-        # others behind 看完整說明: the check, then the retest. The report is left to the list
-        # rows, as this step's words do not mention it (result page tidy-up); since spec #693
-        # no link to the hearing-aid guide.
-        expect(self.main().locator(".result-one-line")).to_contain_text(
-            "聽力問題已經慢慢影響您的社交活動與情緒"
-        )
-        folded = self.main().locator(".result-details-body")
+        # #750 (page grill P11): large, the level's short name.
+        expect(self.main().locator(".result-level-short")).to_have_text("輕到中度")
+        # HHIE-S 輕度到中度影響's steps (ticket #157), since #750 all under 這個分數怎麼算: the
+        # check, then the retest. The report is left to the list rows, as this step's words do
+        # not mention it (result page tidy-up); since spec #693 no link to the hearing-aid guide.
+        how = self.main().locator(".result-details").filter(has_text="這個分數怎麼算")
+        folded = how.locator(".result-details-body")
         expect(folded).to_be_hidden()
-        # Readability batch 3 (B6 A): the bar in sight in the result box, not behind the fold.
-        expect(self.main().locator(".result-banner .score-bar")).to_be_visible()
-        expect(folded.locator(".score-bar")).to_have_count(0)
-        self.main().locator(".result-details > summary").click()
+        # The gauge in sight in the result box, not in the fold.
+        expect(self.main().locator(".result-banner .gauge")).to_be_visible()
+        expect(folded.locator(".gauge")).to_have_count(0)
+        how.locator(":scope > summary").click()
+        expect(folded).to_contain_text("聽力問題已經慢慢影響您的社交活動與情緒")
         expect(folded).to_contain_text("建議前往醫院耳鼻喉科進行聽力相關檢查")
         expect(folded.get_by_role("link", name="看助聽器選配與補助")).to_have_count(0)
         expect(folded.get_by_role("link", name="看／印聽力報告")).to_have_count(0)
         expect(folded).to_contain_text("半年後再做一次，時間到了首頁會提醒您。")
-        # Ticket #158: 20 of 40 sits halfway along the bar, inside the 輕度到中度 segment
-        # (9-24 of 0-40).
-        bar = self.page.locator(".score-bar-segments").bounding_box()
-        marker = self.page.locator(".score-bar-marker").bounding_box()
-        self.assertAlmostEqual(
-            marker["x"], bar["x"] + (bar["width"] - marker["width"]) / 2, delta=0.5
-        )
-        mild = self.page.locator(".score-bar-segment-mild_to_moderate").bounding_box()
-        centre = marker["x"] + marker["width"] / 2
+        # 20 of 40 sits at the top of the arc, its middle, on the thick 輕度到中度 arc (9-24).
+        arcs = self.page.locator(".gauge-arcs").bounding_box()
+        knob = self.page.locator(".gauge-knob").bounding_box()
+        centre = knob["x"] + knob["width"] / 2
+        self.assertAlmostEqual(centre, arcs["x"] + arcs["width"] / 2, delta=0.5)
+        mild = self.page.locator(".gauge-arc-current").bounding_box()
         self.assertTrue(mild["x"] < centre < mild["x"] + mild["width"])
-        # Readability batch 3: only the two ends, 0 and 40; the level is in large type over it.
-        expect(self.page.locator(".score-bar-current")).to_have_count(0)
-        expect(self.page.locator(".score-bar-ends > span")).to_have_text(["0", "40"])
+        expect(self.page.locator(".gauge-arc-current")).to_have_class(
+            re.compile("mild_to_moderate")
+        )
+        # The scale's two ends.
+        expect(self.page.locator(".gauge-end")).to_have_text(["0", "40"])
 
     def step5_home_shows_the_next_date(self):
         # #461: the result page's 回首頁 went; the tab bar has 首頁.
@@ -5617,7 +5616,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 banner = self.page.locator(f".result-banner-{level}")
                 expect(banner).to_be_visible()
                 with self.subTest(page="result", level=level):
-                    text = self.style(banner.locator(".result-block-level"), "color")
+                    # #750: the level's short name, large.
+                    text = self.style(banner.locator(".result-level-short"), "color")
                     self.assertGreaterEqual(
                         self.lowest_contrast(text, self.style(banner, "backgroundColor")), 7
                     )
@@ -6623,9 +6623,9 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 with self.subTest(box=selector):
                     check(path, selector)
 
-    # #158 acceptance 2 and 6: at 0 and full marks the marker sits flush inside the bar, is not
-    # cut off, and nothing on the bar moves, with or without reduced motion.
-    def test_score_bar_marker_stays_inside_and_still(self):
+    # #750 (spec #741, ADR 0077): at 0 and full marks the knob sits on the arc's feet, inside
+    # the gauge; the score's arc draws itself once, and stands still with reduced motion.
+    def test_gauge_knob_stays_inside_and_the_arc_draws_once(self):
         records = {
             0: self.submission(self.hhie_s, [0] * 10),
             40: self.submission(self.hhie_s, [4] * 10),
@@ -6636,31 +6636,38 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 for total, record in records.items():
                     with self.subTest(total=total, motion=motion):
                         self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
-                        bar = self.page.locator(".score-bar-segments").bounding_box()
-                        marker = self.page.locator(".score-bar-marker").bounding_box()
-                        flush = (
-                            bar["x"] if total == 0 else bar["x"] + bar["width"] - marker["width"]
-                        )
-                        self.assertAlmostEqual(marker["x"], flush, delta=0.5)
-                        track = self.page.locator(".score-bar-track")
-                        self.assertEqual(self.style(track, "overflow"), "visible")
-                        # The bar only: the header wave plays on a tab's first page (ADR 0006).
-                        animations = self.page.locator(".score-bar").evaluate(
-                            "el => el.getAnimations({subtree: true}).length"
-                        )
-                        self.assertEqual(animations, 0)
-                        for selector in (".score-bar-segment", ".score-bar-marker"):
-                            found = self.page.locator(selector).first
-                            self.assertEqual(self.style(found, "transitionDuration"), "0s")
-                            self.assertEqual(self.style(found, "animationName"), "none")
+                        gauge = self.page.locator(".gauge").bounding_box()
+                        knob = self.page.locator(".gauge-knob").bounding_box()
+                        self.assertGreaterEqual(knob["x"], gauge["x"])
+                        self.assertLessEqual(knob["x"] + knob["width"], gauge["x"] + gauge["width"])
+                        arc = self.page.locator(".gauge-arc-current")
+                        if motion:
+                            self.assertEqual(self.style(arc, "animationName"), "play-once-draw")
+                            # Once: it ends at its last frame and does not go round again.
+                            self.assertEqual(self.style(arc, "animationIterationCount"), "1")
+                            arc.evaluate(
+                                "el => Promise.all(el.getAnimations().map(a => a.finished))"
+                            )
+                        else:
+                            self.assertEqual(self.style(arc, "animationName"), "none")
+                        self.assertEqual(self.style(arc, "strokeDashoffset"), "0px")
 
-    # Result pages tidy-up: THI's five levels in three colours draw five score bar segments and
-    # five legend swatches, the higher of two in one colour deeper, a white line between segments;
-    # every dropdown on the page is a full touch target.
+    # Result pages tidy-up: THI's five levels in three colours draw five gauge arcs (#750; score
+    # bar segments before), the higher of two in one colour deeper; every dropdown on the page is
+    # a full touch target.
     def test_thi_bar_and_legend_shade_levels_sharing_a_colour(self):
         call_command("seed_questionnaires", verbosity=0)
         thi = Questionnaire.objects.get(code="thi")
         record = self.submission(thi, [4] * 12 + [0] * 13)  # 48: 中度障礙
+        # Each level's colour, the higher of two sharing one less pale; the score's arc whole.
+        strokes = [
+            ("rgb(20, 87, 60)", "0.4"),
+            ("rgb(112, 72, 0)", "0.4"),
+            ("rgb(112, 72, 0)", "1"),
+            ("rgb(143, 42, 18)", "0.4"),
+            ("rgb(143, 42, 18)", "0.6"),
+        ]
+        # The trend chart's legend: each level's pale colour, the higher of two deeper.
         fills = [
             "rgb(227, 244, 236)",
             "rgb(255, 244, 214)",
@@ -6671,16 +6678,13 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.open(width=390)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
-            # #461: the dropdowns are behind 看完整說明, itself a dropdown (the bar left it for the
-            # result box in readability batch 3).
-            self.page.locator(".result-details > summary").click()
-            segments = self.page.locator(".score-bar-segment").all()
-            self.assertEqual([self.style(s, "backgroundColor") for s in segments], fills)
+            arcs = self.page.locator(".gauge-arc").all()
             self.assertEqual(
-                [self.styles(s, "borderLeftWidth", "borderLeftColor") for s in segments[1:]],
-                [{"borderLeftWidth": "2px", "borderLeftColor": self.WHITE}] * 4,
+                [(self.style(a, "stroke"), self.style(a, "opacity")) for a in arcs], strokes
             )
-            self.assertEqual(self.style(segments[0], "borderLeftWidth"), "0px")
+            # #750: the dropdowns are in 這個分數怎麼算, a dropdown beside 看每一題的回答.
+            for row in self.page.locator(".result-details > summary").all():
+                row.click()
             summaries = self.page.locator("main details > summary").all()
             self.assertEqual(len(summaries), 3)
             for summary in summaries:
@@ -6927,10 +6931,11 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
         self.open()
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
-            # #461: the steps' links are behind 看完整說明.
-            self.main().locator(".result-details > summary").click()
+            # #750: the steps' links are under 這個分數怎麼算.
+            how = self.main().locator(".result-details").filter(has_text="這個分數怎麼算")
+            how.locator(":scope > summary").click()
             self.page.mouse.move(0, 0)
-            step_link = self.main().locator(".result-details-body .next-steps-link").first
+            step_link = how.locator(".next-steps-link").first
             footer_link = self.page.get_by_role("contentinfo").get_by_role(
                 "link", name="隱私權說明"
             )
@@ -7714,8 +7719,8 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.assertGreaterEqual(link.bounding_box()["height"], 44)
 
     # #309: the advice's links still look like links and the cards below are list rows. Since
-    # #461 (the #460 mockup R1) step 1 is the sentence under the level and the others are behind
-    # 看完整說明, flat on the white page. THI's support message has no line beside it.
+    # #750 (canvas ProResult) every step is under 這個分數怎麼算, flat on the white page. THI's
+    # support message has no line beside it.
     def test_result_advice_is_flat_with_links_that_look_like_links(self):
         links_seen = 0
         with self.saving_artifacts():
@@ -7723,9 +7728,9 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             for name, signed_in, path in WHITE_CARD_PAGES_HOME_RESULT[2:]:
                 with self.subTest(page=name):
                     self.visit(signed_in, path)
-                    self.assert_unlined(self.main().locator(".result-one-line"))
-                    self.main().locator(".result-details > summary").click()
-                    advice = self.main().locator(".result-details-body")
+                    how = self.main().locator(".result-details").filter(has_text="這個分數怎麼算")
+                    how.locator(":scope > summary").click()
+                    advice = how.locator(".result-details-body")
                     self.assert_flat_part(advice)
                     self.assert_readable_on_white(advice)
                     links = self.main().locator(".next-steps-link")
@@ -9844,17 +9849,23 @@ class GuideMeterFillTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiv
                 # Running, or already over on a slow machine; waiting for the screen is paused.
                 self.assertNotIn("paused", {a["state"] for a in found}, meter)
 
-    # #338 acceptance 21: the result page's score position bar stays still, scrolled to or not
-    # (#461: SSQ12-TW's position bar went; readability batch 3: the bar is in the result box).
-    def test_result_position_bars_stay_still(self):
+    # #338 acceptance 21, since #750 (spec #741, ADR 0077) the gauge in the score bar's place:
+    # its arc draws itself once, and scrolled away and back it does not play again.
+    def test_result_gauge_plays_once(self):
         self.open(f"/submission/{self.submission.pk}")
         with self.saving_artifacts():
-            found = self.page.locator(".score-bar")
+            found = self.page.locator(".gauge")
             expect(found).to_be_visible()
+            found.evaluate(
+                "el => Promise.all(el.getAnimations({subtree: true}).map(a => a.finished))"
+            )
             self.page.evaluate("window.scrollTo({top: 99999, behavior: 'instant'})")
             found.evaluate("el => el.scrollIntoView({block: 'center', behavior: 'instant'})")
             self.page.wait_for_timeout(300)
-            self.assertEqual(found.evaluate("el => el.getAnimations({subtree: true}).length"), 0)
+            running = (
+                "el => el.getAnimations({subtree: true}).filter(a => a.playState === 'running')"
+            )
+            self.assertEqual(found.evaluate(f"{running}.length"), 0)
 
 
 class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveServerTestCase):
@@ -10786,10 +10797,10 @@ class TypeSizesT357Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerT
     def test_labels_needed_to_read_a_chart_are_1rem(self):
         cases = (
             (
-                "result's score bar",
+                "result's gauge",
                 True,
                 lambda test: test.result("hhie-s", 4),
-                (".score-bar-ends > span",),
+                (".gauge-end",),
             ),
             ("IOI-HA result", True, lambda test: test.ioi_ha_result(), (".ioi-scale-ends > span",)),
             ("guide's meter", True, lambda test: test.guide_with_records(), (".meter-scale",)),
@@ -10804,10 +10815,10 @@ class TypeSizesT357Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerT
                     expect(labels.first).to_be_visible()
                     for label in labels.all():
                         self.assertEqual(self.font_size(label), self.REM, selector)
-                if ".score-bar-ends > span" in selectors:
-                    bar = self.main().locator(".score-bar-segments").bounding_box()
-                    # Both ends, 0 and 40, whole on the screen and under the bar's own ends.
-                    ends = self.main().locator(".score-bar-ends > span")
+                if ".gauge-end" in selectors:
+                    bar = self.main().locator(".gauge").bounding_box()
+                    # Both ends, 0 and 40, whole on the screen and inside the gauge (#750).
+                    ends = self.main().locator(".gauge-end")
                     expect(ends).to_have_text(["0", "40"])
                     first, last = (end.bounding_box() for end in ends.all())
                     self.assertGreaterEqual(first["x"], bar["x"] - 0.5)
@@ -13875,8 +13886,9 @@ class PickExplainBackTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
 
 class ResultPagesT461Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """#461 (spec #453, the #460 mockup R1): on a phone the first screen is the level block with
-    the line against last time, one sentence and the 建議下一步's one solid button; the rest is
-    folded under 看完整說明, and every result page fits a phone at 200% text."""
+    the line against last time and the 建議下一步's one solid button; since #750 (canvas
+    ProResult) the block holds the gauge, the score beside it and the two bars, with no sentence
+    under it. The rest is folded in the rows, and every result page fits a phone at 200% text."""
 
     fixtures = ("questions_fixture.json",)
     TAIPEI = ZoneInfo("Asia/Taipei")
@@ -13911,11 +13923,14 @@ class ResultPagesT461Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             expect(banner.locator(".result-since-last p")).to_have_text(
                 ["比上次少 4 分", "上次 2026/03/26 是 18 分"]
             )
-            # 48px for the number (2.6667rem), at least the body size for every other word.
-            self.assertAlmostEqual(self.font_size(banner.locator(".result-number")), 48, delta=0.1)
+            # 48px for the number on screen (2.6667rem; #750: beside the gauge, the read one
+            # hidden), at least the body size for every other word.
+            self.assertAlmostEqual(self.font_size(banner.locator(".gauge-score")), 48, delta=0.1)
             for words in (
                 *banner.locator(".result-since-last p").all(),
-                self.main().locator(".result-one-line"),
+                *banner.locator(".result-bars > span").all(),
+                *banner.locator(".gauge-end").all(),
+                banner.locator(".result-level-short"),
             ):
                 self.assertGreaterEqual(self.font_size(words), self.rem())
             # In the page's content: 回到頂端 is the site's own, out of sight until scrolled.
@@ -13929,16 +13944,15 @@ class ResultPagesT461Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             # On the first screen of a 390 x 844 phone, above the floating tab bar.
             tab_bar = self.page.get_by_role("navigation", name="主要導覽").bounding_box()
             self.assertLessEqual(box["y"] + box["height"], tab_bar["y"])
-            # Readability batch 3 (B6 A): the score bar in sight in the block, on the first
-            # screen with the button above, and not behind 看完整說明 as well.
-            bar = banner.locator(".score-bar")
-            expect(bar).to_be_visible()
-            self.assertEqual(self.style(bar, "backgroundColor"), "rgb(255, 255, 255)")
-            self.assertLessEqual(bar.bounding_box()["y"], box["y"])
-            summary = self.main().locator(".result-details > summary")
-            self.assertGreaterEqual(summary.bounding_box()["height"], 44)
-            summary.click()
-            expect(self.page.locator(".score-bar")).to_have_count(1)
+            # Readability batch 3 (B6 A), since #750 the gauge: in sight in the block, on the
+            # first screen above the button, and not in the folds as well.
+            gauge = banner.locator(".gauge")
+            expect(gauge).to_be_visible()
+            self.assertLessEqual(gauge.bounding_box()["y"], box["y"])
+            for summary in self.main().locator(".result-details > summary").all():
+                self.assertGreaterEqual(summary.bounding_box()["height"], 44)
+                summary.click()
+            expect(self.page.locator(".gauge")).to_have_count(1)
 
     def test_every_result_page_fits_a_phone_at_double_text_size(self):
         basis = None
@@ -13952,7 +13966,9 @@ class ResultPagesT461Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             basis = basis or record
             with self.subTest(code=code), self.saving_artifacts():
                 self.open(f"/submission/{record.pk}", (320, 640))
-                self.main().locator(".result-details > summary").click()
+                # #750: a graded page's two folds, each opened.
+                for summary in self.main().locator(".result-details > summary").all():
+                    summary.click()
                 self.assert_fits_a_phone_at_double_text_size(code)
 
 
