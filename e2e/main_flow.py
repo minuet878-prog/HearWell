@@ -3869,19 +3869,19 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
         user = User.objects.get(username="guide_e2e")
         GuideChapterView.objects.create(user=user, chapter="guide")
 
-    # #261 acceptance 8: the home page's 建議您下一步 with its longest 「因為」 sentences, 390px
-    # wide at 200% text; since #459 the 現在這一步's card. The setUp user has answered nothing,
-    # so it is the assessment (ADR 0074) once my guide is opened (#744); 沒有, 去找聽力師之前
-    # (spec #291's reasons); within 25 and missing a frequency, nothing can tell.
+    # #261 acceptance 8: the home page's 建議您下一步, 390px wide at 200% text; since #459 the
+    # 現在這一步's card. The setUp user has answered nothing, so it is the assessment (ADR 0074)
+    # once my guide is opened (#744), its answer card since #745; 沒有, 去找聽力師之前; within 25
+    # and missing a frequency, nothing can tell.
     def test_home_next_step_fits_a_phone_at_double_text_size(self):
         self.open(390, 640)
         points = AudiogramPoint.objects.filter(audiogram__user__username="guide_e2e")
         self.my_guide_opened()
         with self.saving_artifacts():
-            for state, button in (
-                ("assessment", "找鑑定醫院"),
-                ("before you go", "去之前要準備什麼"),
-                ("too little data", "修改這張聽力圖"),
+            for state, role, name in (
+                ("assessment", "button", "正在申請"),
+                ("before you go", "link", "了解須知"),
+                ("too little data", "link", "修改這張聽力圖"),
             ):
                 with self.subTest(state=state):
                     if state == "before you go":
@@ -3892,7 +3892,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                         points.filter(ear="left", frequency=4000).delete()
                     self.page.goto(f"{self.live_server_url}/")
                     card = self.main().locator(".journey-card")
-                    expect(card.get_by_role("link", name=button)).to_be_visible()
+                    expect(card.get_by_role(role, name=name)).to_be_visible()
                     self.page.wait_for_load_state("load")
                     self.page.locator("html").evaluate(
                         "html => html.style.setProperty('font-size', '225%', 'important')"
@@ -3919,30 +3919,56 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     self.assertEqual(narrow, [], path)
 
     # #261 self-review: the 建議您下一步 box at the same size; a reason ending in 「（45%）。」
-    # once ran past its white box. This user is at the assessment (ADR 0074). #461:
-    # the result page's box has no reason any more (the #460 mockup R1); #459: the home page
-    # says it on the 現在這一步's card.
+    # once ran past its white box. This user is at the assessment (ADR 0074), since #745 its
+    # answer card (spec #741 acceptance 57): the question keeps four characters a line, and it
+    # and each box keep their words inside, the boxes wrapping a row at a time.
     def test_next_step_reason_keeps_four_characters_a_line_at_double_text_size(self):
         self.open(320, 640)
         self.my_guide_opened()
         with self.saving_artifacts():
-            for path in ("/",):
-                with self.subTest(path=path):
-                    self.page.goto(f"{self.live_server_url}{path}")
-                    # #749: the sentence under the title on the blue hero card.
-                    reason = (
-                        self.main()
-                        .locator(".journey-card .hero-card > p")
-                        .filter(has_text="先確認有沒有身障證明")
+            self.page.goto(f"{self.live_server_url}/")
+            card = self.main().locator(".journey-card .answer-card")
+            expect(card.locator("legend")).to_have_text("您有身心障礙證明嗎？")
+            self.assert_fits_a_phone_at_double_text_size("/ answer card")
+            question = card.locator(".answer-card-words")
+            parts = [(question, 4), *((box, 2) for box in card.locator(".answer-choice").all())]
+            for part, chars in parts:
+                room = part.evaluate(
+                    "e => ({chars: e.clientWidth / parseFloat(getComputedStyle(e).fontSize),"
+                    " overflow: e.scrollWidth - e.clientWidth, words: e.textContent})"
+                )
+                self.assertGreaterEqual(room["chars"], chars, room["words"])
+                self.assertLessEqual(room["overflow"], 0, room["words"])
+
+    # #745 (spec #741 acceptance 12, 14, 58): the certificate answered on the home page's card,
+    # with JavaScript and without: the stamp and 接著往下一站, which moves on only when pressed.
+    def test_answering_the_certificate_on_the_home_card(self):
+        user = User.objects.get(username="guide_e2e")
+        self.my_guide_opened()
+        answers = ((True, "有", "九號表"), (False, "沒有", "去找聽力師之前"))
+        for javascript, answer, next_stop in answers:
+            with self.subTest(javascript=javascript):
+                AidAndSubsidy.objects.filter(user=user).delete()
+                self.context = self.browser.new_context(
+                    viewport={"width": 390, "height": 900}, java_script_enabled=javascript
+                )
+                self.context.add_cookies([self.cookie])
+                self.context.tracing.start(screenshots=True, snapshots=True)
+                self.page = self.context.new_page()
+                self.addCleanup(self.context.close)
+                with self.saving_artifacts():
+                    self.page.goto(f"{self.live_server_url}/")
+                    card = self.main().locator(".journey-card")
+                    box = card.get_by_role("button", name=answer, exact=True)
+                    box.click()
+                    expect(self.page).to_have_url(
+                        f"{self.live_server_url}/?done=assessment#journey-now"
                     )
-                    expect(reason).to_contain_text("先確認有沒有身障證明，才知道能不能申請補助。")
-                    self.assert_fits_a_phone_at_double_text_size(f"{path} next step")
-                    room = reason.evaluate(
-                        "p => ({chars: p.clientWidth / parseFloat(getComputedStyle(p).fontSize),"
-                        " overflow: p.scrollWidth - p.clientWidth})"
-                    )
-                    self.assertGreaterEqual(room["chars"], 4, path)
-                    self.assertLessEqual(room["overflow"], 0, path)
+                    expect(card.locator(".done-stamp")).to_have_text("已完成")
+                    expect(box).to_have_attribute("aria-pressed", "true")
+                    card.get_by_role("link", name=f"接著往下一站：{next_stop}").click()
+                    expect(card.get_by_role("heading", level=3)).to_contain_text(next_stop)
+                    expect(card.locator(".done-stamp")).to_have_count(0)
 
     # #258: the 目前這一站's ring lights only when motion is welcome. This user has answered
     # nothing, so the stop is the assessment (ADR 0074). #341 (ADR 0029): it plays once the

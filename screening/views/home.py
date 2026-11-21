@@ -38,7 +38,10 @@ def index(request):
     # #459 (ADR 0044): the 照顧旅程 for anyone with a questionnaire or an audiogram, else the
     # 空狀態首頁.
     has_records = user.submissions.defined().exists() or user.audiograms.exists()
-    journey = care_journey(user, timezone.localdate()) if has_records else None
+    # #745 (grill Q13): the stop an answer card here just finished (route_answer's ?done=),
+    # stamped only while it is done and step 5 is still the 現在這一步.
+    done_now = request.GET.get("done")
+    journey = care_journey(user, timezone.localdate(), done_now) if has_records else None
     response = render(
         request,
         "screening/index.html",

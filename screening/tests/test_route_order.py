@@ -136,7 +136,6 @@ class HomeSkipsTypesAndPricesTests(RouteOrderTestCase):
         self.assertEqual(self.guide_here(), ["types-and-prices"])
         card = care_journey(self.user, TODAY).card
         self.assertEqual(card.title, "配戴助聽器之後")
-        self.assertEqual(card.href, "/guide/after-fitting")
 
 
 class AfterFittingNeedsIoiHaTests(RouteOrderTestCase):

@@ -387,8 +387,8 @@ class GuideStepTests(CareJourneyTestCase):
 
 
 class RouteStepTests(CareJourneyTestCase):
-    """Step 5, 申請補助與配戴助聽器: the route's 目前這一站, but 記錄聽力圖 (#745 draws the
-    cards; until then the route's own)."""
+    """Step 5, 申請補助與配戴助聽器: the route's 目前這一站, but 記錄聽力圖; each stop's card
+    (#745) is test_answer_cards'."""
 
     def setUp(self):
         super().setUp()
@@ -396,19 +396,21 @@ class RouteStepTests(CareJourneyTestCase):
         self.make(PTA_55, PTA_55)
         self.view(GUIDE_PAGE)
 
-    def test_the_route_s_stop_is_step_5_s_card_with_its_button(self):
+    def test_the_route_s_stop_is_step_5_s_card_its_answer_card_unanswered(self):
+        # #745: form 9's answer card, nothing chosen; the route's own button kept for the
+        # result pages, where the card is not shown.
         self.aid(certificate=Certificate.YES)
         self.assertEqual(self.states(), [D, D, D, D, C, L, L])
+        card = self.journey().card
+        self.assertEqual(card.title, "九號表：申請助聽器補助")
+        self.assertEqual(card.question.stop, "form-9")
+        self.assertEqual(card.question.field, "form_9_done")
         self.assertEqual(
-            self.journey().card,
-            JourneyCard(
-                "九號表：申請助聽器補助",
-                "您已經有身障證明，可以準備申請九號表的助聽器補助。",
-                "guide",
-                href="/guide/form-9",
-                button=("看九號表的流程", "/guide/form-9"),
-            ),
+            [(c.value, c.text, c.chosen) for c in card.question.choices],
+            [("True", "是", False), ("False", "否", False)],
         )
+        self.assertIsNone(card.button)
+        self.assertEqual(card.away, ("看九號表的流程", "/guide/form-9"))
 
     def test_each_stop_answered_moves_step_5_s_card_on(self):
         for fields, title in (
@@ -437,7 +439,7 @@ class RouteStepTests(CareJourneyTestCase):
         self.assertEqual(fitting_state(self.user, TODAY).stop, "types-and-prices")
         card = self.journey().card
         self.assertEqual(card.title, "配戴助聽器之後")
-        self.assertEqual(card.button, ("記錄配戴的效果", "/guide/after-fitting#record-title"))
+        self.assertEqual([entry.text for entry in card.entries], ["記下開始配戴的日期", "填問卷"])
 
     def test_after_fitting_waits_for_the_first_ioi_ha(self):
         # Spec #741 acceptance 22, in the state: the date alone leaves step 5 at 配戴之後.
@@ -456,11 +458,13 @@ class RouteStepTests(CareJourneyTestCase):
         self.assertEqual(journey.card.title, "二十五號表：使用效益驗證")
 
     def test_waiting_for_the_notice_has_no_button(self):
-        # The owner on #455: there is nothing to do but wait, so no button.
+        # The owner on #455: there is nothing to do but wait, so no button; #745: the card asks
+        # whether it came.
         self.aid(certificate=Certificate.YES, form_9_done=True)
         card = self.journey().card
         self.assertEqual(card.title, "等待核定公文")
         self.assertIsNone(card.button)
+        self.assertEqual(card.question.question, "您收到核定公文了嗎？")
 
 
 class WearingTests(CareJourneyTestCase):
@@ -472,7 +476,7 @@ class WearingTests(CareJourneyTestCase):
         self.assertEqual(self.states(), [L, L, L, L, C, L, L])
         self.assertEqual(journey.card.title, "配戴助聽器之後")
         self.assertEqual(
-            journey.card.because, "記下開始戴的日期，才算得出什麼時候要做使用效益驗證。"
+            journey.card.because, "配戴一個月後才能做二十五號表，配合問卷使用更能知道助聽器的效果。"
         )
 
 

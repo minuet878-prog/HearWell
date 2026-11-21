@@ -555,10 +555,16 @@ def route_answer(request):
         today = timezone.localdate()
         here = fitting_state(request.user, today).stop
         form.save()
-        on_route = urlsplit(next_url).path in ("", reverse("guide"))
+        path = urlsplit(next_url).path
         # #336: only the 您在這裡 stop turning 已完成, which a stop turning 不適用 is not.
-        if on_route and here == stop and stop in fitting_state(request.user, today).done:
-            request.session[DONE_NOW] = stop
+        if path in ("", reverse("guide"), reverse("index")):
+            done_now = here == stop and stop in fitting_state(request.user, today).done
+            if done_now and path == reverse("index"):
+                # #745 (grill Q13): the home page's answer card, back at the step with the stop
+                # just finished in the address, so 接著往下一站 to the page itself loads it anew.
+                return HttpResponseRedirect(f"{reverse('index')}?done={stop}#journey-now")
+            if done_now:
+                request.session[DONE_NOW] = stop
         return HttpResponseRedirect(next_url or f"{reverse('guide')}#stop-{stop}")
     if urlsplit(next_url).path == reverse("guide_chapter", args=[stop]):
         chapter = next(c for c in GUIDE_CHAPTERS if c.slug == stop)

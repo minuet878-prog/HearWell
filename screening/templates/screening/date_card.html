@@ -1,0 +1,8 @@
+{# Spec #741 (#745, the canvas's 照顧旅程展開): a calendar date card, a calendar sheet's month, day and year beside what the day is from, and a small line under it. A screen reader hears the day as Y/m/d instead of the sheet. `day`: a DateCard. #}
+<div class="date-card">
+    <span class="date-card-sheet" aria-hidden="true"><span class="date-card-month">{{ day.on.month }} 月</span><span class="date-card-day">{{ day.on.day }}</span><span class="date-card-year">{{ day.on.year }}</span></span>
+    <span class="date-card-body">
+        <span class="date-card-text"><span class="visually-hidden">{{ day.on|date:"Y/m/d" }} </span>{{ day.text }}</span>
+        <span class="date-card-note">{{ day.note }}</span>
+    </span>
+</div>
