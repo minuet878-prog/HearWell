@@ -78,7 +78,9 @@ class ResultGaugePageTests(TestCase):
         self.assertIn('pathLength="1"', block)
         # The ends of the scale, and the score counting up beside it.
         self.assertIn('<span class="gauge-end">0</span><span class="gauge-end">40</span>', block)
-        self.assertIn('總分 <span class="gauge-score" data-count-up>12</span> 分', block)
+        self.assertIn(
+            '<span>總分</span><span class="gauge-score" data-count-up>12</span><span>分</span>', block
+        )
         self.assertIn('<p class="result-level-short" aria-hidden="true">輕到中度</p>', block)
         # Read in its place: the score out of the full score, then the level.
         self.assertIn(
