@@ -223,13 +223,14 @@ export default function TrendChart({ code, fittedOn }) {
               stroke="#fff"
               strokeWidth={2}
               // #756 (ADR 0078, canvas TrendA): the level's short name inside its band, top right, in
-              // its colour (site.css .trend-band-name-*); on the bands' layer, under the lines.
+              // its colour (site.css .trend-band-name-*); a layer of its own over every band (on
+              // theirs a later band would cover it), under the lines and points.
               label={{
                 value: level.short,
                 position: "insideTopRight",
                 offset: 8,
                 className: `trend-band-name trend-band-name-${level.color}`,
-                zIndex: DefaultZIndexes.area,
+                zIndex: DefaultZIndexes.area + 1,
               }}
             />
           ))}

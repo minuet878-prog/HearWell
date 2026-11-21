@@ -371,7 +371,11 @@ describe("TrendChart", () => {
         expect(Number(name.getAttribute("x"))).toBeLessThan(right);
         expect(Number(name.getAttribute("x"))).toBeGreaterThan(right - 16);
         expect(name.classList).toContain(`trend-band-name-${LEVELS[i].color}`);
-        // Drawn before the lines, so a line or point crossing it stays on top.
+        // Drawn over every band, so no band covers it, and before the lines, so a line or point
+        // crossing it stays on top.
+        for (const rect of bands) {
+          expect(name.compareDocumentPosition(rect)).toBe(Node.DOCUMENT_POSITION_PRECEDING);
+        }
         expect(name.compareDocumentPosition(container.querySelector(".recharts-line-curve"))).toBe(
           Node.DOCUMENT_POSITION_FOLLOWING,
         );

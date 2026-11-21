@@ -5562,18 +5562,21 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.assertEqual(self.style(banner, "color"), colour)
                     self.assertEqual(self.style(banner, "backgroundColor"), background)
 
-    # The trend chart's level names, written by Django, keep their band colours.
+    # #756 (ADR 0078, canvas TrendA): the trend chart writes each level's short name in its
+    # band, in the level's text colour on the band's pale colour.
     def test_trend_level_names_keep_their_colours(self):
         self.submission(self.hhie_s, (2,) * 10)
         self.open()
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
-            for level, _, background, colour in self.BANNERS[:3]:
+            names = self.page.locator("#trend-plot .trend-band-name")
+            expect(names).to_have_text(["極輕微", "輕到中度", "顯著"])
+            bands = self.page.locator("#trend-plot .recharts-reference-area-rect")
+            for i, (level, _, background, colour) in enumerate(self.BANNERS[:3]):
                 with self.subTest(level=level):
-                    item = self.page.locator(f".trend-band-{level}")
-                    swatch = item.locator(".trend-band-swatch")
-                    self.assertEqual(self.style(item.locator("span").last, "color"), colour)
-                    self.assertEqual(self.style(swatch, "backgroundColor"), background)
+                    self.assertEqual(self.style(names.nth(i), "fill"), colour)
+                    self.assertEqual(self.style(bands.nth(i), "fill"), background)
+                    self.assertEqual(self.style(names.nth(i), "fontWeight"), "700")
 
     # Without JavaScript the score block (#465, its 最近一次 was the trend summary's) stays and
     # the chart's box, which would stay empty, hides.
@@ -5623,9 +5626,11 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     )
                     self.assertGreaterEqual(self.lowest_contrast(text, self.WHITE), 7)
             self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
-            bands = self.page.locator("#trend-chart .trend-bands li")
-            expect(bands).to_have_count(3)
-            for level, record in records.items():
+            names = self.page.locator("#trend-plot .trend-band-name")
+            expect(names).to_have_count(3)
+            bands = self.page.locator("#trend-plot .recharts-reference-area-rect")
+            # #756: the chart's level names sit in their bands, bottom band first, as records.
+            for i, level in enumerate(records):
                 badge = self.page.locator(f".level-badge-{level}").first
                 expect(badge).to_be_visible()
                 with self.subTest(page="my_hearing badge", level=level):
@@ -5634,13 +5639,10 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                         self.lowest_contrast(text, self.style(badge, "backgroundColor")), 7
                     )
                     self.assertGreaterEqual(self.lowest_contrast(text, self.WHITE), 7)
-                # The chart's level names sit on white beside a swatch of their band.
-                band = bands.filter(has_text=record.result.level["text"])
                 with self.subTest(page="my_hearing chart", level=level):
-                    text = self.style(band.locator("span").last, "color")
-                    swatch = self.style(band.locator(".trend-band-swatch"), "backgroundColor")
-                    self.assertGreaterEqual(self.lowest_contrast(text, swatch), 7)
-                    self.assertGreaterEqual(self.lowest_contrast(text, self.WHITE), 7)
+                    text = self.style(names.nth(i), "fill")
+                    band = self.style(bands.nth(i), "fill")
+                    self.assertGreaterEqual(self.lowest_contrast(text, band), 7)
 
     def assert_framed_in_its_text_colour(self, element):
         colour = self.style(element, "color")
@@ -6652,6 +6654,48 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                             self.assertEqual(self.style(arc, "animationName"), "none")
                         self.assertEqual(self.style(arc, "strokeDashoffset"), "0px")
 
+    # #756 (spec #741, ADR 0077, canvas TrendA): the trend chart's line and points draw from the
+    # left once, then the scores fade in; with reduced motion they are simply there. The dates
+    # under it are month/day.
+    def test_trend_line_draws_once_or_is_simply_there(self):
+        taipei = ZoneInfo("Asia/Taipei")
+        earlier = self.submission(self.hhie_s, [4] * 5 + [0] * 5)
+        moment = datetime(2026, 5, 22, 10, tzinfo=taipei)
+        Submission.objects.filter(pk=earlier.pk).update(created_at=moment)
+        self.submission(self.hhie_s, [4] * 3 + [0] * 7)
+        today = timezone.localdate()
+        for motion in (False, True):
+            self.open(motion=motion, width=390)
+            with self.saving_artifacts(), self.subTest(motion=motion):
+                self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
+                ticks = self.page.locator("#trend-plot .recharts-cartesian-axis-tick-value")
+                expect(ticks).to_have_text(["5/22", f"{today.month}/{today.day}"])
+                plot = self.page.locator("#trend-plot")
+                # Clear of the tab bar fixed over the foot of a phone's screen.
+                plot.evaluate("el => el.scrollIntoView({ block: 'center' })")
+                expect(plot).to_have_attribute("data-in-view", "")
+                parts = {
+                    "line": (plot.locator(".recharts-zIndex-layer_400"), "play-once-trace"),
+                    "points": (plot.locator(".recharts-zIndex-layer_600"), "play-once-trace"),
+                    "scores": (plot.locator(".recharts-label-list").first, "play-once-fade"),
+                }
+                for name, (part, animation) in parts.items():
+                    with self.subTest(part=name):
+                        self.assertEqual(
+                            self.style(part, "animationName"), animation if motion else "none"
+                        )
+                        if motion:
+                            self.assertEqual(self.style(part, "animationIterationCount"), "1")
+                            part.evaluate(
+                                "el => Promise.all(el.getAnimations().map(a => a.finished))"
+                            )
+                        # Whole at the end, or from the start.
+                        self.assertEqual(self.style(part, "clipPath"), "none")
+                        self.assertEqual(self.style(part, "opacity"), "1")
+                # The bands and their names never move.
+                for still in (".recharts-reference-area", ".trend-band-name"):
+                    self.assertEqual(self.style(plot.locator(still).first, "animationName"), "none")
+
     # Result pages tidy-up: THI's five levels in three colours draw five gauge arcs (#750; score
     # bar segments before), the higher of two in one colour deeper; every dropdown on the page is
     # a full touch target.
@@ -6667,7 +6711,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             ("rgb(143, 42, 18)", "0.4"),
             ("rgb(143, 42, 18)", "0.6"),
         ]
-        # The trend chart's legend: each level's pale colour, the higher of two deeper.
+        # The trend chart's bands: each level's pale colour, the higher of two deeper.
         fills = [
             "rgb(227, 244, 236)",
             "rgb(255, 244, 214)",
@@ -6690,11 +6734,10 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             for summary in summaries:
                 self.assertGreaterEqual(summary.bounding_box()["height"], 44)
             self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=thi")
-            swatches = self.page.locator(".trend-band-swatch").all()
-            # Top band first, as stacked in the chart.
-            self.assertEqual(
-                [self.style(s, "backgroundColor") for s in swatches], list(reversed(fills))
-            )
+            # #756: the chart's own bands, bottom first; their names are in them.
+            bands = self.page.locator("#trend-plot .recharts-reference-area-rect")
+            expect(bands).to_have_count(5)
+            self.assertEqual([self.style(b, "fill") for b in bands.all()], fills)
 
     def test_keyboard_focus_keeps_cards_still_with_a_ring(self):
         self.open(motion=True)
@@ -8950,7 +8993,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             expect(block).to_have_count(1)
             self.assertNotEqual(self.style(block, "backgroundColor"), self.WHITE)
             self.assertEqual(self.style(block, "boxShadow"), "none")
-            chart = self.page.get_by_role("region", name="HHIE-S 總分變化")
+            chart = self.page.get_by_role("region", name="分數趨勢")
             self.assertLess(block.bounding_box()["y"], chart.bounding_box()["y"])
 
     # #465 (the #464 mockup 1A): the score block reads as lines of text, the score largest, and
