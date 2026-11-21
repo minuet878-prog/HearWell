@@ -26,13 +26,13 @@ from screening.questionnaires.ioi_ha import CODE as IOI_HA
 # The route's first stop, recording an audiogram; the other stops are the guide's chapters,
 # but for 等待核定公文 and 等待補助發放, which have none.
 AUDIOGRAM = "audiogram"
-# The nine stops in route order (spec #291).
+# The nine stops in route order (spec #291), 去找聽力師之前 after the notice (ADR 0074).
 STOPS = (
     AUDIOGRAM,
-    "before-you-go",
     "assessment",
     "form-9",
     "notice",
+    "before-you-go",
     "types-and-prices",
     "after-fitting",
     "form-25",
@@ -40,6 +40,11 @@ STOPS = (
 )
 # Someone wearing hearing aids looks for the 目前這一站 from 配戴之後 on (spec #291 Q5, Q9).
 WEARING_STOPS = STOPS[STOPS.index("after-fitting") :]
+# 看過指引頁 (spec #741): my guide opened signed in, kept as a chapter view of its own.
+GUIDE_PAGE = "guide"
+# The stop the home page passes by (ADR 0074): a chapter to read, so the 照顧旅程 shows the one
+# after it while my guide is still here.
+HOME_SKIPS = "types-and-prices"
 # The stops a 看過 makes 已完成 (spec #291 Q4); the other chapters are done by an answer.
 DONE_BY_VIEWING = frozenset({"before-you-go", "types-and-prices"})
 # The certificate answers that finish 身障鑑定與鑑定醫院 (spec #291 Q2); 還沒有 stays.
@@ -101,6 +106,7 @@ class FittingState:
     # the exam, or both None when there is no exam (a self test alone estimates nothing).
     assessment: dict | None
     assessment_exam: Audiogram | None
+    home_stop: str | None  # the 目前這一站 on the home page, which passes by HOME_SKIPS
 
     @property
     def stops(self):
@@ -153,6 +159,12 @@ def latest_submission(user):
     )
 
 
+def _ioi_ha_since(user, aid):
+    # Taken on the fitting date or later (ADR 0074), as the 照顧旅程 counts it.
+    since = user.submissions.filter(questionnaire__code=IOI_HA, created_at__date__gte=aid.fitted_on)
+    return since.exists()
+
+
 def wearing_hearing_aids(latest, aid):
     """Whether the user wears hearing aids, from their latest_submission and their
     AidAndSubsidy (None before any)."""
@@ -201,8 +213,9 @@ def fitting_state(user, today):
         done.add("form-9")
     if aid is not None and aid.notice_received and aid.approved_ears and aid.level:
         done.add("notice")  # #294: 收到了 is done only with both of the notice's answers
-    if _fitted(aid) and (aid.notice_received or aid.subsidy):
-        # #295, spec #291 Q16: the fitting date, and without the notice the subsidy answered.
+    if _fitted(aid) and (aid.notice_received or aid.subsidy) and _ioi_ha_since(user, aid):
+        # #295, spec #291 Q16: the fitting date, and without the notice the subsidy answered;
+        # ADR 0074: and a first IOI-HA from that day on.
         done.add("after-fitting")
     if aid is not None and aid.form_25_done:
         done.add("form-25")  # #296; 等待補助發放 is never done
@@ -218,6 +231,7 @@ def fitting_state(user, today):
     waiting = not wearing and advice in WAITING_ADVICE and not started
     passed = done | not_applicable | (frozenset() if shown else SUBSIDY_STOPS)
     stop = _stop(wearing, passed, waiting)
+    home_stop = _stop(wearing, passed | {HOME_SKIPS}, waiting)
     return FittingState(
         latest,
         audiogram,
@@ -234,6 +248,7 @@ def fitting_state(user, today):
         shown,
         assessment,
         exam,
+        home_stop,
     )
 
 

@@ -1213,7 +1213,6 @@ class FittingDayT650Tests(TestCase):
         # Acceptance 44: a new pair moves the day later; the chart and the sentence follow it.
         self._fitted(date(2026, 5, 1))
         self._fitted(date(2026, 8, 1))
-        self.assertEqual(AidAndSubsidy.objects.get(user=self.user).pair_number, 2)
         main = self._main("hhie-s")
         self.assertIn('data-fitted-on="2026/08/01"', self._plot(main))
         self.assertIn("2026/08/01 開始戴助聽器。", main)

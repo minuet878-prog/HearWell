@@ -41,7 +41,6 @@ from screening.family_zone import (
     VISIT_QUESTIONS,
 )
 from screening.fitting_route import add_months
-from screening.journey_todos import STOP_TODOS
 from screening.models import (
     AidAndSubsidy,
     Answer,
@@ -77,6 +76,7 @@ from screening.tests.helpers import (
     line_on,
     register,
     submission_with_answers,
+    took_ioi_ha,
 )
 
 # Playwright runs an event loop in this thread, which makes Django refuse database calls.
@@ -3313,8 +3313,8 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             expect(self.main()).to_contain_text("沒核定就先買的不補助")
 
     # #292 (spec #291 e2e, acceptance 2, 4, 5, 27): the setUp user reaches the threshold but
-    # has read nothing, so 您在這裡 is 去找聽力師之前. Reading it from the button, and 種類與價格
-    # out of order from its title, marks both 已完成 and moves 您在這裡 on to the assessment.
+    # has answered nothing, so 您在這裡 is the assessment (ADR 0074's order). Reading 去找聽力師
+    # 之前 and 種類與價格 ahead of it, from their titles, marks both 已完成 and 您在這裡 stays.
     # The five stops and the line the 補助站 fold into (#596) fit 320px at 200% text.
     def test_reading_chapters_moves_the_route_on(self):
         self.open(320, 640)
@@ -3327,17 +3327,19 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                 "有身障證明的人另外有四站：九號表、等待核定公文、二十五號表、等待補助發放"
             )
             here = self.main().locator('[aria-current="step"]')
-            expect(here).to_contain_text("去找聽力師之前")
-            here.get_by_role("link", name="去之前要準備什麼").click()
-            expect(self.main().get_by_role("heading", level=1)).to_have_text("去找聽力師之前")
+            expect(here).to_contain_text("身障鑑定與鑑定醫院")
 
-            self.page.goto(f"{self.live_server_url}/guide")
-            types = self.main().locator('[data-stop="types-and-prices"]')
-            expect(types.locator(".route-mark")).to_have_count(0)
-            # #467 (I1): the stop opens to say what it is, its link on inside.
-            types.locator("summary").click()
-            types.get_by_role("link", name=re.compile(r"^看這一章\s*：助聽器的種類與價格$")).click()
-            expect(self.main().get_by_role("heading", level=1)).to_have_text("助聽器的種類與價格")
+            for slug, title in (
+                ("before-you-go", "去找聽力師之前"),
+                ("types-and-prices", "助聽器的種類與價格"),
+            ):
+                self.page.goto(f"{self.live_server_url}/guide")
+                stop = self.main().locator(f'[data-stop="{slug}"]')
+                expect(stop.locator(".route-mark")).to_have_count(0)
+                # #467 (I1): the stop opens to say what it is, its link on inside.
+                stop.locator("summary").click()
+                stop.get_by_role("link", name=re.compile(rf"^看這一章\s*：{title}$")).click()
+                expect(self.main().get_by_role("heading", level=1)).to_have_text(title)
 
             self.page.goto(f"{self.live_server_url}/guide")
             for slug in ("before-you-go", "types-and-prices"):
@@ -3367,7 +3369,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             card = self.main().get_by_role("region", name="看完了嗎？")
             expect(card.get_by_role("group", name=question)).to_be_visible()
             self.assert_fits_a_phone_at_double_text_size("/guide/assessment question card")
-            card.get_by_role("button", name="還沒有，打算申請或正在申請鑑定").click()
+            card.get_by_role("button", name="正在申請").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/guide/assessment#stop-question")
             expect(self.main().get_by_role("region", name="看完了嗎？")).to_have_count(0)
             # #294: the card says what was kept, and its button goes back to the route.
@@ -3470,6 +3472,8 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
     # level appears only once 用身障補助 is chosen. Then 修改 and 還沒開始戴 take it back.
     def test_answering_the_fitting_date_moves_the_route_on(self):
         Submission.objects.filter(user__username="guide_e2e").update(wearing_hearing_aid=True)
+        # ADR 0074: 配戴之後 is done with a first IOI-HA from the fitting date on.
+        took_ioi_ha(User.objects.get(username="guide_e2e"), date(2026, 5, 1))
         self.open(320, 640)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/guide/after-fitting")
@@ -3541,20 +3545,14 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             main.get_by_role("button", name="存檔", exact=True).click()
             expect(self.page).to_have_url(re.compile(r"/audiograms/\d+$"))
 
-            # 2 去找聽力師之前, read from its button.
+            # 2 身障鑑定, answered on the route (ADR 0074's order).
             self.page.goto(f"{self.live_server_url}/guide")
             audiogram = self.main().locator('[data-stop="audiogram"]')
             expect(audiogram.locator(".route-mark")).to_have_text(["已完成"])
-            expect(self.here()).to_contain_text("去找聽力師之前")
-            self.here().get_by_role("link", name="去之前要準備什麼").click()
-            expect(self.main().get_by_role("heading", level=1)).to_have_text("去找聽力師之前")
-
-            # 3 身障鑑定, answered on the route.
-            self.page.goto(f"{self.live_server_url}/guide")
             expect(self.here()).to_contain_text("身障鑑定與鑑定醫院")
             self.here().get_by_role("button", name="有", exact=True).click()
 
-            # 4 九號表, answered at the foot of its chapter, then back to the route.
+            # 3 九號表, answered at the foot of its chapter, then back to the route.
             expect(self.here()).to_contain_text("九號表")
             self.here().get_by_role("link", name="看九號表的流程").click()
             card = self.main().get_by_role("region", name="看完了嗎？")
@@ -3562,18 +3560,26 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             kept = self.main().get_by_role("region", name="已記下：九號表完成了")
             kept.get_by_role("link", name="回選配路線看下一站").click()
 
-            # 5 等待核定公文, one question at a time.
+            # 4 等待核定公文, one question at a time.
             expect(self.here()).to_contain_text("等待核定公文")
             self.here().get_by_role("button", name="收到了").click()
             self.here().get_by_role("button", name="雙耳").click()
             self.here().get_by_role("button", name="中階型").click()
 
+            # 5 去找聽力師之前, read from its button.
+            expect(self.here()).to_contain_text("去找聽力師之前")
+            self.here().get_by_role("link", name="去之前要準備什麼").click()
+            expect(self.main().get_by_role("heading", level=1)).to_have_text("去找聽力師之前")
+
             # 6 種類與價格, read from its title.
+            self.page.goto(f"{self.live_server_url}/guide")
             expect(self.here()).to_contain_text("助聽器的種類與價格")
             self.here().get_by_role("link", name="助聽器的種類與價格").click()
             expect(self.main().get_by_role("heading", level=1)).to_have_text("助聽器的種類與價格")
 
-            # 7 配戴之後: the notice's 雙耳 leaves only the date.
+            # 7 配戴之後: the notice's 雙耳 leaves only the date; a first IOI-HA taken since
+            # the fitting date too (ADR 0074).
+            took_ioi_ha(User.objects.get(username="guide_e2e"), timezone.localdate())
             self.page.goto(f"{self.live_server_url}/guide")
             expect(self.here()).to_contain_text("配戴助聽器之後")
             self.here().get_by_label("這副助聽器哪一天開始戴？").fill(fitted_on.isoformat())
@@ -3612,7 +3618,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             # 9 等待補助發放: here, asking nothing and never 已完成; the eight before it done.
             expect(self.here()).to_contain_text("等待補助發放")
             expect(self.here().locator(".route-mark")).to_have_text(["您在這裡"])
-            # No question; its 手動待辦 is a form of its own (#481).
+            # No question.
             expect(self.here().locator("form.stop-question")).to_have_count(0)
             done = self.main().locator(".route-stop").filter(has_text="已完成")
             expect(done).to_have_count(8)
@@ -3625,6 +3631,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
         user = User.objects.get(username="guide_e2e")
         Submission.objects.filter(user=user).update(wearing_hearing_aid=True)
         AidAndSubsidy.objects.create(user=user, certificate="no_subsidy")
+        took_ioi_ha(user, timezone.localdate())  # 配戴之後 needs it (ADR 0074)
         self.open(320, 640)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/guide")
@@ -3779,22 +3786,22 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                         self.assertAlmostEqual(line["x"], scale["x"], delta=0.5)
 
     # #261 acceptance 8: the home page's 建議您下一步 with its longest 「因為」 sentences, 390px
-    # wide at 200% text; since #459 the 現在這一步's card. The setUp user has read nothing, so
-    # it is 去找聽力師之前; read, the assessment (spec #291's reasons); within 25 and missing a
-    # frequency, nothing can tell.
+    # wide at 200% text; since #459 the 現在這一步's card. The setUp user has answered nothing,
+    # so it is the assessment (ADR 0074); 沒有, 去找聽力師之前 (spec #291's reasons); within 25
+    # and missing a frequency, nothing can tell.
     def test_home_next_step_fits_a_phone_at_double_text_size(self):
         self.open(390, 640)
         points = AudiogramPoint.objects.filter(audiogram__user__username="guide_e2e")
         with self.saving_artifacts():
             for state, button in (
-                ("before you go", "去之前要準備什麼"),
                 ("assessment", "找鑑定醫院"),
+                ("before you go", "去之前要準備什麼"),
                 ("too little data", "修改這張聽力圖"),
             ):
                 with self.subTest(state=state):
-                    if state == "assessment":
+                    if state == "before you go":
                         user = User.objects.get(username="guide_e2e")
-                        GuideChapterView.objects.create(user=user, chapter="before-you-go")
+                        AidAndSubsidy.objects.create(user=user, certificate="no_subsidy")
                     if state == "too little data":
                         points.update(db=20)
                         points.filter(ear="left", frequency=4000).delete()
@@ -3807,190 +3814,6 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     )
                     scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
                     self.assertLessEqual(scroll_width, 390, state)
-
-    # Spec #478 acceptance 27 and 29 (the owner's pick B on #479): at form 9 the home page's
-    # 現在這一步 card and my guide's 您在這裡 card list the same to-dos under their one solid
-    # button, a manual one a white framed row with a box and an automatic one last, off white,
-    # an arrow and its sentence past a thin line (the owner's C on 2026-11-14);
-    # 390px wide at 200% text nothing scrolls sideways, every manual row is at least 44px each
-    # way and every word at least 18px.
-    def test_to_dos_sit_under_the_button_and_fit_a_phone_at_double_text_size(self):
-        def style(locator, name):
-            return locator.evaluate("(e, name) => getComputedStyle(e)[name]", name)
-
-        self.open(390, 640)
-        user = User.objects.get(username="guide_e2e")
-        GuideChapterView.objects.create(user=user, chapter="before-you-go")
-        AidAndSubsidy.objects.create(user=user, certificate="yes")
-        with self.saving_artifacts():
-            for path, card in (("/", ".journey-card"), ("/guide", ".route-card")):
-                with self.subTest(path=path):
-                    self.page.goto(f"{self.live_server_url}{path}")
-                    card = self.main().locator(card)
-                    todos = card.locator(".todos")
-                    # #481: a manual one's state is its checkbox's, not words.
-                    expect(todos.get_by_role("listitem")).to_have_text(
-                        [
-                            "預約開九號表",
-                            "回答九號表完成了，就會往下一站，未完成。不用自己勾，網站會知道",
-                        ]
-                    )
-                    button = card.get_by_role("link", name="看九號表的流程")
-                    self.assertEqual(self.main().locator(".btn-primary").count(), 1)
-                    self.assertLess(button.bounding_box()["y"], todos.bounding_box()["y"])
-                    manual, auto = todos.locator(".todo-manual"), todos.locator(".todo-auto")
-                    self.assertEqual(style(manual, "backgroundColor"), "rgb(255, 255, 255)")
-                    self.assertEqual(style(manual, "borderTopWidth"), "1px")
-                    self.assertEqual(style(auto, "backgroundColor"), "rgba(0, 0, 0, 0)")
-                    self.assertEqual(style(auto, "borderTopWidth"), "1px")
-                    self.assertEqual(style(auto, "borderLeftWidth"), "0px")
-                    self.assertEqual(style(auto.locator(".todo-mark"), "borderTopWidth"), "0px")
-                    self.assertEqual(style(auto.locator(".todo-mark"), "color"), "rgb(31, 78, 140)")
-                    self.assertEqual(style(auto.locator(".todo-sentence"), "fontWeight"), "700")
-                    self.assert_fits_a_phone_at_double_text_size(f"{path} to-dos", width=390)
-                    # #481: what takes the press is the row's checkbox, as big as the row.
-                    for row in todos.get_by_role("checkbox").all():
-                        box = row.bounding_box()
-                        self.assertGreaterEqual(min(box["width"], box["height"]), 44, path)
-                    sizes = todos.evaluate(
-                        "list => [...list.querySelectorAll('*')].filter(e => e.childNodes.length"
-                        " && [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()))"
-                        ".map(e => parseFloat(getComputedStyle(e).fontSize))"
-                    )
-                    self.assertGreaterEqual(min(sizes), 18, path)
-
-    # Spec #478 acceptance 27 (the mockup's B on #479: the button as it is now): with its to-dos
-    # under it, the 現在這一步 card's solid button sits in the card where and as big as it does
-    # without them, as the page draws form 9's card with no to-dos.
-    def test_to_dos_leave_the_solid_button_where_it_was(self):
-        def button_in_card():
-            self.page.goto(f"{self.live_server_url}/")
-            card = self.main().locator(".journey-card")
-            expect(card.locator(".btn-primary")).to_have_count(1)
-            button, box = card.locator(".btn-primary").bounding_box(), card.bounding_box()
-            at = (button["x"] - box["x"], button["y"] - box["y"], button["width"], button["height"])
-            return at, card.locator(".todos").count()
-
-        self.open(390)
-        user = User.objects.get(username="guide_e2e")
-        GuideChapterView.objects.create(user=user, chapter="before-you-go")
-        AidAndSubsidy.objects.create(user=user, certificate="yes")
-        with self.saving_artifacts():
-            with_todos, listed = button_in_card()
-            self.assertEqual(listed, 1)
-            with patch.dict(STOP_TODOS, {"form-9": ()}):
-                without, listed = button_in_card()
-            self.assertEqual(listed, 0)
-            self.assertEqual(with_todos, without)
-
-    # #481 (spec #478 acceptance 11, 12, 28, 30): on the home page a 手動待辦 is a checkbox;
-    # pressed, it is ticked without leaving the page, ✓ 已儲存 showing on its row for a while,
-    # and is still ticked after a reload. With reduced motion pressing it again unticks it,
-    # nothing plays, and ✓ 已儲存 shows all the same.
-    def test_ticking_a_to_do_on_the_home_page_saves_it_in_place(self):
-        animations = "e => e.getAnimations({subtree: true}).length"
-        self.open(390)
-        user = User.objects.get(username="guide_e2e")
-        GuideChapterView.objects.create(user=user, chapter="before-you-go")
-        AidAndSubsidy.objects.create(user=user, certificate="yes")
-        with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/")
-            card = self.main().locator(".journey-card")
-            box = card.get_by_role("checkbox", name="預約開九號表")
-            row = card.locator('[data-todo="form-9-book"]')
-            expect(box).not_to_be_checked()
-            # The page's one tick drawing, hidden while unticked (the cross review on #478).
-            tick = row.locator(".todo-box svg")
-            expect(tick).to_be_hidden()
-            self.page.evaluate("window.notReloaded = true")
-            box.click()
-            expect(box).to_be_checked()
-            expect(tick).to_be_visible()
-            expect(row.locator(".todo-saved")).to_have_text("✓ 已儲存")
-            self.assertTrue(self.page.evaluate("window.notReloaded"))
-            self.assertGreater(row.evaluate(animations), 0)  # the tick draws, ✓ 已儲存 fades
-            # On the row's right, beside its words (the owner's D5 on #479).
-            words, saved = row.locator(".todo-text").bounding_box(), self.saved_box(row)
-            self.assertLess(saved["y"], words["y"] + words["height"])
-            self.assertGreater(saved["x"], words["x"])
-            expect(row.locator(".todo-saved")).to_have_count(0)  # gone after 1.5 s
-            self.page.reload()
-            expect(box).to_be_checked()
-            self.page.emulate_media(reduced_motion="reduce")
-            box.click()
-            expect(box).not_to_be_checked()
-            box.click()
-            expect(box).to_be_checked()
-            expect(row.locator(".todo-saved")).to_have_text("✓ 已儲存")
-            self.assertEqual(row.evaluate(animations), 0)
-            self.page.reload()
-            expect(box).to_be_checked()
-            # At 200% text it drops to a second line, under the words.
-            self.double_text()
-            box.click()
-            expect(box).not_to_be_checked()
-            words, saved = row.locator(".todo-text").bounding_box(), self.saved_box(row)
-            self.assertGreaterEqual(saved["y"], words["y"] + words["height"] - 1)
-
-    # Spec #478 acceptance 18: with JavaScript off, a 手動待辦 pressed is its form sent, which
-    # goes back to the same page at its row, ticked; on my guide too, where pressing it again
-    # unticks it.
-    def test_ticking_a_to_do_without_javascript_comes_back_to_its_row(self):
-        self.context = self.browser.new_context(
-            java_script_enabled=False, viewport={"width": 390, "height": 900}
-        )
-        self.context.add_cookies([self.cookie])
-        self.context.tracing.start(screenshots=True, snapshots=True)
-        self.addCleanup(self.context.close)
-        self.page = self.context.new_page()
-        user = User.objects.get(username="guide_e2e")
-        GuideChapterView.objects.create(user=user, chapter="before-you-go")
-        AidAndSubsidy.objects.create(user=user, certificate="yes")
-        with self.saving_artifacts():
-            for path, card, presses in (
-                ("/", ".journey-card", (True,)),
-                ("/guide", ".route-card", (False, True)),
-            ):
-                with self.subTest(path=path):
-                    self.page.goto(f"{self.live_server_url}{path}")
-                    for ticked in presses:
-                        box = self.main().locator(card).get_by_role("checkbox", name="預約開九號表")
-                        box.click()
-                        expect(self.page).to_have_url(
-                            f"{self.live_server_url}{path}#todo-form-9-book"
-                        )
-                        target = self.page.evaluate("document.querySelector(':target').id")
-                        self.assertEqual(target, "todo-form-9-book")
-                        box = self.main().locator(card).get_by_role("checkbox", name="預約開九號表")
-                        expect(box).to_be_checked(checked=ticked)
-
-    # Spec #478 acceptance 28: by keyboard alone, Tab from the card's button reaches the
-    # 手動待辦's checkbox, Space ticks it and again unticks it, saying so in aria-checked, and
-    # the focus stays on the row.
-    def test_a_to_do_ticks_and_unticks_by_keyboard(self):
-        self.open(390)
-        user = User.objects.get(username="guide_e2e")
-        GuideChapterView.objects.create(user=user, chapter="before-you-go")
-        AidAndSubsidy.objects.create(user=user, certificate="yes")
-        with self.saving_artifacts():
-            for path, card in (("/", ".journey-card"), ("/guide", ".route-card")):
-                with self.subTest(path=path):
-                    self.page.goto(f"{self.live_server_url}{path}")
-                    card = self.main().locator(card)
-                    box = card.get_by_role("checkbox", name="預約開九號表")
-                    card.get_by_role("link", name="看九號表的流程").focus()
-                    self.page.keyboard.press("Tab")
-                    expect(box).to_be_focused()
-                    for ticked in ("true", "false"):
-                        self.page.keyboard.press("Space")
-                        expect(box).to_have_attribute("aria-checked", ticked)
-                        expect(card.locator(".todo-saved")).to_have_text("✓ 已儲存")
-                        expect(box).to_be_focused()
-
-    def saved_box(self, row):
-        saved = row.locator(".todo-saved")
-        expect(saved).to_have_text("✓ 已儲存")
-        return saved.bounding_box()
 
     # #261 self-review: the action cards (#256) on the result pages, 320px wide at 200% text,
     # keep room for four characters a line in their titles. The home page has none since #459.
@@ -4011,7 +3834,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     self.assertEqual(narrow, [], path)
 
     # #261 self-review: the 建議您下一步 box at the same size; a reason ending in 「（45%）。」
-    # once ran past its white box. This user is at 去找聽力師之前 (spec #291's reason). #461:
+    # once ran past its white box. This user is at the assessment (ADR 0074). #461:
     # the result page's box has no reason any more (the #460 mockup R1); #459: the home page
     # says it on the 現在這一步's card.
     def test_next_step_reason_keeps_four_characters_a_line_at_double_text_size(self):
@@ -4021,9 +3844,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                 with self.subTest(path=path):
                     self.page.goto(f"{self.live_server_url}{path}")
                     reason = self.main().locator(".journey-card-because")
-                    expect(reason).to_contain_text(
-                        "第一次去找聽力師前先準備好，看診時比較不會漏問。"
-                    )
+                    expect(reason).to_contain_text("先確認有沒有身障證明，才知道能不能申請補助。")
                     self.assert_fits_a_phone_at_double_text_size(f"{path} next step")
                     room = reason.evaluate(
                         "p => ({chars: p.clientWidth / parseFloat(getComputedStyle(p).fontSize),"
@@ -4032,8 +3853,8 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     self.assertGreaterEqual(room["chars"], 4, path)
                     self.assertLessEqual(room["overflow"], 0, path)
 
-    # #258: the 目前這一站's ring lights only when motion is welcome. This user has read
-    # nothing, so the stop is 去找聽力師之前 (spec #291). #341 (ADR 0029): it plays once the
+    # #258: the 目前這一站's ring lights only when motion is welcome. This user has answered
+    # nothing, so the stop is the assessment (ADR 0074). #341 (ADR 0029): it plays once the
     # stop is in view, so the route is scrolled to first. #467 (I2): on the tab's first visit
     # with motion; the reduced visit first does not count as one.
     def test_current_stop_ring_moves_only_without_reduced_motion(self):
@@ -4045,7 +3866,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     self.page.goto(f"{self.live_server_url}/guide")
                     here = self.main().locator('[aria-current="step"]')
                     expect(here).to_have_count(1)
-                    expect(here).to_contain_text("去找聽力師之前")
+                    expect(here).to_contain_text("身障鑑定與鑑定醫院")
                     here.evaluate("el => el.scrollIntoView({block: 'center', behavior: 'instant'})")
                     number = here.locator(".route-number")
                     expect(number).to_have_css("animation-name", animation)
@@ -4208,8 +4029,104 @@ class RouteCheckmarkTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
                     self.page.reload()
                     expect(number.locator(".route-tick")).to_have_count(0)
                     expect(number.locator(".route-check")).to_have_count(1)
-                    expect(number).to_have_text("3")
+                    expect(number).to_have_text("2")  # the second stop (ADR 0074)
                     expect(number).to_have_css("background-color", WhiteCardRuleTest.WHITE)
+
+
+class CountUpTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """Spec #741 (ticket #747, ADR 0077, acceptance 54-56): the result page's score counts up from
+    0 once, in view on arrival; a screen reader reads the end value throughout; reduced motion
+    shows the end value at once. The page's clock stands still, and steps only when told."""
+
+    fixtures = ("questions_fixture.json",)
+    START = datetime(2026, 11, 21, 12, tzinfo=ZoneInfo("Asia/Taipei"))
+    SHOWN = "n => getComputedStyle(n, '::after').content"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        # Every HHIE-S item 4 points: 總分 40.
+        user = consented_user(username="count_up_e2e")
+        hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.record = Submission.objects.create(
+            user=user, questionnaire=hhie_s, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=self.record, question=question, score=4)
+            for question in hhie_s.questions.all()
+        )
+        self.client.force_login(user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, reduced_motion):
+        self.context = self.browser.new_context(
+            viewport={"width": 390, "height": 844}, reduced_motion=reduced_motion
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.clock.install(time=self.START)
+        self.page.clock.pause_at(self.START + timedelta(seconds=1))
+        self.page.goto(f"{self.live_server_url}/submission/{self.record.pk}")
+        self.score = self.main().locator("#result-score")
+        self.number = self.score.locator("[data-count-up]")
+
+    def assert_reads_the_end_value(self):
+        expect(self.number).to_have_text("40")
+        expect(self.score).to_match_aria_snapshot("- paragraph: 總分 40 分（滿分 40）")
+
+    def test_the_score_counts_up_once_and_reads_as_its_end_value(self):
+        with self.saving_artifacts():
+            self.open("no-preference")
+            expect(self.number).to_have_attribute("data-in-view", "")
+            self.assertIn('"0"', self.number.evaluate(self.SHOWN))
+            # The text is hidden while the count is drawn over it.
+            expect(self.number).to_have_css("-webkit-text-fill-color", "rgba(0, 0, 0, 0)")
+            self.assert_reads_the_end_value()
+
+            self.page.clock.run_for(450)
+            shown = int(self.number.get_attribute("data-count-now"))
+            self.assertTrue(0 < shown < 40, shown)
+            self.assertIn(f'"{shown}"', self.number.evaluate(self.SHOWN))
+            self.assert_reads_the_end_value()
+
+            self.page.clock.run_for(1000)
+            expect(self.number).to_have_attribute("data-count-done", "")
+            self.assertEqual(self.number.evaluate(self.SHOWN), "none")
+            expect(self.number).not_to_have_css("-webkit-text-fill-color", "rgba(0, 0, 0, 0)")
+            self.assert_reads_the_end_value()
+
+            # Scrolled away and back: it does not count again.
+            self.page.mouse.wheel(0, 3000)
+            self.page.clock.run_for(100)
+            self.page.mouse.wheel(0, -3000)
+            self.page.clock.run_for(100)
+            expect(self.number).not_to_have_attribute("data-count-now", re.compile(".*"))
+            self.assertEqual(self.number.evaluate(self.SHOWN), "none")
+
+    def test_reduced_motion_shows_the_end_value_at_once(self):
+        with self.saving_artifacts():
+            self.open("reduce")
+            expect(self.number).to_have_attribute("data-count-done", "")
+            expect(self.number).not_to_have_attribute("data-count-now", re.compile(".*"))
+            self.assertEqual(self.number.evaluate(self.SHOWN), "none")
+            expect(self.number).not_to_have_css("-webkit-text-fill-color", "rgba(0, 0, 0, 0)")
+            self.assert_reads_the_end_value()
 
 
 class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
@@ -7304,7 +7221,8 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         """My guide whose route has every kind of stop (#321): 已完成 (記錄聽力圖), 您在這裡,
         估算未達門檻 (30 and 20 dB, about 0%) and 不適用 (bought paying otherwise: form 25 and
         the payout), the 補助站 shown by 正在申請 (#596), which keeps the assessment undone so
-        its estimate is marked. After the chapter answered (in the white card rule's pages), its
+        its estimate is marked; it is the 您在這裡 too, the stop after the audiogram (ADR
+        0074). After the chapter answered (in the white card rule's pages), its
         answer is set again and this audiogram is the newer one."""
         self.answered("hhie-s", 2)
         audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 2))
@@ -7826,7 +7744,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     if signed_in:
                         for kind in (".is-below", ".is-na"):
                             expect(route.locator(f".route-stop{kind}").first).to_be_visible()
-                        button = route.get_by_role("link", name="去之前要準備什麼", exact=True)
+                        button = route.get_by_role("link", name="找鑑定醫院", exact=True)
                         self.assertEqual(self.style(button, "backgroundColor"), self.PRIMARY)
                     else:
                         expect(route.locator(".route-mark")).to_have_count(0)
@@ -7887,7 +7805,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.visit(True, "/guide/assessment")
             question = self.main().get_by_role("region", name="看完了嗎？")
             self.assert_titled_part(question)
-            for answer in ("有", "還沒有，打算申請或正在申請鑑定", "沒有"):
+            for answer in ("有", "正在申請", "沒有"):
                 with self.subTest(answer=answer):
                     expect(question.get_by_role("button", name=answer, exact=True)).to_be_visible()
             self.visit(True, lambda test: test.answered_chapter())
@@ -14360,7 +14278,7 @@ class GuideRedesign467Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
 
     def setUp(self):
         # 55 dB in both ears and 去找聽力師之前 read: 記錄聽力圖 and it are done, 您在這裡 is the
-        # assessment, the third stop.
+        # assessment, the second stop (ADR 0074).
         self.user = consented_user(username="guide_467")
         audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
         AudiogramPoint.objects.bulk_create(

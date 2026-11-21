@@ -679,6 +679,87 @@
     animation-play-state: paused;
   }
 
+  /* The play-once entrance animations (spec #741, ADR 0077), shared by every page: each element
+     carries one class and data-play-in-view on itself or a box around it (in-view.js says how),
+     so it plays once, when in view. Reduced motion: none of them moves.
+     - play-once-slide-up: a block slides up a little as it fades in.
+     - play-once-stamp: the 已完成 stamp presses down; its own tilt (transform) is left alone.
+     - play-once-ring, play-once-gauge: an SVG stroke draws itself from its start. Give the path
+       pathLength="1" and draw only the arc of the value, so the stroke ends where the value is. */
+  @media (prefers-reduced-motion: no-preference) {
+    .play-once-slide-up {
+      animation: play-once-slide-up 0.6s ease-out both;
+    }
+
+    .play-once-stamp {
+      animation: play-once-stamp 0.45s 0.25s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+    }
+
+    .play-once-ring,
+    .play-once-gauge {
+      stroke-dasharray: 1;
+      animation: play-once-draw 0.9s 0.2s ease-out both;
+    }
+
+    .play-once-gauge {
+      animation-delay: 0.3s;
+    }
+  }
+
+  @keyframes play-once-slide-up {
+    from {
+      opacity: 0;
+      translate: 0 0.75rem;
+    }
+  }
+
+  @keyframes play-once-stamp {
+    0% {
+      opacity: 0;
+      scale: 2.4;
+    }
+    55% {
+      scale: 0.9;
+    }
+    75% {
+      scale: 1.04;
+    }
+  }
+
+  @keyframes play-once-draw {
+    from {
+      stroke-dashoffset: 1;
+    }
+  }
+
+  /* A number counting up (data-count-up, in-view.js): its text is the end value all along, for
+     screen readers, but hidden while the count (data-count-now, 0 until in-view.js starts it) is
+     drawn over it as text they skip (the "" after the slash). No JavaScript, reduced motion,
+     in-view.js not taking over within 3 seconds (layout.html), or a browser that cannot skip
+     drawn text: the number is simply there. */
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (content: "0" / "") {
+      :root.play-in-view [data-count-up]:not([data-count-done]) {
+        position: relative;
+        -webkit-text-fill-color: transparent;
+      }
+
+      :root.play-in-view [data-count-up]:not([data-count-done])::after {
+        content: "0" / "";
+        position: absolute;
+        inset: 0;
+        text-align: end;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+        -webkit-text-fill-color: currentColor;
+      }
+
+      :root.play-in-view [data-count-up][data-count-now]:not([data-count-done])::after {
+        content: attr(data-count-now) / "";
+      }
+    }
+  }
+
   /* #748 (canvas ProHome, ProScrollDemo): the name on the left, the avatar or 登入 on the
      right, one line at any text size. */
   .site-header-bar {
@@ -6538,196 +6619,6 @@
     min-height: var(--spacing-touch);
     margin-top: 0.25rem;
     font-weight: 700;
-  }
-
-  /* Spec #478 (the owner's pick B on #479): the 待辦 under the button, on the home page's
-     現在這一步 card and my guide's 您在這裡 card alike. */
-  .todos {
-    margin-top: 1rem;
-  }
-
-  .todos-head {
-    margin: 0 0 0.375rem;
-    color: var(--color-muted);
-    font-weight: 700;
-  }
-
-  .todo-list {
-    display: grid;
-    gap: 0.5rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .todo {
-    display: flex;
-    align-items: flex-start;
-    column-gap: 0.625rem;
-  }
-
-  /* 手動: a white row in the fields' edge (4.2:1 on the card, ADR 0022's white = can be
-     pressed), a square box in a 2px blue frame, blue with a white tick once ticked. */
-  .todo-manual {
-    display: block;
-    border: 1px solid var(--color-input-border);
-    border-radius: var(--radius-medium);
-    background-color: #fff;
-    color: var(--color-body);
-  }
-
-  /* #481: the whole row is its form's button (a checkbox to screen readers), so all of it is
-     the target. Pressed, it only changes colour, as an answer's choice does (ADR 0028). */
-  .todo-form {
-    margin: 0;
-  }
-
-  .todo-button {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    column-gap: 0.625rem;
-    width: 100%;
-    min-height: var(--spacing-touch);
-    padding: 0.625rem 0.75rem;
-    border: 0;
-    border-radius: calc(var(--radius-medium) - 1px);
-    background-color: transparent;
-    color: inherit;
-    font: inherit;
-    text-align: start;
-    cursor: pointer;
-  }
-
-  .todo-button:focus-visible {
-    outline: 3px solid var(--color-primary);
-    outline-offset: 2px;
-  }
-
-  @media (hover: hover) and (pointer: fine) {
-    .todo-manual:hover {
-      border-color: var(--color-primary);
-    }
-  }
-
-  .todo-manual:has(.todo-button:active) {
-    border-color: var(--color-primary);
-  }
-
-  .todo-button:active {
-    background-color: var(--color-brand-soft);
-  }
-
-  /* Its words keep room before ✓ 已儲存, which drops to a second line at large text sizes
-     (the owner's D5 on #479). */
-  .todo-button .todo-text {
-    flex-basis: 6em;
-  }
-
-  /* #481 (ADR 0028, as the answer page's): the success green, then faded in its last 0.3 s;
-     with reduced motion it is simply there until it goes. */
-  .todo-saved {
-    flex: none;
-    margin-left: auto;
-    color: var(--color-normal);
-    font-weight: 700;
-    white-space: nowrap;
-  }
-
-  .todo-box,
-  .todo-mark {
-    flex: none;
-    display: grid;
-    place-items: center;
-    width: 1.5rem;
-    height: 1.5rem;
-  }
-
-  .todo-box {
-    border: 2px solid var(--color-primary);
-    border-radius: var(--radius-small);
-    background-color: #fff;
-    color: #fff;
-  }
-
-  .todo-manual.is-done .todo-box {
-    background-color: var(--color-primary);
-  }
-
-  /* The tick journey_todos.html draws in every box, shown once ticked. */
-  .todo-manual:not(.is-done) .todo-box svg {
-    display: none;
-  }
-
-  /* 自動 (the owner's C on 2026-11-14): no frame, no white and nothing drawn to tick. Last,
-     past a thin line when 手動待辦 come first, a blue arrow (a tick once done) and its
-     sentence, dark and bold until done, over a muted line. */
-  .todo-auto {
-    padding: 0.25rem calc(0.75rem + 1px) 0;
-    color: var(--color-heading);
-  }
-
-  .todo-manual ~ .todo-auto {
-    margin-top: 0.25rem;
-    padding-top: 0.625rem;
-    border-top: 1px solid var(--color-brand-soft-deep);
-  }
-
-  .todo-mark {
-    color: var(--color-primary);
-  }
-
-  .todo-sentence {
-    display: block;
-    font-weight: 700;
-  }
-
-  .todo-auto.is-done .todo-sentence {
-    color: var(--color-body);
-    font-weight: 400;
-  }
-
-  .todo-box svg,
-  .todo-mark svg {
-    width: 80%;
-    height: 80%;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 3;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  .todo-mark svg {
-    width: 100%;
-    height: 100%;
-  }
-
-  .todo-box svg {
-    stroke-dasharray: 1;
-  }
-
-  /* #481 (the mockup's note ⑧): the tick just pressed draws itself once, as a route stop's
-     (ADR 0028); with reduced motion it is simply there. */
-  @media (prefers-reduced-motion: no-preference) {
-    .todo-saved {
-      animation: saved-fade 1.5s linear both;
-    }
-
-    .todo-tick path {
-      animation: gauge-draw 0.45s ease-out both;
-    }
-  }
-
-  .todo-text {
-    flex: 1;
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-
-  .todo-hint {
-    display: block;
-    color: var(--color-muted);
   }
 
   /* At large text sizes the card drops under its dot instead of shrinking to a few characters a

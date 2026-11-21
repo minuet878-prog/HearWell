@@ -8,8 +8,8 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening.models import AidAndSubsidy, GuideChapterView, User
-from screening.tests import test_guide, test_guide_summary, test_home_journey
-from screening.tests.helpers import consented_user, route_stops
+from screening.tests import test_guide, test_guide_summary
+from screening.tests.helpers import consented_user, route_stops, took_ioi_ha
 
 ROUTE_STOP = "/guide#stop-assessment"
 CHAPTER_CARD = "/guide/assessment#stop-question"
@@ -17,10 +17,11 @@ CHAPTER_CARD = "/guide/assessment#stop-question"
 CARD_TITLE = '<h2 id="stop-question-title" class="h4">'
 PTA_55 = test_guide_summary.PTA_55
 QUESTION = "您有聽覺機能的身心障礙證明嗎？"
-# #597 (spec #593 acceptance 17): no reason asked of 沒有, and room for those about to apply.
+# #597 (spec #593 acceptance 17): no reason asked of 沒有, and room for those about to apply;
+# spec #741 Q21 words them 有／正在申請／沒有.
 ANSWERS = (
     ("yes", "有"),
-    ("applying", "還沒有，打算申請或正在申請鑑定"),
+    ("applying", "正在申請"),
     ("no_subsidy", "沒有"),
 )
 
@@ -141,8 +142,7 @@ class RouteQuestionTests(TestCase):
         return self.client.get(reverse("guide") + query).content.decode()
 
     def stop(self, slug, query=""):
-        # Without the to-dos, whose manual ones are forms too (#481): these are the questions'.
-        return test_home_journey.TODOS.sub("", dict(route_stops(self.page(query)))[slug])
+        return dict(route_stops(self.page(query)))[slug]
 
     def marks(self, slug):
         return re.findall(r'<span class="route-mark">([^<]+)</span>', self.stop(slug))
@@ -164,7 +164,7 @@ class RouteQuestionTests(TestCase):
         self.assertEqual(self.page().count("<fieldset"), 1)
 
     def test_a_stop_that_is_not_here_keeps_its_question_closed(self):
-        GuideChapterView.objects.filter(user=self.user).delete()
+        self.user.audiograms.all().delete()  # here is recording one (ADR 0074's order)
         self.assertNotIn(QUESTION, self.page())
 
     def test_having_one_marks_it_done_says_so_and_offers_to_change_it(self):
@@ -818,6 +818,7 @@ class FittingRouteTests(TestCase):
 
     def test_the_date_and_answers_are_kept_and_it_is_done(self):
         self.without_the_notice()
+        took_ioi_ha(self.user, date(2026, 5, 1))  # 配戴之後 needs it too (ADR 0074)
         response = self.fit(fitted_on="2026-05-01", ear="left", subsidy="disability", level="mid")
         self.assertRedirects(response, "/guide#stop-after-fitting", fetch_redirect_response=False)
         aid = self.aid()
@@ -854,6 +855,7 @@ class FittingRouteTests(TestCase):
 
     def test_the_date_and_the_subsidy_are_enough(self):
         self.without_the_notice()
+        took_ioi_ha(self.user, date(2026, 5, 1))  # with the IOI-HA ADR 0074 asks for
         self.fit(fitted_on="2026-05-01", subsidy="other")
         self.assertEqual(self.marks("after-fitting"), ["已完成"])
         self.assertIn(
@@ -999,6 +1001,7 @@ class Form25RouteTests(TestCase):
         AidAndSubsidy.objects.create(
             user=self.user, fitted_on=date(2026, 5, 1), subsidy="disability", level="mid"
         )
+        took_ioi_ha(self.user, date(2026, 5, 1))  # 配戴之後 done (ADR 0074)
 
     page = RouteQuestionTests.page
     stop = RouteQuestionTests.stop
@@ -1110,7 +1113,9 @@ class RouteActionT367Tests(TestCase):
 
     def test_without_a_question_it_stays_the_filled_button(self):
         GuideChapterView.objects.filter(user=self.user).delete()
+        self.answer("no_subsidy")  # on past the assessment to before you go (ADR 0074)
         before_you_go = self.stop("before-you-go")
+
         self.assertNotIn("<form", before_you_go)
         kind, _ = self.action(before_you_go, "去之前要準備什麼")
         self.assertEqual(kind, "btn-primary btn-lg w-full mt-3")

@@ -137,8 +137,10 @@ class GuideContentsTests(TestCase):
         self.assertIn(CONTENTS_TITLE, content)
         # In the body: the head's description (spec #583) names some chapters too.
         body = content[content.index("<body") :]
-        # #596: signed out the 補助站 are folded, so form 9 and form 25 are no stops.
-        shown = [title for title in CHAPTERS if not title.startswith(("九號表", "二十五號表"))]
+        # #596: signed out the 補助站 are folded, so form 9 and form 25 are no stops; the
+        # chapters as the route orders them (ADR 0074).
+        shown = ["身障鑑定與鑑定醫院", "去找聽力師之前", "助聽器的種類與價格", "配戴助聽器之後"]
+
         positions = [body.index(title) for title in shown]
         self.assertEqual(positions, sorted(positions))
 

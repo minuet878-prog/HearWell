@@ -121,7 +121,9 @@ class SectionTests(ResultFromAnswersTestCase):
         result = self.from_answers(hhie_s.CODE, scores, False)
         with self.assertNumQueries(0):
             html = self.render(result)
-        self.assertIn('總分 <span class="result-number">16</span> 分（滿分 40）', html)
+        self.assertIn(
+            '總分 <span class="result-number" data-count-up>16</span> 分（滿分 40）', html
+        )
         self.assertIn(
             '<h2 class="result-block-level" aria-describedby="result-score">輕度到中度影響</h2>',
             html,
@@ -153,15 +155,15 @@ class SectionTests(ResultFromAnswersTestCase):
 
 class RecordPageUnchangedTests(ResultFromAnswersTestCase):
     """The signed-in result page draws the same section from the record, with what an account has.
-    The queries are main's (one more since #478 reads the to-do ticks, one more since #647 counts
-    which time this is, two more since #661 reads the email 重測提醒 and its next date), measured
-    with these records (its HTML was compared byte for byte with main's on HHIE-S and HHIA-S
-    records of each level and hearing aid status)."""
+    The queries are main's (one more since #647 counts which time this is, two more since #661
+    reads the email 重測提醒 and its next date, one fewer since #742 took away the to-do ticks),
+    measured with these records (its HTML was compared byte for byte with main's on HHIE-S and
+    HHIA-S records of each level and hearing aid status)."""
 
     def test_queries_and_the_account_parts(self):
         self.client.force_login(self.user)
         for code in LEVELS:
-            for wearing, queries in ((False, 20), (True, 20), (None, 19)):
+            for wearing, queries in ((False, 19), (True, 19), (None, 18)):
                 with self.subTest(code=code, wearing=wearing):
                     submission_with_answers(self.user, code, [0] * 10, wearing_hearing_aid=wearing)
                     record = submission_with_answers(

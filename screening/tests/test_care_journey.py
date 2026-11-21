@@ -149,16 +149,16 @@ class FittingStepsTests(CareJourneyTestCase):
             ),
         )
 
-    def test_types_and_prices_gets_a_button_on_the_card(self):
-        # The owner on #455 (2026-11-12): the chapter is something to read, so step 3's card
-        # has a button for it, though the route itself shows none.
+    def test_types_and_prices_is_passed_by_to_after_fitting(self):
+        # ADR 0074: my guide is at 助聽器的種類與價格, the home page's card at the stop after it.
         self.answer()
         self.make(PTA_55, PTA_55)
         GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
         AidAndSubsidy.objects.create(user=self.user, certificate=Certificate.NO_SUBSIDY)
+        self.assertEqual(fitting_state(self.user, TODAY).stop, "types-and-prices")
         card = self.journey().card
-        self.assertEqual(card.href, "/guide/types-and-prices")
-        self.assertEqual(card.button, ("去看助聽器種類與價格", "/guide/types-and-prices"))
+        self.assertEqual(card.title, "配戴助聽器之後")
+        self.assertEqual(card.button, ("記錄配戴的效果", "/guide/after-fitting#record-title"))
 
     def test_waiting_for_the_notice_has_no_button(self):
         # The owner on #455: there is nothing to do but wait, so no button.
@@ -203,19 +203,17 @@ class FittingStepsTests(CareJourneyTestCase):
             user=self.user, fitted_on=fitted_on, subsidy=subsidy, level=level
         )
 
-    def test_form_25_with_its_deadline_is_step_4_s_one_thing(self):
-        # Spec #453 acceptance 10: fitted 2026/10/01 with 身障補助 at 中階型, so form 25 is
-        # due by 2027/01/01 and today, 2026/11/12, is within its window.
+    def test_fitted_with_the_subsidy_and_no_ioi_ha_step_4_counts_down(self):
+        # ADR 0074, in place of spec #453 acceptance 10: 配戴之後 waits for a first IOI-HA, so
+        # the route is not at form 25 yet and step 4 is the countdown, not form 25's card.
         self.answer()
         self.fit(date(2026, 10, 1), Subsidy.DISABILITY, AidLevel.MID)
+        self.assertEqual(fitting_state(self.user, TODAY).stop, "after-fitting")
         journey = self.journey()
         self.assertEqual(self.states()[2:4], [DONE, CURRENT])
-        self.assertEqual(journey.card.title, "二十五號表：使用效益驗證")
         self.assertEqual(
-            journey.card.because,
-            "您的助聽器要在 2027/01/01 前做使用效益驗證（二十五號表），才能核銷補助。",
+            journey.card.because, "再 50 天滿 3 個月，到時候做使用效益問卷（IOI-HA）。"
         )
-        self.assertEqual(journey.card.button, ("看二十五號表要帶什麼", "/guide/form-25"))
 
     def test_the_subsidy_s_stops_folded_by_none_step_4_is_never_form_25(self):
         # #596 (spec #593 acceptance 32): 沒有 keeps the 補助站 folded, whatever 配戴之後 says.
@@ -239,18 +237,6 @@ class FittingStepsTests(CareJourneyTestCase):
             journey.card.because, "再 52 天滿 3 個月，到時候做使用效益問卷（IOI-HA）。"
         )
         self.assertIsNone(journey.card.button)
-
-    def test_waiting_for_the_payout_is_not_step_4_s_card(self):
-        # Spec #453: 簡易型 passes form 25 by, so the route is at 等待補助發放; step 4 counts
-        # down instead.
-        self.answer()
-        self.fit(date(2026, 10, 3), Subsidy.DISABILITY, AidLevel.BASIC)
-        self.assertEqual(fitting_state(self.user, TODAY).stop, "payout")
-        journey = self.journey()
-        self.assertEqual(journey.current, 4)
-        self.assertEqual(
-            journey.card.because, "再 52 天滿 3 個月，到時候做使用效益問卷（IOI-HA）。"
-        )
 
     def test_3_months_on_step_4_s_button_is_ioi_ha(self):
         # Spec #453 acceptance 12: fitted 2026/08/12, 3 months to the day.
@@ -437,7 +423,7 @@ class ViewingDoesNotStartRouteJourneyTests(CareJourneyTestCase):
         AidAndSubsidy.objects.create(user=self.user, certificate=Certificate.APPLYING)
         journey = self.journey()
         self.assertEqual(self.states(), [DONE, DONE, CURRENT, LATER, LATER])
-        self.assertEqual(journey.card.title, "去找聽力師之前")
+        self.assertEqual(journey.card.title, "身障鑑定與鑑定醫院")  # ADR 0074's order
 
     def test_wearing_and_reading_chapters_still_needs_step_3(self):
         # Acceptance 12, in part: someone wearing hearing aids is not waited on, as before.

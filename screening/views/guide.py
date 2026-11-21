@@ -12,6 +12,7 @@ from screening import assessment_hospitals, device_centres, models
 from screening.audiogram import FittingAdvice, over_mild
 from screening.fitting_route import (
     AUDIOGRAM,
+    GUIDE_PAGE,
     SUBSIDY_STOPS,
     fitting_state,
     not_applicable_stops,
@@ -19,7 +20,6 @@ from screening.fitting_route import (
     subsidy_declined,
 )
 from screening.forms import STOP_QUESTIONS
-from screening.journey_todos import stop_todos
 from screening.main_flow import get_user_state
 from screening.models import Ear, Questionnaire
 from screening.questionnaires.ssq12_tw import CODE as SSQ12
@@ -155,6 +155,7 @@ def guide(request):
     # Open without logging in (spec #218): the contents are for family too. ?edit=<slug>
     # opens an answered stop's question again (#293).
     done_now = request.session.pop(DONE_NOW, None)
+    _keep_view(request, GUIDE_PAGE)
     return _guide_page(request, edit=request.GET.get("edit"), done_now=done_now)
 
 
@@ -175,7 +176,7 @@ def _guide_page(request, edit=None, question=None, done_now=None):
         if state.audiogram is not None:
             context |= _guide_audiogram(state)
             context["fitting_words"] = _fitting_words(state, request.user, today)
-    context["route"] = route = _route(state, request.user, edit, question)
+    context["route"] = route = _route(state, edit, question)
     # #596 (ADR 0063): the 補助站 folded into a line under the route, signed out too.
     context["subsidy_folded"] = state is None or not state.subsidy_shown
     # #467 (I2): the line is blue as far as the 目前這一站, and its entrance is paced by how far
@@ -258,7 +259,6 @@ class RouteStop:
     questions: tuple = ()  # the stop's question forms shown open (#293, #294)
     editable: bool = False  # 修改 opens questions answered but not shown (#294)
     gap: str = ""  # said on the line on to the next stop (#296)
-    todos: tuple = ()  # the 您在這裡 stop's 待辦 (spec #478), the 照顧旅程's card takes them too
 
     @property
     def here(self):
@@ -373,10 +373,10 @@ def _reached(slug, aid):
     return questions if aid.approved_ears else questions[:2]
 
 
-def _route(state, user, edit=None, question=None):
+def _route(state, edit=None, question=None):
     # 選配路線 (#258, spec #291): recording an audiogram, then the chapters in reading order
     # and the two waits, which have no chapter and point to form 9's 申請流程 (Q15). Signed
-    # out, no stop is marked. user: state's, whose ticks the 您在這裡 stop's 待辦 read.
+    # out, no stop is marked.
     steps = reverse("guide_chapter", args=["form-9"]) + "#steps-title"
     places = {c.slug: (c.title, reverse("guide_chapter", args=[c.slug])) for c in GUIDE_CHAPTERS}
     places |= {
@@ -389,16 +389,16 @@ def _route(state, user, edit=None, question=None):
     stops = [(slug, *places[slug]) for slug in shown]
     if state is None:
         return [RouteStop(slug=slug, title=title, url=url) for slug, title, url in stops]
-    return [_route_stop(state, user, *stop, edit, question) for stop in stops]
+    return [_route_stop(state, *stop, edit, question) for stop in stops]
 
 
-def here_stop(state, user):
+def here_stop(state):
     """The 目前這一站 as the route shows it (title, url, button), or None without one; the
-    照顧旅程's card takes it (ADR 0044). state: user's FittingState."""
-    return next((stop for stop in _route(state, user) if stop.here), None)
+    照顧旅程's card takes it (ADR 0044)."""
+    return next((stop for stop in _route(state) if stop.here), None)
 
 
-def _route_stop(state, user, slug, title, url, edit=None, question=None):
+def _route_stop(state, slug, title, url, edit=None, question=None):
     marks, links, action, tested_on = [], [], None, None
     notes = list(ROUTE_REMINDERS.get(slug, ())) if state.subsidy_shown else []
     form_9 = reverse("guide_chapter", args=["form-9"])
@@ -488,7 +488,6 @@ def _route_stop(state, user, slug, title, url, edit=None, question=None):
         questions=shown,
         editable=editable,
         gap=gap,
-        todos=stop_todos(slug, state, user) if slug == state.stop else (),
     )
 
 
@@ -497,11 +496,15 @@ def guide_chapter(request, chapter):
     found = next((c for c in GUIDE_CHAPTERS if c.slug == chapter), None)
     if found is None:
         raise Http404
+    _keep_view(request, chapter)
+    return _chapter_page(request, found)
+
+
+def _keep_view(request, chapter):
     if request.user.is_authenticated and request.user.has_consented():
         # 看過 (spec #291 acceptance 4): the first time stays; signed out or before agreeing
         # to the privacy notice that covers it, nothing is kept.
         models.GuideChapterView.objects.get_or_create(user=request.user, chapter=chapter)
-    return _chapter_page(request, found)
 
 
 def _chapter_page(request, chapter, question=None):

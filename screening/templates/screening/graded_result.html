@@ -1,7 +1,7 @@
-{# The graded result page's result section, under its header (#494): the result, its advice and its answers. A result from_answers() (a guest's, spec #492) is drawn by it alone: without a record it has no 照顧旅程 and no records, report or sharing. #461 (the #460 mockup R1): the first screen is the level block, one sentence and the 建議下一步; the rest waits behind 看完整說明, word for word. No reveal motion (ADR 0006). #}
+{# The graded result page's result section, under its header (#494): the result, its advice and its answers. A result from_answers() (a guest's, spec #492) is drawn by it alone: without a record it has no 照顧旅程 and no records, report or sharing. #461 (the #460 mockup R1): the first screen is the level block, one sentence and the 建議下一步; the rest waits behind 看完整說明, word for word. No reveal motion (ADR 0006), but the score counts up once in view (spec #741, ADR 0077). #}
 {% with result=submission.result %}
 <div class="result-banner result-banner-{{ result.level.color }}">
-    <p id="result-score" class="result-score">總分 <span class="result-number">{{ result.total }}</span> 分{% if max_score is not None %}（滿分 {{ max_score }}）{% endif %}</p>
+    <p id="result-score" class="result-score">總分 <span class="result-number" data-count-up>{{ result.total }}</span> 分{% if max_score is not None %}（滿分 {{ max_score }}）{% endif %}</p>
     <h2 class="result-block-level" aria-describedby="result-score">{{ result.level.text }}</h2>
     {# Readability batch 3 (the owner's B6 A): where this score sits, on white under the level; out of 看完整說明, where the text-heavy pages tidy-up had put it. #}
     {% if score_bar %}{% include "screening/score_bar.html" with bar=score_bar %}{% endif %}

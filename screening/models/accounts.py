@@ -79,7 +79,6 @@ class User(AbstractUser):
         self.report_shares.all().delete()
         AidAndSubsidy.objects.filter(user=self).delete()
         self.guide_views.all().delete()
-        self.todo_ticks.all().delete()
         RetestReminder.objects.filter(user=self).delete()  # email 重測提醒 (#659)
         RetestReminderSent.objects.filter(user=self).delete()  # 重測提醒信 sent (#663)
         self.delete()
