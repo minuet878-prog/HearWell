@@ -734,9 +734,10 @@
 
     /* play-once-trace: Recharts draws every series' line in one of its layers and every point in
        another (TrendChart.jsx), so each layer is wiped as one, left to right; the dashed line
-       for 有戴 keeps its dashes. The bands, their names and the dates stay. */
+       for 有戴 keeps its dashes. The bands, their names and the dates stay. Backwards, not both:
+       at the end the clip is gone (none), not left as inset(0). */
     .play-once-trace :is(.recharts-zIndex-layer_400, .recharts-zIndex-layer_600) {
-      animation: play-once-trace 1s 0.3s ease-out both;
+      animation: play-once-trace 1s 0.3s ease-out backwards;
     }
 
     .play-once-trace .recharts-label-list {
@@ -782,9 +783,14 @@
     }
   }
 
+  /* Both ends are inset(): from inset() to none cannot be tweened, so the line and points popped
+     in all at once halfway instead of being wiped in. */
   @keyframes play-once-trace {
     from {
       clip-path: inset(0 100% 0 0);
+    }
+    to {
+      clip-path: inset(0);
     }
   }
 
