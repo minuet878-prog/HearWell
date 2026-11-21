@@ -121,7 +121,9 @@ class SectionTests(ResultFromAnswersTestCase):
         result = self.from_answers(hhie_s.CODE, scores, False)
         with self.assertNumQueries(0):
             html = self.render(result)
-        self.assertIn('總分 <span class="result-number">16</span> 分（滿分 40）', html)
+        self.assertIn(
+            '總分 <span class="result-number" data-count-up>16</span> 分（滿分 40）', html
+        )
         self.assertIn(
             '<h2 class="result-block-level" aria-describedby="result-score">輕度到中度影響</h2>',
             html,

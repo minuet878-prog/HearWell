@@ -3984,6 +3984,102 @@ class RouteCheckmarkTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
                     expect(number).to_have_css("background-color", WhiteCardRuleTest.WHITE)
 
 
+class CountUpTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """Spec #741 (ticket #747, ADR 0077, acceptance 54-56): the result page's score counts up from
+    0 once, in view on arrival; a screen reader reads the end value throughout; reduced motion
+    shows the end value at once. The page's clock stands still, and steps only when told."""
+
+    fixtures = ("questions_fixture.json",)
+    START = datetime(2026, 11, 21, 12, tzinfo=ZoneInfo("Asia/Taipei"))
+    SHOWN = "n => getComputedStyle(n, '::after').content"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        # Every HHIE-S item 4 points: 總分 40.
+        user = consented_user(username="count_up_e2e")
+        hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.record = Submission.objects.create(
+            user=user, questionnaire=hhie_s, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=self.record, question=question, score=4)
+            for question in hhie_s.questions.all()
+        )
+        self.client.force_login(user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, reduced_motion):
+        self.context = self.browser.new_context(
+            viewport={"width": 390, "height": 844}, reduced_motion=reduced_motion
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.clock.install(time=self.START)
+        self.page.clock.pause_at(self.START + timedelta(seconds=1))
+        self.page.goto(f"{self.live_server_url}/submission/{self.record.pk}")
+        self.score = self.main().locator("#result-score")
+        self.number = self.score.locator("[data-count-up]")
+
+    def assert_reads_the_end_value(self):
+        expect(self.number).to_have_text("40")
+        expect(self.score).to_match_aria_snapshot("- paragraph: 總分 40 分（滿分 40）")
+
+    def test_the_score_counts_up_once_and_reads_as_its_end_value(self):
+        with self.saving_artifacts():
+            self.open("no-preference")
+            expect(self.number).to_have_attribute("data-in-view", "")
+            self.assertIn('"0"', self.number.evaluate(self.SHOWN))
+            # The text is hidden while the count is drawn over it.
+            expect(self.number).to_have_css("-webkit-text-fill-color", "rgba(0, 0, 0, 0)")
+            self.assert_reads_the_end_value()
+
+            self.page.clock.run_for(450)
+            shown = int(self.number.get_attribute("data-count-now"))
+            self.assertTrue(0 < shown < 40, shown)
+            self.assertIn(f'"{shown}"', self.number.evaluate(self.SHOWN))
+            self.assert_reads_the_end_value()
+
+            self.page.clock.run_for(1000)
+            expect(self.number).to_have_attribute("data-count-done", "")
+            self.assertEqual(self.number.evaluate(self.SHOWN), "none")
+            expect(self.number).not_to_have_css("-webkit-text-fill-color", "rgba(0, 0, 0, 0)")
+            self.assert_reads_the_end_value()
+
+            # Scrolled away and back: it does not count again.
+            self.page.mouse.wheel(0, 3000)
+            self.page.clock.run_for(100)
+            self.page.mouse.wheel(0, -3000)
+            self.page.clock.run_for(100)
+            expect(self.number).not_to_have_attribute("data-count-now", re.compile(".*"))
+            self.assertEqual(self.number.evaluate(self.SHOWN), "none")
+
+    def test_reduced_motion_shows_the_end_value_at_once(self):
+        with self.saving_artifacts():
+            self.open("reduce")
+            expect(self.number).to_have_attribute("data-count-done", "")
+            expect(self.number).not_to_have_attribute("data-count-now", re.compile(".*"))
+            self.assertEqual(self.number.evaluate(self.SHOWN), "none")
+            expect(self.number).not_to_have_css("-webkit-text-fill-color", "rgba(0, 0, 0, 0)")
+            self.assert_reads_the_end_value()
+
+
 class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """#427 (spec #426): the way from a new visitor's home page to 家人專區, on a phone."""
 
