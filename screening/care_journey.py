@@ -2,7 +2,6 @@
 state, the 現在這一步 and its card, and the home page's two tiles, the one place the home page and
 the result pages ask. It reads the 選配路線 and the main flow's state; it judges nothing anew."""
 
-import math
 from dataclasses import dataclass, replace
 from datetime import date
 
@@ -22,6 +21,7 @@ from screening.forms import STOP_QUESTIONS
 from screening.main_flow import get_user_state, life_impact_questionnaire
 from screening.models import Certificate, Questionnaire, Submission
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
+from screening.questionnaires.results import gauge_arc
 from screening.scoring import (
     AFTER_FITTING_WORDS,
     AIRPODS_SELF_TEST,
@@ -161,16 +161,11 @@ class AudiogramResult:
     ears: tuple[EarResult, ...]
 
 
-# The countdown ring's drawing (countdown_ring.html): its centre and radius in the SVG's units.
-RING_CENTRE = 52
-RING_RADIUS = 44
-
-
 @dataclass(frozen=True)
 class Countdown:
     """A countdown card (countdown_card.html, spec #741): the day it counts to, the days left,
-    the share of the wait gone (the ring's arc, 0 to under 1), and its words above or below the
-    day."""
+    the share of the wait gone (the semicircle's blue arc, 0 to under 1), and its words above or
+    below the day."""
 
     on: date
     days_left: int
@@ -178,16 +173,14 @@ class Countdown:
     above: str = ""
     below: str = ""
 
+    # The semicircle is drawn as the gauge beside it on the home page (the owner, 2026-11-21,
+    # ADR 0075): its whole track, then the arc of the wait gone from its left end, as site.css's
+    # play-once-ring draws it.
+    track_path = gauge_arc(0, 1)
+
     @property
-    def ring_path(self):
-        """The ring's arc of the wait gone, clockwise from the top, as site.css's
-        play-once-ring draws it."""
-        angle = 2 * math.pi * self.elapsed
-        x = round(RING_CENTRE + RING_RADIUS * math.sin(angle), 1)
-        y = round(RING_CENTRE - RING_RADIUS * math.cos(angle), 1)
-        large = int(self.elapsed > 0.5)
-        top = RING_CENTRE - RING_RADIUS
-        return f"M{RING_CENTRE} {top}A{RING_RADIUS} {RING_RADIUS} 0 {large} 1 {x:g} {y:g}"
+    def arc_path(self):
+        return gauge_arc(0, self.elapsed)
 
 
 def countdown(start, end, today, **words):

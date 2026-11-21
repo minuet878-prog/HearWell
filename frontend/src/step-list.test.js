@@ -98,7 +98,7 @@ describe("openOneAtATime", () => {
 });
 
 describe("playOnceOpened", () => {
-  // Spec #741 (ADR 0075, 0077): a done step's stamp presses down, and step 7's countdown ring
+  // Spec #741 (ADR 0075, 0077): a done step's stamp presses down, and step 7's countdown semicircle
   // draws, the first time the step opens only; opening it again shows them at rest.
   beforeEach(() => {
     document.body.innerHTML = `
@@ -106,26 +106,26 @@ describe("playOnceOpened", () => {
         <li><details class="journey-about"><summary>1</summary>
           <span class="done-stamp play-once-stamp">已完成</span></details></li>
         <li><details class="journey-about"><summary>7</summary>
-          <svg><path class="countdown-ring-arc play-once-ring"/></svg></details></li>
+          <svg><path class="countdown-gauge-arc play-once-ring"/></svg></details></li>
       </ol>`;
     playOnceOpened(document, ".journey-steps");
   });
 
   const stamp = () => document.querySelector(".done-stamp");
-  const ring = () => document.querySelector(".countdown-ring-arc");
+  const arc = () => document.querySelector(".countdown-gauge-arc");
 
   it("keeps the stamp at rest once it has pressed down", () => {
     stamp().dispatchEvent(new Event("animationend", { bubbles: true }));
     expect(stamp().classList.contains("play-once-stamp")).toBe(false);
   });
 
-  it("keeps the ring drawn once it has drawn", () => {
-    ring().dispatchEvent(new Event("animationend", { bubbles: true }));
-    expect(ring().classList.contains("play-once-ring")).toBe(false);
+  it("keeps the semicircle drawn once it has drawn", () => {
+    arc().dispatchEvent(new Event("animationend", { bubbles: true }));
+    expect(arc().classList.contains("play-once-ring")).toBe(false);
   });
 
   it("leaves them to play until then", () => {
     expect(stamp().classList.contains("play-once-stamp")).toBe(true);
-    expect(ring().classList.contains("play-once-ring")).toBe(true);
+    expect(arc().classList.contains("play-once-ring")).toBe(true);
   });
 });

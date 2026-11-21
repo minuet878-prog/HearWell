@@ -4216,7 +4216,7 @@ class CountUpTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
         self.page.clock.install(time=self.START)
         self.page.clock.pause_at(self.START + timedelta(seconds=1))
         self.page.goto(f"{self.live_server_url}/")
-        self.days = self.main().locator(".journey-tiles .countdown-ring-days")
+        self.days = self.main().locator(".journey-tiles .countdown-gauge-days")
         self.number = self.days.locator("[data-count-up]")
         self.number.scroll_into_view_if_needed()
 
@@ -5666,6 +5666,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     expect(badge).to_be_visible()
                     self.assertEqual(self.style(badge, "color"), colour)
                     self.assertEqual(self.style(badge, "backgroundColor"), background)
+                    # Spec #741 (the owner at acceptance): a level's tag has no frame.
+                    self.assertEqual(self.style(badge, "borderTopWidth"), "0px")
 
     # #149: each level's text reaches 7:1 on its soft background and on white.
     def test_level_text_reaches_7_to_1_on_its_soft_background_and_on_white(self):
@@ -5713,8 +5715,9 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 self.assertEqual(self.style(element, f"border{side}Color"), colour)
 
     # L1 (ADR 0043): the result banner is a whole block of the level's pale colour, no frame;
-    # #149: a level badge keeps its frame in the level's own colour.
-    def test_result_banner_is_a_level_block_and_level_badges_are_framed(self):
+    # spec #741 (the owner at acceptance, 2026-11-21): on screen a level badge has no frame
+    # either (#149's frame stays on paper, test_printed_report_writes_the_level_in_a_frame).
+    def test_result_banner_is_a_level_block_and_level_badges_have_no_frame(self):
         records = {
             level: self.submission(self.hhie_s, scores) for level, scores, _, _ in self.BANNERS[:3]
         }
@@ -5732,7 +5735,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 badge = self.page.locator(f".level-badge-{level}").first
                 expect(badge).to_be_visible()
                 with self.subTest(page="my_hearing", level=level):
-                    self.assert_framed_in_its_text_colour(badge)
+                    for side in ("Top", "Right", "Bottom", "Left"):
+                        self.assertEqual(self.style(badge, f"border{side}Width"), "0px")
 
     # #149: on paper, often black and white, the level stays written out in a frame.
     def test_printed_report_writes_the_level_in_a_frame(self):
@@ -6177,16 +6181,16 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     expect(stamp).to_be_visible()
                     self.assertEqual(self.page.evaluate(self.STAMP_ANIMATIONS), [])
 
-    # #746 (spec #741, ADR 0075, 0077): step 7's countdown ring draws when its step first opens,
-    # once, the days counting up; reduced motion shows both at rest. A screen reader hears
-    # 還有 N 天, the ring itself hidden.
-    # #751: the 離下次篩檢 tile's ring is another, outside the journey.
-    RING_ANIMATIONS = """() => document.getAnimations()
-        .filter(a => a.effect.target.classList.contains('countdown-ring-arc')
+    # #746 (spec #741, ADR 0075, 0077): step 7's countdown semicircle draws when its step first
+    # opens, once, the days counting up; reduced motion shows both at rest. A screen reader hears
+    # 還有 N 天, the drawing itself hidden.
+    # #751: the 離下次篩檢 tile's semicircle is another, outside the journey.
+    ARC_ANIMATIONS = """() => document.getAnimations()
+        .filter(a => a.effect.target.classList.contains('countdown-gauge-arc')
                      && a.effect.target.closest('.journey-steps'))
         .map(a => a.animationName)"""
 
-    def test_the_countdown_ring_draws_once_and_says_the_days(self):
+    def test_the_countdown_semicircle_draws_once_and_says_the_days(self):
         self.submission(self.hhie_s, (2,) * 10)  # the next screening 6 months from today
         today = timezone.localdate()
         days = (add_months(today, 6) - today).days
@@ -6196,20 +6200,24 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 with self.saving_artifacts():
                     self.page.goto(f"{self.live_server_url}/")
                     row = self.page.locator(".journey-about > summary").last
-                    ring = self.page.locator(".journey-steps .countdown-ring")
-                    expect(ring).to_be_hidden()
+                    semicircle = self.page.locator(".journey-steps .countdown-gauge")
+                    expect(semicircle).to_be_hidden()
                     row.click()
-                    expect(ring).to_be_visible()
-                    ring.evaluate("el => el.scrollIntoView({block: 'center', behavior: 'instant'})")
-                    played = self.page.evaluate(self.RING_ANIMATIONS)
+                    expect(semicircle).to_be_visible()
+                    semicircle.evaluate(
+                        "el => el.scrollIntoView({block: 'center', behavior: 'instant'})"
+                    )
+                    played = self.page.evaluate(self.ARC_ANIMATIONS)
                     self.assertEqual(played, ["play-once-draw"] if motion else [])
-                    expect(ring).to_match_aria_snapshot(f"- paragraph: 還有 {days} 天")
-                    expect(ring.locator("[data-count-up]")).to_have_attribute("data-count-done", "")
+                    expect(semicircle).to_match_aria_snapshot(f"- paragraph: 還有 {days} 天")
+                    expect(semicircle.locator("[data-count-up]")).to_have_attribute(
+                        "data-count-done", ""
+                    )
                     self.page.wait_for_timeout(1300)
                     row.click()
                     row.click()
-                    expect(ring).to_be_visible()
-                    self.assertEqual(self.page.evaluate(self.RING_ANIMATIONS), [])
+                    expect(semicircle).to_be_visible()
+                    self.assertEqual(self.page.evaluate(self.ARC_ANIMATIONS), [])
 
     def test_reduced_motion_keeps_the_header_still(self):
         self.open()  # reduced motion
@@ -10889,7 +10897,7 @@ class AnswerHeadFirstScreenTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiv
 class NextScreeningTileTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """Readability batch 1 (docs/planning/redesign/mockup-readability-batch1.html, the owner's B):
     the home page's 離下次篩檢 tile, the days left big on one line, the day small under them;
-    since #751 (the canvas's ProHome) the days in the countdown ring."""
+    since #751 (the canvas's ProHome) the days under the countdown semicircle."""
 
     fixtures = ("questions_fixture.json",)
 
@@ -10917,7 +10925,7 @@ class NextScreeningTileTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
                 with self.subTest(width=width):
                     self.open("/", (width, 844))
                     expect(self.tile()).to_contain_text("離下次篩檢")
-                    days = self.tile().locator(".countdown-ring-number")
+                    days = self.tile().locator(".countdown-gauge-number")
                     self.assert_one_line(days)
                     self.assertRegex(days.inner_text(), r"^\d+$")
                     self.assert_one_line(self.tile().locator(".journey-tile-small"))
@@ -10926,7 +10934,7 @@ class NextScreeningTileTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
         with self.saving_artifacts():
             self.open("/", (320, 640))
             self.assert_fits_a_phone_at_double_text_size("/ 離下次篩檢")
-            self.assert_one_line(self.tile().locator(".countdown-ring-number"))
+            self.assert_one_line(self.tile().locator(".countdown-gauge-number"))
 
 
 class TalkTipsSideBySideTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
@@ -17034,12 +17042,12 @@ class ChangeLabelT646Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
         return self.main().locator(".result-since-last")
 
     def assert_neutral(self, label):
-        # Acceptance 7: the heading colour on white in a thin muted frame, in every level's box.
+        # Acceptance 7: the heading colour on white, in every level's box; spec #741 (the owner
+        # at acceptance): tags like this have no frame.
         self.assertEqual(self.style(label, "color"), self.HEADING)
         self.assertEqual(self.style(label, "backgroundColor"), self.WHITE)
         for side in ("Top", "Right", "Bottom", "Left"):
-            self.assertEqual(self.style(label, f"border{side}Color"), self.MUTED, side)
-            self.assertEqual(self.style(label, f"border{side}Width"), "2px", side)
+            self.assertEqual(self.style(label, f"border{side}Width"), "0px", side)
         self.assertEqual(self.style(label, "fontWeight"), "700")
         self.assertGreaterEqual(self.lowest_contrast(self.HEADING, self.WHITE), 4.5)
         expect(label.locator("svg, img")).to_have_count(0)

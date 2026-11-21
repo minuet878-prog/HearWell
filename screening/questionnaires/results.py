@@ -247,8 +247,9 @@ def level_ranges(definition):
     return ranges
 
 
-# The semicircle gauge's drawing (semicircle_gauge.html, canvas ProResult): its centre and radius
-# in the SVG's own units, and the gap left at each side of a level's border, as a share of the arc.
+# The semicircle gauge's drawing (semicircle_gauge.html, canvas ProResult, and the countdown's
+# countdown_gauge.html beside it): its centre and radius in the SVG's own units, and the gap left
+# at each side of a level's border, as a share of the arc.
 GAUGE_CENTRE = (159, 150)
 GAUGE_RADIUS = 124
 GAUGE_GAP = 0.012
@@ -263,6 +264,13 @@ def _gauge_point(share):
     return round(x, 1), round(y, 1)
 
 
+def gauge_arc(start, end):
+    """The gauge's arc from start to end, shares of the way from its left end to its right."""
+    begin = _gauge_point(start)
+    finish = _gauge_point(end)
+    return f"M{begin[0]} {begin[1]}A{GAUGE_RADIUS} {GAUGE_RADIUS} 0 0 1 {finish[0]} {finish[1]}"
+
+
 def semicircle_gauge(definition, score, level):
     """#750 (canvas ProResult): one arc for each level, the score's level drawn thick, and a knob
     where the score is. "無法判讀" (no thresholds, or an out-of-range score) draws none."""
@@ -273,12 +281,11 @@ def semicircle_gauge(definition, score, level):
     arcs = []
     start = 0
     for upper, _text, arc_level in thresholds:
-        begin = _gauge_point(start / ceiling + (GAUGE_GAP if start else 0))
-        end = _gauge_point(upper / ceiling - (GAUGE_GAP if upper < ceiling else 0))
+        begin = start / ceiling + (GAUGE_GAP if start else 0)
+        end = upper / ceiling - (GAUGE_GAP if upper < ceiling else 0)
         arcs.append(
             {
-                "path": f"M{begin[0]} {begin[1]}A{GAUGE_RADIUS} {GAUGE_RADIUS} 0 0 1 "
-                f"{end[0]} {end[1]}",
+                "path": gauge_arc(begin, end),
                 "color": definition.color(arc_level),
                 "shade": definition.shade(arc_level),
                 "current": arc_level == level,
