@@ -40,6 +40,10 @@ export function setUpCardStack(root, win = window) {
     prev.disabled = index === 0;
     next.disabled = index === last;
     if (focused?.disabled) (focused === prev ? next : prev).focus();
+    // So does a card going behind: the focus moves to the one coming to the front.
+    else if (cards.some((card) => card.inert && card.contains(focused))) {
+      cards[index].querySelector("a, button")?.focus();
+    }
   }
 
   prev.addEventListener("click", () => show(index - 1));

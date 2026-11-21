@@ -104,6 +104,14 @@ describe("setUpCardStack", () => {
     expect(shown()).toBe("SSQ12-TW");
   });
 
+  it("takes the focus from a card going behind to the one coming to the front", () => {
+    setUpCardStack(page(), fakeWindow());
+    current().querySelector("a").focus();
+    current().dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+    expect(document.activeElement).toBe(current().querySelector("a"));
+    expect(shown()).toBe("SSQ12-TW");
+  });
+
   it("changes card with the arrow keys", () => {
     setUpCardStack(page(), fakeWindow());
     current().dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
