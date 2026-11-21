@@ -2,6 +2,8 @@
 
 日期：2026-11-13（本人審定，[第 2 階段拷問決定](../planning/redesign/phase-2-grill-decisions.md) Q11–Q14）
 
+> 整份由 [ADR 0073](0073-journey-todos-removed-and-ticks-deleted.md) 取代：待辦已拿掉，打勾紀錄已刪除。
+
 ## 情境
 
 定稿首頁第 3 步畫了「看完選配指引」「記下開始戴的日期」兩個方框。第 1 階段改成「只寫一件事＋一顆按鈕」，「自己打勾」因為要存資料延到第 2 階段（ADR 0044）。
