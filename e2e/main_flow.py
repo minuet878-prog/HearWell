@@ -8335,8 +8335,9 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     def test_learn_cards_are_list_rows(self):
         with self.saving_artifacts():
             self.visit(False, "/learn")
-            # #487: the hearing loss simulator is the fourth; #640: 關於聽伴 the fifth.
-            cards = self.main().get_by_role("link")
+            # #487: the hearing loss simulator is the fourth; #640: 關於聽伴 the fifth. #754: the
+            # list under the stacked cards.
+            cards = self.main().get_by_role("list").get_by_role("link")
             self.assertEqual(cards.count(), 5)
             for card in cards.all():
                 with self.subTest(card=card.inner_text()):
@@ -14986,6 +14987,102 @@ class ButtonSpacingT453Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
                 self.open(path, signed_in=signed_in)
                 with self.saving_artifacts():
                     self.assertEqual(self.page.evaluate(self.CLOSE, self.LEAST), [])
+
+
+class LearnStackT754Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#754 (spec #741 acceptance 51, 54, 56; P22, P23): the 了解 page's stacked cards, each
+    with its own drawing that plays once when its card comes to the front; the list below."""
+
+    # The animations on the page's main, each with its drawing's card; not the transitions of a
+    # card changing place or a button pressed.
+    ANIMATIONS = """() => document.getAnimations()
+        .filter(a => a instanceof CSSAnimation && a.effect.target.closest('main'))
+        .map(a => ({ name: a.animationName, state: a.playState,
+                     card: a.effect.target.closest('.card-stack-card')?.ariaLabel ?? null,
+                     iterations: a.effect.getComputedTiming().iterations,
+                     end: a.effect.getComputedTiming().endTime }))"""
+
+    def front(self, place, title):
+        card = self.main().get_by_role("group", name=f"第 {place} 張，共 5 張：{title}")
+        expect(card).to_be_visible()
+        expect(self.main().locator(".card-stack-position")).to_have_text(f"第 {place} 張，共 5 張")
+        return card
+
+    def test_each_card_s_drawing_plays_once_when_it_comes_to_the_front(self):
+        self.open("/learn", signed_in=False)
+        with self.saving_artifacts():
+            # Not logged in, the simulator first: the canvas's sound wave, its 14 bars.
+            self.front(1, "聽損模擬")
+            drawings = self.main().locator(".card-stack-card [data-play-in-view]")
+            expect(drawings.first).to_have_attribute("data-in-view", "")
+            # The ones behind wait for their card.
+            for n in range(1, 5):
+                with self.subTest(card=n + 1):
+                    self.assertIsNone(drawings.nth(n).get_attribute("data-in-view"))
+            animations = self.page.evaluate(self.ANIMATIONS)
+            played = [a for a in animations if a["state"] != "paused"]
+            self.assertEqual(len(played), 14)
+            self.assertEqual({a["card"] for a in played}, {"第 1 張，共 5 張：聽損模擬"})
+            # Held on their first frame: the ring, the family's three, the bubble, the shield.
+            held = [a for a in animations if a["state"] == "paused"]
+            self.assertEqual(len(held), 6)
+            self.assertNotIn("第 1 張，共 5 張：聽損模擬", {a["card"] for a in held})
+            # Then each card's own, once, when it comes forward: within 4 seconds (ADR 0006).
+            plays = {}
+            for place, title in (
+                (2, "了解助聽器選配與補助"),
+                (3, "家人專區"),
+                (4, "問答小助手"),
+                (5, "關於聽伴"),
+            ):
+                self.main().get_by_role("button", name="下一張").click()
+                self.front(place, title)
+                expect(drawings.nth(place - 1)).to_have_attribute("data-in-view", "")
+                name = f"第 {place} 張，共 5 張：{title}"
+                plays[title] = [a for a in self.page.evaluate(self.ANIMATIONS) if a["card"] == name]
+            self.assertEqual(
+                {title: sorted({a["name"] for a in played}) for title, played in plays.items()},
+                {
+                    "了解助聽器選配與補助": ["play-once-draw"],
+                    "家人專區": ["play-once-fade"],
+                    "問答小助手": ["play-once-stamp"],
+                    "關於聽伴": ["play-once-slide-up"],
+                },
+            )
+            for played in plays.values():
+                for animation in played:
+                    with self.subTest(animation=animation):
+                        self.assertNotEqual(animation["state"], "paused")
+                        self.assertEqual(animation["iterations"], 1)
+                        self.assertLessEqual(animation["end"], 4000)
+            # The front card's white button opens its item.
+            self.front(5, "關於聽伴").get_by_role("link", name="認識聽伴").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/about")
+
+    def test_reduced_motion_plays_nothing(self):
+        # Acceptance 54.
+        self.open("/learn", signed_in=False)
+        self.page.emulate_media(reduced_motion="reduce")
+        self.page.reload()
+        with self.saving_artifacts():
+            self.front(1, "聽損模擬")
+            self.main().get_by_role("button", name="下一張").click()
+            self.front(2, "了解助聽器選配與補助")
+            self.assertEqual(self.page.evaluate(self.ANIMATIONS), [])
+
+    def test_without_javascript_the_first_card_and_the_list(self):
+        # Spec #741 story 51, #754's acceptance 3.
+        self.open("/learn", signed_in=False, java_script_enabled=False)
+        with self.saving_artifacts():
+            cards = self.main().locator(".card-stack-card")
+            expect(cards).to_have_count(5)
+            expect(cards.first).to_be_visible()
+            expect(cards.first).to_contain_text("聽損模擬")
+            expect(cards.first.get_by_role("link", name="聽聽看")).to_be_visible()
+            for n in range(1, 5):
+                expect(cards.nth(n)).to_be_hidden()
+            expect(self.main().locator(".card-stack-controls")).to_be_hidden()
+            expect(self.main().get_by_role("list").get_by_role("link")).to_have_count(5)
 
 
 class HearingLossSimulatorTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):

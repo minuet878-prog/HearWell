@@ -159,8 +159,7 @@
 {# P14: a guest result kept in this browser for 7 days, drawn by guest-home.js above the card. #}
 <div id="guest-home" class="grid gap-3" hidden></div>
 {% capture hero %}
-    {# The canvas's sound wave, its bars fading in one after another once (ADR 0077). #}
-    <svg class="hero-wave play-once-wave" viewBox="0 0 318 48" aria-hidden="true" focusable="false"><rect x="0" y="17" width="8" height="14" rx="4"/><rect x="23.8" y="12" width="8" height="24" rx="4"/><rect x="47.7" y="5" width="8" height="38" rx="4"/><rect x="71.5" y="14" width="8" height="20" rx="4"/><rect x="95.4" y="1" width="8" height="46" rx="4"/><rect x="119.2" y="9" width="8" height="30" rx="4"/><rect x="143.1" y="16" width="8" height="16" rx="4"/><rect x="166.9" y="7" width="8" height="34" rx="4"/><rect x="190.8" y="0" width="8" height="48" rx="4"/><rect x="214.6" y="11" width="8" height="26" rx="4"/><rect x="238.5" y="4" width="8" height="40" rx="4"/><rect x="262.3" y="15" width="8" height="18" rx="4"/><rect x="286.2" y="9" width="8" height="30" rx="4"/><rect x="310" y="18" width="8" height="12" rx="4"/></svg>
+    {% include "screening/hero_wave.html" %}
     <h2 class="hero-card-title">想了解自己的聽力？</h2>
     <p class="hero-chips">
         <span class="hero-chip"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3a9 9 0 100 18 9 9 0 000-18zM12 7v5l3 2"/></svg>大約 3 分鐘</span>

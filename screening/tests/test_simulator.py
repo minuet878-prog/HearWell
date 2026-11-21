@@ -169,11 +169,12 @@ class SimulatorEntryTests(TestCase):
     def test_learn_lists_it_after_the_family_zone(self):
         main = _main(self.client.get(reverse("learn")).content.decode())
         rows = [(href, title) for href, _, title, _ in test_family_zone.ENTRY.findall(main)]
+        # #754: the rows' titles the canvas's ProLearn, their lines under them.
         self.assertEqual(
             rows[1:3],
             [
-                (reverse("family_guide"), "家人專區：溝通與陪伴"),
-                (reverse("hearing_loss_simulator"), "聽損模擬：聽聽看他聽到的聲音"),
+                (reverse("family_guide"), "家人專區"),
+                (reverse("hearing_loss_simulator"), "聽損模擬"),
             ],
         )
 

@@ -34,20 +34,24 @@ class LearnPageTests(TestCase):
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
         main = content[content.index("<main") : content.index("</main>")]
-        self.assertEqual(re.findall(r"<h(\d)[^>]*>([^<]*)</h\d>", main), [("1", "了解")])
+        # #754: one heading over the page, then each stacked card's (test_learn_stack).
+        headings = re.findall(r"<h(\d)[^>]*>([^<]*)</h\d>", main)
+        self.assertEqual(headings[0], ("1", "了解"))
+        self.assertEqual({level for level, _ in headings[1:]}, {"2"})
         self.assertEqual(main.count("<ul"), 1)
         return CARD.findall(main)
 
     def assert_groups(self):
+        # #754: the rows' words the canvas's ProLearn, a line under a title where it has one.
         self.assertEqual(
             self.cards(),
             [
                 (reverse("guide"), "guide", "了解助聽器選配與補助"),
-                (reverse("family_guide"), "family", "家人專區：溝通與陪伴"),
+                (reverse("family_guide"), "family", "家人專區"),
                 # #487: the hearing loss simulator, after the family zone.
-                (reverse("hearing_loss_simulator"), "sound", "聽損模擬：聽聽看他聽到的聲音"),
+                (reverse("hearing_loss_simulator"), "sound", "聽損模擬"),
                 # #397 (spec #396): the Q&A assistant's entry.
-                (reverse("qa_home"), "question", "問答小助手：常見問題一次查"),
+                (reverse("qa_home"), "question", "問答小助手"),
                 # Spec #633 (#640, the #634 mockup's A): 關於聽伴 last.
                 (reverse("about"), "info", "關於聽伴"),
             ],

@@ -174,6 +174,19 @@ describe("setUpCardStack", () => {
     expect(shown()).toBe("SSQ12-TW");
   });
 
+  it("says so from each card that comes to the front, for in-view.js to play its drawing", () => {
+    // #754: the 了解 page's cards each have a drawing that plays once, at the front.
+    const fronts = [];
+    const heard = (event) => fronts.push(event.target.querySelector("h2").textContent);
+    document.addEventListener("card-stack-show", heard);
+    setUpCardStack(page(), fakeWindow());
+    next().click();
+    next().click();
+    prev().click();
+    document.removeEventListener("card-stack-show", heard);
+    expect(fronts).toEqual(["HHIE-S", "SSQ12-TW", "THI", "SSQ12-TW"]);
+  });
+
   it("leaves a single card alone", () => {
     setUpCardStack(page(1), fakeWindow());
     expect(document.querySelector(".card-stack-controls").hidden).toBe(true);

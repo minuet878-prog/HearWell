@@ -30,7 +30,7 @@ from screening.tests.helpers import consented_user, submission_with_answers
 from screening.views import family
 
 FAMILY_CARD = "我是家人：怎麼陪伴聽損的家人"
-LEARN_CARD = "家人專區：溝通與陪伴"
+LEARN_CARD = "溝通與陪伴"  # #754: the 了解 row's line, under its title 家人專區
 # The footer's short name since readability batch 1 (the owner's A, 2026-11-16).
 FOOTER_LINK = "家人專區"
 # The zone's home page, since readability batch 2 (the owner's words, 2026-11-16): one sentence

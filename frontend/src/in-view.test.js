@@ -157,4 +157,21 @@ describe("setUpPlayInView: entrance animations", () => {
     win.scrollElementTo(box, -900);
     expect(box.hasAttribute("data-in-view")).toBe(true);
   });
+
+  it("holds a drawing on a stacked card behind the front until the card comes forward", () => {
+    // #754: the 了解 page's cards behind the front one are inert; card-stack.js says when one
+    // comes to the front.
+    page(`
+      <article class="card-stack-card"><svg class="play-once-wave" data-play-in-view></svg></article>
+      <article class="card-stack-card" inert><svg class="play-once-ring" data-play-in-view></svg></article>`);
+    const [front, behind] = document.querySelectorAll(".card-stack-card");
+    const drawing = (card) => card.querySelector("[data-play-in-view]");
+    setUpPlayInView(fakeWindow());
+    expect(drawing(front).hasAttribute("data-in-view")).toBe(true);
+    expect(drawing(behind).hasAttribute("data-in-view")).toBe(false);
+
+    behind.removeAttribute("inert");
+    behind.dispatchEvent(new Event("card-stack-show", { bubbles: true }));
+    expect(drawing(behind).hasAttribute("data-in-view")).toBe(true);
+  });
 });
