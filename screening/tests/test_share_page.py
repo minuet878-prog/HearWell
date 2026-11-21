@@ -19,9 +19,17 @@ WILL_SEE = [
     "放進報告的配戴比較",
     "年齡",
 ]
-WONT_SEE = "不會看到：使用者名稱、出生年"
-LATEST_NOTICE = "連結有效期間，家人看到的是您最新的報告，之後新增的紀錄也會看到。"
-CREATE_BUTTON = "我知道了，產生連結"
+# #741 (owner, 2026-11-21): these three sentences left the page; privacy.html still says them.
+REMOVED = [
+    "不會看到：使用者名稱、出生年",
+    "拿到連結的人，不用登入就看得到這份報告",
+    "連結有效期間，家人看到的是您最新的報告",
+]
+CREATE_BUTTON = "產生分享連結"
+TICK = (
+    '<svg class="share-sees-tick" aria-hidden="true" focusable="false" viewBox="0 0 24 24">'
+    '<path d="M5 12.5l4.5 4.5L19 7.5"/></svg>'
+)
 TAIPEI = ZoneInfo("Asia/Taipei")
 
 
@@ -58,7 +66,7 @@ class SharePageTests(TestCase):
         return response
 
     # Acceptance 12
-    def test_without_link_step_one_lists_what_family_will_and_wont_see(self):
+    def test_without_link_step_one_ticks_what_family_will_see(self):
         self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=1)
         response = self._page()
         self.assertIn("no-store", response["Cache-Control"])
@@ -66,12 +74,27 @@ class SharePageTests(TestCase):
         self.assertIn("<h1", content)
         self.assertIn("分享報告給家人</h1>", content)
         step_one = content[content.index("家人會看到什麼") : content.index(CREATE_BUTTON)]
-        for item in WILL_SEE:
-            with self.subTest(item=item):
-                self.assertIn(f"<li>{item}</li>", step_one)
-        self.assertIn(WONT_SEE, step_one)
-        # #471 (mockup #470 share A): the notice moved under the steps (test_report_redesign).
-        self.assertIn(LATEST_NOTICE, content)
+        # #741: a real list, each item behind a blue tick screen readers skip.
+        sees = re.search(r'<ul class="share-sees" role="list">(.*?)</ul>', step_one, re.S)
+        self.assertIsNotNone(sees)
+        self.assertEqual(re.findall(r"<li>(.*?)</li>", sees.group(1)), [TICK + i for i in WILL_SEE])
+        for sentence in REMOVED:
+            with self.subTest(sentence=sentence):
+                self.assertNotIn(sentence, content)
+
+    # #741: one short caption with the button instead of the sentence before it.
+    def test_the_button_carries_a_short_expiry_caption(self):
+        self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=1)
+        content = self._page().content.decode()
+        form = re.search(
+            rf'<form method="post" action="{reverse("report_share_create")}">(.*?)</form>',
+            content,
+            re.S,
+        )
+        self.assertRegex(
+            form.group(1),
+            rf'>{CREATE_BUTTON}</button>\s*<p class="share-expiry-note">7 天後失效</p>',
+        )
 
     def test_signed_out_is_sent_to_login(self):
         self.client.logout()
@@ -132,11 +155,9 @@ class SharePageTests(TestCase):
         plain = self._page().content.decode()
         # Both buttons (再傳一次給家人, 複製連結) carry it.
         self.assertEqual(plain.count(f'data-url="http://testserver{path}"'), 2)
-        self.assertIn(f">http://testserver{path}</span>", plain)
         secure = self.client.get(self.url, secure=True).content.decode()
         # Both buttons (再傳一次給家人, 複製連結) carry it.
         self.assertEqual(secure.count(f'data-url="https://testserver{path}"'), 2)
-        self.assertIn(f">https://testserver{path}</span>", secure)
 
     # Acceptance 13
     def test_active_link_shows_expiry_with_time_opens_and_actions(self):
@@ -161,6 +182,16 @@ class SharePageTests(TestCase):
         )
         self.assertNotIn(CREATE_BUTTON, content)
 
+    # #741: the removed sentences stay gone while a link is live; the list folds with its ticks.
+    def test_active_link_page_drops_the_removed_sentences(self):
+        self._share(self.user)
+        content = self._page().content.decode()
+        fold = re.search(r"<details.*?</details>", content, re.S).group(0)
+        self.assertIn(f"<li>{TICK}聽力圖</li>", fold)
+        for sentence in [*REMOVED, "7 天後失效"]:
+            with self.subTest(sentence=sentence):
+                self.assertNotIn(sentence, content)
+
     def test_active_link_shows_how_often_and_when_last_opened(self):
         share = self._share(self.user)
         ReportShare.objects.filter(pk=share.pk).update(
@@ -171,8 +202,9 @@ class SharePageTests(TestCase):
         self.assertIn("最後一次打開：2099/10/23 09:05", content)
         self.assertNotIn("還沒有人打開", content)
 
-    # Acceptance 14: the buttons start hidden and only the script shows them; the address shows
-    def test_without_javascript_the_address_shows_and_the_buttons_do_not(self):
+    # Acceptance 14: the buttons start hidden and only the script shows them. #741 (owner,
+    # 2026-11-21): the line spelling out the address went; the buttons carry it.
+    def test_the_buttons_carry_the_link_and_no_line_spells_it_out(self):
         share = self._share(self.user)
         content = self._page().content.decode()
         for button_id in ("share-button", "copy-link"):
@@ -180,11 +212,10 @@ class SharePageTests(TestCase):
                 tag = re.search(rf'<button[^>]*id="{button_id}"[^>]*>', content)
                 self.assertIsNotNone(tag)
                 self.assertRegex(tag.group(0), r"\shidden[\s>]")
-        address = re.search(r'<p id="share-url"[^>]*>(.*?)</p>', content, re.S)
-        self.assertIsNotNone(address)
-        self.assertNotRegex(address.group(0), r"<p[^>]*\shidden")
-        self.assertIn(self._share_url(share), address.group(1))
-        self.assertIn('data-url="' + self._share_url(share) + '"', content)
+        self.assertNotIn('id="share-url"', content)
+        self.assertNotIn("可以複製這個網址傳給家人", content)
+        self.assertEqual(content.count(self._share_url(share)), 2)
+        self.assertEqual(content.count('data-url="' + self._share_url(share) + '"'), 2)
         self.assertIn("screening/share-button.js", content)
         self.assertIn("screening/copy-link.js", content)
         self.assertRegex(content, r'id="copy-status"[^>]*aria-live="polite"')

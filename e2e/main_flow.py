@@ -567,7 +567,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             self.page.emulate_media(media="screen")
             self.page.evaluate("window.dispatchEvent(new Event('afterprint'))")
             self.main().get_by_role("link", name="分享報告給家人", exact=True).click()
-            self.main().get_by_role("button", name="我知道了，產生連結", exact=True).click()
+            self.main().get_by_role("button", name="產生分享連結", exact=True).click()
             expect(self.main().get_by_role("button", name="取消分享", exact=True)).to_be_visible()
             share = unaided.user.report_shares.get()
             with self.browser.new_context() as family_context:
@@ -2335,7 +2335,7 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             self.page.goto(f"{self.live_server_url}/report")
             self.main().get_by_role("link", name="分享報告給家人", exact=True).click()
             expect(self.page).to_have_url(f"{self.live_server_url}/share")
-            self.main().get_by_role("button", name="我知道了，產生連結", exact=True).click()
+            self.main().get_by_role("button", name="產生分享連結", exact=True).click()
             expect(self.page).to_have_url(f"{self.live_server_url}/share")
             share = self.user.report_shares.get()
             self.main().get_by_role("button", name="複製連結", exact=True).click()
@@ -2344,8 +2344,6 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             copied = self.page.evaluate("navigator.clipboard.readText()")
             # The link takes the page's own scheme: http on the test server, https on the site.
             self.assertEqual(copied, f"{self.live_server_url}/shared/{share.token}")
-            # The copy button takes the address's place; it comes back only if copying fails.
-            expect(self.page.locator("#share-url")).to_be_hidden()
 
             family = self.browser.new_context(viewport={"width": 390, "height": 900})
             self.addCleanup(family.close)

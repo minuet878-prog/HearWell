@@ -257,7 +257,7 @@ class ReportShareTests(TestCase):
     # 12
     def test_no_records_cannot_share(self):
         content = self._share_page()
-        self.assertNotIn("我知道了，產生連結", content)
+        self.assertNotIn("產生分享連結</button>", content)
         self._create()
         self.assertFalse(ReportShare.objects.exists())
 
@@ -281,7 +281,7 @@ class ReportShareTests(TestCase):
     def test_only_one_active_link(self):
         self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=1)
         share = self._share()
-        self.assertNotIn("我知道了，產生連結", self._share_page())
+        self.assertNotIn("產生分享連結</button>", self._share_page())
         self._create()
         self.assertEqual(list(ReportShare.objects.active()), [share])
         self.assertEqual(ReportShare.objects.count(), 1)
@@ -361,7 +361,6 @@ class ReportShareTests(TestCase):
     def test_family_sees_latest_records(self):
         self._hhie_s(self.user, test_report.UNAIDED, wearing=False, days_ago=3)
         share = self._share()
-        self.assertIn("連結有效期間，家人看到的是您最新的報告", self._share_page())
         newer = self._hhie_s(self.user, [0] * 10, wearing=True, days_ago=0)
         self.client.logout()
         section = test_report._section(self._shared(share).content.decode(), "report-hhie-s")
@@ -409,7 +408,7 @@ class ReportShareTests(TestCase):
                     share = self._share()
                     self.client.post(reverse("report_share_cancel", args=[share.pk]))
                 page = self._share_page()
-                self.assertIn("我知道了，產生連結", page)
+                self.assertIn("產生分享連結</button>", page)
                 self.assertNotIn("家人打開過", page)
                 self.assertNotIn(share.token, page)
 

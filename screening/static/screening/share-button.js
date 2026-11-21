@@ -1,6 +1,7 @@
 // Family guide and report sharing (specs phase8_c1_family_guide.md, phase8_c1_family_share.md):
-// the button appears only where the phone's share sheet exists; everywhere else the address
-// shown on the page is the fallback. data-url/data-title share another page than this one.
+// the button appears only where the phone's share sheet exists; everywhere else the copy button
+// (copy-link.js) is the way to send (#741: no address is written on the page any more).
+// data-url/data-title share another page than this one.
 // 傳給他 (spec #655): data-text is the whole message with the address in it, sent as one text,
 // since some apps keep only the address when given a text and an address apart.
 (function () {
