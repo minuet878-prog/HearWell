@@ -3,7 +3,7 @@ bubble under a lead line, and a page has at most one blue hero card, without a s
 beside it."""
 
 import re
-from datetime import date, timedelta
+from datetime import date
 from io import StringIO
 from pathlib import Path
 
@@ -13,7 +13,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from screening.models import Audiogram, Questionnaire, ReportShare, RetestReminder, Submission
+from screening.models import Audiogram, Questionnaire, ReportShare, RetestReminder
 from screening.page_leads import LEADS
 from screening.tests.helpers import consented_user, submission_with_answers
 from screening.views.accounts import RESET_EMAIL
@@ -201,15 +201,11 @@ class EveryPageTests(TestCase):
         return main[start : main.index("</section>", start)]
 
     def test_each_page_s_one_thing_is_in_the_hero_card_with_a_white_button(self):
-        """The 現在這一步, a result's 建議下一步 and the recommended questionnaire (the
-        catalogue's for someone due to answer again, the wizard's)."""
-        fresh = consented_user(username="fresh", birth_year=1950)
-        old = submission_with_answers(fresh, "hhie-s", [2] * 10)
-        Submission.objects.filter(pk=old.pk).update(created_at=timezone.now() - timedelta(days=400))
+        """The 現在這一步, a result's 建議下一步 and the wizard's recommended questionnaire;
+        the catalogue's is the first of its stacked cards (#753, test_card_stack)."""
         for user, url, words, button in (
             (self.user, reverse("index"), "現在這一步", None),
             (self.user, reverse("result", args=[self.record.pk]), "建議您下一步", None),
-            (fresh, reverse("questionnaire_list"), "推薦您做這一份", "開始作答"),
             (
                 self.user,
                 reverse("questionnaire_list") + "?concern=life_impact",

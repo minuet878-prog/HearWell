@@ -67,13 +67,11 @@ class CatalogueTests(ScreeningPagesMixin, TestCase):
     def catalogue(self):
         return _main(self.client.get(reverse("questionnaire_list")))
 
-    def recommended(self, main):
-        block = re.search(
-            r'<section [^>]*aria-labelledby="catalogue-recommended"[^>]*>(.*?)</section>',
-            main,
-            re.S,
+    def stack(self, main):
+        # The stacked cards (#753), each card's inside.
+        return re.findall(
+            r'<article class="hero-card card-stack-card"[^>]*>(.*?)</article>', main, re.S
         )
-        return block and block.group(1)
 
     def test_a_card_says_its_count_minutes_and_last_date_in_one_grey_line(self):
         user = self.login()
@@ -87,17 +85,14 @@ class CatalogueTests(ScreeningPagesMixin, TestCase):
         self.assertIn("<span>7 題・約 2 分鐘</span>", cards[self.answer_url("ioi-ha")])
         self.assertNotIn("card-tag", self.catalogue())
 
-    # The 2026-11-14 walkthrough (mockup 8A): 幫我選 under the title, the questionnaires in
-    # three groups after any recommendation.
+    # The 2026-11-14 walkthrough (mockup 8A): the questionnaires in three groups after the
+    # stacked cards; #753 (P4): 幫我選 in the bird's bubble under the title.
     GROUPS = (
         ("聽力對生活的影響", ("hhie-s", "hhia-s")),
         ("其他困擾", ("ssq12-tw", "thi")),
         ("已經戴助聽器", ("ioi-ha", "sadl")),
     )
-    HELP = (
-        '<a class="btn btn-outline-primary btn-lg w-full" href="/questionnaire_list?wizard=1">'
-        "不確定做哪一份？幫我選</a>"
-    )
+    HELP = '<a class="bird-pick" href="/questionnaire_list?wizard=1">'
 
     def groups(self, main):
         return re.findall(
@@ -110,9 +105,10 @@ class CatalogueTests(ScreeningPagesMixin, TestCase):
         user = self.login()
         self.record(user, "thi")
         main = self.catalogue()
-        self.assertIn('<h1 class="bird-title">選問卷</h1>', main)
+        self.assertIn('<h1 class="bird-title">問卷</h1>', main)
         self.assertEqual(main.count(self.HELP), 1)
-        self.assertLess(main.index("選問卷</h1>"), main.index(self.HELP))
+        self.assertLess(main.index("問卷</h1>"), main.index(self.HELP))
+        self.assertLess(main.index(self.HELP), main.index('<section class="card-stack"'))
         self.assertLess(main.index(self.HELP), main.index('class="link-card questionnaire-card"'))
         self.assertEqual(len(test_layout.LINK_CARD.findall(main)), 6)
         self.assertNotIn("全部問卷", main)
@@ -136,26 +132,25 @@ class CatalogueTests(ScreeningPagesMixin, TestCase):
         titles = re.findall(r'<span class="link-card-title">([^<]+)</span>', part)
         self.assertEqual(titles, ["65 歲以上（HHIE-S）", "65 歲以下（HHIA-S）"])
 
-    def test_the_groups_come_after_the_recommendation(self):
+    def test_the_groups_come_after_the_stacked_cards(self):
         user = self.login()
         self.record(user, "hhie-s", wearing=False, days_ago=200)
         main = self.catalogue()
-        self.assertLess(main.index(self.HELP), main.index("</section>"))
-        self.assertLess(main.index("</section>"), main.index('class="catalogue-group'))
+        stack = main.index('<section class="card-stack"')
+        self.assertLess(main.index(self.HELP), stack)
+        self.assertLess(main.index("</section>", stack), main.index('class="catalogue-group'))
 
-    def test_one_recommendation_is_the_hero_card_with_the_only_main_button(self):
-        # #749 (ADR 0076): the blue hero card, where it was a pale blue block.
+    def test_the_recommendation_is_the_first_stacked_card_each_with_one_main_button(self):
+        # #753: the stacked cards are the page's blue thing (ADR 0076), one shown at a time.
         user = self.login()
         self.record(user, "hhie-s", wearing=False, days_ago=200)
         main = self.catalogue()
-        self.assertIn('<section class="hero-card" aria-labelledby="catalogue-recommended">', main)
-        block = self.recommended(main)
+        cards = self.stack(main)
+        block = cards[0]
+        self.assertIn('<p class="hero-card-label">推薦您做這一份</p>', block)
         self.assertIn(
-            '<h2 id="catalogue-recommended" class="recommended-label">推薦您做這一份</h2>', block
-        )
-        self.assertIn(
-            '<h3 id="recommended-title" class="recommended-title">聽力對生活的影響'
-            '<span class="recommended-code">HHIE-S</span></h3>',
+            '<h2 id="stack-hhie-s" class="recommended-title">聽力對生活的影響'
+            '<span class="recommended-code">HHIE-S</span></h2>',
             block,
         )
         self.assertIn(
@@ -163,24 +158,23 @@ class CatalogueTests(ScreeningPagesMixin, TestCase):
             block,
         )
         self.assertIn(f"<strong>為什麼推薦：</strong>{RETEST_DUE_TEXT}</p>", block)
-        self.assertEqual(len(SOLID.findall(main)), 1)
         self.assertIn(f'href="{self.answer_url("hhie-s")}">開始作答</a>', block)
+        for card in cards:
+            self.assertEqual(len(SOLID.findall(card)), 1)
+        self.assertEqual(len(SOLID.findall(main)), len(cards))
 
-    def test_two_recommendations_are_two_rows_and_no_solid_button(self):
+    def test_two_recommendations_are_the_first_two_cards_each_saying_whom_it_suits(self):
         for age in (None, 65):
             with self.subTest(age=age):
                 user = self.login(age=age)
                 self.record(user, "thi")
-                main = self.catalogue()
-                block = self.recommended(main)
-                self.assertEqual(
-                    [href for href, _ in CARD.findall(block)],
-                    [self.answer_url("hhie-s"), self.answer_url("hhia-s")],
-                )
-                self.assertEqual(block.count("為什麼推薦："), 1)
-                self.assertLess(block.index("為什麼推薦："), block.index("link-card"))
-                self.assertEqual(SOLID.findall(main), [])
-                self.assertNotIn("開始作答", main)
+                cards = self.stack(self.catalogue())
+                for card, code in zip(cards, ("hhie-s", "hhia-s"), strict=False):
+                    self.assertIn("推薦您做這一份", card)
+                    self.assertIn(f'href="{self.answer_url(code)}">開始作答</a>', card)
+                    audience = self.by_code[code].definition.audience
+                    self.assertIn(f'<p class="recommended-audience">{audience}</p>', card)
+                self.assertNotIn("推薦您做這一份", cards[2])
 
     def test_a_new_users_choose_yourself_ends_with_help_me_choose_too(self):
         self.login()

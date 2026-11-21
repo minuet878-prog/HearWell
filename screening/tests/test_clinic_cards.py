@@ -102,7 +102,7 @@ class ReturningUserLandingTests(TestCase):
         response = self.client.get(ELDER_CARD, follow=True)
         self.assertEqual(response.redirect_chain, [("/questionnaire_list?via=clinic-elder", 302)])
         headings = re.findall(r"<h1[^>]*>([^<]+)</h1>", response.content.decode())
-        self.assertEqual(headings, ["選問卷"])
+        self.assertEqual(headings, ["問卷"])
 
 
 GUEST_COUNTS = "/api/guest-counts/"
