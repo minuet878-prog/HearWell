@@ -6517,11 +6517,13 @@
        whole list is taller than half a phone's screen and would wait for a scroll, yet the way
        walked ends at that card. #480: the mark is on the card's one thing, not the whole step,
        which the to-dos under it made too tall to be in view on arrival; so the ring on the dot,
-       outside the mark now, is held here too. */
-    :root.play-in-view .journey-steps:has([data-play-in-view]:not([data-in-view])) .journey-dot,
-    :root.play-in-view .journey-steps:has([data-play-in-view]:not([data-in-view]))
+       outside the mark now, is held here too. Only the card's mark: a done step's stamp (#744)
+       waits for its step to open, not the way walked. */
+    :root.play-in-view .journey-steps:has(.journey-card [data-play-in-view]:not([data-in-view]))
+      .journey-dot,
+    :root.play-in-view .journey-steps:has(.journey-card [data-play-in-view]:not([data-in-view]))
       .journey-dot path,
-    :root.play-in-view .journey-steps:has([data-play-in-view]:not([data-in-view]))
+    :root.play-in-view .journey-steps:has(.journey-card [data-play-in-view]:not([data-in-view]))
       .journey-step::after {
       animation-play-state: paused;
     }
@@ -6587,7 +6589,7 @@
     font-weight: 700;
   }
 
-  /* At large text on a narrow phone the arrow, then the words, wrap rather than spill. */
+  /* At large text on a narrow phone the words, then the arrow, wrap rather than spill. */
   .entry-card {
     display: flex;
     flex-wrap: wrap;
@@ -6610,8 +6612,10 @@
     background-color: var(--color-brand-selected);
   }
 
+  /* At least five characters a line: where the icon leaves less, the words take a line of
+     their own under it. */
   .entry-card-text {
-    flex: 1;
+    flex: 1 1 5em;
     min-width: 0;
     font-size: var(--text-button);
     font-weight: 700;
