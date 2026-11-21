@@ -1239,6 +1239,31 @@ class CopyPasswordRegisterFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLi
                 expect(toggle).to_have_accessible_name(name)
                 self.assertNotIn(self.SLASH, eye.inner_html())
 
+    # #741 acceptance bug (2026-11-21): 顯示 sat by the 密碼 label, so Tab from 使用者名稱 went to
+    # it before the password box.
+    def test_tab_goes_to_the_password_then_its_show_button(self):
+        self.open(width=390)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/login")
+            password = self.main().get_by_label("密碼", exact=True)
+            toggle = self.main().get_by_role("button", name="顯示密碼")
+            self.main().get_by_label("使用者名稱").focus()
+            self.page.keyboard.press("Tab")
+            expect(password).to_be_focused()
+            self.page.keyboard.press("Tab")
+            expect(toggle).to_be_focused()
+            # Where it fits, at the right end of the box's row; seen where it is in the order.
+            box, button = password.bounding_box(), toggle.bounding_box()
+            self.assertGreaterEqual(button["x"], box["x"] + box["width"])
+            self.assertLess(abs(button["y"] - box["y"]), box["height"])
+            self.assertGreaterEqual(button["height"], 44)
+            # At 200% text on a 320px phone it wraps under the box, never ahead of it.
+            self.page.set_viewport_size({"width": 320, "height": 640})
+            self.double_text()
+            box, button = password.bounding_box(), toggle.bounding_box()
+            self.assertGreaterEqual(button["y"], box["y"] + box["height"])
+            self.assertGreaterEqual(button["height"], 44)
+
     TICK = "M5 12.5l4.5 4.5L19 7.5"  # the tick's path, drawn in the field
 
     def tick(self, field):
