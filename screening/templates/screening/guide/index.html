@@ -43,7 +43,6 @@
                 {# Spec #702 (#703 mockup 1C): beside recording one, importing an Apple hearing test's PDF. #}
                 {% if stop.action and stop.slug == "audiogram" %}{% if has_records %}<a class="btn btn-outline-primary btn-lg w-full mt-3" href="{% url 'audiogram_import' %}">從 iPhone 匯入</a>{% else %}<p class="route-note"><a class="tap-link" href="{% url 'audiogram_import' %}">從 iPhone 匯入</a></p>{% endif %}{% endif %}
                 </div>
-                {% include "screening/journey_todos.html" with todos=stop.todos %}
                 {% include "screening/guide/route_answer.html" %}
             </div>
             {% else %}

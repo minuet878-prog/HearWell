@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from screening.models import AidAndSubsidy, Questionnaire, Submission
 from screening.questionnaires import hhie_s
-from screening.tests import test_guide, test_guide_summary, test_home_journey, test_route_steps
+from screening.tests import test_guide, test_guide_summary, test_route_steps
 from screening.tests.helpers import consented_user, route_stops
 
 PTA_55 = test_guide_summary.PTA_55
@@ -77,8 +77,7 @@ class GuideRouteTests(TestCase):
     # 補助站 unfolded (#596).
     def test_nine_stops_in_order_each_linked(self):
         AidAndSubsidy.objects.create(user=self.user, certificate="yes")
-        # Signed in, the 您在這裡 stop's to-dos say their state to screen readers (#481).
-        stops = [(slug, test_home_journey.TODOS.sub("", markup)) for slug, markup in self.stops()]
+        stops = self.stops()
         self.assertEqual([slug for slug, _ in stops], [slug for slug, _ in STOPS])
         for (slug, markup), (_, title) in zip(stops, STOPS, strict=True):
             if slug == "audiogram":

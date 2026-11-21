@@ -612,9 +612,6 @@ class ReviewedPagesTests(SimpleTestCase):
                 # Spec #492's sentence on a guest's answers, which the owner reviews at acceptance.
                 "{# Spec #492 (ADR 0055): a guest's answers",
                 "<p>未註冊時只計算、不儲存",
-                # Spec #478 named the to-do ticks (consent version 5); the owner reviews the
-                # line at acceptance.
-                "<li>照顧旅程的待辦打勾",
                 # #526's 忘記密碼時 and its lines under 為什麼蒐集, 存放在哪裡 and 會交給誰
                 # (consent version 6); on 2026-11-13 the owner approved the Resend line, the 30
                 # days after deleting the account, and the new highlight, and reviews the rest at
