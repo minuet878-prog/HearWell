@@ -286,7 +286,9 @@ class ResultFromDefinitionTests(TestCase):
 
     def test_result_page_grades_with_its_thresholds_and_advice(self):
         response = self.client.get(reverse("result", args=[self.submission.pk]))
-        self.assertContains(response, '總分 <span class="result-number">6</span> 分（滿分 12）')
+        self.assertContains(
+            response, '總分 <span class="result-number" data-count-up>6</span> 分（滿分 12）'
+        )
         self.assertContains(response, "假的高分級")
         self.assertContains(response, "假的高分建議")
 
@@ -563,7 +565,9 @@ class DefinitionOnlyQuestionnaireTests(TestCase):
         self.assertRedirects(response, result_url)
 
         result = self.client.get(result_url)
-        self.assertContains(result, '總分 <span class="result-number">6</span> 分（滿分 10）')
+        self.assertContains(
+            result, '總分 <span class="result-number" data-count-up>6</span> 分（滿分 10）'
+        )
         self.assertContains(result, "假的重分級")
         self.assertContains(result, "假的重分級建議")
         self.assertContains(result, "假的2沒有")
