@@ -2715,7 +2715,7 @@
   }
 
   .result-attempt ~ .hero-card {
-    margin-top: 0.75rem;
+    margin-top: 0.5rem;
   }
 
   /* Result page: level banner, L1 (#454, ADR 0043): the whole block in the level's pale colour,
@@ -3192,75 +3192,63 @@
     line-height: 1;
   }
 
-  /* Score position bar (ticket #158), in the graded result page's result box: no fill or
-     entrance animation (ADR 0006). Since round 4 each pale segment has a level-coloured lower edge. */
-  .score-bar {
-    position: relative;
-    margin: 1rem 0 0.5rem;
-  }
-
-  .score-bar-track {
+  /* #750 (spec #741, canvas ProResult): the semicircle gauge (semicircle_gauge.html), shared by the
+     result page, the home page's last result and 紀錄's latest. Each level's arc thin and pale in
+     its colour, the score's level thick in its own, drawn once in view (play-once-gauge); a white
+     knob where the score is. Its width is the page's: it keeps its shape at any. */
+  .gauge {
     position: relative;
   }
 
-  /* Rounded and clipped on their own, so the taller marker above them is not cut off. */
-  .score-bar-segments {
-    display: flex;
-    height: 0.75rem;
-    border-radius: var(--radius-small);
-    overflow: hidden;
+  .gauge-arcs {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
   }
 
-  .score-bar-segment {
-    height: 100%;
+  .gauge-arc {
+    fill: none;
+    stroke-width: 9;
+    opacity: 0.4;
   }
 
-  /* A white line between segments, as between the trend chart's bands. */
-  .score-bar-segment + .score-bar-segment {
-    border-left: 2px solid #fff;
+  .gauge-arc-normal {
+    stroke: var(--color-normal);
   }
 
-  .score-bar-segment-normal {
-    background-color: var(--color-normal-bg);
-    box-shadow: inset 0 -0.25rem 0 var(--color-normal);
+  .gauge-arc-mild_to_moderate {
+    stroke: var(--color-mild);
   }
 
-  .score-bar-segment-mild_to_moderate {
-    background-color: var(--color-mild-bg);
-    box-shadow: inset 0 -0.25rem 0 var(--color-mild);
+  .gauge-arc-severe {
+    stroke: var(--color-severe);
   }
 
-  .score-bar-segment-severe {
-    background-color: var(--color-severe-bg);
-    box-shadow: inset 0 -0.25rem 0 var(--color-severe);
+  /* The higher of two levels sharing a colour (Definition.shade), as the trend chart's bands. */
+  .gauge-arc-deep {
+    opacity: 0.6;
   }
 
-  /* The higher of two levels sharing a colour (Definition.shade). */
-  .score-bar-segment-mild_to_moderate.score-bar-segment-deep {
-    background-color: var(--color-mild-bg-deep);
+  .gauge-arc-current {
+    stroke-width: 20;
+    opacity: 1;
   }
 
-  .score-bar-segment-severe.score-bar-segment-deep {
-    background-color: var(--color-severe-bg-deep);
+  .gauge-knob {
+    fill: #fff;
+    stroke: var(--color-heading);
+    stroke-width: 3;
   }
 
-  .score-bar-marker {
+  /* The scale's two ends inside the arc, beside its feet, at least the body size (#357). */
+  .gauge-ends {
     position: absolute;
-    top: -0.25rem;
-    width: 0.25rem;
-    height: 1.25rem;
-    background-color: var(--color-heading);
-    border-radius: var(--radius-small);
-    /* Shifted by its own width in proportion, so 0 and full marks sit flush inside the bar. */
-    left: var(--position);
-    transform: translateX(calc(-1 * var(--position)));
-  }
-
-  .score-bar-ends {
+    inset: auto 16% 0;
     display: flex;
     justify-content: space-between;
     font-size: 1rem;
-    color: var(--color-body);
+    line-height: 1.2;
   }
 
   /* "Loading" or "cannot show" in the middle of the chart's empty box. */
@@ -4907,12 +4895,81 @@
     line-height: 1.4;
   }
 
+  /* Beside the gauge: the score as large as ever, the level's short name large (P11). */
+  .gauge-score {
+    font-size: 2.6667rem;
+    font-weight: 700;
+    line-height: 1.05;
+  }
+
+  .result-level-short {
+    margin: 0;
+    font-size: var(--text-page-title);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  /* #750 (spec #741 acceptance 48, canvas ProResult): the gauge and, beside it, the score and the
+     level in words; the words go under the gauge where the two would not fit side by side. Kept
+     tight so the 建議下一步's button stays on a phone's first screen (the owner's pick A,
+     2026-11-16). */
+  .result-banner:has(> .result-gauge-row) {
+    padding: 0.75rem 1rem;
+    border-radius: 1.3333rem;
+  }
+
+  /* All of it in the level's text colour, the canvas's, not the heading's of other blocks. */
+  .result-banner > div:is(.result-gauge-row, .result-since-last) {
+    color: inherit;
+  }
+
+  .result-gauge-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 1rem;
+  }
+
+  .result-gauge-row > .gauge {
+    flex: 1 1 8.5rem;
+    max-width: 12rem;
+  }
+
+  .result-gauge-words {
+    flex: 1 1 8rem;
+  }
+
+  /* The green line on top of a saved record's result page: just done (ADR 0028's green). */
+  .result-saved {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    /* Close under the header, as the canvas's, into the page's top margin. */
+    margin: -0.75rem 0 0;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-normal-bg);
+    color: var(--color-normal);
+    font-weight: 700;
+  }
+
+  .result-saved svg {
+    flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
   /* A date like 2026/03/26 does not break by itself: at double text size it may anywhere. */
   .result-since-last {
     overflow-wrap: anywhere;
-    margin-top: 0.5rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+    margin-top: 0.375rem;
+    padding-top: 0.375rem;
+    border-top: 2px solid color-mix(in srgb, currentColor 25%, transparent);
     font-weight: 500;
   }
 
@@ -4920,28 +4977,44 @@
     margin: 0;
   }
 
-  /* #646 (spec #644 H2, the #645 mockup's A): 比上次多／少 N 分 as a small name tag on white,
-     a thin dark grey frame and bold heading-colour words; never a level's colour, no arrow
-     (ADR 0007, ADR 0017). It wraps inside the box rather than run out of it. */
+  /* 比上次多／少 N 分 (#646), plain bold words over the bars since #750 (canvas ProResult);
+     never a level's colour, no arrow (ADR 0007, ADR 0017). */
   .result-since-last > .change-label {
-    display: inline-block;
-    max-width: 100%;
-    margin-bottom: 0.35rem;
-    padding: 0.15rem 0.6rem;
-    border: 2px solid var(--color-muted);
-    border-radius: var(--radius-small);
-    background-color: #fff;
     color: var(--color-heading);
     font-weight: 700;
   }
 
-  /* Readability batch 3 (the owner's B6 A): the score bar in the result box, on white so its
-     pale segments show against the level's pale colour. */
-  .result-banner .score-bar {
-    margin: 0.75rem 0 0;
-    padding: 0.75rem 0.75rem 0.25rem;
-    border-radius: var(--radius-small);
+  /* Last time's total and this one's as bars, each its share of the full score: last time's
+     outlined, this one's solid, both in this level's colour. */
+  .result-bars {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.125rem 0.625rem;
+    margin-top: 0.125rem;
+  }
+
+  .result-bar {
+    height: 0.8889rem;
+    border-radius: var(--radius-pill);
     background-color: #fff;
+  }
+
+  .result-bar-fill {
+    display: block;
+    height: 100%;
+    border-radius: var(--radius-pill);
+    background-color: currentColor;
+  }
+
+  .result-bar-fill-last {
+    border: 2px solid currentColor;
+    background-color: color-mix(in srgb, currentColor 25%, #fff);
+  }
+
+  .result-bar-value {
+    font-weight: 700;
+    text-align: right;
   }
 
   /* Not graded: a 提示框's pale grey (P3), the words in the heading colour. */
@@ -7442,6 +7515,7 @@
     overflow-wrap: anywhere;
   }
 
+  /* Two lines of a title that wraps share its words (the canvas's balance): no lone last word. */
   .bird-title {
     margin: 0;
     color: var(--color-heading);
@@ -7449,6 +7523,7 @@
     font-weight: 700;
     line-height: 1.35;
     overflow-wrap: anywhere;
+    text-wrap: balance;
   }
 
   .hero-card {

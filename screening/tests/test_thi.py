@@ -389,7 +389,7 @@ class ThiResultAdviceTests(ThiTestCase):
         for total, expected in STEPS.items():
             with self.subTest(total=total):
                 main = self._main(total)
-                # Step 1 under the level, the rest behind 看完整說明 (#461).
+                # Every step under 這個分數怎麼算 (#750).
                 steps = test_result_next_steps.ResultNextStepsTests._steps(self, main)
                 self.assertEqual(len(steps), len(expected))
                 for (words, links), (text, action) in zip(steps, expected, strict=True):

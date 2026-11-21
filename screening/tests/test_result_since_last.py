@@ -47,7 +47,15 @@ class SinceLastTests(TestCase):
         latest = self.hhie_s(14, (2026, 11, 12))
         self.assertEqual(
             latest.result.since_last,
-            {"label": "比上次少 4 分", "text": "上次 2026/03/26 是 18 分", "level_change": None},
+            {
+                "label": "比上次少 4 分",
+                "text": "上次 2026/03/26 是 18 分",
+                "level_change": None,
+                # #750's two bars: 18 and 14 of 40.
+                "previous_total": 18,
+                "previous_width": 45.0,
+                "width": 35.0,
+            },
         )
 
     def test_a_higher_score_says_how_many_more(self):
@@ -77,6 +85,9 @@ class SinceLastTests(TestCase):
                 "label": "比上次少 4 分",
                 "text": "上次 2026/03/26 是 10 分",
                 "level_change": "分級從「輕度到中度影響」變成「無／極輕微影響」",
+                "previous_total": 10,
+                "previous_width": 25.0,
+                "width": 15.0,
             },
         )
 
@@ -131,7 +142,15 @@ class SinceLastTests(TestCase):
         latest = self.record("thi", [2] * 21 + [0] * 4, (2026, 11, 12), wearing_hearing_aid=False)
         self.assertEqual(
             latest.result.since_last,
-            {"label": "比上次少 6 分", "text": "上次 2026/08/10 是 48 分", "level_change": None},
+            {
+                "label": "比上次少 6 分",
+                "text": "上次 2026/08/10 是 48 分",
+                "level_change": None,
+                # Of THI's 100.
+                "previous_total": 48,
+                "previous_width": 48.0,
+                "width": 42.0,
+            },
         )
 
     def test_questionnaires_that_are_not_graded_have_no_comparison(self):

@@ -23,7 +23,7 @@ SUGGESTIONS = (
     "分享報告給家人",
     "印聽力報告給醫師看",
 )
-REPORT_ROW = (reverse("health_report"), "印聽力報告給醫師看")
+REPORT_ROW = (reverse("health_report"), "印聽力報告")
 SHARE_ROW = (reverse("share_report"), "分享給家人")
 # #749 (ADR 0076): the card is the blue hero card, its buttons white.
 NEXT_STEP = re.compile(
@@ -159,7 +159,7 @@ class ResultNextStepTests(TestCase):
         )
 
     def test_the_suggestion_comes_before_the_list_rows(self):
-        # R1: the card, then 看完整說明, sharing and printing, then the page's extras (the optional
+        # R1: the card, then printing and sharing (#750), then the page's extras (the optional
         # SSQ12-TW row on HHIE-S without hearing aids among them).
         self.sign_in("result order")
         submissions = self.answer_all()
@@ -173,7 +173,7 @@ class ResultNextStepTests(TestCase):
         ssq12 = reverse("screening", args=[Questionnaire.objects.get(code="ssq12-tw").pk])
         records = f"{reverse('my_hearing')}?questionnaire=hhie-s"
         rows = [href for href, _ in ROW.findall(self.result(submissions["hhie-s"]))]
-        self.assertEqual(rows, [SHARE_ROW[0], REPORT_ROW[0], records, ssq12])
+        self.assertEqual(rows, [REPORT_ROW[0], SHARE_ROW[0], records, ssq12])
 
     def test_the_optional_ssq12_card_is_an_action_card_like_the_others(self):
         # #363 (spec #354): an icon and a second line, and 「（SSQ12-TW）」 held together so a

@@ -168,16 +168,10 @@ class ResultNextStepsTests(TestCase):
         return content[content.index("<main") : content.index("</main>")]
 
     def _steps(self, main):
-        """Each step's words and the links under them, step 1 first, then the folded ones."""
-        first = re.search(
-            r'<p class="result-one-line">(.*?)</p>\s*(<p class="next-steps-links">.*?</p>)?',
-            main,
-            re.S,
-        )
-        body = main[main.index('<div class="result-details-body">') :]
-        body = body[: body.index("<details")]
-        folded = re.findall(r'<p>(.*?)</p>\s*(<p class="next-steps-links">.*?</p>)?', body, re.S)
-        return [first.groups(), *folded]
+        """Each step's words and the links under them, all under 這個分數怎麼算 since #750."""
+        body = main[main.index('<div class="result-steps">') :]
+        body = body[: body.index("</div>")]
+        return re.findall(r'<p>(.*?)</p>\s*(<p class="next-steps-links">.*?</p>)?', body, re.S)
 
     def test_each_level_shows_its_finalized_steps_and_action_buttons(self):
         for code, levels in STEPS.items():

@@ -1,8 +1,9 @@
 """#461 (spec #453, the #460 mockup R1): what a result page's first screen shows and what waits
-behind 看完整說明."""
+under it; since #750 (canvas ProResult) the gauge's block, the 建議下一步 and the rows."""
 
 import datetime
 import re
+from html.parser import HTMLParser
 from io import StringIO
 
 from django.core.management import call_command
@@ -19,11 +20,9 @@ from screening.tests.helpers import consented_user, submission_with_answers
 TAIPEI = timezone.get_fixed_timezone(8 * 60)
 # The page's main button: solid, or white on the blue hero card (#749, ADR 0076).
 SOLID = re.compile(r'class="btn btn-(?:primary|hero)(?=[ "])')
-BANNER = re.compile(r'<div class="result-banner result-banner-([a-z_]+)">(.*?)</div>\s*<p', re.S)
-# The score bar, to its ends' row and its own closing tag (score_bar.html).
-SCORE_BAR = re.compile(
-    r'<div class="score-bar" aria-hidden="true">.*?<div class="score-bar-ends">.*?</div>\s*</div>',
-    re.S,
+# The score block, up to the 建議下一步 card under it (#750).
+BANNER = re.compile(
+    r'<div class="result-banner result-banner-([a-z_]+)">(.*?)<section class="hero-card"', re.S
 )
 DETAILS = re.compile(
     r'<details class="result-details"([^>]*)>(.*?)</details>\s*(?=<a|</div>)', re.S
@@ -34,7 +33,7 @@ ROW = re.compile(
     re.S,
 )
 SHARE_ROW = (reverse("share_report"), "分享給家人")
-PRINT_ROW = (reverse("health_report"), "印聽力報告給醫師看")
+PRINT_ROW = (reverse("health_report"), "印聽力報告")
 
 
 def details(main):
@@ -45,6 +44,33 @@ def details(main):
 
 def text(html):
     return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", html)).strip()
+
+
+class _Read(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.hidden = 0  # how deep inside something aria-hidden
+        self.words = []
+
+    def handle_starttag(self, tag, attrs):
+        if self.hidden or ("aria-hidden", "true") in attrs:
+            self.hidden += 1
+
+    def handle_endtag(self, tag):
+        if self.hidden:
+            self.hidden -= 1
+
+    def handle_data(self, data):
+        if not self.hidden:
+            self.words.append(data)
+
+
+def read(html):
+    """The words as a screen reader reads them: what is aria-hidden left out (#750's gauge, the
+    words beside it and the bars are drawn for the eye, the same said in hidden words)."""
+    reader = _Read()
+    reader.feed(html)
+    return re.sub(r"\s+", " ", "".join(reader.words)).strip()
 
 
 class GradedResultPageTests(TestCase):
@@ -79,10 +105,9 @@ class GradedResultPageTests(TestCase):
         main = self.main(latest)
         colour, banner = BANNER.search(main).groups()
         self.assertEqual(colour, "mild_to_moderate")
-        # Read as a screen reader reads it: without the score bar, aria-hidden, that sits in the
-        # block since readability batch 3.
+        # Read as a screen reader reads it: without the gauge and what is drawn by it (#750).
         self.assertEqual(
-            text(SCORE_BAR.sub("", banner)),
+            read(banner),
             "總分 14 分（滿分 40） 輕度到中度影響 比上次少 4 分 上次 2026/03/26 是 18 分",
         )
         for verdict in ("進步", "退步", "改善", "變好", "變差"):
@@ -92,7 +117,7 @@ class GradedResultPageTests(TestCase):
         # Acceptance 24.
         self.hhie_s([4, 4, 2, 0, 0, 0, 0, 0, 0, 0], (2026, 3, 26))  # 10
         latest = self.hhie_s([4, 2, 0, 0, 0, 0, 0, 0, 0, 0], (2026, 11, 12))  # 6
-        banner = text(BANNER.search(self.main(latest)).group(2))
+        banner = read(BANNER.search(self.main(latest)).group(2))
         change = "分級從「輕度到中度影響」變成「無／極輕微影響」"
         self.assertTrue(banner.endswith(f"比上次少 4 分 上次 2026/03/26 是 10 分 {change}"), banner)
 
@@ -107,37 +132,34 @@ class GradedResultPageTests(TestCase):
         self.hhie_s([4, 4, 4, 4, 4, 0, 0, 0, 0, 0], (2026, 1, 5))  # 20
         old = self.hhie_s([4, 4, 4, 4, 0, 0, 0, 0, 0, 0], (2026, 3, 26))  # 16
         self.hhie_s([4, 0, 0, 0, 0, 0, 0, 0, 0, 0], (2026, 11, 12))  # 4
-        banner = text(BANNER.search(self.main(old)).group(2))
+        banner = read(BANNER.search(self.main(old)).group(2))
         self.assertIn("比上次少 4 分 上次 2026/01/05 是 20 分", banner)
 
-    def test_one_sentence_follows_the_block_then_the_suggestion_then_the_rows(self):
-        # R1: the reviewed step 1 word for word, the 建議下一步 card, then the list rows.
+    def test_the_block_then_the_suggestion_then_the_rows(self):
+        # #750 (canvas ProResult): the 建議下一步 card right under the block, no sentence between
+        # them; then the two folds and the list rows.
         main = self.main(self.hhie_s([4, 4, 2, 2, 0, 0, 0, 0, 0, 0], (2026, 11, 12)))  # 12
-        steps = hhie_s.NEXT_STEPS["mild_to_moderate"]
-        after_banner = main[BANNER.search(main).end() - 2 :]
-        self.assertTrue(
-            after_banner.startswith(f'<p class="result-one-line">{steps[0]["text"]}</p>'),
-            after_banner[:200],
-        )
+        self.assertNotIn("result-one-line", main)
         order = [
-            steps[0]["text"],
+            '<div class="result-banner',
             '<p class="hero-card-label">建議您下一步</p>',
-            '<details class="result-details">',
-            "<span>看完整說明</span>",
+            "<span>看每一題的回答</span>",
+            "<span>這個分數怎麼算</span>",
+            ">印聽力報告<",
             ">分享給家人<",
-            ">印聽力報告給醫師看<",
         ]
         positions = [main.index(piece) for piece in order]
         self.assertEqual(positions, sorted(positions))
 
     def test_the_full_explanation_is_folded_with_every_word_kept(self):
-        # R1: steps 2-3, the full advice, the subscores and the answers; the score bar left
-        # for the result box in readability batch 3.
+        # R1's fold, since #750 two: every reviewed step, the full advice, the subscores and the
+        # answers; the gauge in the block alone.
         main = self.main(self.hhie_s([4, 4, 2, 2, 0, 0, 0, 0, 0, 0], (2026, 11, 12)))
         fold = details(main)
         self.assertNotIn("open", fold[: fold.index(">")])
         steps = hhie_s.NEXT_STEPS["mild_to_moderate"]
         for piece in (
+            steps[0]["text"],
             steps[1]["text"],
             steps[2]["text"],
             get_advice("mild_to_moderate", hhie_s.CODE),
@@ -146,9 +168,9 @@ class GradedResultPageTests(TestCase):
         ):
             with self.subTest(piece=piece):
                 self.assertIn(piece, fold)
-        self.assertNotIn(steps[0]["text"], fold)
-        self.assertNotIn('<div class="score-bar"', fold)
-        self.assertEqual(main.count('<div class="score-bar"'), 1)
+                self.assertEqual(main.count(piece), 1)
+        self.assertNotIn('<div class="gauge"', fold)
+        self.assertEqual(main.count('<div class="gauge"'), 1)
 
     def test_suggesting_sharing_or_printing_leaves_its_row_out(self):
         # Within the normal range the journey counts down: it suggests sharing, then printing
@@ -185,9 +207,11 @@ class EveryResultPageTests(TestCase):
         for code in test_result_pages.QUESTIONNAIRES:
             with self.subTest(code=code):
                 main = self._main(code)
-                self.assertEqual(main.count('<details class="result-details">'), 1)
+                # #750: a graded page's two folds, 看每一題的回答 and 這個分數怎麼算.
+                graded = code in ("hhie-s", "hhia-s", "thi")
+                self.assertEqual(main.count('<details class="result-details">'), 1 + graded)
                 rows = ROW.findall(main)
-                self.assertEqual(rows[:2], [SHARE_ROW, PRINT_ROW])
+                self.assertEqual(rows[:2], [PRINT_ROW, SHARE_ROW])
 
     def test_pages_that_are_not_graded_have_no_level_block_and_no_comparison(self):
         # Acceptance 25; SSQ12-TW's 「比上一次」 and 0-10 bar went with it (#461).

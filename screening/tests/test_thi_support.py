@@ -4,7 +4,7 @@ stories 14 and 20)."""
 from django.urls import reverse
 
 from screening.models import Submission
-from screening.tests import test_result_score_bar, test_thi
+from screening.tests import test_result_gauge, test_thi
 
 # Draft wording from #211, written out here so a changed definition fails instead of being
 # copied into the expectation.
@@ -34,13 +34,13 @@ class ThiSupportResultTests(test_thi.ThiTestCase):
         )
         self.assertIn('aria-describedby="result-score">無障礙或輕微障礙</h2>', main)
         self.assertIn(SUPPORT, main)
-        # Under the level: after the banner and the score bar in it (readability batch 3),
+        # Under the level: after the score block and the gauge in it (#750),
         # before the 建議下一步.
         banner_end = main.index('<p id="result-score"')
         support = main.index(SUPPORT)
         self.assertLess(banner_end, support)
-        self.assertIn('<div class="score-bar"', test_result_score_bar.result_box(main))
-        self.assertLess(main.index('<div class="score-bar"'), support)
+        self.assertIn('<div class="gauge"', test_result_gauge.result_box(main))
+        self.assertLess(main.index('<div class="gauge"'), support)
         self.assertLess(support, main.index('<section class="hero-card">'))
 
     def test_item_11_or_item_23_alone_often_shows_the_support_message(self):
