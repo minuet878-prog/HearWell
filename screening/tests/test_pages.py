@@ -274,7 +274,9 @@ class RedesignLayoutTests(TestCase):
                 nav = self._nav(response)
                 self.assertEqual(self._nav_labels(nav), list(self.LOGGED_IN_ITEMS))
                 content = response.content.decode()
-                self.assertIn('aria-label="帳號設定：alice_account">A</a>', content)
+                # The answer page's header has 離開 and the topic instead (#755).
+                if url != reverse("screening", args=[self.questionnaire.id]):
+                    self.assertIn('aria-label="帳號設定：alice_account">A</a>', content)
                 self.assertNotIn(f'action="{reverse("logout")}"', content)
 
     def test_logged_out_nav(self):
@@ -698,9 +700,9 @@ class PageFlowTests(TestCase):
         return self._main(self.client.get(reverse("result", args=[submission.id])))
 
     def test_result_page_order(self):
-        # Ticket #157 (ADR 0010), #461 (the #460 mockup R1): the level block, step 1, the
-        # 建議下一步, then 看完整說明 with the other steps, the folded full advice and score
-        # detail, then the list rows.
+        # Ticket #157 (ADR 0010), #461 (the #460 mockup R1), #750 (canvas ProResult): the
+        # level block, the 建議下一步, then 看每一題的回答, 這個分數怎麼算 with the score detail,
+        # every step and the folded full advice, then the list rows.
         submission = self._submit([4, 4, 2, 2, 0, 0, 0, 0, 0, 0])  # 12
         day = timezone.localtime(submission.created_at).strftime("%Y/%m/%d")
         main = self._result(submission)
@@ -711,20 +713,20 @@ class PageFlowTests(TestCase):
                 f"{day} 作答",
                 '總分 <span class="result-number" data-count-up>12</span> 分（滿分 40）',
                 "輕度到中度影響",
-                steps[0]["text"],
                 "建議您下一步",
-                "<span>看完整說明</span>",
+                "<span>看每一題的回答</span>",
+                "助聽器：未記錄",
+                "<span>這個分數怎麼算</span>",
+                "情緒分數：12",
+                "社交分數：0",
+                steps[0]["text"],
                 steps[1]["text"],
                 steps[2]["text"],
                 "<summary>看完整建議</summary>",
                 get_advice("mild_to_moderate"),
-                "分數細節與作答明細",
-                "情緒分數：12",
-                "社交分數：0",
-                "助聽器：未記錄",
+                "印聽力報告",
                 "分享給家人",
-                "印聽力報告給醫師看",
-                "看我的紀錄與趨勢",
+                "看紀錄與趨勢",
             ),
         )
 
@@ -734,7 +736,7 @@ class PageFlowTests(TestCase):
         self.assertRegex(
             main,
             rf'(?s)<a class="link-card action-card" href="{re.escape(records)}">.*?'
-            r'<span class="link-card-title">看我的紀錄與趨勢</span>',
+            r'<span class="link-card-title">看紀錄與趨勢</span>',
         )
         # 回首頁 went with the closing row (#461): the tab bar has 首頁.
         self.assertNotIn("回首頁", main)
@@ -746,16 +748,15 @@ class PageFlowTests(TestCase):
 
     def test_result_answers_collapsed_in_question_order(self):
         main = self._result(self._submit([4, 2, 0, 4, 2, 0, 4, 2, 0, 4]))
-        # The answers' dropdown, not the full advice's one above it.
+        # The answers' fold, a list row since #750 (看每一題的回答).
         details = re.search(
-            r"<details(\s[^>]*)?>(\s*<summary[^>]*>\s*分數細節與作答明細.*?)</details>",
+            r"<details(\s[^>]*)?>(\s*<summary[^>]*>(?:(?!</summary>).)*看每一題的回答.*?)</details>",
             main,
             re.DOTALL,
         )
         self.assertIsNotNone(details)
         self.assertNotIn("open", details.group(1) or "")
         body = details.group(2)
-        self.assertRegex(body, r"<summary[^>]*>\s*分數細節與作答明細\s*</summary>")
         self._assert_in_order(body, [f"題目內容{i:02d}" for i in range(1, 11)])
         for i, answer in ((1, "常常"), (2, "有時"), (3, "從未"), (10, "常常")):
             with self.subTest(question=i):

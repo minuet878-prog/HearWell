@@ -431,7 +431,7 @@ class HistoryTabsTests(TestCase):
         self.assertRegex(
             main,
             rf'(?s)<a class="link-card action-card" href="{re.escape(self._tab_url("ioi-ha"))}">.*?'
-            r'<span class="link-card-title">看我的紀錄</span>',
+            r'<span class="link-card-title">看紀錄</span>',
         )
 
     # Accessibility (19)

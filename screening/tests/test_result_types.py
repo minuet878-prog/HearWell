@@ -85,7 +85,12 @@ class GradedResultTests(ResultTestCase):
         self.assertEqual(result.subscores, {"emotional": 12, "social": 4})
         self.assertEqual(
             result.level,
-            {"text": "輕度到中度影響", "level": "mild_to_moderate", "color": "mild_to_moderate"},
+            {
+                "text": "輕度到中度影響",
+                "short": "輕到中度",
+                "level": "mild_to_moderate",
+                "color": "mild_to_moderate",
+            },
         )
         self.assert_none(
             result, "average", "unavailable_reason", "satisfaction", "norm_group", "norm_summary"
@@ -110,14 +115,16 @@ class GradedResultTests(ResultTestCase):
         )
         context = self.assert_page(record, "screening/result.html")
         self.assertEqual(context["max_score"], 40)
-        self.assertEqual(context["score_bar"]["position"], 40)
+        # #750's gauge: 16 of 40 is 0.4 of the arc, 108 degrees round from its left foot.
+        self.assertEqual(context["gauge"]["knob"], (120.7, 32.1))
         # The total, subscores and level the page shows are the result object's, not copies.
         self.assert_no_copies(context)
         page = self.client.get(reverse("result", args=[record.pk]))
         self.assertContains(page, '<div class="result-banner result-banner-mild_to_moderate">')
         self.assertContains(
             page,
-            '<h2 class="result-block-level" aria-describedby="result-score">輕度到中度影響</h2>',
+            '<h2 class="result-block-level visually-hidden" aria-describedby="result-score">'
+            "輕度到中度影響</h2>",
         )
         self.assertContains(
             page, '總分 <span class="result-number" data-count-up>16</span> 分（滿分 40）'

@@ -125,12 +125,12 @@ class SectionTests(ResultFromAnswersTestCase):
             '總分 <span class="result-number" data-count-up>16</span> 分（滿分 40）', html
         )
         self.assertIn(
-            '<h2 class="result-block-level" aria-describedby="result-score">輕度到中度影響</h2>',
+            '<h2 class="result-block-level visually-hidden" aria-describedby="result-score">'
+            "輕度到中度影響</h2>",
             html,
         )
-        self.assertIn('<div class="score-bar" aria-hidden="true">', html)
-        # Readability batch 3: only the bar's two ends under it, no level under the marker.
-        self.assertIn('<div class="score-bar-ends"><span>0</span><span>40</span></div>', html)
+        # #750: the gauge, its scale's two ends under it.
+        self.assertIn('<span class="gauge-end">0</span><span class="gauge-end">40</span>', html)
         self.assertIn('<p class="mb-1">情緒分數：12　社交分數：4</p>', html)
         self.assertIn("助聽器：沒戴", html)
         self.assertIn(hhie_s.ADVICE["mild_to_moderate"], html)
