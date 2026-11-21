@@ -6,10 +6,10 @@
 {% block extra_head %}<script type="module" src="{% static 'screening/frontend/guest-result.js' %}"></script>{% endblock %}
 
 {% block body %}
-{# A guest's result (spec #492): guest-result.js reads it from this browser, has the scoring-only API draw the result page's section and puts it here; without one it goes home. Headed as result_header.html heads a record's. #}
-<div id="guest-result" data-code="{{ questionnaire.code }}" data-score-url="{% url 'api:guest_score' %}" data-home-url="{% url 'index' %}">
+{# A guest's result (spec #492): guest-result.js reads it from this browser, has the scoring-only API draw the result page's section and puts it here; without one it goes home. Headed as result_header.html heads a record's, with no green line. The server cannot tell just sent from opened again (the owner, 2026-11-21), so the bird says 這是您這一次的結果。, true either way, and the script says 做完了，辛苦了。 once, right after sending (guest-results.js, JUST_FINISHED). #}
+<div id="guest-result" data-code="{{ questionnaire.code }}" data-score-url="{% url 'api:guest_score' %}" data-home-url="{% url 'index' %}" data-just-finished-lead="{{ "result"|page_lead }}" data-reopened-lead="{{ "result_reopened"|page_lead }}">
     <div data-guest-shown hidden>
-        {% include "screening/bird_dialogue.html" with lead="result"|page_lead title="看看"|add:questionnaire.definition.topic %}
+        {% include "screening/bird_dialogue.html" with lead="result_reopened"|page_lead title="看看"|add:questionnaire.definition.topic %}
         <div data-guest-section></div>
     </div>
     <p class="text-xl/normal font-bold text-danger" role="alert" data-guest-error></p>

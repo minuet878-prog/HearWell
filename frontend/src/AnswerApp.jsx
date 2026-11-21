@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { clearDraft, loadDraft, saveDraft } from "./draft.js";
-import { canKeepGuestResults, saveGuestResult } from "./guest-results.js";
+import { canKeepGuestResults, rememberJustFinished, saveGuestResult } from "./guest-results.js";
 import { newReceiptKey } from "./receipt-key.js";
 
 // Same choices as the Django form (forms.HearingAidForm); the question itself is the
@@ -316,6 +316,8 @@ export default function AnswerApp({
         setStatus({ type: "cannotKeep" });
         return;
       }
+      // Its page's bird says 做完了，辛苦了。 this once (the owner, 2026-11-21).
+      rememberJustFinished(form.key);
       finished.current = true;
       setStatus({ type: "sent" });
       setTimeout(() => navigate(`/guest/result/${questionnaireCode}`), SENT_FOR);

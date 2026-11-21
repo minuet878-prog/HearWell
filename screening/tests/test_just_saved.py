@@ -101,3 +101,14 @@ class JustSavedTests(TestCase):
     def test_a_guest_result_saved_on_the_save_page_is_seen_later(self):
         # guest_save.html says it is saved; the record opened afterwards is not just sent.
         self.assertSeenLater(self.client.get(self.send_to_the_api(from_guest=True)))
+
+    def test_a_guest_result_page_starts_seen_later_and_holds_both_words(self):
+        # The owner, 2026-11-21: the server cannot tell a guest's just sent from opened again, so
+        # its page says 這是您這一次的結果。 (true either way) and holds 做完了，辛苦了。 for
+        # guest-results.js, which shows it once, right after sending (the answer page's mark).
+        self.client.logout()
+        page = self.client.get(reverse("guest_result", args=[hhie_s.CODE])).content.decode()
+        self.assertNotIn(STRIP, page)
+        self.assertIn(f'<p class="bird-lead">{LATER}</p>', page)
+        self.assertIn(f'data-just-finished-lead="{JUST_SENT}"', page)
+        self.assertIn(f'data-reopened-lead="{LATER}"', page)

@@ -11,6 +11,12 @@ export const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 // (sessionStorage) with the receipt numbers kept then; the save page takes it once. An address
 // with ?from=card cannot make one, so without it the save page asks.
 export const SAVE_INTENT = "hearwell:guest-save-intent";
+// The owner, 2026-11-21: right after the answers are sent the result page's bird says 做完了，
+// 辛苦了。, as a signed-in one's does; opened again later, 這是您這一次的結果。. The server cannot
+// tell for a guest, so the answer page leaves this tab a one-shot mark, the result's receipt
+// number, which the result page takes once it has shown that result. Without it (blocked storage,
+// another tab, opened again) the page keeps the words true either way: 這是您這一次的結果。.
+export const JUST_FINISHED = "hearwell:guest-just-finished";
 const LOAD_FAILED = "結果載入失敗，請重新整理這一頁";
 
 function attempt(action) {
@@ -46,6 +52,19 @@ export function saveGuestResult(result) {
     localStorage.setItem(GUEST_PREFIX + result.code, JSON.stringify(result));
     return true;
   }) ?? false;
+}
+
+// The answer page, as it opens the result it just kept.
+export function rememberJustFinished(key) {
+  attempt(() => sessionStorage.setItem(JUST_FINISHED, key));
+}
+
+// True once for the result with this receipt number: the mark goes as it is read.
+function takeJustFinished(key) {
+  const mark = attempt(() => sessionStorage.getItem(JUST_FINISHED));
+  if (mark !== key) return false;
+  attempt(() => sessionStorage.removeItem(JUST_FINISHED));
+  return true;
 }
 
 // Implementation decision I4: asked before a guest starts answering. Writes and deletes a check
@@ -190,6 +209,8 @@ export async function showGuestResult({
     if (days) days.textContent = String(daysLeft(result.finishedAt, now));
     offerClearing(root, navigate, result.key);
     rememberSaveCardPress(root, clock);
+    const { justFinishedLead, reopenedLead } = root.dataset;
+    root.querySelector(".bird-lead").textContent = takeJustFinished(result.key) ? justFinishedLead : reopenedLead;
     root.querySelector("[data-guest-shown]").hidden = false;
     error.textContent = "";
   } else if (response?.status === 400) {

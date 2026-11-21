@@ -15672,6 +15672,25 @@ class GuestSaveFromCardTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTes
             self.assertEqual(record.result.level["text"], "輕度到中度影響")
             self.assertEqual(self.guest_results(), [])
 
+    def test_the_bird_says_done_only_right_after_sending(self):
+        """The owner, 2026-11-21, as on a signed-in result page: just sent, 做完了，辛苦了。;
+        opened again from the home page's tile or reloaded, 這是您這一次的結果。. A guest has
+        no green line either way."""
+        bird = self.main().locator(".bird-dialogue")
+        with self.saving_artifacts():
+            self.guest_answers_hhie_s()
+            expect(bird.locator(".bird-lead")).to_have_text("做完了，辛苦了。")
+            expect(self.main().locator(".result-saved")).to_have_count(0)
+            self.page.goto(f"{self.live_server_url}/")
+            self.main().locator("#guest-home").get_by_role("link").first.click()
+            expect(self.page).to_have_url(re.compile(r"/guest/result/hhie-s$"))
+            expect(self.main().locator("#result-score")).to_contain_text("總分 12 分")
+            expect(bird.locator(".bird-lead")).to_have_text("這是您這一次的結果。")
+            self.page.reload()
+            expect(self.main().locator("#result-score")).to_contain_text("總分 12 分")
+            expect(bird.locator(".bird-lead")).to_have_text("這是您這一次的結果。")
+            expect(self.main().locator(".result-saved")).to_have_count(0)
+
     def test_declining_the_consent_keeps_the_guest_result(self):
         """#492 acceptance 28: 不同意 logs out home, the guest result still in the browser."""
         with self.saving_artifacts():

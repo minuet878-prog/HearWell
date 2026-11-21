@@ -1335,6 +1335,10 @@ describe("guest", () => {
       total: 40,
       level: SCORED.level,
     });
+    // The owner, 2026-11-21: this tab's one-shot mark that it was just finished, so the result
+    // page's bird says 做完了，辛苦了。 this once.
+    const { key } = JSON.parse(localStorage.getItem("hearwell:guest-result:hhie-s"));
+    expect(sessionStorage.getItem("hearwell:guest-just-finished")).toBe(key);
   });
 
   it("on 429 says the server's words and keeps the answers on screen", async () => {
