@@ -1,6 +1,8 @@
 """THI: the support message with 1925 when an emotional item is answered often (#213, spec #208
-stories 14 and 20)."""
+stories 14 and 20), and at 重度 and 極重度 whatever those answers (the owner, #741 acceptance
+2026-11-21)."""
 
+from django.template.loader import render_to_string
 from django.urls import reverse
 
 from screening.models import Submission
@@ -18,6 +20,33 @@ NEVER, SOMETIMES, OFTEN = 0, 2, 4
 def only_often(*numbers):
     """25 answers: 經常 on the given item numbers, 不會 on the rest."""
     return [OFTEN if number in numbers else NEVER for number in range(1, 26)]
+
+
+EMOTIONAL = (5, 11, 23)
+
+
+def at_level(others_often):
+    """25 answers: 有時 on items 5, 11 and 23, 經常 on the first `others_often` of the other
+    items, 不會 on the rest."""
+    others = [number for number in range(1, 26) if number not in EMOTIONAL]
+    often = set(others[:others_often])
+    return [
+        SOMETIMES if number in EMOTIONAL else OFTEN if number in often else NEVER
+        for number in range(1, 26)
+    ]
+
+
+# Each level's heading, answers with none of items 5, 11, 23 answered 經常 (totals 6, 22, 42,
+# 58 and 94, worked out by hand against THI's level borders), and whether the support message
+# shows: at 重度 and 極重度 always (the owner at #741 acceptance, 2026-11-21: with 看完整建議 gone
+# from result pages, 1925 stays on theirs).
+WITHOUT_OFTEN = (
+    ("無障礙或輕微障礙", at_level(0), False),
+    ("輕度障礙", at_level(4), False),
+    ("中度障礙", at_level(9), False),
+    ("重度障礙", at_level(13), True),
+    ("極重度障礙", at_level(22), True),
+)
 
 
 class ThiSupportResultTests(test_thi.ThiTestCase):
@@ -46,13 +75,54 @@ class ThiSupportResultTests(test_thi.ThiTestCase):
             with self.subTest(item=number):
                 self.assertIn(SUPPORT, self._main(only_often(number)))
 
-    def test_items_5_11_23_sometimes_and_the_rest_often_shows_no_support_message(self):
-        scores = [SOMETIMES if number in (5, 11, 23) else OFTEN for number in range(1, 26)]
-        main = self._main(scores)
-        self.assertIn('aria-describedby="result-score">極重度障礙</h2>', main)
-        self.assertNotIn(SUPPORT, main)
-        # The catastrophic advice and steps gave the 1925 line here until the owner's acceptance
-        # of spec #741 (2026-11-21) took 看完整建議 off result pages.
+    def test_without_often_only_severe_and_catastrophic_show_the_support_message(self):
+        for heading, scores, shown in WITHOUT_OFTEN:
+            with self.subTest(level=heading):
+                main = self._main(scores)
+                self.assertIn(f'aria-describedby="result-score">{heading}</h2>', main)
+                if shown:
+                    self.assertIn(SUPPORT, main)
+                    # In the same place as the 經常 rule's: after the score block.
+                    self.assertLess(main.index('<p id="result-score"'), main.index(SUPPORT))
+                    self.assertLess(main.index(SUPPORT), main.index('<section class="hero-card">'))
+                else:
+                    self.assertNotIn(SUPPORT, main)
+                    self.assertNotIn("1925", main)
+
+    def test_one_often_shows_the_support_message_at_every_level(self):
+        for heading, scores, _shown in WITHOUT_OFTEN:
+            for number in EMOTIONAL:
+                with self.subTest(level=heading, item=number):
+                    answers = list(scores)
+                    answers[number - 1] = OFTEN
+                    main = self._main(answers)
+                    self.assertIn(SUPPORT, main)
+
+
+class ThiSupportGuestSectionTests(test_thi.ThiTestCase):
+    """A guest's result section is drawn by the scoring-only API from answers not saved
+    (GuestScore: from_answers(), page_context(), graded_result.html), the same rule holding
+    there. THI is not open to guests today (test_guest), so the section is drawn that way here."""
+
+    def _section(self, scores):
+        questions = list(self.thi.questions.order_by("question_number"))
+        result = self.thi.definition.result.from_answers(
+            self.thi, list(zip(questions, scores, strict=True)), False
+        )
+        return render_to_string(
+            "screening/graded_result.html",
+            {"submission": result.submission} | result.page_context(),
+        )
+
+    def test_the_same_rule_as_the_record_page(self):
+        for heading, scores, shown in WITHOUT_OFTEN:
+            with self.subTest(level=heading):
+                html = self._section(scores)
+                self.assertIn(f'aria-describedby="result-score">{heading}</h2>', html)
+                self.assertEqual(SUPPORT in html, shown)
+                answers = list(scores)
+                answers[5 - 1] = OFTEN
+                self.assertIn(SUPPORT, self._section(answers))
 
 
 class ThiSupportOnlyOnResultTests(test_thi.ThiTestCase):

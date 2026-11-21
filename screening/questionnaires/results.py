@@ -257,7 +257,7 @@ class GradedResult(Result):
             "save_reason": definition.save_reasons.get(level, ""),
             "advice": get_advice(level, code),
             "support_message": definition.support(
-                {answer.question.question_number: answer.score for answer in answers}
+                {answer.question.question_number: answer.score for answer in answers}, level
             ),
             "optional_ssq12": (
                 Questionnaire.objects.filter(code=ssq12_tw.CODE).first()
