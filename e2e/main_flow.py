@@ -4589,8 +4589,12 @@ class SiteHeaderTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             expect(self.menu().locator(".site-account-name")).to_have_text("header_e2e")
             settings_link = self.menu().get_by_role("link", name="帳號設定")
             expect(settings_link).to_be_focused()
-            for item in (settings_link, self.menu().get_by_role("button", name="登出")):
+            log_out = self.menu().get_by_role("button", name="登出")
+            for item in (settings_link, log_out):
                 self.assertGreaterEqual(item.bounding_box()["height"], 55.5)
+            # The owner's addition to spec #741 (Codex cross review, item 5): 登出 in red, the
+            # site's severe colour #8f2a12 (ADR 0007's exception for removal).
+            expect(log_out).to_have_css("color", "rgb(143, 42, 18)")
             self.page.keyboard.press("Escape")
             expect(self.menu()).to_be_hidden()
             expect(self.avatar()).to_be_focused()
