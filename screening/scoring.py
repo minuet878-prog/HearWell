@@ -127,7 +127,6 @@ NEXT_STEP_REASONS = {
     "assessment": "先確認有沒有身障證明，才知道能不能申請補助。",
     "form-9": "您已經有身障證明，可以準備申請九號表的助聽器補助。",
     "notice": "九號表送出後要等公所的核定公文，先了解接下來會發生什麼。",
-    "types-and-prices": "可以看看助聽器的種類與價格，比較之後再買。",
     "after-fitting": "記下開始戴的日期，才算得出什麼時候要做使用效益驗證。",
     "form-25": "您的助聽器要在 {deadline:%Y/%m/%d} 前做使用效益驗證（二十五號表），才能核銷補助。",
     "payout": "驗證做完了，接下來看補助什麼時候發、怎麼發。",
@@ -144,8 +143,6 @@ CARE_JOURNEY_STEPS = (
 LIFE_IMPACT_BECAUSE = "先做一份生活影響問卷，了解聽力對您生活的影響。"
 LIFE_IMPACT_BUTTON = "去做問卷"
 IOI_HA_BUTTON = "做效益問卷"
-# Step 3's card on 助聽器的種類與價格 (the owner on #455): the route itself has no button.
-TYPES_AND_PRICES_BUTTON = "去看助聽器種類與價格"
 # Step 2's two answers to 「手上有醫院的聽力檢查報告了嗎？」 (the 2026-11-14 walkthrough,
 # mockup 2A); 還沒 opens the Q&A on where a hearing test is done.
 RECORD_AUDIOGRAM_YES = "有，記錄聽力圖"

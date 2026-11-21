@@ -24,8 +24,9 @@ class AidLevel(models.TextChoices):
 class Certificate(models.TextChoices):
     # Spec #291 Q2: a 聽覺機能 身心障礙證明, or why there is none. #597 (spec #593): 沒有 asks
     # no reason, and 還沒有 makes room for those about to apply; the stored values are kept.
+    # Spec #741 Q21: 有／正在申請／沒有, the values kept again.
     YES = "yes", "有"
-    APPLYING = "applying", "還沒有，打算申請或正在申請鑑定"
+    APPLYING = "applying", "正在申請"
     NO_SUBSIDY = "no_subsidy", "沒有"
 
 

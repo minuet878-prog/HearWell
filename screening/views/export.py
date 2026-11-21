@@ -8,6 +8,7 @@ from django.utils.http import content_disposition_header
 from django.views.decorators.http import require_http_methods
 
 from screening import models
+from screening.fitting_route import GUIDE_PAGE
 from screening.forms import Form9Form, Form25Form, NoticeForm, answer_choices
 from screening.models import Answer, AudiogramPoint, Questionnaire
 from screening.views.common import health_data_page
@@ -65,6 +66,7 @@ def download_my_data(request):
     audiograms = user.audiograms.prefetch_related(Prefetch("points", queryset=points))
     aid = models.AidAndSubsidy.for_user(user)
     chapter_titles = {chapter.slug: chapter.title for chapter in GUIDE_CHAPTERS}
+    chapter_titles[GUIDE_PAGE] = "助聽器選配與補助"  # 看過指引頁, by my guide's heading
     reminder = models.RetestReminder.objects.filter(user=user).first()
     data = {
         "account": {

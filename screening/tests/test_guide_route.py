@@ -9,17 +9,17 @@ from django.utils import timezone
 from screening.models import AidAndSubsidy, Questionnaire, Submission
 from screening.questionnaires import hhie_s
 from screening.tests import test_guide, test_guide_summary, test_route_steps
-from screening.tests.helpers import consented_user, route_stops
+from screening.tests.helpers import consented_user, route_stops, took_ioi_ha
 
 PTA_55 = test_guide_summary.PTA_55
-# The route's nine stops in order (spec #291): recording an audiogram, then the chapters,
-# with the two waits that have no chapter of their own.
+# The route's nine stops in order (spec #291, ADR 0074): recording an audiogram, then the
+# chapters, with the two waits that have no chapter of their own.
 STOPS = (
     ("audiogram", "記錄聽力圖"),
-    ("before-you-go", "去找聽力師之前"),
     ("assessment", "身障鑑定與鑑定醫院"),
     ("form-9", "九號表：申請助聽器補助"),
     ("notice", "等待核定公文"),
+    ("before-you-go", "去找聽力師之前"),
     ("types-and-prices", "助聽器的種類與價格"),
     ("after-fitting", "配戴助聽器之後"),
     ("form-25", "二十五號表：使用效益驗證"),
@@ -146,14 +146,14 @@ class GuideRouteTests(TestCase):
         self.assertIn("2026/10/01 的聽力圖", self.stop("audiogram"))
         self.assertEqual(sum(t.count(DONE) for t in tags.values()), 1)
 
-    def test_an_ear_over_40_is_here_at_before_you_go(self):
-        # Spec #693 (ADR 0067) in place of 25 dB HL.
+    def test_an_ear_over_40_is_here_at_the_assessment(self):
+        # Spec #693 (ADR 0067) in place of 25 dB HL; ADR 0074 puts the assessment next.
         self.make((45, 45, 45, 45), (20, 20, 20, 20))
         tags = self.tags()
-        self.assertEqual(tags["before-you-go"], [HERE])
+        self.assertEqual(tags["assessment"][0], HERE)
         self.assertEqual(sum(t.count(HERE) for t in tags.values()), 1)
-        before = reverse("guide_chapter", args=["before-you-go"])
-        self.assert_link(self.stop("before-you-go"), before, "去之前要準備什麼")
+        assessment = reverse("guide_chapter", args=["assessment"])
+        self.assert_link(self.stop("assessment"), assessment, "找鑑定醫院")
 
     def test_not_reached_marks_the_assessment_and_links_to_other_subsidies(self):
         self.make((30, 30, 30, 30), (20, 20, 20, 20))
@@ -164,16 +164,16 @@ class GuideRouteTests(TestCase):
     def test_uncertain_leaves_the_assessment_unmarked(self):
         self.make((30, 30, 30, 30), (30, 30, 30, 30), no_response_at=("right", 4000))
         tags = self.tags()
-        self.assertEqual(tags["assessment"], [])
-        self.assert_only_here_at(tags, "before-you-go")
+        self.assertEqual(tags["assessment"], [HERE])
+        self.assert_only_here_at(tags, "assessment")
         self.assertNotIn("看沒有身障證明時", self.stop("assessment"))
 
-    def test_reached_is_here_at_before_you_go_until_it_is_read(self):
-        # Spec #291 default 4, in place of #257 Q5.
+    def test_reached_is_here_at_the_assessment(self):
+        # ADR 0074, in place of spec #291 default 4's 去找聽力師之前 first.
         self.make(PTA_55, PTA_55)
         tags = self.tags()
-        self.assert_only_here_at(tags, "before-you-go")
-        self.assertEqual(tags["assessment"], [])
+        self.assert_only_here_at(tags, "assessment")
+        self.assertEqual(tags["assessment"], [HERE])
 
     def test_an_audiogram_that_cannot_tell_is_here_with_too_little_data(self):
         audiogram = self.make((20, 20, 20, 20), (20, 20, 20, 20))
@@ -247,6 +247,7 @@ class FittedOnRouteTests(TestCase):
         AidAndSubsidy.objects.create(
             user=self.user, fitted_on=date(2026, 5, 1), subsidy="disability", level="mid"
         )
+        took_ioi_ha(self.user, date(2026, 5, 1))
         self.assert_only_here_at(self.tags(), "form-25")
 
 
@@ -272,6 +273,7 @@ class Form25DeadlineTests(TestCase):
         AidAndSubsidy.objects.create(
             user=self.user, fitted_on=fitted_on, subsidy=subsidy, level=level
         )
+        took_ioi_ha(self.user, fitted_on)  # 配戴之後 done (ADR 0074)
 
     def test_before_a_month_says_from_when_it_can_be_done(self):
         self.fit()
@@ -371,6 +373,7 @@ class ReapplyDateTests(TestCase):
         AidAndSubsidy.objects.create(
             user=self.user, fitted_on=date(2026, 5, 1), subsidy="disability", level="mid"
         )
+        took_ioi_ha(self.user, date(2026, 5, 1))
         self.assertIn("2030/05/01 起可以再申請補助", self.stop("form-9"))
         self.assert_only_here_at(self.tags(), "form-25")
 

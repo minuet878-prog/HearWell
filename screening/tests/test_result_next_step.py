@@ -117,8 +117,8 @@ class ResultNextStepTests(TestCase):
             edit = reverse("audiogram_edit", args=[self.user.audiograms.get().pk])
             return ("記錄聽力圖", edit, "修改這張聽力圖")
         if suggestion == "了解助聽器選配與補助":
-            # Step 3 at 去找聽力師之前, the 目前這一站, with the route's button.
-            return ("去找聽力師之前", "/guide/before-you-go", "去之前要準備什麼")
+            # Step 3 at 身障鑑定與鑑定醫院, the 目前這一站 (ADR 0074), with the route's button.
+            return ("身障鑑定與鑑定醫院", "/guide/assessment", "找鑑定醫院")
         # Within the normal range step 5 counts down without a button (spec #453 acceptance 22).
         if suggestion == "分享報告給家人":
             return ("分享報告給家人", "/share", "去分享")

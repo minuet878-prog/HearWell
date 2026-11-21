@@ -1,6 +1,7 @@
 import base64
 import json
 import re
+from datetime import datetime
 from unittest.mock import patch
 from urllib.parse import parse_qsl, urlsplit
 
@@ -10,7 +11,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening import models, questionnaires
-from screening.questionnaires import hhie_s
+from screening.questionnaires import hhie_s, ioi_ha
 from screening.questionnaires.definition import Definition
 from screening.questionnaires.results import GradedResult
 
@@ -32,6 +33,18 @@ def consented_user(**kwargs):
     user = models.User.objects.create_user(**kwargs, confirmed_email=kwargs.get("email", ""))
     user.give_consent()
     return user
+
+
+def took_ioi_ha(user, on):
+    """An IOI-HA taken at noon on the day on: from the fitting date on, it is the first IOI-HA
+    配戴之後 needs to be done (ADR 0074)."""
+    questionnaire, _ = models.Questionnaire.objects.get_or_create(
+        code=ioi_ha.CODE, defaults={"questionnaire_name": "IOI-HA"}
+    )
+    submission = models.Submission.objects.create(user=user, questionnaire=questionnaire)
+    moment = timezone.make_aware(datetime(on.year, on.month, on.day, 12))
+    models.Submission.objects.filter(pk=submission.pk).update(created_at=moment)
+    return submission
 
 
 def fake_definition(code, **overrides):

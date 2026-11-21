@@ -7,7 +7,7 @@ from screening.fitting_route import AUDIOGRAM, fitting_state
 from screening.models import AidAndSubsidy, Certificate, GuideChapterView, Questionnaire, Submission
 from screening.questionnaires import hhie_s, ioi_ha
 from screening.tests import test_fitting_advice, test_guide_summary
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, took_ioi_ha
 
 PTA_55 = test_guide_summary.PTA_55
 TODAY = date(2026, 10, 23)
@@ -68,7 +68,7 @@ class CurrentStopTests(TestCase):
         self.answer(wearing=True, day=1)
         self.answer(wearing=False, day=2)
         self.make(PTA_55, PTA_55)
-        self.assertEqual(self.stop(), "before-you-go")
+        self.assertEqual(self.stop(), "assessment")
 
     def test_an_audiogram_that_cannot_tell_is_recording_one_with_too_little_data(self):
         audiogram = self.make((20, 20, 20, 20), (20, 20, 20, 20))
@@ -83,20 +83,21 @@ class CurrentStopTests(TestCase):
         self.assertEqual(self.stop(), "after-fitting")
         self.assertTrue(fitting_state(self.user, TODAY).insufficient)
 
-    def test_an_ear_over_25_with_the_threshold_uncertain_is_before_you_go(self):
+    # ADR 0074: the route goes on to the assessment, its stop after the audiogram.
+    def test_an_ear_over_25_with_the_threshold_uncertain_is_the_assessment(self):
         self.make((30, 30, 30, 30), (30, 30, 30, 30), no_response_at=("right", 4000))
         self.assertEqual(fitting_state(self.user, TODAY).threshold["status"], "uncertain")
-        self.assertEqual(self.stop(), "before-you-go")
+        self.assertEqual(self.stop(), "assessment")
 
-    def test_an_ear_over_40_not_reaching_the_threshold_is_before_you_go(self):
+    def test_an_ear_over_40_not_reaching_the_threshold_is_the_assessment(self):
         # Spec #693 (ADR 0067) in place of grill Q3's 25 dB HL.
         self.make((45, 45, 45, 45), (20, 20, 20, 20))
-        self.assertEqual(self.stop(), "before-you-go")
+        self.assertEqual(self.stop(), "assessment")
 
-    def test_one_ear_over_40_and_the_other_unknown_is_before_you_go(self):
+    def test_one_ear_over_40_and_the_other_unknown_is_the_assessment(self):
         audiogram = self.make((45, 45, 45, 45), (20, 20, 20, 20))
         audiogram.points.filter(ear="left", frequency=4000).delete()
-        self.assertEqual(self.stop(), "before-you-go")
+        self.assertEqual(self.stop(), "assessment")
 
     def test_both_ears_within_25_have_no_stop(self):
         self.make((25, 25, 25, 25), (10, 10, 10, 10))
@@ -109,9 +110,9 @@ class CurrentStopTests(TestCase):
 
 
 class OldRulesGoneTests(TestCase):
-    """#292 (spec #291): #284's rules are gone. A certificate no longer jumps to form 9, and
-    form 25's first month no longer holds the 目前這一站 at 配戴之後; the stops move on as the
-    user reads and answers them."""
+    """#292 (spec #291): #284's rules are gone. Form 25's first month no longer holds the 目前
+    這一站 at 配戴之後; the stops move on as the user reads and answers them. (ADR 0074 put
+    form 9 right after the certificate, so #284's jump to it is the order itself now.)"""
 
     @classmethod
     def setUpTestData(cls):
@@ -122,15 +123,11 @@ class OldRulesGoneTests(TestCase):
 
     make = test_guide_summary.GuideSummaryTests.make
 
-    def test_a_certificate_no_longer_moves_the_stop_to_form_9(self):
-        self.make(PTA_55, PTA_55)
-        AidAndSubsidy.objects.create(user=self.user, certificate="yes")
-        self.assertEqual(fitting_state(self.user, TODAY).stop, "before-you-go")
-
     def test_form_25_s_dates_no_longer_move_the_stop(self):
         AidAndSubsidy.objects.create(
             user=self.user, fitted_on=date(2026, 5, 1), subsidy="disability", level="mid"
         )
+        took_ioi_ha(self.user, date(2026, 5, 1))
         for today in (date(2026, 5, 20), date(2026, 7, 15), date(2026, 8, 2)):
             with self.subTest(today=today):
                 self.assertEqual(fitting_state(self.user, today).stop, "form-25")
@@ -168,7 +165,7 @@ class FittedOnRouteTests(TestCase):
         self.make(PTA_55, PTA_55)
         AidAndSubsidy.objects.create(user=self.user, ear="both", subsidy="disability", level="mid")
         self.assertFalse(self.state().wearing)
-        self.assertEqual(self.state().stop, "before-you-go")
+        self.assertEqual(self.state().stop, "assessment")
 
 
 class Form25DatesTests(TestCase):
@@ -325,7 +322,7 @@ class FittingAdviceRouteTests(test_fitting_advice.LifeImpactTestCase):
         self.record(test_fitting_advice.MILD_SCORES)
         state = self.state()
         self.assertFalse(state.waiting)
-        self.assertEqual(state.stop, "before-you-go")
+        self.assertEqual(state.stop, "assessment")
 
     def test_tracked_or_waiting_on_a_questionnaire_the_route_has_no_stop(self):
         # Spec #693 acceptance 7 and 8: the audiogram stop done, no 您在這裡.
@@ -345,7 +342,7 @@ class FittingAdviceRouteTests(test_fitting_advice.LifeImpactTestCase):
         AidAndSubsidy.objects.create(user=self.user, certificate=Certificate.APPLYING)
         state = self.state()
         self.assertFalse(state.waiting)
-        self.assertEqual(state.stop, "before-you-go")
+        self.assertEqual(state.stop, "assessment")
 
     def test_an_ear_that_could_change_the_result_keeps_the_audiogram_stop(self):
         audiogram = self.make(self.MILD_EAR, self.NORMAL_EAR)

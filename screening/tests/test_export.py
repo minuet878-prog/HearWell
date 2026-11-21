@@ -338,7 +338,7 @@ class AidAndSubsidyExportTests(TestCase):
         aid = AidAndSubsidy.objects.create(user=self.user)
         for answer, wording in (
             ("yes", "有"),
-            ("applying", "還沒有，打算申請或正在申請鑑定"),
+            ("applying", "正在申請"),
             ("no_subsidy", "沒有"),
         ):
             with self.subTest(answer=answer):

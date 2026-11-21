@@ -29,7 +29,6 @@ BEFORE_YOU_GO = "因為：第一次去找聽力師前先準備好，看診時比
 ASSESSMENT = "因為：先確認有沒有身障證明，才知道能不能申請補助。"
 FORM_9 = "因為：您已經有身障證明，可以準備申請九號表的助聽器補助。"
 NOTICE = "因為：九號表送出後要等公所的核定公文，先了解接下來會發生什麼。"
-TYPES_AND_PRICES = "因為：可以看看助聽器的種類與價格，比較之後再買。"
 AFTER_FITTING = "因為：記下開始戴的日期，才算得出什麼時候要做使用效益驗證。"
 PAYOUT = "因為：驗證做完了，接下來看補助什麼時候發、怎麼發。"
 
@@ -41,10 +40,11 @@ RESULT_NEXT_STEP = re.compile(
 
 
 class EveryStopNextStepTests(TestCase):
-    """#292 (spec #291 acceptance 21): a reason for every stop of the nine, so the home page
-    never fails on one. Stops 4, 5, 6, 8 and 9 need answers the later tickets add, so the
-    route's stop is set here on the state the records give: an assessment suggested and not
-    fitted, so the 現在這一步 is step 3, the 目前這一站 (#459)."""
+    """#292 (spec #291 acceptance 21): a reason for every stop of the nine but 助聽器的種類與價格,
+    which the home page passes by (ADR 0074), so the home page never fails on one. Stops need
+    answers the later tickets add, so the route's stop is set here on the state the records
+    give: an assessment suggested and not fitted, so the 現在這一步 is step 3, the 目前這一站
+    (#459)."""
 
     def setUp(self):
         self.user = consented_user(username="every_stop_user")
@@ -83,7 +83,8 @@ class EveryStopNextStepTests(TestCase):
     def at(self, stop):
         # The 補助站 shown too, or the four of them are folded off the route (#596).
         def state_at(user, today):
-            return replace(fitting_state(user, today), stop=stop, subsidy_shown=True)
+            state = fitting_state(user, today)
+            return replace(state, stop=stop, home_stop=stop, subsidy_shown=True)
 
         return patch("screening.care_journey.fitting_state", state_at)
 
@@ -95,7 +96,6 @@ class EveryStopNextStepTests(TestCase):
             ("assessment", ASSESSMENT),
             ("form-9", FORM_9),
             ("notice", NOTICE),
-            ("types-and-prices", TYPES_AND_PRICES),
             ("after-fitting", AFTER_FITTING),
             ("payout", PAYOUT),
         ):

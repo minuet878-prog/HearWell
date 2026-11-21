@@ -2,7 +2,7 @@
 現在這一步 and its card, and the home page's two tiles, the one place both the home page and
 the result pages ask. It reads the 選配路線 and the main flow's state; it judges nothing anew."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 
 from django.urls import reverse
@@ -27,7 +27,6 @@ from screening.scoring import (
     RETEST_BUTTON_TEXT,
     RETEST_COUNTDOWN_TEXT,
     RETEST_DUE_TEXT,
-    TYPES_AND_PRICES_BUTTON,
     UNKNOWN,
     fitting_countdown_text,
 )
@@ -218,10 +217,11 @@ def _card(current, route, fitted_on, today, next_screening, life_impact_href):
             "clipboard",
             button=(LIFE_IMPACT_BUTTON, life_impact_href),
         )
-    if current in (2, 3) or (current == 4 and route.stop == "form-25"):
+    if current in (2, 3):
         return _route_card(route)
     if current == 4:
-        # Not 等待補助發放, which the home page leaves to my guide (spec #453).
+        # Not form 25 or 等待補助發放: the route reaches them only once 配戴之後 has its first
+        # IOI-HA, which is step 4 done too (ADR 0074).
         three_months = add_months(fitted_on, FITTING_MONTHS)
         title = CARE_JOURNEY_STEPS[3]
         if today < three_months:
@@ -246,8 +246,9 @@ def _card(current, route, fitted_on, today, next_screening, life_impact_href):
 
 
 def _route_card(route):
-    # The 目前這一站 with the route's own button and the home page's 「因為」 for it (#261).
-    stop = here_stop(route)
+    # The 目前這一站 with the route's own button and the home page's 「因為」 for it (#261), the
+    # home page's: past 助聽器的種類與價格 (ADR 0074).
+    stop = here_stop(replace(route, stop=route.home_stop))
     if stop.slug == AUDIOGRAM:
         reason = "edit" if route.insufficient else "record"
     else:
@@ -263,10 +264,6 @@ def _route_card(route):
         import_button = (IMPORT_FROM_IPHONE, reverse("audiogram_import"))
         second = (NO_REPORT_YET, reverse("qa_answer", args=[WHERE_TO_TEST]))
         come_back = True
-    if stop.slug == "types-and-prices":
-        # The owner on #455: a chapter to read, so the card has a button the route lacks;
-        # 等待核定公文 stays without one, as there is nothing to do but wait.
-        button = (TYPES_AND_PRICES_BUTTON, stop.url)
     return JourneyCard(
         stop.title,
         because,
