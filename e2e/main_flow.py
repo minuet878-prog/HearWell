@@ -5653,6 +5653,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     expect(badge).to_be_visible()
                     self.assertEqual(self.style(badge, "color"), colour)
                     self.assertEqual(self.style(badge, "backgroundColor"), background)
+                    # Spec #741 (the owner at acceptance): a level's tag has no frame.
+                    self.assertEqual(self.style(badge, "borderTopWidth"), "0px")
 
     # #149: each level's text reaches 7:1 on its soft background and on white.
     def test_level_text_reaches_7_to_1_on_its_soft_background_and_on_white(self):
@@ -16975,12 +16977,12 @@ class ChangeLabelT646Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
         return self.main().locator(".result-since-last")
 
     def assert_neutral(self, label):
-        # Acceptance 7: the heading colour on white in a thin muted frame, in every level's box.
+        # Acceptance 7: the heading colour on white, in every level's box; spec #741 (the owner
+        # at acceptance): tags like this have no frame.
         self.assertEqual(self.style(label, "color"), self.HEADING)
         self.assertEqual(self.style(label, "backgroundColor"), self.WHITE)
         for side in ("Top", "Right", "Bottom", "Left"):
-            self.assertEqual(self.style(label, f"border{side}Color"), self.MUTED, side)
-            self.assertEqual(self.style(label, f"border{side}Width"), "2px", side)
+            self.assertEqual(self.style(label, f"border{side}Width"), "0px", side)
         self.assertEqual(self.style(label, "fontWeight"), "700")
         self.assertGreaterEqual(self.lowest_contrast(self.HEADING, self.WHITE), 4.5)
         expect(label.locator("svg, img")).to_have_count(0)
