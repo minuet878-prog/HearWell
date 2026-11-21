@@ -291,7 +291,7 @@ class AidAndSubsidyDeletionTests(TestCase):
         response = self.client.get(self.url)
         self.assertContains(
             response,
-            "<li>助聽器與補助資料（您在選配路線上的回答，以及看過哪幾個選配指引章節）</li>",
+            "<li>助聽器與補助資料（您在選配路線上的回答，以及看過哪些選配指引頁面、是否查過醫療院所）</li>",
             html=True,
         )
 
