@@ -82,7 +82,7 @@ class MyRecordsTests(Records):
         self.assertEqual(block.group(1), "mild_to_moderate")
         self.assertEqual(
             text(block.group(2)),
-            "最近一次（2026/11/12，沒戴助聽器） 14 分 輕度到中度影響 "
+            "最近一次（2026/11/12，沒戴助聽器） 14 分 輕到中度 輕度到中度影響 "
             "比上次少 4 分 上一次（2026/05/20）：18 分（分數越低越好）",
         )
         self.assertNotIn("和上一次比", main)
@@ -94,7 +94,7 @@ class MyRecordsTests(Records):
         block = re.search(r'records-score">(.*?)</div>\s*</div>', self.records(), re.S)
         self.assertEqual(
             text(block.group(1)),
-            "最近一次（2026/11/12，沒戴助聽器） 14 分 輕度到中度影響 "
+            "最近一次（2026/11/12，沒戴助聽器） 14 分 輕到中度 輕度到中度影響 "
             "再做一次篩檢，就能看到分數的變化。",
         )
 

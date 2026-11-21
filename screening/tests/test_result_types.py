@@ -493,12 +493,18 @@ class SummaryTemplateTests(ResultTestCase):
             )
 
         def since_last(previous, latest, text):
-            (previous_date, previous_score), (date, score, status, colour, level) = previous, latest
+            (previous_date, previous_score), (date, score, status, colour, short, level) = (
+                previous,
+                latest,
+            )
             return (
                 f'<div class="result-banner result-banner-{colour} records-score">'
                 f"<p>最近一次（{date}，{status}）</p>"
-                f'<p class="result-score"><span class="result-number">{score}</span> 分</p>'
-                f'<p class="result-block-level">{level}</p>'
+                f'<p class="result-score"><span class="result-number" data-count-up>{score}'
+                "</span> 分</p>"
+                # #756: the short name large, the full one for screen readers.
+                f'<p class="result-level-short" aria-hidden="true">{short}</p>'
+                f'<p class="result-block-level visually-hidden">{level}</p>'
                 f'<div class="result-since-last" id="since-last"><p class="change-label">{text}</p>'
                 f"<p>上一次（{previous_date}）：{previous_score} 分（分數越低越好）</p></div></div>"
             )
@@ -524,7 +530,7 @@ class SummaryTemplateTests(ResultTestCase):
                 ],
                 since_last(
                     ("2026/03/01", 20),
-                    ("2026/04/01", 40, "沒戴助聽器", "severe", "顯著影響"),
+                    ("2026/04/01", 40, "沒戴助聽器", "severe", "顯著", "顯著影響"),
                     "比上次多 20 分",
                 ),
             ),
@@ -545,7 +551,7 @@ class SummaryTemplateTests(ResultTestCase):
                 ],
                 since_last(
                     ("2026/03/02", 50),
-                    ("2026/04/02", 100, "助聽器未記錄", "severe", "極重度障礙"),
+                    ("2026/04/02", 100, "助聽器未記錄", "severe", "極重度", "極重度障礙"),
                     "比上次多 50 分",
                 ),
             ),

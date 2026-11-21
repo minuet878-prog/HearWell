@@ -5,9 +5,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import TrendChart from "./TrendChart.jsx";
 
 const LEVELS = [
-  { code: "normal", text: "無／極輕微影響", max: 8, color: "normal", shade: "pale" },
-  { code: "mild_to_moderate", text: "輕度到中度影響", max: 24, color: "mild_to_moderate", shade: "pale" },
-  { code: "severe", text: "顯著影響", max: 40, color: "severe", shade: "pale" },
+  { code: "normal", text: "無／極輕微影響", short: "極輕微", max: 8, color: "normal", shade: "pale" },
+  {
+    code: "mild_to_moderate",
+    text: "輕度到中度影響",
+    short: "輕到中度",
+    max: 24,
+    color: "mild_to_moderate",
+    shade: "pale",
+  },
+  { code: "severe", text: "顯著影響", short: "顯著", max: 40, color: "severe", shade: "pale" },
 ];
 
 function submission(
@@ -186,7 +193,7 @@ describe("TrendChart", () => {
     });
     const { container } = render(<TrendChart code="hhie-s" />);
     await chartDrawn(container);
-    expect(dateTicks(container)).toEqual(["2026/08/01", "2026/10/14"]);
+    expect(dateTicks(container)).toEqual(["8/1", "10/14"]);
     // The day's last unaided record (12) is drawn, not the earlier 40; the aided 28 shares its column.
     const unaided = dots(container).filter((d) => d.dataset.status === "unaided");
     const [aided] = dots(container).filter((d) => d.dataset.status === "aided");
@@ -222,7 +229,8 @@ describe("TrendChart", () => {
     });
     const { container } = render(<TrendChart code="hhie-s" />);
     await chartDrawn(container);
-    expect(dateTicks(container)).toEqual(["2026/10/03", "2026/10/04", "2026/10/05", "2026/10/06", "2026/10/07"]);
+    // #756 (page grill P18): month/day under each column.
+    expect(dateTicks(container)).toEqual(["10/3", "10/4", "10/5", "10/6", "10/7"]);
     expect(dots(container)).toHaveLength(5);
   });
 
@@ -340,14 +348,34 @@ describe("TrendChart", () => {
       }
     });
 
-    it("writes no level name inside the plot (phase9_ui_refresh_3_structure.md 4.5)", async () => {
+    it("writes each level's short name inside its band, top right, under the line (#756, ADR 0078)", async () => {
       threePoints();
       const { container } = render(<TrendChart code="hhie-s" />);
       await chartDrawn(container);
-      // Nothing written inside the plot, so no level name can cover a point.
+      const names = [...container.querySelectorAll(".trend-band-name")];
+      expect(names.map((n) => n.textContent)).toEqual(["極輕微", "輕到中度", "顯著"]);
+      // The full names stay for the tooltip and screen readers, never in the plot.
       for (const level of LEVELS) {
         expect(container.querySelector(".recharts-wrapper").textContent).not.toContain(level.text);
       }
+      const bands = [...container.querySelectorAll(".recharts-reference-area-rect")];
+      names.forEach((name, i) => {
+        // Inside its band, near its right edge, in its level's colour.
+        const band = bands[i];
+        const top = Number(band.getAttribute("y"));
+        const right = Number(band.getAttribute("x")) + Number(band.getAttribute("width"));
+        const y = Number(name.getAttribute("y"));
+        expect(y).toBeGreaterThan(top);
+        expect(y).toBeLessThan(top + Number(band.getAttribute("height")));
+        expect(name.getAttribute("text-anchor")).toBe("end");
+        expect(Number(name.getAttribute("x"))).toBeLessThan(right);
+        expect(Number(name.getAttribute("x"))).toBeGreaterThan(right - 16);
+        expect(name.classList).toContain(`trend-band-name-${LEVELS[i].color}`);
+        // Drawn before the lines, so a line or point crossing it stays on top.
+        expect(name.compareDocumentPosition(container.querySelector(".recharts-line-curve"))).toBe(
+          Node.DOCUMENT_POSITION_FOLLOWING,
+        );
+      });
     });
 
     it("keeps the dates clear of the chart", async () => {
@@ -595,7 +623,7 @@ describe("TrendChart", () => {
     await act(() => Promise.resolve());
     expect(dateTicks(container)).toEqual([]);
     await act(() => fontsLoaded());
-    expect(dateTicks(container)).toEqual(["2026/09/01", "2026/10/14"]);
+    expect(dateTicks(container)).toEqual(["9/1", "10/14"]);
   });
 
   it("draws anyway after 3 seconds if the web font never arrives", async () => {
@@ -606,7 +634,7 @@ describe("TrendChart", () => {
     await act(() => vi.advanceTimersByTimeAsync(2999));
     expect(dateTicks(container)).toEqual([]);
     await act(() => vi.advanceTimersByTimeAsync(1));
-    expect(dateTicks(container)).toEqual(["2026/09/01", "2026/10/14"]);
+    expect(dateTicks(container)).toEqual(["9/1", "10/14"]);
   });
 
   it("explains when the network fails", async () => {

@@ -131,7 +131,8 @@ class LevelColorTests(TestCase):
             ["normal", "mild_to_moderate", "mild_to_moderate gauge-arc-deep"],
         )
 
-    def test_history_badges_and_trend_bands_take_the_level_colours(self):
+    def test_history_badges_take_the_level_colours(self):
+        # The trend chart's bands take theirs from the API (the test below, #756).
         self._submit(4)
         self._submit(6)
         page = self.client.get(reverse("my_hearing")).content.decode()
@@ -140,10 +141,6 @@ class LevelColorTests(TestCase):
                 self.assertIn(
                     f'<span class="level-badge level-badge-mild_to_moderate">{text}</span>', page
                 )
-        self.assertEqual(
-            re.findall(r'<li class="trend-band-([\w-]+(?: trend-band-deep)?)">', page),
-            ["mild_to_moderate trend-band-deep", "mild_to_moderate", "normal"],
-        )
 
     def test_api_gives_each_level_its_colour_for_the_trend_chart(self):
         detail = self.client.get(reverse("api:questionnaire", args=[self.graded.pk])).json()
