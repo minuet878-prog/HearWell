@@ -30,7 +30,8 @@ const TEXT_COLOR = "#212529";
 const MUTED_COLOR = "#495057";
 const PRIMARY = "#1f4e8c";
 // Presentation only, by level colour (ADR 0007's three) and shade; the bands, each level's colour
-// and shade come from the API; the level names in them are site.css's .trend-band-name-*. "deep": the higher of two levels sharing a colour, so THI's five bands stay apart.
+// and shade come from the API; the level names in them are site.css's .trend-band-name-*.
+// "deep": the higher of two levels sharing a colour, so THI's five bands stay apart.
 const BAND_FILLS = {
   normal: { pale: "#e3f4ec" },
   mild_to_moderate: { pale: "#fff4d6", deep: "#f9dd96" },
@@ -222,9 +223,9 @@ export default function TrendChart({ code, fittedOn }) {
               // A white line between bands, as between the score bar's segments.
               stroke="#fff"
               strokeWidth={2}
-              // #756 (ADR 0078, canvas TrendA): the level's short name inside its band, top right, in
-              // its colour (site.css .trend-band-name-*); a layer of its own over every band (on
-              // theirs a later band would cover it), under the lines and points.
+              // #756 (ADR 0078, canvas TrendA): the level's short name inside its band, top
+              // right, in its colour (site.css .trend-band-name-*); on a layer of its own over
+              // every band (on theirs a later band covers it), under the lines and points.
               label={{
                 value: level.short,
                 position: "insideTopRight",
