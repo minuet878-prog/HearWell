@@ -13,6 +13,7 @@ from screening.audiogram import FittingAdvice, interpret
 from screening.fitting_route import (
     GUIDE_PAGE,
     HOSPITAL_SEARCH,
+    TYPES_AND_PRICES,
     add_months,
     fitting_state,
     ioi_ha_since,
@@ -74,7 +75,6 @@ WEARING_FROM = 5  # someone wearing hearing aids looks for the 現在這一步 f
 LAST_STEP = 7
 FITTING_MONTHS = 3  # IOI-HA again once hearing aids are worn 3 months (ADR 0074)
 WHERE_TO_TEST = "where-to-get-a-hearing-test"  # the Q&A answer step 2's 查詢醫療院所 opens
-TYPES_AND_PRICES = "types-and-prices"
 # 等待補助發放 is never done and the home page never shows it (grill Q10): step 5 is done once
 # the route is past everything else.
 ROUTE_DONE_AT = (None, "payout")
