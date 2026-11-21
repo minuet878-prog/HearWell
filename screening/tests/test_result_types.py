@@ -85,7 +85,12 @@ class GradedResultTests(ResultTestCase):
         self.assertEqual(result.subscores, {"emotional": 12, "social": 4})
         self.assertEqual(
             result.level,
-            {"text": "輕度到中度影響", "level": "mild_to_moderate", "color": "mild_to_moderate"},
+            {
+                "text": "輕度到中度影響",
+                "short": "輕到中度",
+                "level": "mild_to_moderate",
+                "color": "mild_to_moderate",
+            },
         )
         self.assert_none(
             result, "average", "unavailable_reason", "satisfaction", "norm_group", "norm_summary"
@@ -110,17 +115,21 @@ class GradedResultTests(ResultTestCase):
         )
         context = self.assert_page(record, "screening/result.html")
         self.assertEqual(context["max_score"], 40)
-        self.assertEqual(context["score_bar"]["position"], 40)
+        # #750's gauge: 16 of 40 is 0.4 of the arc, 108 degrees round from its left foot.
+        self.assertEqual(context["gauge"]["knob"], (120.7, 32.1))
         # The total, subscores and level the page shows are the result object's, not copies.
         self.assert_no_copies(context)
         page = self.client.get(reverse("result", args=[record.pk]))
         self.assertContains(page, '<div class="result-banner result-banner-mild_to_moderate">')
         self.assertContains(
             page,
-            '<h2 class="result-block-level" aria-describedby="result-score">輕度到中度影響</h2>',
+            '<h2 class="result-block-level visually-hidden" aria-describedby="result-score">'
+            "輕度到中度影響</h2>",
         )
         self.assertContains(page, '總分 <span class="result-number">16</span> 分（滿分 40）')
-        self.assertContains(page, '<p class="mb-1">情緒分數：12　社交分數：4</p>')
+        # 這個分數怎麼算's 聽力問題影響在哪裡 (spec #741, 2026-11-21).
+        self.assertRegex(page.content.decode(), r'(?s)>情緒</span>.*?"score-impact-points">12 分')
+        self.assertRegex(page.content.decode(), r'(?s)>社交</span>.*?"score-impact-points">4 分')
         self.assertContains(page, "情緒與社交分項僅供參考")
         self.assertTrue(context["advice"])
         self.assertEqual(context["optional_ssq12"].code, ssq12_tw.CODE)  # unaided HHIE-S
@@ -159,7 +168,8 @@ class GradedResultTests(ResultTestCase):
         self.assert_no_copies(context)
         page = self.client.get(reverse("result", args=[record.pk]))
         self.assertContains(page, '總分 <span class="result-number">4</span> 分（滿分 100）')
-        self.assertNotContains(page, "情緒分數")  # result.subscores is None: no subscores shown
+        # result.subscores is None: no subscores shown
+        self.assertNotContains(page, "聽力問題影響在哪裡")
         self.assertNotContains(page, "情緒與社交分項僅供參考")
         self.assertTrue(context["support_message"])
         self.assertIsNone(context["optional_ssq12"])
@@ -482,12 +492,18 @@ class SummaryTemplateTests(ResultTestCase):
             )
 
         def since_last(previous, latest, text):
-            (previous_date, previous_score), (date, score, status, colour, level) = previous, latest
+            (previous_date, previous_score), (date, score, status, colour, short, level) = (
+                previous,
+                latest,
+            )
             return (
                 f'<div class="result-banner result-banner-{colour} records-score">'
                 f"<p>最近一次（{date}，{status}）</p>"
-                f'<p class="result-score"><span class="result-number">{score}</span> 分</p>'
-                f'<p class="result-block-level">{level}</p>'
+                f'<p class="result-score"><span class="result-number">{score}'
+                "</span> 分</p>"
+                # #756: the short name large, the full one for screen readers.
+                f'<p class="result-level-short" aria-hidden="true">{short}</p>'
+                f'<p class="result-block-level visually-hidden">{level}</p>'
                 f'<div class="result-since-last" id="since-last"><p class="change-label">{text}</p>'
                 f"<p>上一次（{previous_date}）：{previous_score} 分（分數越低越好）</p></div></div>"
             )
@@ -513,7 +529,7 @@ class SummaryTemplateTests(ResultTestCase):
                 ],
                 since_last(
                     ("2026/03/01", 20),
-                    ("2026/04/01", 40, "沒戴助聽器", "severe", "顯著影響"),
+                    ("2026/04/01", 40, "沒戴助聽器", "severe", "顯著", "顯著影響"),
                     "比上次多 20 分",
                 ),
             ),
@@ -534,7 +550,7 @@ class SummaryTemplateTests(ResultTestCase):
                 ],
                 since_last(
                     ("2026/03/02", 50),
-                    ("2026/04/02", 100, "助聽器未記錄", "severe", "極重度障礙"),
+                    ("2026/04/02", 100, "助聽器未記錄", "severe", "極重度", "極重度障礙"),
                     "比上次多 50 分",
                 ),
             ),
@@ -655,55 +671,23 @@ class ResultPageDataTests(ResultTestCase):
         return self.client.get(reverse("result", args=[record.pk]))
 
     def test_every_result_page_has_the_shared_data(self):
-        # Wearing is said only where it was asked: not on IOI-HA (norm group instead) or SADL
-        # (always worn), whose header line ends at the date.
+        # Spec #741's 實作中本人補充 (owner, 2026-11-21: 這塊不要): no line under the bird with the
+        # questionnaire, the date and the wearing, nor which time this is.
         sadl_scores = [4] * 15
-        for code, scores, fields, wearing_text in (
-            (hhie_s.CODE, [2] * 10, {"wearing_hearing_aid": False}, "沒戴助聽器"),
-            (ssq12_tw.CODE, [6] * 12, {"wearing_hearing_aid": True}, "有戴助聽器"),
-            (ioi_ha.CODE, [3] * 7, {"norm_group": NormGroup.UNGROUPED}, None),
-            (sadl.CODE, sadl_scores, {"wearing_hearing_aid": True}, None),
+        for code, scores, fields in (
+            (hhie_s.CODE, [2] * 10, {"wearing_hearing_aid": False}),
+            (ssq12_tw.CODE, [6] * 12, {"wearing_hearing_aid": True}),
+            (ioi_ha.CODE, [3] * 7, {"norm_group": NormGroup.UNGROUPED}),
+            (sadl.CODE, sadl_scores, {"wearing_hearing_aid": True}),
         ):
             with self.subTest(code=code):
                 record = submission_with_answers(self.user, code, scores, **fields)
                 response = self.page(record)
                 self.assertEqual(response.context["submission"], record)
-                self.assertEqual(response.context["wearing_text"], wearing_text)
                 self.assertIs(response.context["show_comparison"], False)
                 self.assertTrue(response.context["next_step"].card.title)
-                header = f"{record.questionnaire.questionnaire_name}・"
-                header += f"{record.created_at.astimezone():%Y/%m/%d} 作答"
-                header += f"・{wearing_text}</p>" if wearing_text else "</p>"
-                self.assertContains(response, header)
-
-    def test_the_result_type_says_whether_its_page_shows_wearing(self):
-        # IOI-HA is answered about the hearing aids worn, SADL always worn: their pages say neither.
-        self.assertEqual(
-            {
-                kind: kind.page_shows_wearing
-                for kind in (GradedResult, AverageResult, NormResult, SubscaleResult)
-            },
-            {GradedResult: True, AverageResult: True, NormResult: False, SubscaleResult: False},
-        )
-        sadl_scores = [4] * 15
-        for code, scores, fields in (
-            (hhie_s.CODE, [2] * 10, {}),
-            (ssq12_tw.CODE, [6] * 12, {}),
-            (ioi_ha.CODE, [3] * 7, {"norm_group": NormGroup.UNGROUPED}),
-            (sadl.CODE, sadl_scores, {}),
-        ):
-            with self.subTest(code=code):
-                record = submission_with_answers(self.user, code, scores, **fields)
-                self.assertNotIn("wearing_text", record.result.page_context())
-
-        class NoWearing(GradedResult):
-            page_shows_wearing = False
-
-        record = submission_with_answers(self.user, thi.CODE, [0] * 25, wearing_hearing_aid=True)
-        with register(replace(thi.DEFINITION, result=NoWearing)):
-            response = self.page(record)
-        self.assertIsNone(response.context["wearing_text"])
-        self.assertNotContains(response, "有戴助聽器</p>")
+                self.assertNotContains(response, f"{record.created_at.astimezone():%Y/%m/%d} 作答")
+                self.assertNotContains(response, "次做這份問卷")
 
     def test_the_result_type_picks_the_page_and_its_data(self):
         # A type of its own draws its own page with its own data: the page asks the result.
@@ -719,7 +703,6 @@ class ResultPageDataTests(ResultTestCase):
         self.assertTemplateUsed(response, "screening/ssq12_result.html")
         self.assertTemplateNotUsed(response, "screening/result.html")
         self.assertEqual(response.context["answers"], ("own",))
-        self.assertEqual(response.context["wearing_text"], "助聽器未記錄")
 
 
 class ApiFieldsTests(ResultTestCase):

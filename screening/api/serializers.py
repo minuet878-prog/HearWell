@@ -25,7 +25,7 @@ from screening.models import (
     Submission,
 )
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
-from screening.scoring import get_advice
+from screening.scoring import get_advice, short_level_name
 
 
 class GuestCountSerializer(serializers.Serializer):
@@ -45,6 +45,8 @@ class QuestionnaireSummarySerializer(serializers.ModelSerializer):
 class LevelBandSerializer(serializers.Serializer):
     code = serializers.CharField()
     text = serializers.CharField()
+    # The trend chart writes it inside its band (#756, ADR 0078); large type takes the short name.
+    short = serializers.CharField()
     max = serializers.IntegerField()
     color = serializers.CharField()  # one of the three level colours (Definition.level_colors)
     shade = serializers.CharField()  # "pale" or "deep" (Definition.shade)
@@ -64,6 +66,7 @@ class QuestionnaireSerializer(QuestionnaireSummarySerializer):
             {
                 "code": level,
                 "text": text,
+                "short": short_level_name(definition, level, text),
                 "max": upper,
                 "color": definition.color(level),
                 "shade": definition.shade(level),
@@ -345,7 +348,6 @@ class GuestScoreSerializer(serializers.Serializer):
 
     questionnaire = QuestionnaireSummarySerializer()
     wearing_hearing_aid = serializers.BooleanField()
-    wearing_text = serializers.CharField()  # as the result page's header says it
     scores = ScoresSerializer(source="result")
     level = GuestLevelSerializer(source="result.level")
     html = serializers.CharField()  # graded_result.html

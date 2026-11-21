@@ -237,7 +237,7 @@ class RealDefinitionsTests(TestCase):
                 url = reverse("screening", args=[self.questionnaires[code].pk])
                 content = self.client.get(url).content.decode()
                 start = content.index('<div id="answer-intro">')
-                end = content.index('id="answer-app"', start)
+                end = content.index("</details>", start)
                 intro, below = content[start:end], content[end : content.index("</main>")]
                 for sentence in sentences:
                     self.assertIn(sentence, intro)
@@ -298,6 +298,8 @@ class ResultFromDefinitionTests(TestCase):
                 {
                     "code": "normal",
                     "text": "假的低分級",
+                    # Its definition has no short names: the full one.
+                    "short": "假的低分級",
                     "max": 5,
                     "color": "normal",
                     "shade": "pale",
@@ -305,6 +307,7 @@ class ResultFromDefinitionTests(TestCase):
                 {
                     "code": "severe",
                     "text": "假的高分級",
+                    "short": "假的高分級",
                     "max": 12,
                     "color": "severe",
                     "shade": "pale",

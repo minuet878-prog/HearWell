@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 
 {% block extra_head %}
@@ -9,7 +9,7 @@
 {% block body %}
 {# #431 (spec #426): the questions, rules and words are in subsidy_check.py, drafts until the owner has reviewed them. A plain POST form: it works without JavaScript, the result comes back on this page and nothing is kept; autocomplete="off" stops the browser putting answers back. #}
 <article class="family-guide family-visits wrap-anywhere">
-<h1 class="h3 mt-4">補助檢核</h1>
+{% include "screening/bird_dialogue.html" with lead="family_subsidy_check"|page_lead title="補助檢核" %}
 <p>{{ intro }}</p>
 
 {% if form.errors %}

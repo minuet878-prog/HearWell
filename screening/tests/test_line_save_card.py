@@ -94,7 +94,7 @@ class NewAccountTests(LineSaveTestCase):
         page = self.client.get(SAVE_FROM_CARD)
         self.assertContains(
             page,
-            '<h1 class="h3 mt-4" data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">'
+            '<h1 class="bird-title" data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">'
             "保存這次結果</h1>",
         )
         self.assertNotContains(page, "data-asking")
@@ -130,7 +130,7 @@ class AccountThereAlreadyTests(LineSaveTestCase):
         self.assertContains(page, "data-asking")
         self.assertContains(page, f"data-guest-ask-yes>{test_guest_save.YES}</button>")
         self.assertContains(page, f"data-guest-ask-no>{test_guest_save.NO}</button>")
-        self.assertContains(page, "目前登入：<strong>女兒的帳號</strong>")
+        self.assertContains(page, 'aria-label="帳號設定：女兒的帳號">女</a>')
         self.assertFalse(Submission.objects.exists())
         self.assertEqual(User.objects.count(), 1)
 

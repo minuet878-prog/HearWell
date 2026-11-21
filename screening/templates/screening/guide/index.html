@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 {% block title %}助聽器選配與補助｜聽伴{% endblock %}
 {% block extra_head %}
 {# #467: one route stop open at a time, and the route's entrance on the tab's first visit only. #}
@@ -7,7 +7,7 @@
 {% endblock %}
 {% block body %}
 {# Wording finalised in #220; change it only after review (ADR 0013). #}
-<h1 class="h3 mt-4">助聽器選配與補助</h1>
+{% include "screening/bird_dialogue.html" with lead="guide"|page_lead title="助聽器選配與補助" %}
 {% if not user.is_authenticated %}
 <p>登入後，這裡會依您的問卷和聽力圖，整理出要不要找聽力師評估，以及有沒有達到身障鑑定門檻。下面的章節不用登入也能看。</p>
 <p><a class="btn btn-primary btn-lg" href="{% url 'login' %}?next={{ request.path|urlencode }}">登入</a></p>
@@ -43,7 +43,6 @@
                 {# Spec #702 (#703 mockup 1C): beside recording one, importing an Apple hearing test's PDF. #}
                 {% if stop.action and stop.slug == "audiogram" %}{% if has_records %}<a class="btn btn-outline-primary btn-lg w-full mt-3" href="{% url 'audiogram_import' %}">從 iPhone 匯入</a>{% else %}<p class="route-note"><a class="tap-link" href="{% url 'audiogram_import' %}">從 iPhone 匯入</a></p>{% endif %}{% endif %}
                 </div>
-                {% include "screening/journey_todos.html" with todos=stop.todos %}
                 {% include "screening/guide/route_answer.html" %}
             </div>
             {% else %}

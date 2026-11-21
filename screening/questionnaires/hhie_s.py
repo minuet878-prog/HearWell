@@ -24,6 +24,9 @@ THRESHOLDS = (
     (40, "顯著影響", "severe"),
 )
 
+# The canvas's words (spec #741, page grill P11).
+SHORT_NAMES = {"normal": "極輕微", "mild_to_moderate": "輕到中度", "severe": "顯著"}
+
 # Spec #693: a severe score sends one to a hearing check, in the advice and the first next step.
 _SEVERE_CHECK = "並做聽力檢查；有 AirPods Pro 的話，也可以先用 iPhone 做聽力自我測試。"
 
@@ -121,9 +124,10 @@ DEFINITION = Definition(
     concern=LIFE_IMPACT,
     choices=choices,
     thresholds=THRESHOLDS,
+    short_names=SHORT_NAMES,
     advice=ADVICE,
     next_steps=NEXT_STEPS,
-    # Under the next steps, as HHIA-S's: the full advice is folded away.
+    # Under the next steps, as HHIA-S's: the full advice is not on the result page.
     result_note=LIFE_IMPACT_LIMITS,
     trend_chart=True,
     records_tab_age="65 歲以上",

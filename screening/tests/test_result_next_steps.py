@@ -1,5 +1,6 @@
 """Spec #148 batch 2, ticket #157: result page next steps by level. #461 (the #460 mockup R1):
-step 1 is the one sentence under the level, the others wait behind 看完整說明."""
+step 1 is the one sentence under the level; since spec #741's acceptance (2026-11-21) the
+others and the level's full advice are not on the page."""
 
 import re
 
@@ -167,45 +168,45 @@ class ResultNextStepsTests(TestCase):
         content = self.client.get(reverse("result", args=[submission.id])).content.decode()
         return content[content.index("<main") : content.index("</main>")]
 
-    def _steps(self, main):
-        """Each step's words and the links under them, step 1 first, then the folded ones."""
-        first = re.search(
-            r'<p class="result-one-line">(.*?)</p>\s*(<p class="next-steps-links">.*?</p>)?',
-            main,
-            re.S,
-        )
-        body = main[main.index('<div class="result-details-body">') :]
-        body = body[: body.index("<details")]
-        folded = re.findall(r'<p>(.*?)</p>\s*(<p class="next-steps-links">.*?</p>)?', body, re.S)
-        return [first.groups(), *folded]
-
-    def test_each_level_shows_its_finalized_steps_and_action_buttons(self):
+    def test_each_level_shows_its_first_step_and_its_button_only(self):
+        # Spec #741, the owner at acceptance 2026-11-21: 看完整建議 is gone from result pages,
+        # so step 1 (shown in 這個分數怎麼算) is the only step left, with its own button.
         for code, levels in STEPS.items():
             for level, expected in levels.items():
                 with self.subTest(questionnaire=code, level=level):
                     main = self._main(self._submit(self.questionnaires[code], TOTALS[level]))
-                    steps = self._steps(main)
-                    self.assertEqual(len(steps), len(expected))
-                    for (words, links), (text, action) in zip(steps, expected, strict=True):
-                        self.assertEqual(words, text)
-                        links = links or ""
-                        if action is None:
-                            for _, own_url in (AUDIOGRAM, REPORT):
-                                self.assertNotIn(f'href="{own_url}"', links)
-                        else:
-                            label, url = action
-                            self.assertIn(f'href="{url}">{label}</a>', links)
+                    (text, action), *rest = expected
+                    first = re.search(
+                        r'<p class="score-explain-advice">(.*?)</p>'
+                        r'\s*(<p class="next-steps-links">.*?</p>)?',
+                        main,
+                        re.S,
+                    )
+                    self.assertEqual(first.group(1), text)
+                    if action is not None:
+                        label, url = action
+                        self.assertIn(f'href="{url}">{label}</a>', first.group(2))
+                    # No other step's button.
+                    self.assertEqual(main.count('class="next-steps-link"'), action is not None)
+                    for later, _action in rest:
+                        self.assertNotIn(later, main)
 
-    def test_full_advice_is_unchanged_for_every_level(self):
+    def test_the_full_advice_is_gone_and_the_rest_of_the_explanation_stays(self):
+        # Spec #741, the owner at acceptance 2026-11-21: no 看完整建議 and no level's whole
+        # advice; 看各級的分數 and the 建議下一步 card stay.
         for code, levels in ADVICE.items():
             for level, advice in levels.items():
                 with self.subTest(questionnaire=code, level=level):
                     main = self._main(self._submit(self.questionnaires[code], TOTALS[level]))
-                    self.assertIn(f"<p>{advice}</p>", main)
+                    self.assertNotIn("看完整建議", main)
+                    self.assertNotIn(advice, main)
+                    self.assertIn("<summary>看各級的分數</summary>", main)
+                    self.assertIn('<p class="hero-card-label">建議您下一步</p>', main)
 
     def test_life_impact_states_its_limits_outside_the_fold(self):
-        # Text-heavy pages tidy-up: the full advice is folded away, and it was the only place
-        # HHIA-S said what the score cannot tell; the owner chose to show that outside the fold.
+        # Text-heavy pages tidy-up: the full advice was folded away (since 2026-11-21 not on the
+        # page), and it was the only place HHIA-S said what the score cannot tell; the owner
+        # chose to show that on its own.
         # #461: under the list rows, with the page's other source notes. Spec #693: HHIE-S too.
         for code in self.questionnaires:
             for level in ("normal", "mild_to_moderate", "severe"):
@@ -217,20 +218,14 @@ class ResultNextStepsTests(TestCase):
 
     def test_no_steps_when_unclassifiable_and_the_advice_is_the_sentence(self):
         # #363 (spec #354): 「無法判讀」's only explanation is the full advice, so it is not folded:
-        # it is the one sentence under the level; every other level folds it.
+        # it is the one sentence under the level; every other level shows its first step.
         submission = Submission.objects.create(user=self.user, questionnaire=self.unknown)
         Answer.objects.create(submission=submission, question=self.unknown_question, score=4)
         with self.assertLogs("screening.scoring", "ERROR"):
             main = self._main(submission)
         self.assertNotIn("next-steps", main)
-        self.assertIn(f'<p class="result-one-line">{UNKNOWN_ADVICE}</p>', main)
+        self.assertIn(f'<p class="score-explain-advice">{UNKNOWN_ADVICE}</p>', main)
         self.assertNotIn("看完整建議", main)
-        advice = re.compile(r"<details([^>]*)>\s*<summary>看完整建議</summary>")
-        for code in self.questionnaires:
-            for level, total in TOTALS.items():
-                with self.subTest(questionnaire=code, level=level):
-                    main = self._main(self._submit(self.questionnaires[code], total))
-                    self.assertNotRegex(advice.search(main).group(1), r"\bopen\b")
 
     def test_only_own_submission_is_visible(self):
         other = consented_user(username="someone_else")

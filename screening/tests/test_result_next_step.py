@@ -17,19 +17,19 @@ from screening.tests import test_guide_summary, test_result_pages
 from screening.tests.helpers import consented_user
 
 SUGGESTIONS = (
-    "記錄聽力圖",
+    "到醫院進行聽力檢查",
     "修改這張聽力圖",
     "了解助聽器選配與補助",
     "分享報告給家人",
     "印聽力報告給醫師看",
 )
-REPORT_ROW = (reverse("health_report"), "印聽力報告給醫師看")
+REPORT_ROW = (reverse("health_report"), "印聽力報告")
 SHARE_ROW = (reverse("share_report"), "分享給家人")
+# #749 (ADR 0076): the card is the blue hero card, its buttons white.
 NEXT_STEP = re.compile(
-    r'<div class="result-next">\s*<p class="result-next-label">建議您下一步</p>\s*'
-    r'<h2 class="result-next-title">([^<]*)</h2>\s*'
-    r'<a class="btn btn-primary btn-lg w-full" href="([^"]*)">([^<]*)</a>\s*'
-    r'(?:<a class="btn btn-outline-primary btn-lg w-full" href="[^"]*">[^<]*</a>\s*)?</div>',
+    r'<section class="hero-card">\s*<p class="hero-card-label">建議您下一步</p>\s*'
+    r'<h2 class="hero-card-title">([^<]*)</h2>\s*'
+    r'<a class="btn btn-hero btn-lg" href="([^"]*)">([^<]*)</a>\s*</section>',
     re.S,
 )
 ROW = re.compile(
@@ -61,7 +61,7 @@ class ResultNextStepTests(TestCase):
     def suggest(self, suggestion):
         """Records that make the 建議您下一步 `suggestion` (a card title, as #261 named them)."""
         self.answer()
-        if suggestion == "記錄聽力圖":
+        if suggestion == "到醫院進行聽力檢查":
             return
         if suggestion == "修改這張聽力圖":
             audiogram = self.make((20, 20, 20, 20), (20, 20, 20, 20))
@@ -106,20 +106,18 @@ class ResultNextStepTests(TestCase):
         content = self.client.get(reverse("result", args=[submission.pk])).content.decode()
         return content[content.index("<main") : content.index("</main>")]
 
-    def expected(self, suggestion, submission=None):
-        """(title, button href, button text) a result page suggests now, on `submission`'s."""
-        if suggestion == "記錄聽力圖":
-            # Step 2, the route's 記錄聽力圖 stop and its button, which comes back to the page
-            # (the 2026-11-14 walkthrough).
-            back = f"?next=/submission/{submission.pk}" if submission else ""
-            return ("記錄聽力圖", f"/audiograms/new{back}", "有，記錄聽力圖")
+    def expected(self, suggestion):
+        """(title, button href, button text) a result page suggests now."""
+        if suggestion == "到醫院進行聽力檢查":
+            # Spec #741: step 2, its one entry card.
+            return ("到醫院進行聽力檢查", "/qa/where-to-get-a-hearing-test", "查詢醫療院所")
         if suggestion == "修改這張聽力圖":
             edit = reverse("audiogram_edit", args=[self.user.audiograms.get().pk])
             return ("記錄聽力圖", edit, "修改這張聽力圖")
         if suggestion == "了解助聽器選配與補助":
-            # Step 3 at 去找聽力師之前, the 目前這一站, with the route's button.
-            return ("去找聽力師之前", "/guide/before-you-go", "去之前要準備什麼")
-        # Within the normal range step 5 counts down without a button (spec #453 acceptance 22).
+            # Step 4, its entry card to my guide.
+            return ("了解助聽器選配與補助", "/guide", "看助聽器選配與補助")
+        # Within the normal range step 7 counts down without a button (spec #453 acceptance 22).
         if suggestion == "分享報告給家人":
             return ("分享報告給家人", "/share", "去分享")
         return ("印聽力報告給醫師看", "/report", "去印報告")
@@ -139,26 +137,10 @@ class ResultNextStepTests(TestCase):
                     self.assertEqual((card.title, card.button[1]), expected[:2])
                 for code, submission in submissions.items():
                     with self.subTest(questionnaire=code):
-                        self.assertEqual(
-                            self.next_step(self.result(submission)),
-                            self.expected(suggestion, submission),
-                        )
-
-    def test_without_a_report_yet_a_second_outline_button(self):
-        # The 2026-11-14 walkthrough (mockup 2A): the result page's card has the home card's 還沒.
-        self.sign_in("result second way")
-        submissions = self.answer_all()
-        self.answer()
-        main = self.result(submissions["thi"])
-        card = re.search(r'<div class="result-next">.*?</div>', main, re.S)
-        self.assertIn(
-            '<a class="btn btn-outline-primary btn-lg w-full" '
-            'href="/qa/where-to-get-a-hearing-test">還沒，看要去哪裡檢查</a>',
-            card.group(0),
-        )
+                        self.assertEqual(self.next_step(self.result(submission)), expected)
 
     def test_the_suggestion_comes_before_the_list_rows(self):
-        # R1: the card, then 看完整說明, sharing and printing, then the page's extras (the optional
+        # R1: the card, then printing and sharing (#750), then the page's extras (the optional
         # SSQ12-TW row on HHIE-S without hearing aids among them).
         self.sign_in("result order")
         submissions = self.answer_all()
@@ -172,7 +154,7 @@ class ResultNextStepTests(TestCase):
         ssq12 = reverse("screening", args=[Questionnaire.objects.get(code="ssq12-tw").pk])
         records = f"{reverse('my_hearing')}?questionnaire=hhie-s"
         rows = [href for href, _ in ROW.findall(self.result(submissions["hhie-s"]))]
-        self.assertEqual(rows, [SHARE_ROW[0], REPORT_ROW[0], records, ssq12])
+        self.assertEqual(rows, [REPORT_ROW[0], SHARE_ROW[0], records, ssq12])
 
     def test_the_optional_ssq12_card_is_an_action_card_like_the_others(self):
         # #363 (spec #354): an icon and a second line, and 「（SSQ12-TW）」 held together so a
@@ -209,12 +191,12 @@ class ResultNextStepTests(TestCase):
                         self.assertEqual(SHARE_ROW in rows, suggestion != "分享報告給家人")
 
     def test_an_old_result_suggests_by_the_user_s_state_now(self):
-        # Acceptance 10: the audiogram came after the answer, so no 記錄聽力圖 now.
+        # Acceptance 10: the audiogram came after the answer, so no 到醫院進行聽力檢查 now.
         self.sign_in("old result")
         submissions = self.answer_all()
         self.answer()
         before = self.next_step(self.result(submissions["thi"]))
-        self.assertEqual(before, self.expected("記錄聽力圖", submissions["thi"]))
+        self.assertEqual(before, self.expected("到醫院進行聽力檢查"))
         self.make((20, 20, 20, 20), (20, 20, 20, 20))
         for code, submission in submissions.items():
             with self.subTest(questionnaire=code):

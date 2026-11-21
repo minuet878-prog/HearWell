@@ -352,7 +352,7 @@ class IoiHaTests(TestCase):
     # Entry (21-22)
     def test_questionnaire_list_card(self):
         response = self.client.get(reverse("questionnaire_list") + "?choose=self")
-        self.assertContains(response, "<title>選問卷\uff5c聽伴</title>")
+        self.assertContains(response, "<title>問卷\uff5c聽伴</title>")
         main = self._main(response)
         self.assertRegex(
             main, rf'<a[^>]*href="{self.url}"[^>]*>(\s*<[^>]+>)*\s*助聽器使用成效（IOI-HA）'
@@ -526,11 +526,11 @@ class IoiHaResultRedesignTests(TestCase):
         ungrouped = self._main(self._result(self.TWO_BELOW_ONE_ABOVE, grouped=False))
         self.assertIn(IoiHaTests.UNGROUPED_NOTE, self._summary(ungrouped))
 
-    def test_title_is_the_topic_with_code_and_date_below(self):
+    def test_title_is_the_topic_alone(self):
         main = self._main(self._result(self.TWO_BELOW_ONE_ABOVE))
-        self.assertRegex(main, r"<h1[^>]*>助聽器使用成效</h1>")
-        self.assertIn("IOI-HA・2026/10/15 作答", main)
-        self.assertLess(main.index("助聽器使用成效</h1>"), main.index("IOI-HA・2026/10/15"))
+        # #750 (canvas ProResult): 看看 the topic; no line under it (spec #741's 實作中本人補充).
+        self.assertRegex(main, r"<h1[^>]*>看看助聽器使用成效</h1>")
+        self.assertNotIn("IOI-HA・2026/10/15 作答", main)
 
     def test_grouped_summary_and_groups(self):
         # Acceptance 1.
@@ -667,7 +667,7 @@ class IoiHaResultRedesignTests(TestCase):
         names = scoring.IOI_HA_ITEM_NAMES
         # #304: the 建議下一步, IOI-HA meaning wearing them, so the 照顧旅程's step 3 at the
         # route's 配戴之後 (#455); since #461 above 看完整說明, which holds the items.
-        start = [(1, "助聽器使用成效"), (2, "配戴助聽器之後")]
+        start = [(1, "看看助聽器使用成效"), (2, "配戴助聽器之後")]
         cases = {
             "grouped, two below": (
                 self.TWO_BELOW_ONE_ABOVE,
@@ -716,7 +716,7 @@ class IoiHaResultRedesignTests(TestCase):
         self.assertRegex(
             main,
             rf'(?s)<a class="link-card action-card" href="{reverse("health_report")}">.*?'
-            r'<span class="link-card-title">印聽力報告給醫師看</span>',
+            r'<span class="link-card-title">印聽力報告</span>',
         )
 
 

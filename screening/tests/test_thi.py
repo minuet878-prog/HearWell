@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening.models import Answer, Questionnaire, Submission
-from screening.tests import test_layout, test_result_next_steps
+from screening.tests import test_layout
 from screening.tests.helpers import consented_user
 
 
@@ -265,8 +265,8 @@ class ThiScoringTests(ThiTestCase):
     def test_result_page_shows_no_emotional_or_social_subscores(self):
         # Spec #208 Q5: THI shows its total and level only, no subscales of any kind.
         _, page = self._web_result([4] * 25)
-        self.assertNotContains(page, "情緒分數")
-        self.assertNotContains(page, "社交分數")
+        self.assertNotContains(page, "聽力問題影響在哪裡")
+        self.assertNotContains(page, "score-impact")
 
     def test_api_gives_null_subscores_not_zero(self):
         # #386: THI has no emotional or social items, so the API says "none" like the export.
@@ -283,7 +283,6 @@ class ThiScoringTests(ThiTestCase):
 # Draft wording from #211, written out here so a changed definition fails instead of being
 # copied into the expectation. A step links the report only where its words mention the report
 # (result page tidy-up); the closing row of every result page links it anyway.
-LINE_1925 = "1925 安心專線（24 小時免付費）"
 RETAKE = ("3 個月後，或開始新的處置（例如配戴助聽器）3 個月後再做一次。", None)
 AUDIOGRAM = ("記錄聽力圖", "/audiograms/new")
 REPORT = ("看／印聽力報告", "/report")
@@ -372,32 +371,18 @@ class ThiResultAdviceTests(ThiTestCase):
         content = self.client.get(reverse("result", args=[submission.pk])).content.decode()
         return content[content.index("<main") : content.index("</main>")]
 
-    def test_each_level_shows_its_draft_advice(self):
-        for total, advice in ADVICE.items():
-            with self.subTest(total=total):
-                self.assertIn(f"<p>{advice}</p>", self._main(total))
-
-    def test_severe_and_catastrophic_advice_mention_the_1925_line(self):
-        for total in (58, 78):
-            with self.subTest(total=total):
-                advice = self._main(total).split("完整建議", 1)[1]
-                self.assertIn(LINE_1925, advice)
-
-    def test_each_level_shows_its_steps_ending_with_the_three_month_retake(self):
-        for total, expected in STEPS.items():
+    def test_each_level_shows_its_first_step_only(self):
+        # Step 1 shown in 這個分數怎麼算; since the owner's acceptance (2026-11-21) no
+        # 看完整建議, so no other step, no step's button and no level's whole advice.
+        for total, ((text, _action), *rest) in STEPS.items():
             with self.subTest(total=total):
                 main = self._main(total)
-                # Step 1 under the level, the rest behind 看完整說明 (#461).
-                steps = test_result_next_steps.ResultNextStepsTests._steps(self, main)
-                self.assertEqual(len(steps), len(expected))
-                for (words, links), (text, action) in zip(steps, expected, strict=True):
-                    self.assertEqual(words, text)
-                    if action is None:
-                        self.assertFalse(links)
-                    else:
-                        label, url = action
-                        self.assertIn(f'href="{url}">{label}</a>', links)
-                self.assertEqual(steps[-1][0], RETAKE[0])
+                self.assertIn(f'<p class="score-explain-advice">{text}</p>', main)
+                self.assertNotIn("看完整建議", main)
+                self.assertNotIn('class="next-steps-link"', main)
+                for later, _later_action in rest:
+                    self.assertNotIn(later, main)
+                self.assertNotIn(ADVICE[total], main)
                 self.assertNotIn("半年後", main)
                 self.assertNotIn("首頁會提醒您", main)
 

@@ -37,6 +37,7 @@ class HhiaSTests(TestCase):
                 {
                     "code": "normal",
                     "text": "無／極輕微影響",
+                    "short": "極輕微",
                     "max": 8,
                     "color": "normal",
                     "shade": "pale",
@@ -44,6 +45,7 @@ class HhiaSTests(TestCase):
                 {
                     "code": "mild_to_moderate",
                     "text": "輕度到中度影響",
+                    "short": "輕到中度",
                     "max": 24,
                     "color": "mild_to_moderate",
                     "shade": "pale",
@@ -51,6 +53,7 @@ class HhiaSTests(TestCase):
                 {
                     "code": "severe",
                     "text": "顯著影響",
+                    "short": "顯著",
                     "max": 40,
                     "color": "severe",
                     "shade": "pale",
@@ -131,7 +134,9 @@ class HhiaSTests(TestCase):
                 self.assertIn(advice, data["advice"])
                 self.assertIn(explanation, data["advice"])
                 page = self.client.get(reverse("result", args=[data["id"]]))
-                self.assertContains(page, advice)
+                # The whole advice is the API's and the report's; the result page has had no
+                # 看完整建議 since the owner's acceptance (2026-11-21).
+                self.assertNotContains(page, advice)
                 self.assertContains(page, explanation)
                 self.assertContains(page, level)
 

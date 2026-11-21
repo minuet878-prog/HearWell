@@ -34,8 +34,7 @@ from screening.models import (
     count_guest_saved,
 )
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
-from screening.scoring import TREND_STATUS_TEXT
-from screening.views.common import works_here
+from screening.views.common import JUST_SAVED, works_here
 
 
 class QuestionnaireList(ListAPIView):
@@ -155,6 +154,10 @@ class SubmissionList(ListAPIView):
         # A guest result newly saved counts (#500); sent again and found, it does not.
         if created and data["from_guest"]:
             count_guest_saved(request.user)
+        # The answer page opens this record's result next (views.common.JUST_SAVED); the save page
+        # says it is saved itself.
+        if created and not data["from_guest"]:
+            request.session[JUST_SAVED] = existing.pk
         # Same query and serializer as GET /api/submissions/{id}/, so the bodies match.
         submission = _own_submission_details(request, with_ioi_ha=True).get(pk=existing.pk)
         return Response(
@@ -259,7 +262,6 @@ class GuestScore(GenericAPIView):
                 {
                     "questionnaire": questionnaire,
                     "wearing_hearing_aid": wearing,
-                    "wearing_text": TREND_STATUS_TEXT[wearing],
                     "result": result,
                     "html": html,
                 }

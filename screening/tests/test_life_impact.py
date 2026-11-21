@@ -123,18 +123,16 @@ class LevelColorTests(TestCase):
                 )
                 self.assertContains(page, f'aria-describedby="result-score">{text}</h2>')
 
-    def test_score_bar_segments_take_the_level_colours(self):
+    def test_gauge_arcs_take_the_level_colours(self):
         page = self.client.get(reverse("result", args=[self._submit(4).pk])).content.decode()
         self.assertEqual(
-            re.findall(
-                r'class="score-bar-segment score-bar-segment-([\w-]+(?: score-bar-segment-deep)?)"',
-                page,
-            ),
+            re.findall(r'<path class="gauge-arc gauge-arc-([\w-]+(?: gauge-arc-deep)?)', page),
             # The second of two levels in one colour is the deeper shade (Definition.shade).
-            ["normal", "mild_to_moderate", "mild_to_moderate score-bar-segment-deep"],
+            ["normal", "mild_to_moderate", "mild_to_moderate gauge-arc-deep"],
         )
 
-    def test_history_badges_and_trend_bands_take_the_level_colours(self):
+    def test_history_badges_take_the_level_colours(self):
+        # The trend chart's bands take theirs from the API (the test below, #756).
         self._submit(4)
         self._submit(6)
         page = self.client.get(reverse("my_hearing")).content.decode()
@@ -143,10 +141,6 @@ class LevelColorTests(TestCase):
                 self.assertIn(
                     f'<span class="level-badge level-badge-mild_to_moderate">{text}</span>', page
                 )
-        self.assertEqual(
-            re.findall(r'<li class="trend-band-([\w-]+(?: trend-band-deep)?)">', page),
-            ["mild_to_moderate trend-band-deep", "mild_to_moderate", "normal"],
-        )
 
     def test_api_gives_each_level_its_colour_for_the_trend_chart(self):
         detail = self.client.get(reverse("api:questionnaire", args=[self.graded.pk])).json()

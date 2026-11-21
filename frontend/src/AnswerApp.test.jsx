@@ -25,7 +25,6 @@ const USER_ID = 7;
 const DRAFT_KEY = `${DRAFT_PREFIX}1`;
 const FAILED = "送出失敗，請再按一次送出";
 const CHOOSE_FIRST = "請先選一個答案";
-const MINUTES = 3;
 const INTRO = "<p>本問卷的目的在幫助您了解自己的聽力。</p><p>請圈選常常、有時或從未。</p>";
 
 // POSTs answer from `posts` in order: {status, body}, or an Error for a network failure.
@@ -55,7 +54,7 @@ let onReady;
 async function renderApp(props = {}) {
   render(
     <AnswerApp
-      questionnaireId={1} userId={USER_ID} csrfToken="csrf-token" minutes={MINUTES} introHtml={INTRO}
+      questionnaireId={1} userId={USER_ID} csrfToken="csrf-token" introHtml={INTRO}
       onReady={onReady} navigate={navigate} {...props}
     />,
   );
@@ -110,12 +109,14 @@ describe("pages", () => {
     expect(screen.getAllByRole("radio").map((r) => r.labels[0].textContent)).toEqual(["沒戴", "有戴"]);
   });
 
+  // #755 (spec #741 acceptance 47): the question and its choices are the API's words, untouched.
   it("then shows one question per page with its full text and choices", async () => {
     await renderApp();
     choose("沒戴");
     next();
     QUESTIONS.forEach((question, i) => {
-      expect(legend()).toMatch(new RegExp(`^第 ${i + 1} 題／共 10 題・還剩大約 \\d 分鐘${question.text}$`));
+      const left = i < 9 ? `還有 ${9 - i} 題` : "最後一題";
+      expect(legend()).toBe(`第 ${i + 1} 題，共 10 題${left}${question.text}`);
       expect(screen.getAllByRole("radio").map((r) => r.labels[0].textContent)).toEqual(["常常", "有時", "從未"]);
       choose("有時");
       if (i < QUESTIONS.length - 1) next();
@@ -166,6 +167,7 @@ describe("progress (#153)", () => {
   const segments = () => [...document.querySelectorAll(".step-progress-bar > .step-progress-segment")];
   const done = () => segments().filter((s) => s.classList.contains("is-done"));
   const progressText = () => document.querySelector(".question-progress").textContent;
+  const leftText = () => document.querySelector(".question-left").textContent;
 
   async function answerUpTo(number) {
     await renderApp();
@@ -177,23 +179,27 @@ describe("progress (#153)", () => {
     }
   }
 
-  it("on question 3 of 10 shows 10 segments, 3 answered, and the minutes left", async () => {
+  // #755 (canvas ProAnswer, spec #741 P10): the count, the questions after this one, then the bar.
+  it("on question 3 of 10 shows the count, 7 to go, then 10 segments, 3 answered", async () => {
     await answerUpTo(3);
+    expect(progressText()).toBe("第 3 題，共 10 題");
+    expect(document.querySelector(".question-progress .question-number").textContent).toBe("3");
+    expect(leftText()).toBe("還有 7 題");
     expect(segments()).toHaveLength(10);
     expect(done()).toHaveLength(3);
-    // 3 minutes × 8 of 10 questions left (this one included) = 2.4, rounded to 2.
-    expect(progressText()).toBe("第 3 題／共 10 題・還剩大約 2 分鐘");
+    const line = document.querySelector(".question-progress-line");
+    expect(line.nextElementSibling).toBe(document.querySelector(".step-progress-bar"));
   });
 
-  it("counts the whole time on question 1 and at least 1 minute on the last", async () => {
+  it("says 還有 9 題 on question 1 and 最後一題 on the last", async () => {
     await answerUpTo(1);
-    expect(progressText()).toBe("第 1 題／共 10 題・還剩大約 3 分鐘");
+    expect(leftText()).toBe("還有 9 題");
     for (let n = 2; n <= 10; n++) {
       next();
       choose("有時");
     }
-    // 3 × 1 / 10 = 0.3 would round to 0.
-    expect(progressText()).toBe("第 10 題／共 10 題・還剩大約 1 分鐘");
+    expect(progressText()).toBe("第 10 題，共 10 題");
+    expect(leftText()).toBe("最後一題");
     expect(done()).toHaveLength(10);
   });
 
@@ -203,7 +209,7 @@ describe("progress (#153)", () => {
     expect(segments()).toHaveLength(0);
     choose("有戴");
     next();
-    expect(progressText()).toMatch(/^第 1 題／共 10 題/);
+    expect(progressText()).toMatch(/^第 1 題，共 10 題/);
     expect(done()).toHaveLength(0);
   });
 
@@ -484,7 +490,7 @@ describe("next and previous", () => {
     // A real click leaves focus on the button; the page change must move it to the question.
     screen.getByRole("button", { name: "下一題" }).focus();
     next();
-    expect(legend()).toMatch(/^第 1 題／共 10 題/);
+    expect(legend()).toMatch(/^第 1 題，共 10 題/);
     expect(screen.queryByRole("alert")).toBeNull();
     expect(document.activeElement.tagName).toBe("LEGEND");
   });
@@ -1110,7 +1116,7 @@ describe("always-aided (#170)", () => {
     mockApi(undefined, SADL);
     await renderApp({ alwaysAided: true });
     expect(screen.queryByText("這次填答時，您有沒有戴助聽器？")).toBeNull();
-    expect(legend()).toMatch(/^第 1 題／共 15 題・還剩大約 \d 分鐘SADL 第1題$/);
+    expect(legend()).toMatch(/^第 1 題，共 15 題還有 14 題SADL 第1題$/);
     expect(screen.queryByRole("button", { name: "上一題" })).toBeNull();
   });
 
@@ -1193,7 +1199,7 @@ describe("IOI-HA (#245)", () => {
     mockApi(undefined, IOI_HA);
     await renderApp({ skipWearing: true, normToken: "signed" });
     expect(screen.queryByText("這次填答時，您有沒有戴助聽器？")).toBeNull();
-    expect(legend()).toMatch(/^第 1 題／共 7 題・還剩大約 \d 分鐘IOI-HA 第1題$/);
+    expect(legend()).toMatch(/^第 1 題，共 7 題還有 6 題IOI-HA 第1題$/);
     expect(screen.queryByRole("button", { name: "上一題" })).toBeNull();
     choose("第1題選項1");
     next();
@@ -1281,7 +1287,6 @@ describe("guest", () => {
   const SCORED = {
     questionnaire: { code: "hhie-s", name: "HHIE-S" },
     wearing_hearing_aid: true,
-    wearing_text: "有戴助聽器",
     scores: { total: 40, emotional: 20, social: 20 },
     level: { code: "severe", text: "顯著影響", color: "severe" },
     html: "<div>結果</div>",
@@ -1330,6 +1335,10 @@ describe("guest", () => {
       total: 40,
       level: SCORED.level,
     });
+    // The owner, 2026-11-21: this tab's one-shot mark that it was just finished, so the result
+    // page's bird says 做完了，辛苦了。 this once.
+    const { key } = JSON.parse(localStorage.getItem("hearwell:guest-result:hhie-s"));
+    expect(sessionStorage.getItem("hearwell:guest-just-finished")).toBe(key);
   });
 
   it("on 429 says the server's words and keeps the answers on screen", async () => {

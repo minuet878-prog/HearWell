@@ -50,7 +50,7 @@ class AddEmailEntryTests(TestCase):
     def test_the_right_password_shows_the_email_field(self):
         response = self.client.post(CONFIRM_ADD_EMAIL, {"password": PASSWORD}, follow=True)
         self.assertRedirects(response, ADD_EMAIL)
-        self.assertContains(response, '<h1 class="h3 mt-4">補上 email</h1>', html=True)
+        self.assertContains(response, '<h1 class="bird-title">補上 email</h1>', html=True)
         self.assertContains(response, 'name="email"')
 
     def test_a_wrong_password_shows_no_email_field(self):

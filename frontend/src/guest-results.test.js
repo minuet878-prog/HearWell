@@ -9,6 +9,7 @@ import {
   canKeepGuestResults,
   clearGuestResult,
   loadGuestResult,
+  rememberJustFinished,
   saveGuestResult,
   saveGuestResults,
   SAVE_INTENT,
@@ -175,7 +176,6 @@ describe("showGuestResult (the guest result page)", () => {
   const SCORED = {
     questionnaire: { code: "hhie-s", name: "HHIE-S" },
     wearing_hearing_aid: false,
-    wearing_text: "沒戴助聽器",
     scores: { total: 16, emotional: 12, social: 4 },
     level: { code: "mild_to_moderate", text: "輕度到中度影響", color: "mild_to_moderate" },
     html: `<div class="result-banner">總分 16 分</div>${CLEAR_ROW}`,
@@ -186,8 +186,7 @@ describe("showGuestResult (the guest result page)", () => {
   beforeEach(() => {
     document.body.innerHTML = `
       <div id="guest-result" data-code="hhie-s" data-score-url="/api/guest-scores/" data-home-url="/">
-        <div data-guest-shown hidden>
-          <p>HHIE-S・<span data-guest-date></span> 作答・<span data-guest-wearing></span></p>
+        <div data-guest-shown hidden><p class="bird-lead"></p>
           <div data-guest-section></div>
         </div>
         <p role="alert" data-guest-error></p>
@@ -215,8 +214,6 @@ describe("showGuestResult (the guest result page)", () => {
       just_finished: false,
     });
     expect(root.querySelector("[data-guest-section]").innerHTML).toBe(SCORED.html);
-    expect(root.querySelector("[data-guest-date]").textContent).toBe("2026/11/13");
-    expect(root.querySelector("[data-guest-wearing]").textContent).toBe("沒戴助聽器");
     expect(root.querySelector("[data-guest-shown]").hidden).toBe(false);
     expect(navigate).not.toHaveBeenCalled();
   });
@@ -292,6 +289,76 @@ describe("showGuestResult (the guest result page)", () => {
   });
 });
 
+// The owner, 2026-11-21: the bird says 做完了，辛苦了。 only right after the answers were sent, as
+// on a signed-in result page; opened again later (the home page's 上次的結果) it says
+// 這是您這一次的結果。. The server cannot tell for a guest: the answer page leaves this tab a
+// one-shot mark with the receipt number, which the result page takes once it shows the result.
+describe("the bird's words on the guest result page", () => {
+  const SCORED = { html: `<div class="result-banner">總分 16 分</div>${CLEAR_ROW}` };
+  const JUST = "做完了，辛苦了。";
+  const AGAIN = "這是您這一次的結果。";
+  let root;
+  const lead = () => root.querySelector(".bird-lead").textContent;
+  const reply = (status, body) => vi.fn(() => Promise.resolve({ ok: status < 300, status, json: () => Promise.resolve(body) }));
+  const show = (fetchScore = reply(200, SCORED)) =>
+    showGuestResult({ root, now: NOW, clock: () => NOW, fetchScore, navigate: vi.fn() });
+
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <div id="guest-result" data-code="hhie-s" data-score-url="/api/guest-scores/" data-home-url="/" data-just-finished-lead="${JUST}" data-reopened-lead="${AGAIN}">
+        <div data-guest-shown hidden>
+          <div class="bird-dialogue"><div class="bird-bubble"><p class="bird-lead">${AGAIN}</p><h1 class="bird-title">看看聽力對生活的影響</h1></div></div>
+          <div data-guest-section></div>
+        </div>
+        <p role="alert" data-guest-error></p>
+      </div>`;
+    root = document.getElementById("guest-result");
+    saveGuestResult(guestResult());
+  });
+
+  it("right after sending, 做完了，辛苦了。; opened again, 這是您這一次的結果。", async () => {
+    rememberJustFinished(guestResult().key);
+    await show();
+    expect(lead()).toBe(JUST);
+    await show();
+    expect(lead()).toBe(AGAIN);
+  });
+
+  it("opened from the home page with no mark: 這是您這一次的結果。", async () => {
+    await show();
+    expect(lead()).toBe(AGAIN);
+  });
+
+  it("a mark for another result is not this one's", async () => {
+    rememberJustFinished(NEWER_KEY);
+    await show();
+    expect(lead()).toBe(AGAIN);
+  });
+
+  it("keeps the mark while the result could not be shown", async () => {
+    rememberJustFinished(guestResult().key);
+    await show(reply(503, {}));
+    await show();
+    expect(lead()).toBe(JUST);
+  });
+
+  it("with the tab's storage blocked, 這是您這一次的結果。", async () => {
+    for (const method of ["getItem", "setItem", "removeItem"]) {
+      const original = Storage.prototype[method];
+      vi.spyOn(Storage.prototype, method).mockImplementation(function blocked(...args) {
+        if (this === sessionStorage) throw new DOMException("blocked", "SecurityError");
+        return original.apply(this, args);
+      });
+    }
+    expect(() => rememberJustFinished(guestResult().key)).not.toThrow();
+    await show();
+    expect(lead()).toBe(AGAIN);
+    expect(root.querySelector("[data-guest-shown]").hidden).toBe(false);
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+});
+
 // The save page (guest_save.html), #492 acceptance 22, 24, 25.
 // The feedback batch (the owner's F3): saved, the page stays and shows its box with the next steps.
 const savedShown = (root) => !root.querySelector("[data-guest-done]").hidden;
@@ -309,7 +376,7 @@ describe("saveGuestResults (the save page)", () => {
   beforeEach(() => {
     document.body.innerHTML = `
       <div id="guest-save" data-submissions-url="/api/submissions/" data-home-url="/">
-        <h1 data-guest-title>保存這次結果</h1>
+        <div class="bird-dialogue"><h1 data-guest-title>保存這次結果</h1></div>
         <div data-guest-done hidden><h1 tabindex="-1" data-guest-done-title>✓ 結果已經保存</h1></div>
         <p data-guest-saving role="status" tabindex="-1">正在保存，請稍候。</p>
         <div data-guest-failed hidden>
@@ -437,8 +504,10 @@ describe("saveGuestResults (the save page)", () => {
     expect(line.textContent).toBe("正在保存，請稍候。");
     reply({ ok: true, status: 201, json: () => Promise.resolve({}) });
     await saving;
-    // The feedback batch (F3): it stays, the saving line giving way to the box, focus on its title.
+    // The feedback batch (F3): it stays, the saving line giving way to the box, focus on its title;
+    // the bird saying the page's title goes with it (#749), the box's own bird says it is saved.
     expect(line.hidden).toBe(true);
+    expect(root.querySelector(".bird-dialogue").hidden).toBe(true);
     expect(savedShown(root)).toBe(true);
     expect(document.activeElement).toBe(root.querySelector("[data-guest-done-title]"));
     expect(navigate).not.toHaveBeenCalled();
@@ -466,15 +535,14 @@ describe("saveGuestResults (the save page)", () => {
 // #498 (#492 acceptance 16, 17; the #493 mockup's E1): the red row under the result opens its
 // question; 不要 changes nothing, 清除 forgets only this questionnaire's result and goes home.
 describe("清除這次結果 (the guest result page)", () => {
-  const SCORED = { wearing_text: "沒戴助聽器", html: `<div class="result-banner">總分 16 分</div>${CLEAR_ROW}` };
+  const SCORED = { html: `<div class="result-banner">總分 16 分</div>${CLEAR_ROW}` };
   let root;
   let navigate;
 
   beforeEach(async () => {
     document.body.innerHTML = `
       <div id="guest-result" data-code="hhie-s" data-score-url="/api/guest-scores/" data-home-url="/">
-        <div data-guest-shown hidden>
-          <p>HHIE-S・<span data-guest-date></span> 作答・<span data-guest-wearing></span></p>
+        <div data-guest-shown hidden><p class="bird-lead"></p>
           <div data-guest-section></div>
         </div>
         <p role="alert" data-guest-error></p>
@@ -555,7 +623,7 @@ describe("a guest result 7 days on (the guest result page)", () => {
   it("is not shown and is deleted from the browser", async () => {
     document.body.innerHTML = `
       <div id="guest-result" data-code="hhie-s" data-score-url="/api/guest-scores/" data-home-url="/">
-        <div data-guest-shown hidden><div data-guest-section></div></div>
+        <div data-guest-shown hidden><p class="bird-lead"></p><div data-guest-section></div></div>
         <p role="alert" data-guest-error></p>
       </div>`;
     const root = document.getElementById("guest-result");
@@ -611,7 +679,7 @@ describe("askToSaveGuestResults (the save page's question)", () => {
   beforeEach(() => {
     document.body.innerHTML = `
       <div id="guest-save" data-submissions-url="/api/submissions/" data-home-url="/" data-asking>
-        <h1 data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">要把這次結果存到這個帳號嗎？</h1>
+        <div class="bird-dialogue"><h1 data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">要把這次結果存到這個帳號嗎？</h1></div>
         <div data-guest-ask hidden>
           <p data-guest-ask-lead></p>
           <div data-guest-ask-list></div>
@@ -784,7 +852,7 @@ describe("startSavePage (how the save page begins)", () => {
   beforeEach(() => {
     document.body.innerHTML = `
       <div id="guest-save" data-submissions-url="/api/submissions/" data-home-url="/" data-asking>
-        <h1 data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">要把這次結果存到這個帳號嗎？</h1>
+        <div class="bird-dialogue"><h1 data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">要把這次結果存到這個帳號嗎？</h1></div>
         <div data-guest-ask hidden>
           <p data-guest-ask-lead></p>
           <div data-guest-ask-list></div>

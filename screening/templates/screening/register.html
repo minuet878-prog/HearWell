@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block title %}註冊｜聽伴{% endblock %}
 
@@ -14,8 +14,7 @@
 {% block body %}
 {# #471 (mockup #470 D1 B): the title on the white page; the step bar on white as on the answer page. #}
 <div class="narrow-form">
-    <h1 class="h3 mt-4">註冊</h1>
-    <p class="text-(--color-muted)">建立帳號，篩檢結果會幫您存起來。</p>
+    {% include "screening/bird_dialogue.html" with lead="register"|page_lead title="註冊" %}
     {# Issue #151: register and consent are steps 1 and 2 of 2, numbered apart from the wizard. #}
     {% include "screening/step_progress.html" with step=1 total=2 label="建立帳號" %}
     <div class="auth-form">
@@ -37,19 +36,17 @@
             {% for field in form %}
             {% if field.name != "roc_birth_year" %}
             <div class="mb-4 auth-field">
-                {% if field.widget_type == "password" %}
-                {# Issue #151: the script shows the button; without JavaScript it stays hidden. #}
-                <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
-                    {{ field.label_tag }}
-                    <button type="button" class="btn btn-outline-primary password-toggle" aria-controls="{{ field.auto_id }}" aria-label="顯示{{ field.label }}" data-label="{{ field.label }}" hidden>顯示</button>
-                </div>
-                {% else %}
                 {{ field.label_tag }}
-                {% endif %}
+                {% if field.widget_type == "password" %}<div class="password-row">{% endif %}
                 <div class="auth-input">
                     {% if field.name == "username" %}{% include "screening/auth_field_icon.html" with icon="user" %}{% elif field.name == "email" %}{% include "screening/auth_field_icon.html" with icon="mail" %}{% elif field.widget_type == "password" %}{% include "screening/auth_field_icon.html" with icon="lock" %}{% endif %}
                     {{ field }}
                 </div>
+                {% if field.widget_type == "password" %}
+                {# Issue #151: the script shows the button; without JavaScript it stays hidden. After its own box (#741), so Tab goes 密碼, its 顯示, 密碼確認, its 顯示. #}
+                <button type="button" class="btn btn-outline-primary password-toggle" aria-controls="{{ field.auto_id }}" aria-label="顯示{{ field.label }}" data-label="{{ field.label }}" hidden>顯示</button>
+                </div>
+                {% endif %}
                 {# #332 (spec #326 D6): register-checks.js says here what the green tick shows. #}
                 {% if field.name == "password2" %}<p class="visually-hidden" role="status"></p>{% endif %}
                 {# Spec #611 J2 (#614): email-hint.js asks here when the email looks mistyped. #}

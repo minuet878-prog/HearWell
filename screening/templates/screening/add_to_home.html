@@ -1,9 +1,10 @@
 {% extends "screening/layout.html" %}
+{% load custom_filters %}
 
 {% block title %}加到主畫面｜聽伴{% endblock %}
 
 {% block body %}
-<h1 class="h3 mt-2">把聽伴加到手機主畫面</h1>
+{% include "screening/bird_dialogue.html" with lead="add_to_home"|page_lead title="把聽伴加到手機主畫面" %}
 <p>加到主畫面後，聽伴會像其他 app 一樣出現在手機桌面上，點一下就能打開，不用每次輸入網址。</p>
 <p>這些步驟要在手機上做。如果您現在用電腦，請用手機打開聽伴。</p>
 
@@ -34,5 +35,5 @@
     </details>
 </div>
 
-<p class="mt-6">從主畫面打開時，請用畫面下方的「首頁、篩檢、紀錄、了解」切換頁面。</p>
+<p class="mt-6">從主畫面打開時，請用畫面下方的「首頁、問卷、紀錄、了解」切換頁面。</p>
 {% endblock %}

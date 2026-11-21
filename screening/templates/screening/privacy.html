@@ -1,4 +1,5 @@
 {% extends "screening/layout.html" %}
+{% load custom_filters %}
 
 {% block title %}隱私權說明｜聽伴{% endblock %}
 
@@ -11,7 +12,7 @@ ADR 0034 is the first exception: the question log is new data but not linked to 
 moved only the date (#400).
 {% endcomment %}
 <article class="privacy wrap-anywhere">
-    <h1 class="h3 mt-2">隱私權說明</h1>
+    {% include "screening/bird_dialogue.html" with lead="privacy"|page_lead title="隱私權說明" %}
     <p class="source-note text-body">第 {{ version }} 版，{{ updated_on|date:"Y/m/d" }} 更新</p>
     {# #197: the consent page's four highlights first. #471 (mockup #470 privacy B): they stay open in a 提示框 (P3); every section after them folds into a row of its own, so the rows are the page's contents (the folded list of sections on top went). The words are as they were. #}
     <section class="mb-6" aria-labelledby="highlights-title">
@@ -61,9 +62,8 @@ moved only the date (#400).
                         <li>有沒有用身障補助買</li>
                         <li>二十五號表完成了沒</li>
                     </ul>
-                    以及您看過哪幾個選配指引章節。
+                    以及您看過哪些選配指引頁面、是否查過醫療院所。
                 </li>
-                <li>照顧旅程的待辦打勾：您自己勾了哪幾件要做的事，以及勾的時間。</li>
                 <li>您有沒有打開 email 重測提醒、哪天打開，以及寄過哪幾次提醒信。</li>
                 <li>同意紀錄：您哪一天同意了哪一版說明。</li>
                 <li>登入方式：用 LINE 或 Google 登入時，LINE 或 Google 給您的代號、哪一天新增的，以及是不是註冊時用的（見下面兩段）。</li>

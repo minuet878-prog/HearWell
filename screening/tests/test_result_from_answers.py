@@ -123,15 +123,19 @@ class SectionTests(ResultFromAnswersTestCase):
             html = self.render(result)
         self.assertIn('總分 <span class="result-number">16</span> 分（滿分 40）', html)
         self.assertIn(
-            '<h2 class="result-block-level" aria-describedby="result-score">輕度到中度影響</h2>',
+            '<h2 class="result-block-level visually-hidden" aria-describedby="result-score">'
+            "輕度到中度影響</h2>",
             html,
         )
-        self.assertIn('<div class="score-bar" aria-hidden="true">', html)
-        # Readability batch 3: only the bar's two ends under it, no level under the marker.
-        self.assertIn('<div class="score-bar-ends"><span>0</span><span>40</span></div>', html)
-        self.assertIn('<p class="mb-1">情緒分數：12　社交分數：4</p>', html)
+        # #750: the gauge, its scale's two ends under it.
+        self.assertIn('<span class="gauge-end">0</span><span class="gauge-end">40</span>', html)
+        # 這個分數怎麼算's 聽力問題影響在哪裡 (spec #741, 2026-11-21).
+        self.assertRegex(html, r'(?s)>情緒</span>.*?"score-impact-points">12 分')
+        self.assertRegex(html, r'(?s)>社交</span>.*?"score-impact-points">4 分')
         self.assertIn("助聽器：沒戴", html)
-        self.assertIn(hhie_s.ADVICE["mild_to_moderate"], html)
+        # Step 1, and since the owner's acceptance (2026-11-21) not the whole advice.
+        self.assertIn(hhie_s.NEXT_STEPS["mild_to_moderate"][0]["text"], html)
+        self.assertNotIn(hhie_s.ADVICE["mild_to_moderate"], html)
         questionnaire = Questionnaire.objects.get(code=hhie_s.CODE)
         questions = questionnaire.questions.order_by("question_number")
         labels = dict(hhie_s.CHOICES)
@@ -153,15 +157,15 @@ class SectionTests(ResultFromAnswersTestCase):
 
 class RecordPageUnchangedTests(ResultFromAnswersTestCase):
     """The signed-in result page draws the same section from the record, with what an account has.
-    The queries are main's (one more since #478 reads the to-do ticks, one more since #647 counts
-    which time this is, two more since #661 reads the email 重測提醒 and its next date), measured
-    with these records (its HTML was compared byte for byte with main's on HHIE-S and HHIA-S
-    records of each level and hearing aid status)."""
+    The queries are main's (one more since #647 counts which time this is, two more since #661
+    reads the email 重測提醒 and its next date, one fewer since #742 took away the to-do ticks),
+    measured with these records (its HTML was compared byte for byte with main's on HHIE-S and
+    HHIA-S records of each level and hearing aid status)."""
 
     def test_queries_and_the_account_parts(self):
         self.client.force_login(self.user)
         for code in LEVELS:
-            for wearing, queries in ((False, 20), (True, 20), (None, 19)):
+            for wearing, queries in ((False, 18), (True, 18), (None, 17)):
                 with self.subTest(code=code, wearing=wearing):
                     submission_with_answers(self.user, code, [0] * 10, wearing_hearing_aid=wearing)
                     record = submission_with_answers(
@@ -169,7 +173,7 @@ class RecordPageUnchangedTests(ResultFromAnswersTestCase):
                     )
                     with self.assertNumQueries(queries):
                         response = self.client.get(reverse("result", args=[record.pk]))
-                    self.assertContains(response, '<div class="result-next">')
+                    self.assertContains(response, '<section class="hero-card">')
                     self.assertContains(response, f'href="{reverse("share_report")}"')
                     self.assertContains(response, f'href="{reverse("health_report")}"')
                     if wearing is not None:

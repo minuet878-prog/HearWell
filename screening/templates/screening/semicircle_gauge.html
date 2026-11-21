@@ -1,0 +1,5 @@
+{# #750 (spec #741, canvas ProResult): the semicircle gauge, shared by the result page, the home page's last result and 紀錄's latest. `gauge`: results.semicircle_gauge()'s drawing, one arc for each level, the score's level thick and drawn once in view (play-once-gauge), a knob where the score is, the scale's two ends under it. It says nothing to screen readers: the page writes the score and the level in words beside it. #}
+<div class="gauge" data-play-in-view>
+    <svg class="gauge-arcs" viewBox="0 0 318 164" aria-hidden="true" focusable="false">{% for arc in gauge.arcs %}<path class="gauge-arc gauge-arc-{{ arc.color }}{% if arc.shade == "deep" %} gauge-arc-deep{% endif %}{% if arc.current %} gauge-arc-current play-once-gauge{% endif %}" d="{{ arc.path }}"{% if arc.current %} pathLength="1"{% endif %}/>{% endfor %}<circle class="gauge-knob" cx="{{ gauge.knob.0 }}" cy="{{ gauge.knob.1 }}" r="10"/></svg>
+    <span class="gauge-ends" aria-hidden="true"><span class="gauge-end">0</span><span class="gauge-end">{{ gauge.ceiling }}</span></span>
+</div>

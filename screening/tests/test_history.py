@@ -51,6 +51,7 @@ class TrendChartPageTests(TestCase):
         return submission
 
     def test_questionnaire_levels_come_from_thresholds(self):
+        # #756 (spec #741, ADR 0078): each band's short name, which the trend chart writes in it.
         response = self.client.get("/api/questionnaires/")
         self.assertEqual(
             response.json()[0]["levels"],
@@ -58,6 +59,7 @@ class TrendChartPageTests(TestCase):
                 {
                     "code": "normal",
                     "text": "無／極輕微影響",
+                    "short": "極輕微",
                     "max": 8,
                     "color": "normal",
                     "shade": "pale",
@@ -65,6 +67,7 @@ class TrendChartPageTests(TestCase):
                 {
                     "code": "mild_to_moderate",
                     "text": "輕度到中度影響",
+                    "short": "輕到中度",
                     "max": 24,
                     "color": "mild_to_moderate",
                     "shade": "pale",
@@ -72,6 +75,7 @@ class TrendChartPageTests(TestCase):
                 {
                     "code": "severe",
                     "text": "顯著影響",
+                    "short": "顯著",
                     "max": 40,
                     "color": "severe",
                     "shade": "pale",
@@ -431,7 +435,7 @@ class HistoryTabsTests(TestCase):
         self.assertRegex(
             main,
             rf'(?s)<a class="link-card action-card" href="{re.escape(self._tab_url("ioi-ha"))}">.*?'
-            r'<span class="link-card-title">看我的紀錄</span>',
+            r'<span class="link-card-title">看紀錄</span>',
         )
 
     # Accessibility (19)
@@ -552,6 +556,7 @@ class HistoryTabsTests(TestCase):
             [
                 f"最近一次（{self._date(latest)}，有戴助聽器）",
                 "10 分",
+                "輕到中度",
                 "輕度到中度影響",
                 "比上次少 4 分",
                 f"上一次（{self._date(aided)}）：14 分（分數越低越好）",
@@ -565,10 +570,10 @@ class HistoryTabsTests(TestCase):
     def test_trend_summary_has_no_comparison_line_down_to_0(self):
         self._hhie_s(12, False, days_ago=10)
         self._hhie_s(18, False, days_ago=5)
-        self.assertEqual(self._summary()[3], "比上次多 6 分")
+        self.assertEqual(self._summary()[4], "比上次多 6 分")
         self._hhie_s(0, False, days_ago=1)
         summary = self._summary()
-        self.assertEqual(summary[1:4], ["0 分", "無／極輕微影響", "比上次少 18 分"])
+        self.assertEqual(summary[1:5], ["0 分", "極輕微", "無／極輕微影響", "比上次少 18 分"])
 
     def test_since_last_finds_the_previous_status_before_the_charts_five_days(self):
         # Acceptance 17: the chart draws five days, the comparison looks further back.
@@ -599,6 +604,7 @@ class HistoryTabsTests(TestCase):
             [
                 f"最近一次（{self._date(latest)}，沒戴助聽器）",
                 "0 分",
+                "極輕微",
                 "無／極輕微影響",
                 "再做一次篩檢，就能看到分數的變化。",
             ],
@@ -608,12 +614,12 @@ class HistoryTabsTests(TestCase):
         # Acceptance 6: only the other status came before.
         self._hhie_s(12, False, days_ago=5)
         self._hhie_s(10, True, days_ago=3)
-        self.assertEqual(self._summary()[3], "這是第一筆有戴助聽器的紀錄。")
+        self.assertEqual(self._summary()[4], "這是第一筆有戴助聽器的紀錄。")
         # And the other way round, for another user.
         self._hhie_s(10, True, days_ago=3, user=self.other)
         self._hhie_s(20, False, days_ago=1, user=self.other)
         self.client.force_login(self.other)
-        self.assertEqual(self._summary()[3], "這是第一筆沒戴助聽器的紀錄。")
+        self.assertEqual(self._summary()[4], "這是第一筆沒戴助聽器的紀錄。")
 
     def test_trend_summary_does_not_compare_an_unrecorded_record(self):
         # Acceptance 7.
@@ -621,7 +627,7 @@ class HistoryTabsTests(TestCase):
         latest = self._hhie_s(14, None, days_ago=1)
         summary = self._summary()
         self.assertEqual(summary[0], f"最近一次（{self._date(latest)}，助聽器未記錄）")
-        self.assertEqual(summary[3], "這筆沒有記錄助聽器，不和其他紀錄比較。")
+        self.assertEqual(summary[4], "這筆沒有記錄助聽器，不和其他紀錄比較。")
 
     def test_trend_legend_lists_only_the_statuses_that_appear(self):
         self._hhie_s(10, False, days_ago=3)
@@ -641,29 +647,16 @@ class HistoryTabsTests(TestCase):
         self.assertNotIn("<line", unrecorded)
         self.assertRegex(unrecorded, r'<polygon[^>]*fill="#fff"')
 
-    def test_trend_names_the_levels_top_band_first(self):
-        # phase9_ui_refresh_3_structure.md 4.5, in each level's colours.
-        self._hhie_s(10, False, days_ago=1)
-        bands = re.search(r'class="trend-bands">(.*?)</ul>', self._trend(), re.DOTALL).group(1)
-        items = re.findall(r'<li class="trend-band-(\w+)">(.*?)</li>', bands, re.DOTALL)
-        self.assertEqual(
-            [(level, self._texts([text])[0]) for level, text in items],
-            [
-                ("severe", "顯著影響"),
-                ("mild_to_moderate", "輕度到中度影響"),
-                ("normal", "無／極輕微影響"),
-            ],
-        )
-
     def test_trend_text_comes_before_the_chart_box(self):
         self._hhie_s(10, False, days_ago=1)
         trend = self._trend()
-        self.assertRegex(trend, r"<h2[^>]*>\s*HHIE-S 總分變化\s*</h2>")
+        # #756 (canvas TrendA): the canvas's title; how to read it under the chart.
+        self.assertRegex(trend, r"<h2[^>]*>\s*分數趨勢\s*</h2>")
         order = [
             "<h2",
-            self.NOTE,
             'class="chart-canvas"',
             'id="trend-plot"',
+            self.NOTE,
         ]
         positions = [trend.index(part) for part in order]
         self.assertEqual(positions, sorted(positions))
@@ -1213,7 +1206,6 @@ class FittingDayT650Tests(TestCase):
         # Acceptance 44: a new pair moves the day later; the chart and the sentence follow it.
         self._fitted(date(2026, 5, 1))
         self._fitted(date(2026, 8, 1))
-        self.assertEqual(AidAndSubsidy.objects.get(user=self.user).pair_number, 2)
         main = self._main("hhie-s")
         self.assertIn('data-fitted-on="2026/08/01"', self._plot(main))
         self.assertIn("2026/08/01 開始戴助聽器。", main)

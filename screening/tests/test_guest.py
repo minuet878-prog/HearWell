@@ -163,10 +163,11 @@ class AnswerPageTests(GuestTestCase):
                     self.nav_labels(response),
                     list(test_pages.RedesignLayoutTests.LOGGED_OUT_ITEMS),
                 )
-                # The walkthrough's 篩檢 tab: a guest's answering and result sit under it.
+                # The walkthrough's 問卷 tab (篩檢 before #748): a guest's answering and result
+                # sit under it.
                 content = response.content.decode()
                 nav = re.search(r'<nav aria-label="主要導覽".*?</nav>', content, re.S).group(0)
-                self.assertRegex(nav, r'(?s)aria-current="page"[^>]*>.*?<span>篩檢</span>')
+                self.assertRegex(nav, r'(?s)aria-current="page"[^>]*>.*?<span>問卷</span>')
 
     def test_its_questions_are_open_to_a_guest(self):
         # The React answer page reads them from the API.
@@ -184,8 +185,12 @@ class AnswerPageTests(GuestTestCase):
 def shown_on_the_result_page(content):
     """(total, emotional, social, level text) as a result page shows them."""
     total = re.search(r'總分 <span class="result-number">(\d+)</span>', content).group(1)
-    emotional, social = re.search(r"情緒分數：(\d+)　社交分數：(\d+)", content).groups()
-    level = re.search(r'<h2 class="result-block-level"[^>]*>([^<]+)</h2>', content).group(1)
+    # 這個分數怎麼算's 聽力問題影響在哪裡 rows (spec #741, 2026-11-21).
+    emotional, social = (
+        re.search(rf'>{name}</span>.*?"score-impact-points">(\d+) 分', content, re.S).group(1)
+        for name in ("情緒", "社交")
+    )
+    level = re.search(r'<h2 class="result-block-level[^"]*"[^>]*>([^<]+)</h2>', content).group(1)
     return int(total), int(emotional), int(social), level
 
 
@@ -246,11 +251,10 @@ class GuestScoreTests(GuestTestCase):
         data = response.json()
         self.assertEqual(
             set(data),
-            {"questionnaire", "wearing_hearing_aid", "wearing_text", "scores", "level", "html"},
+            {"questionnaire", "wearing_hearing_aid", "scores", "level", "html"},
         )
         self.assertEqual(data["questionnaire"], {"code": hhia_s.CODE, "name": "HHIA-S"})
         self.assertIs(data["wearing_hearing_aid"], True)
-        self.assertEqual(data["wearing_text"], "有戴助聽器")
         self.assertEqual(data["level"]["code"], "normal")
 
     def test_invalid_answers_get_the_signed_in_errors(self):
@@ -343,7 +347,7 @@ class GuestResultPageTests(GuestTestCase):
                 self.assertEqual(response.status_code, 200)
                 self.assertIn("no-store", response["Cache-Control"])
                 self.assertContains(
-                    response, f'<h1 class="h3 mt-2 mb-1">{questionnaire.definition.topic}</h1>'
+                    response, f'<h1 class="bird-title">看看{questionnaire.definition.topic}</h1>'
                 )
                 self.assertContains(response, f'data-code="{questionnaire.code}"')
                 self.assertContains(response, f'data-score-url="{GUEST_SCORE}"')
@@ -367,10 +371,15 @@ class GuestResultPageTests(GuestTestCase):
         html = self.section(scores)
         self.assertIn('總分 <span class="result-number">16</span> 分（滿分 40）', html)
         self.assertIn(">輕度到中度影響</h2>", html)
-        self.assertIn('<div class="score-bar" aria-hidden="true">', html)
-        self.assertIn("情緒分數：12　社交分數：4", html)
+        self.assertIn('<svg class="gauge-arcs" viewBox="0 0 318 164" aria-hidden="true"', html)
+        self.assertEqual(shown_on_the_result_page(html)[1:3], (12, 4))
+        # 這個分數怎麼算 (spec #741, 2026-11-21): the ruler and where the impact is.
+        self.assertIn('<div class="score-ruler" aria-hidden="true">', html)
+        self.assertIn("聽力問題影響在哪裡", html)
         self.assertIn("助聽器：沒戴", html)
-        self.assertIn(hhie_s.ADVICE["mild_to_moderate"], html)
+        # Step 1, and since the owner's acceptance (2026-11-21) not the whole advice.
+        self.assertIn(hhie_s.NEXT_STEPS["mild_to_moderate"][0]["text"], html)
+        self.assertNotIn(hhie_s.ADVICE["mild_to_moderate"], html)
         labels = dict(hhie_s.CHOICES)
         for question, score in zip(
             self.hhie_s.questions.order_by("question_number"), scores, strict=True
@@ -524,21 +533,16 @@ class GuestFallbackTests(GuestTestCase):
 
 
 class ReassuranceLineTests(GuestTestCase):
-    """Spec #611 Q2 (acceptance 62, 66): a guest keeps no draft, so only the first sentence, above
-    the guest line, which stays."""
+    """Spec #611 Q2 (acceptance 62, 66): a guest keeps no draft, so no reassurance (its first
+    sentence went in #755, spec #741 P21), and the guest line stays."""
 
-    FIRST = "這不是考試，沒有對錯。"
-
-    def test_a_guest_has_the_first_sentence_above_the_guest_line(self):
+    def test_a_guest_has_no_reassurance_but_the_guest_line(self):
         for questionnaire in (self.hhie_s, self.hhia_s):
             with self.subTest(code=questionnaire.code):
                 content = self.client.get(reverse("screening", args=[questionnaire.pk]))
                 content = content.content.decode()
-                self.assertIn(f'<p class="answer-reassure">{self.FIRST}</p>', content)
-                meta = content.index('class="answer-meta"')
-                line = content.index(self.FIRST)
-                self.assertLess(meta, line)
-                self.assertLess(line, content.index(GUEST_LINE))
+                self.assertNotIn("answer-reassure", content)
+                self.assertLess(content.index('class="answer-meta"'), content.index(GUEST_LINE))
                 self.assertNotIn("答到一半離開", content)
                 self.assertNotIn("data-draft-line", content)
                 self.assertNotIn("照平常的感覺", content)

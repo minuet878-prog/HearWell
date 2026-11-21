@@ -10,7 +10,6 @@ from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
-from django.utils import timezone
 from django.utils.html import strip_tags
 
 from screening.models import (
@@ -110,12 +109,13 @@ class CopyTests(TestCase):
     def test_login_title_in_chinese(self):
         self.client.logout()
         response = self.client.get(reverse("login"))
-        self.assertContains(response, '<h1 class="h3 mt-4">登入</h1>', html=True)
+        self.assertContains(response, '<h1 class="bird-title">登入</h1>', html=True)
         self.assertNotContains(response, "Welcome")
 
     def test_sign_in_status_in_chinese(self):
         response = self.client.get(reverse("index"))
-        self.assertContains(response, "目前登入：<strong>tester</strong>")
+        # #748: the avatar says it, in Chinese.
+        self.assertContains(response, 'aria-label="帳號設定：tester"')
         self.assertNotContains(response, "Signed in")
         self.client.logout()
         response = self.client.get(reverse("index"))
@@ -207,26 +207,21 @@ class HeaderBrandTests(TestCase):
                 self.client.force_login(consented_user(username="brandtester"))
             with self.subTest(logged_in=logged_in):
                 brand = self._brand(self.client.get(reverse("index")).content.decode())
-                self.assertRegex(brand, r'<span class="site-logo" aria-hidden="true"></span>')
+                self.assertNotIn("site-logo", brand)  # spec #741: the bird is the dialogue's
                 self.assertEqual(re.sub(r"<[^>]+>|\s", "", brand), "聽伴")
                 self.assertIn('<span class="site-wordmark-tint">伴</span>', brand)
 
     def test_header_buttons_are_blue_outlines_on_the_white_header(self):
-        self.client.force_login(consented_user(username="logouttester"))
         content = self.client.get(reverse("questionnaire_list")).content.decode()
-        self.assertRegex(
-            content, r'<button class="btn btn-outline-primary" type="submit">登出</button>'
-        )
-        self.assertRegex(content, r'id="pwa-back" class="btn btn-outline-primary site-back"')
+        self.assertIn('class="btn btn-outline-primary site-login"', content)
         self.assertNotIn("btn-outline-light", content)
 
 
 class RedesignLayoutTests(TestCase):
     NAV = re.compile(r'<nav aria-label="主要導覽".*?</nav>', re.DOTALL)
-    LOGGED_IN_ITEMS = ("首頁", "篩檢", "紀錄", "了解")
-    # The 2026-11-14 walkthrough (mockup 11A): a visitor can answer without an account, so 篩檢
-    # takes 註冊's place, the first three where they are once logged in; 註冊 is on the login page.
-    LOGGED_OUT_ITEMS = ("首頁", "篩檢", "了解", "登入")
+    # #748 (spec #741 P1, P9): 問卷, and the same four tabs signed out; 登入 is in the header.
+    LOGGED_IN_ITEMS = ("首頁", "問卷", "紀錄", "了解")
+    LOGGED_OUT_ITEMS = LOGGED_IN_ITEMS
 
     @classmethod
     def setUpTestData(cls):
@@ -255,8 +250,8 @@ class RedesignLayoutTests(TestCase):
     def _logged_in_pages(self):
         return {
             reverse("index"): "首頁",
-            reverse("questionnaire_list"): "篩檢",
-            reverse("screening", args=[self.questionnaire.id]): "篩檢",
+            reverse("questionnaire_list"): "問卷",
+            reverse("screening", args=[self.questionnaire.id]): "問卷",
             reverse("result", args=[self.submission.id]): "紀錄",
             reverse("my_hearing"): "紀錄",
             reverse("audiogram_list"): "紀錄",
@@ -278,11 +273,16 @@ class RedesignLayoutTests(TestCase):
                 nav = self._nav(response)
                 self.assertEqual(self._nav_labels(nav), list(self.LOGGED_IN_ITEMS))
                 content = response.content.decode()
-                self.assertRegex(content, r"目前登入：\s*<strong>alice_account</strong>")
-                self.assertRegex(
-                    content,
-                    rf'<form[^>]*action="{reverse("logout")}"[^>]*method="post"',
-                )
+                # The answer page's header has 離開 and the topic instead (#755).
+                logout = f'action="{reverse("logout")}"'
+                if url != reverse("screening", args=[self.questionnaire.id]):
+                    self.assertIn('aria-label="帳號設定：alice_account">A</a>', content)
+                    # Spec #741 at acceptance: logout only in the avatar's menu, hidden until
+                    # it is opened.
+                    self.assertEqual(content.count(logout), 1)
+                    self.assertIn(f'<form id="header-logout-form" {logout}', content)
+                else:
+                    self.assertNotIn(logout, content)
 
     def test_logged_out_nav(self):
         for url in (reverse("index"), reverse("login"), reverse("register")):
@@ -302,8 +302,9 @@ class RedesignLayoutTests(TestCase):
                 self.assertEqual(nav.count('aria-current="page"'), 1)
                 self.assertRegex(nav, rf'(?s)aria-current="page"[^>]*>.*?<span[^>]*>{label}</span>')
         self.client.logout()
-        # #527 (mockup #524): the forgot-password page comes from the login page and stays on it.
-        for name, label in (("login", "登入"), ("register", "登入"), ("password_reset", "登入")):
+        # #527 (mockup #524): the forgot-password page comes from the login page and stays on it;
+        # #748: under 紀錄, which asks to log in first.
+        for name, label in (("login", "紀錄"), ("register", "紀錄"), ("password_reset", "紀錄")):
             with self.subTest(url=name):
                 nav = self._nav(self.client.get(reverse(name)))
                 self.assertEqual(nav.count('aria-current="page"'), 1)
@@ -324,7 +325,7 @@ class RedesignLayoutTests(TestCase):
     def test_page_titles(self):
         suffix = "\uff5c聽伴"  # U+FF5C FULLWIDTH VERTICAL LINE, as written in the spec
         expected = {
-            reverse("questionnaire_list"): "選問卷" + suffix,
+            reverse("questionnaire_list"): "問卷" + suffix,
             reverse("screening", args=[self.questionnaire.id]): "HHIE-S 作答" + suffix,
             reverse("result", args=[self.submission.id]): "HHIE-S 結果" + suffix,
             reverse("my_hearing"): "我的紀錄" + suffix,
@@ -411,7 +412,7 @@ class RedesignLayoutTests(TestCase):
     def test_logout_form_has_csrf_token(self):
         # The test client skips CSRF checks, so a missing token would only fail in production.
         self.client.force_login(self.user)
-        content = self.client.get(reverse("index")).content.decode()
+        content = self.client.get(reverse("account_settings")).content.decode()
         form = re.search(rf'<form[^>]*action="{reverse("logout")}".*?</form>', content, re.DOTALL)
         self.assertIn('name="csrfmiddlewaretoken"', form.group(0))
 
@@ -437,9 +438,10 @@ class RedesignLayoutTests(TestCase):
             test_answering.ReactAnswerPageTests.LOGOUT_JS,
             test_answering.ReactAnswerPageTests.ANSWER_JS,
         )
-        # Every page: back button and pull to refresh in the home-screen app
-        # (spec phase10_pwa_back_refresh.md), the header wave's inline check (#138), and the
-        # inline switch that turns on smooth scrolling once the page and fonts have loaded.
+        # Every page: pull to refresh in the home-screen app (spec
+        # phase10_pwa_back_refresh.md), and the inline switch that turns on smooth scrolling once
+        # the page and fonts have loaded. The header wave's inline check (#138) went with the
+        # wave (#748).
         pwa_js = PwaNavTests.SCRIPT.removeprefix("/static/")
         # And the bar with 載入中… while the next page loads (ADR 0027).
         loading_js = PageLoadingTests.SCRIPT.removeprefix("/static/")
@@ -450,7 +452,6 @@ class RedesignLayoutTests(TestCase):
         # On the pages with a switch, the one that skips the slide when the switch is not parsed
         # by the first paint (#334).
         reveal_js = "screening/switch-reveal.js"
-        wave = "<inline>"
         # Every page: the inline mark that holds entrance animations until in view (#341).
         play_in_view = "<inline>"
         smooth = "<inline>"
@@ -470,7 +471,6 @@ class RedesignLayoutTests(TestCase):
                     "screening/frontend/guest-home.js",
                     # Spec #655 (#673): the two doors' press count, for someone not signed in.
                     "screening/frontend/door-count.js",
-                    wave,
                     play_in_view,
                     smooth,
                     "<inline>",
@@ -495,7 +495,6 @@ class RedesignLayoutTests(TestCase):
                         "screening/password-toggle.js",
                         *extra,
                         enter_next,
-                        wave,
                         play_in_view,
                         smooth,
                     ],
@@ -504,11 +503,11 @@ class RedesignLayoutTests(TestCase):
         with self.subTest(url="my_hearing without records"):
             self.assertEqual(
                 scripts(reverse("my_hearing")),
-                [*every, *signed_in, reveal_js, wave, play_in_view, smooth],
+                [*every, *signed_in, reveal_js, play_in_view, smooth],
             )
         self.client.force_login(self.user)
         # The continue notice (#337): its script and, inline, the questionnaires it matches.
-        notice = [test_continue_notice.SCRIPT, wave, play_in_view, smooth, "<inline>"]
+        notice = [test_continue_notice.SCRIPT, play_in_view, smooth, "<inline>"]
         # #459: the 照顧旅程's steps that open and its entrance on a tab's first visit.
         journey_js = "screening/frontend/care-journey.js"
         expected = {
@@ -526,7 +525,6 @@ class RedesignLayoutTests(TestCase):
                 *every,
                 *signed_in,
                 answer_js,
-                wave,
                 play_in_view,
                 smooth,
                 "<inline>",
@@ -534,7 +532,6 @@ class RedesignLayoutTests(TestCase):
             reverse("result", args=[self.submission.id]): [
                 *every,
                 *signed_in,
-                wave,
                 play_in_view,
                 smooth,
             ],
@@ -543,7 +540,6 @@ class RedesignLayoutTests(TestCase):
                 *signed_in,
                 reveal_js,
                 test_history.TrendChartPageTests.CHART_JS,
-                wave,
                 play_in_view,
                 smooth,
             ],
@@ -556,19 +552,19 @@ class RedesignLayoutTests(TestCase):
 class PageFlowTests(TestCase):
     """Spec docs/specs/phase-04/phase4_ui_flow.md, acceptance 1-14a."""
 
-    # Spec #148 (ticket #150): a login button replaced the small hint for people not signed in.
-    HINT = "我已經有帳號，登入"
     # As changed by phase9_ui_refresh_3_structure.md 4.4, phase9_ui_refresh_4a_home.md 4.1,
     # spec #148 (ticket #150, the account step) and #471 (mockup #458 ⑪: the visitor sees the
     # 空狀態首頁, the steps in its dashed box before the start button).
-    # Spec #655 (#673): a visitor's home is the two doors, then what stays below them.
+    # Spec #655 (#673): a visitor's home is the two doors, then what stays below them. Spec #741
+    # (#752, the canvas's ProGuest): the blue hero card starts, two doors under it, no login link.
     HOME_ORDER = (
-        "我想了解自己的聽力",
-        "大約 3 分鐘，不用註冊",
-        "我擔心家人的聽力",
-        "看看可以怎麼幫他",
-        HINT,
-        "了解助聽器選配與補助",
+        "聽力變化常常容易被忽略",
+        "想了解自己的聽力？",
+        "大約 3 分鐘",
+        "不用註冊",
+        "擔心家人的聽力",
+        "想了解助聽器",
+        "加到手機主畫面",
         "內容由台灣執業聽力師設計與審定。",
     )
 
@@ -641,10 +637,11 @@ class PageFlowTests(TestCase):
     # Questionnaire list (4-5)
     def test_questionnaire_list_shows_info(self):
         main = self._main(self.client.get(reverse("questionnaire_list") + "?choose=self"))
+        # The catalogue, below the stacked cards (#753).
+        self.assertLess(main.index("問卷</h1>"), main.index('class="catalogue-group'))
         self._assert_in_order(
-            main,
+            main[main.index('class="catalogue-group') :],
             (
-                "選問卷",
                 "聽力對生活的影響",
                 "65 歲以上（HHIE-S）",
                 "適合 65 歲以上的長輩。",
@@ -662,7 +659,8 @@ class PageFlowTests(TestCase):
         with register(fake_definition("short")):
             main = self._main(self.client.get(reverse("questionnaire_list") + "?choose=self"))
             page = self._main(self.client.get(reverse("screening", args=[self.short.id])))
-        start = main.index("短問卷")
+        # The catalogue's card, below the stacked ones (#753).
+        start = main.index("短問卷", main.index('class="catalogue-group'))
         card = main[start : main.index("</a>", start)]
         self.assertIn("<span>3 題・約 4 分鐘</span>", card)
         self.assertIn("短問卷・共 3 題・", page)
@@ -672,7 +670,10 @@ class PageFlowTests(TestCase):
     def _assert_progress(self, page):
         # Answer page tidy-up: the topic is the title, the code and count one line under it.
         title = r"<h1[^>]*>\s*聽力對生活的影響\s*</h1>"
-        self.assertRegex(page, title + r"\s*<p[^>]*>HHIE-S・共 10 題・大約 3 分鐘</p>")
+        # #749: the title in the bird's bubble, the line right under the bird.
+        self.assertRegex(
+            page, title + r"\s*</div>\s*</div>\s*<p[^>]*>HHIE-S・共 10 題・大約 3 分鐘</p>"
+        )
         for n in (1, 10):
             with self.subTest(question=n):
                 self.assertRegex(page, rf"<legend[^>]*>(\s*<[^>]+>)*\s*第 {n} 題／共 10 題")
@@ -704,33 +705,32 @@ class PageFlowTests(TestCase):
         return self._main(self.client.get(reverse("result", args=[submission.id])))
 
     def test_result_page_order(self):
-        # Ticket #157 (ADR 0010), #461 (the #460 mockup R1): the level block, step 1, the
-        # 建議下一步, then 看完整說明 with the other steps, the folded full advice and score
-        # detail, then the list rows.
+        # Ticket #157 (ADR 0010), #461 (the #460 mockup R1), #750 (canvas ProResult), the owner
+        # 2026-11-21: the level block, 這個分數怎麼算 open (the ruler, where the impact is, step
+        # 1, each level's range; no other step and no full advice since the owner's acceptance
+        # that day), the 建議下一步, 看每一題的回答, then the list rows.
         submission = self._submit([4, 4, 2, 2, 0, 0, 0, 0, 0, 0])  # 12
-        day = timezone.localtime(submission.created_at).strftime("%Y/%m/%d")
         main = self._result(submission)
         steps = hhie_s.NEXT_STEPS["mild_to_moderate"]
         self._assert_in_order(
             main,
             (
-                f"{day} 作答",
+                "看看聽力對生活的影響",
                 '總分 <span class="result-number">12</span> 分（滿分 40）',
                 "輕度到中度影響",
+                "這個分數怎麼算</h2>",
+                "您 12 分",
+                "聽力問題影響在哪裡",
+                '"score-impact-points">12 分',
+                '"score-impact-points">0 分',
                 steps[0]["text"],
+                "<summary>看各級的分數</summary>",
                 "建議您下一步",
-                "<span>看完整說明</span>",
-                steps[1]["text"],
-                steps[2]["text"],
-                "<summary>看完整建議</summary>",
-                get_advice("mild_to_moderate"),
-                "分數細節與作答明細",
-                "情緒分數：12",
-                "社交分數：0",
+                "<span>看每一題的回答</span>",
                 "助聽器：未記錄",
+                "印聽力報告",
                 "分享給家人",
-                "印聽力報告給醫師看",
-                "看我的紀錄與趨勢",
+                "看紀錄與趨勢",
             ),
         )
 
@@ -740,7 +740,7 @@ class PageFlowTests(TestCase):
         self.assertRegex(
             main,
             rf'(?s)<a class="link-card action-card" href="{re.escape(records)}">.*?'
-            r'<span class="link-card-title">看我的紀錄與趨勢</span>',
+            r'<span class="link-card-title">看紀錄與趨勢</span>',
         )
         # 回首頁 went with the closing row (#461): the tab bar has 首頁.
         self.assertNotIn("回首頁", main)
@@ -752,16 +752,15 @@ class PageFlowTests(TestCase):
 
     def test_result_answers_collapsed_in_question_order(self):
         main = self._result(self._submit([4, 2, 0, 4, 2, 0, 4, 2, 0, 4]))
-        # The answers' dropdown, not the full advice's one above it.
+        # The answers' fold, a list row since #750 (看每一題的回答).
         details = re.search(
-            r"<details(\s[^>]*)?>(\s*<summary[^>]*>\s*分數細節與作答明細.*?)</details>",
+            r"<details(\s[^>]*)?>(\s*<summary[^>]*>(?:(?!</summary>).)*看每一題的回答.*?)</details>",
             main,
             re.DOTALL,
         )
         self.assertIsNotNone(details)
         self.assertNotIn("open", details.group(1) or "")
         body = details.group(2)
-        self.assertRegex(body, r"<summary[^>]*>\s*分數細節與作答明細\s*</summary>")
         self._assert_in_order(body, [f"題目內容{i:02d}" for i in range(1, 11)])
         for i, answer in ((1, "常常"), (2, "有時"), (3, "從未"), (10, "常常")):
             with self.subTest(question=i):
@@ -798,8 +797,8 @@ class PageFlowTests(TestCase):
         submission = self._submit([2] * 10, questionnaire=unknown)
         with self.assertLogs("screening.scoring", "ERROR"):
             main = self._result(submission)
-        self.assertIn('總分 <span class="result-number">20</span> 分', main)
-        self.assertNotIn("滿分", main)
+        # The total's own line (the parts of 這個分數怎麼算 have their own full scores).
+        self.assertIn('總分 <span class="result-number">20</span> 分</p>', main)
 
     # IDOR (14) is covered by SubmissionResultAccessTests; one more for the redesigned page.
     def test_result_of_other_user_is_404(self):
@@ -834,7 +833,7 @@ class PwaTests(TestCase):
         "點右上角的「⋮」（三個點）。",
         "點「加到主畫面」或「安裝應用程式」。",
         "再點一次「安裝」或「新增」。",
-        "從主畫面打開時，請用畫面下方的「首頁、篩檢、紀錄、了解」切換頁面。",
+        "從主畫面打開時，請用畫面下方的「首頁、問卷、紀錄、了解」切換頁面。",
     )
 
     @classmethod
@@ -1029,9 +1028,9 @@ class PwaTests(TestCase):
 class PwaNavTests(TestCase):
     """Spec docs/specs/phase-10/phase10_pwa_back_refresh.md.
 
-    Acceptance 3, 10 and 11 (rest: Vitest, e2e)."""
+    Acceptance 10 (rest: Vitest, e2e); its back button is the header's since #748
+    (test_site_header)."""
 
-    BACK = re.compile(r'<button([^>]*id="pwa-back"[^>]*)>(.*?)</button>', re.DOTALL)
     SCRIPT = "/static/screening/frontend/pwa-nav.js"
 
     @classmethod
@@ -1135,25 +1134,6 @@ class PwaNavTests(TestCase):
         self.assertContains(response, "/static/screening/frontend/site.css")
         self._assert_site_stylesheets(response.content.decode())
 
-    # 3
-    def test_home_has_no_back_button(self):
-        for logged_in in (False, True):
-            with self.subTest(logged_in=logged_in):
-                self.assertNotIn('id="pwa-back"', self._get(logged_in, reverse("index")))
-
-    # 10, 11: hidden until the script finds the home-screen app; the visible text is its name.
-    def test_other_pages_have_a_hidden_back_button(self):
-        for logged_in, url in self._pages():
-            with self.subTest(url=url):
-                content = self._get(logged_in, url)
-                header = content[content.index("<header") : content.index("</header>")]
-                attrs, inner = self.BACK.search(header).groups()
-                self.assertIn('type="button"', attrs)
-                self.assertRegex(attrs, r"\shidden(\s|$)")
-                self.assertNotIn("aria-label", attrs)
-                spoken = re.sub(r'<span aria-hidden="true">.*?</span>', "", inner)
-                self.assertEqual(spoken.strip(), "上一頁")
-
     # 9, 9b: pwa-nav.js turns pull to refresh off when <main> has any of these.
     INPUTS = re.compile(r"<(form|input|select|textarea)[\s>]")
 
@@ -1188,10 +1168,9 @@ class PwaNavTests(TestCase):
     def test_audiogram_input_draws_inside_main(self):
         self.assertIn('id="audiogram-app"', self._main(True, reverse("audiogram_new")))
 
-    # 9b: the log-out form sits in the header, outside <main>.
+    # 9b
     def test_my_hearing_has_no_inputs_in_main(self):
         content = self._get(True, reverse("my_hearing"))
-        self.assertIn('id="logout-form"', content)
         main = content[content.index("<main") : content.index("</main>")]
         self.assertNotRegex(main, self.INPUTS)
 
@@ -1218,7 +1197,7 @@ class HomeTests(TestCase):
     # 6, changed in the brand refresh (design picker round 3), and in #471 a plain grey line.
     def test_trust_block(self):
         main = self._main()
-        self.assertIn('<p class="empty-credit">內容由台灣執業聽力師設計與審定。</p>', main)
+        self.assertIn("內容由台灣執業聽力師設計與審定。</p>", main)  # test_home_doors: its icon
         self.assertEqual(main.count("內容由台灣執業"), 1)
         gone_texts = (
             "由聽力師開發",

@@ -98,16 +98,6 @@ def _trend_chart(records, since_last, fitted_on):
             for value, shape, text in TREND_LEGEND
             if value in statuses
         ],
-        # Top band first, as stacked in the chart (phase9_ui_refresh_3_structure.md 4.5).
-        "levels": [
-            {
-                "code": level,
-                "text": text,
-                "color": definition.color(level),
-                "shade": definition.shade(level),
-            }
-            for _, text, level in reversed(definition.thresholds)
-        ],
     }
 
 

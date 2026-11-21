@@ -1,8 +1,9 @@
 {% extends "screening/layout.html" %}
+{% load custom_filters %}
 
 {% block body %}
 {# Spec #633 (#640), the #634 mockup's A: four parts laid out in turn. 誰做的, 內容怎麼查核 and 不能取代檢查 are the owner's words chosen in #635 (#642); 誰做的 says only 執業聽力師, no name or workplace (the grill's Q13), and 不能取代檢查 is the privacy notice's 不是醫療診斷. #}
-<h1 class="h3 mt-2">關於聽伴</h1>
+{% include "screening/bird_dialogue.html" with lead="about"|page_lead title="關於聽伴" %}
 <section class="mt-6" aria-labelledby="about-who">
     <h2 id="about-who" class="h4">誰做的</h2>
     <p>聽伴由一位台灣的執業聽力師設計與審定。在門診常聽到家屬問同樣的問題，所以做了這個網站，讓長輩和家人在家也能先了解聽力。</p>

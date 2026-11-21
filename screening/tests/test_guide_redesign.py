@@ -87,7 +87,7 @@ class MyGuideRedesignTests(TestCase):
     def test_other_stops_open_in_place_to_say_what_they_are(self):
         self.make(PTA_55, PTA_55)
         stops = self.stops()
-        here = stops.pop("before-you-go")
+        here = stops.pop("assessment")
         self.assertNotIn("<details", here)
         for slug, stop in stops.items():
             with self.subTest(slug=slug):
@@ -102,13 +102,14 @@ class MyGuideRedesignTests(TestCase):
 
     def test_the_way_walked_and_the_done_ticks(self):
         self.make(PTA_55, PTA_55)
-        GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
+        AidAndSubsidy.objects.create(user=self.user, certificate="no_subsidy")
         page = self.page()
         stops = re.findall(r'<li class="route-stop([^"]*)" data-stop="([^"]+)"', page)
         walked = [slug for classes, slug in stops if "is-walked" in classes]
-        self.assertEqual(walked, ["audiogram", "before-you-go"])
+        self.assertEqual(walked, ["audiogram", "assessment"])
         self.assertIn('style="--route-here: 2"', page)
-        done = self.stops(page)["before-you-go"]
+        done = self.stops(page)["assessment"]
+
         self.assertRegex(
             done,
             r'<span class="route-number"><svg class="route-check" aria-hidden="true" '

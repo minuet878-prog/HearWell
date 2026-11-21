@@ -9,6 +9,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from screening.questionnaires import hhia_s, hhie_s
+from screening.scoring import get_advice
 from screening.tests import test_guest_save
 from screening.tests.helpers import consented_user, submission_with_answers
 
@@ -59,32 +60,34 @@ class NoAidAdviceResultTests(TestCase):
         content = self.client.get(reverse("result", args=[submission.pk])).content.decode()
         return content[content.index("<main") : content.index("</main>")]
 
-    def test_no_level_links_to_the_guide_and_hhie_s_normal_keeps_the_audiogram(self):
-        # Acceptance 1.
+    def test_no_level_links_to_the_guide(self):
+        # Acceptance 1. Its HHIE-S 無／極輕微影響 記錄聽力圖 was step 2's link, which the owner's
+        # acceptance of spec #741 (2026-11-21) took off result pages with 看完整建議.
         for code in CODES:
             for level in SCORES:
                 with self.subTest(questionnaire=code, level=level):
                     main = self.main(code, level)
                     self.assertNotIn(GUIDE, main)
                     self.assertNotIn(f'href="{reverse("guide")}"', main)
-        main = self.main(hhie_s.CODE, "normal")
-        self.assertIn(f'href="{reverse("audiogram_new")}">記錄聽力圖</a>', main)
+                    self.assertNotIn('class="next-steps-link"', main)
 
     def test_hhie_s_severe_says_to_have_the_hearing_checked(self):
         # Acceptance 2: the advice and step 1, the words around them unchanged.
         main = self.main(hhie_s.CODE, "severe")
         self.assertNotIn("考慮配戴助聽器", main)
-        self.assertIn(f'<p class="result-one-line">{SEVERE_STEP}</p>', main)
-        self.assertIn(f"<p>{SEVERE_ADVICE} {LIMITS}</p>", main)
+        # Step 1 shown in 這個分數怎麼算 (spec #741, 2026-11-21); the level's whole advice is
+        # no longer on result pages since the owner's acceptance that day, only in the report.
+        self.assertIn(f'<p class="score-explain-advice">{SEVERE_STEP}</p>', main)
+        self.assertEqual(get_advice("severe", hhie_s.CODE), f"{SEVERE_ADVICE} {LIMITS}")
+        self.assertNotIn(SEVERE_ADVICE, main)
 
     def test_hhie_s_states_its_limits_after_the_advice_and_at_the_bottom(self):
         # Acceptance 3: the one sentence HHIA-S has, not its line for those who wear aids.
         for level in SCORES:
             with self.subTest(level=level):
                 main = self.main(hhie_s.CODE, level)
-                advice = re.search(
-                    r"<summary>看完整建議</summary>\s*<p>(.*?)</p>", main, re.S
-                ).group(1)
+                # The advice as the report says it; result pages no longer show it (2026-11-21).
+                advice = get_advice(level, hhie_s.CODE)
                 self.assertTrue(advice.endswith(f"。 {LIMITS}"), advice)
                 self.assertNotIn("已配戴助聽器者", advice)
                 note = f'<p class="source-note">{LIMITS}</p>'
@@ -151,7 +154,8 @@ class NoAidAdviceEducationTests(TestCase):
 
     def test_the_home_page_links_to_the_guide_and_the_family_zone(self):
         main = self.main("index")
-        self.assertIn(f'<a href="{reverse("guide")}">了解助聽器選配與補助</a>', main)
+        # Spec #741 (#752): the door 想了解助聽器 took the text link's place.
+        self.assertIn(f'href="{reverse("guide")}" data-door="door_aids"', main)
         # Spec #655 (#673): the door 我擔心家人的聽力 took 我是家人's place.
         self.assertIn(f'href="{reverse("family_guide")}" data-door="door_family"', main)
 

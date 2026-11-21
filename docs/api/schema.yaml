@@ -509,8 +509,6 @@ components:
           $ref: '#/components/schemas/QuestionnaireSummary'
         wearing_hearing_aid:
           type: boolean
-        wearing_text:
-          type: string
         scores:
           $ref: '#/components/schemas/Scores'
         level:
@@ -523,7 +521,6 @@ components:
       - questionnaire
       - scores
       - wearing_hearing_aid
-      - wearing_text
     Interpretation:
       type: object
       properties:
@@ -541,6 +538,7 @@ components:
       - door_self
       - door_family
       - send_opened
+      - door_aids
       type: string
       description: |-
         * `clinic_elder` - clinic_elder
@@ -548,6 +546,7 @@ components:
         * `door_self` - door_self
         * `door_family` - door_family
         * `send_opened` - send_opened
+        * `door_aids` - door_aids
     Level:
       type: object
       properties:
@@ -565,6 +564,8 @@ components:
           type: string
         text:
           type: string
+        short:
+          type: string
         max:
           type: integer
         color:
@@ -576,6 +577,7 @@ components:
       - color
       - max
       - shade
+      - short
       - text
     PaginatedSubmissionList:
       type: object

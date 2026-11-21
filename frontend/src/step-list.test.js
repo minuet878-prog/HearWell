@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { openOneAtATime, playOnceATab } from "./step-list.js";
+import { openOneAtATime, playOnceATab, playOnceOpened } from "./step-list.js";
 
 // Steps on a line: the home page's 照顧旅程 (#459) and my guide's 選配路線 (#467), the owner's
 // pick I1 + I2 on the step interactions page (ADR 0028's 2026-11-12 exception).
@@ -95,4 +95,37 @@ describe("openOneAtATime", () => {
       });
     });
   }
+});
+
+describe("playOnceOpened", () => {
+  // Spec #741 (ADR 0075, 0077): a done step's stamp presses down, and step 7's countdown semicircle
+  // draws, the first time the step opens only; opening it again shows them at rest.
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <ol class="journey-steps">
+        <li><details class="journey-about"><summary>1</summary>
+          <span class="done-stamp play-once-stamp">已完成</span></details></li>
+        <li><details class="journey-about"><summary>7</summary>
+          <svg><path class="countdown-gauge-arc play-once-ring"/></svg></details></li>
+      </ol>`;
+    playOnceOpened(document, ".journey-steps");
+  });
+
+  const stamp = () => document.querySelector(".done-stamp");
+  const arc = () => document.querySelector(".countdown-gauge-arc");
+
+  it("keeps the stamp at rest once it has pressed down", () => {
+    stamp().dispatchEvent(new Event("animationend", { bubbles: true }));
+    expect(stamp().classList.contains("play-once-stamp")).toBe(false);
+  });
+
+  it("keeps the semicircle drawn once it has drawn", () => {
+    arc().dispatchEvent(new Event("animationend", { bubbles: true }));
+    expect(arc().classList.contains("play-once-ring")).toBe(false);
+  });
+
+  it("leaves them to play until then", () => {
+    expect(stamp().classList.contains("play-once-stamp")).toBe(true);
+    expect(arc().classList.contains("play-once-ring")).toBe(true);
+  });
 });

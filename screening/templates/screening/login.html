@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block title %}登入｜聽伴{% endblock %}
 
@@ -11,8 +11,7 @@
 {% block body %}
 {# #471 (mockup #470 D1 B): the title on the white page like every other page; no brand banner and no card over it (the banner was the 2026-10-23 pick). The thick fields stay. #}
 <div class="narrow-form">
-    <h1 class="h3 mt-4">登入</h1>
-    <p class="text-(--color-muted)">歡迎回來。</p>
+    {% include "screening/bird_dialogue.html" with lead="login"|page_lead title="登入" %}
     <div class="auth-form">
         {% if next %}
         <p class="text-black">請先登入，沒有帳號請按註冊。登入後會帶您回到剛剛的頁面。</p>
@@ -41,14 +40,14 @@
                 </div>
             </div>
             <div class="mb-4 auth-field">
-                <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
-                    <label for="id_password">密碼</label>
-                    {# Same 顯示 button as the register page (#151); hidden until the script runs. #}
+                <label for="id_password" class="form-label">密碼</label>
+                <div class="password-row">
+                    <div class="auth-input">
+                        {% include "screening/auth_field_icon.html" with icon="lock" %}
+                        <input {% if form.errors and form.username.value %}autofocus {% endif %}{% if form.errors %}aria-invalid="true" aria-describedby="login_error" {% endif %}class="form-control" id="id_password" type="password" name="password" autocomplete="current-password" required>
+                    </div>
+                    {# Same 顯示 button as the register page (#151); hidden until the script runs. After the box (#741), so Tab reaches the box first. #}
                     <button type="button" class="btn btn-outline-primary password-toggle" aria-controls="id_password" aria-label="顯示密碼" data-label="密碼" hidden>顯示</button>
-                </div>
-                <div class="auth-input">
-                    {% include "screening/auth_field_icon.html" with icon="lock" %}
-                    <input {% if form.errors and form.username.value %}autofocus {% endif %}{% if form.errors %}aria-invalid="true" aria-describedby="login_error" {% endif %}class="form-control" id="id_password" type="password" name="password" autocomplete="current-password" required>
                 </div>
             </div>
             <button class="w-full btn btn-lg btn-primary" type="submit">登入</button>
@@ -56,7 +55,7 @@
         {# Spec #506 (the #539 mockup D3): inside LINE, where Google is blocked, the way out to Safari or Chrome under the form. #}
         {% if open_outside_url %}<div class="mt-6">{% include "screening/line_open_outside.html" %}</div>{% endif %}
         {# #527 (spec #355, mockup #524 D1): the self-service reset, where #360's line asking people to write in was; the mail address moved to the forgot-password page. 1.5rem above, as the link's tap padding reaches up into the gap (#453's 12px). #}
-        <p class="mt-6 mb-0 text-center"><a class="inline-link" href="{% url 'password_reset' %}">忘記密碼？</a></p>
+        <p class="mt-6 mb-0 text-center"><a class="inline-link font-bold" href="{% url 'password_reset' %}">忘記密碼？</a></p>
         <div class="auth-alt">
             <p>還沒有帳號？</p>
             <a href="{% url 'register' %}{% if next %}?next={{ next|urlencode }}{% endif %}" class="w-full btn btn-lg btn-outline-primary">註冊新帳號</a>

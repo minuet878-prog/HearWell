@@ -30,7 +30,7 @@ from screening.tests.helpers import consented_user, submission_with_answers
 from screening.views import family
 
 FAMILY_CARD = "我是家人：怎麼陪伴聽損的家人"
-LEARN_CARD = "家人專區：溝通與陪伴"
+LEARN_CARD = "溝通與陪伴"  # #754: the 了解 row's line, under its title 家人專區
 # The footer's short name since readability batch 1 (the owner's A, 2026-11-16).
 FOOTER_LINK = "家人專區"
 # The zone's home page, since readability batch 2 (the owner's words, 2026-11-16): one sentence
@@ -106,11 +106,11 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
 
     def test_visitor_reaches_the_family_zone_by_its_door(self):
         # Spec #655 (#673, grill Q4): the door 我擔心家人的聽力 takes the place of the text link
-        # 我是家人, first on the page, before the login link.
+        # 我是家人; spec #741 (#752): 擔心家人的聽力, the first door under the blue hero card.
         main = self._home()
         self.assertNotIn("我是家人", main)
         door = main.index(f'href="{self.url}" data-door="door_family"')
-        self.assertLess(door, main.index("我已經有帳號，登入"))
+        self.assertLess(main.index('<section class="hero-card"'), door)
 
     def test_new_user_without_records_has_a_family_link(self):
         # #459: the 空狀態首頁 keeps the way in as a text link after the guide's (mockup #458 A).
@@ -133,7 +133,7 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
         nav = test_pages.RedesignLayoutTests.NAV.search(content).group()
         self.assertEqual(
             re.findall(r"<span>([^<]+)</span>", nav),
-            ["首頁", "篩檢", "紀錄", "了解"],
+            ["首頁", "問卷", "紀錄", "了解"],
         )
 
     # The zone's home page: picked on the comparison page, option A.
@@ -612,9 +612,6 @@ class ReviewedPagesTests(SimpleTestCase):
                 # Spec #492's sentence on a guest's answers, which the owner reviews at acceptance.
                 "{# Spec #492 (ADR 0055): a guest's answers",
                 "<p>未註冊時只計算、不儲存",
-                # Spec #478 named the to-do ticks (consent version 5); the owner reviews the
-                # line at acceptance.
-                "<li>照顧旅程的待辦打勾",
                 # #526's 忘記密碼時 and its lines under 為什麼蒐集, 存放在哪裡 and 會交給誰
                 # (consent version 6); on 2026-11-13 the owner approved the Resend line, the 30
                 # days after deleting the account, and the new highlight, and reviews the rest at
@@ -691,6 +688,13 @@ class ReviewedPagesTests(SimpleTestCase):
                 "<li>刪除帳號後，您的資料不會再算進",
                 "<li>以後如果要拿資料做學術研究",
                 "<li>把大家的篩檢結果和聽力紀錄",
+                # #749 (ADR 0076): the title in the bird's bubble, the same words.
+                "{% load custom_filters %}",
+                '{% include "screening/bird_dialogue.html" with lead="privacy"',
+                # Spec #741's 實作中本人補充: 看過哪些選配指引頁面, my guide's page and step 2's
+                # 查詢醫療院所 kept as views too (the version stays 9); the owner reviews it at
+                # acceptance.
+                "以及您看過哪些選配指引頁面、是否查過醫療院所。",
             ),
             # #471 (the #470 mockup B) folded each part into a row and dropped the 這一頁的段落
             # list; the visible words are the same as main's apart from that list's title.
@@ -698,8 +702,10 @@ class ReviewedPagesTests(SimpleTestCase):
             # 用 Google 登入時, 用 LINE 登入時, 意見回饋 and email 重測提醒 rows. Spec #702 let
             # the health data line change: the page hashes the same on main and after it
             # without that line.
-            # Spec #733 added the tags of the 整體統計 row.
-            "0ade0e274562769048f72d0faa5ecadf53368563f67868fb205e10744e9561e6",
+            # Spec #733 added the tags of the 整體統計 row. #749 took the title's line out (it is
+            # in the allowed lines, the bird's). Spec #741's 實作中本人補充 took the 看過 line out:
+            # without it the page hashes the same before and after the new words.
+            "eb5bb9b7695a206657aea29c276f626e81461a5ab758d0178e21ab91cd06b6ca",
         ),
     )
 

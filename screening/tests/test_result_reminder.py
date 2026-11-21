@@ -57,9 +57,9 @@ class ResultReminderTests(TestCase):
             with self.subTest(code=code):
                 url = self._result_url(code)
                 page, block = self._block(url)
-                # Under 建議您下一步, above 看完整說明.
+                # Under 建議您下一步 and the rows under it (#750, page grill P16).
                 self.assertLess(page.index("建議您下一步"), page.index(BLOCK))
-                self.assertLess(page.index(BLOCK), page.index('<details class="result-details"'))
+                self.assertLess(page.index('<div class="result-list">'), page.index(BLOCK))
                 text = test_layout._text(block)
                 self.assertIn("半年後再做一次", text)
                 self.assertIn("下次建議 2027/05/17。", text)
@@ -69,9 +69,10 @@ class ResultReminderTests(TestCase):
                 self.assertIn(f'action="{reverse("retest_reminder")}"', block)
                 self.assertIn('name="enabled" value="1"', block)
                 self.assertIn(f'name="next" value="{url}"', block)
-                # An outline button: the page's one solid button stays 建議您下一步's (ADR 0043).
+                # An outline button: the page's main button stays 建議您下一步's, white on its
+                # hero card (ADR 0076), and the page has no solid one.
                 self.assertIn('class="btn btn-outline-primary', block)
-                self.assertEqual(page.count("btn-primary"), 1)
+                self.assertEqual(page.count("btn-primary"), 0)
 
                 response = self.client.post(
                     reverse("retest_reminder"), {"enabled": "1", "next": url}

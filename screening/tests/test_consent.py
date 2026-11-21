@@ -17,7 +17,7 @@ from screening.tests.helpers import consented_user, fake_definition, register, s
 
 PASSWORD = "Xk9#mPq2vLw"
 TEMPLATES = Path(__file__).resolve().parents[1] / "templates" / "screening"
-# Readability batch 3 (the owner's C2 A, 2026-11-16): the eight highlights in three groups,
+# Readability batch 3 (the owner's C2 A, 2026-11-16): the highlights in three groups,
 # each word as it was; only their order moved to fit the groups. Not a new consent version
 # (ADR 0061): what people are told did not change. Spec #733 (version 9) added the 整體統計 to
 # the first line.
@@ -26,7 +26,6 @@ HIGHLIGHT_GROUPS = (
         "用來做什麼",
         (
             "只用來算分數、給建議、保存您的紀錄，以及做認不出是誰的整體統計；不拿去賣或做廣告。",
-            "照顧旅程的待辦打勾也會保存，跟其他紀錄一樣可以下載或刪除。",  # version 5 (spec #478)
             "結果只是參考，不是醫療診斷。",
         ),
     ),
@@ -208,7 +207,7 @@ class PrivacyHighlightsTests(TestCase):
             "您自己輸入或從 iPhone 匯入的聽力圖（匯入用的 PDF 讀完就丟，不保存）、"
             "您在選配路線上的回答 有沒有聽覺機能的身心障礙證明 九號表與核定公文的進度 "
             "核定單耳或雙耳與補助等級 助聽器開始配戴的日期與戴哪一耳 有沒有用身障補助買 "
-            "二十五號表完成了沒 以及您看過哪幾個選配指引章節。",
+            "二十五號表完成了沒 以及您看過哪些選配指引頁面、是否查過醫療院所。",
             test_layout._text(collected),
         )
 
@@ -216,6 +215,13 @@ class PrivacyHighlightsTests(TestCase):
         # #354 (owner, 2026-10-25) was a minor fix: the date moved and nobody agreed again.
         # #400 moved it again the same way (test_qa_log).
         self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 10, 25))
+
+    def test_the_date_includes_the_spec_741_wording(self):
+        # Spec #741 (the owner at acceptance, 2026-11-21): the guide pages and the hospital search
+        # read, the to-do ticks gone; a minor fix, so the date moved to the day it goes live and
+        # the version stayed 9.
+        self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 22))
+        self.assertEqual(models.CONSENT_VERSION, 9)
 
     def test_the_new_name_raises_the_version_so_everyone_agrees_again(self):
         # ADR 0039: who is collecting now reads 聽伴, so version 3 (#452 raised it to 4).
@@ -290,8 +296,10 @@ class ConsentPageTests(TestCase):
     def test_title_and_step_on_top_and_the_rest_below(self):
         main = self.client.get(reverse("consent")).content.decode()
         main = main.split('id="main-content"', 1)[1].split("</main>", 1)[0]
-        top, below = main.split("</div>\n</div>", 1)  # the step bar, then its box
-        self.assertIn('<h1 class="h3 mt-4">開始使用之前</h1>', top)
+        # The bird and the step bar, then the rest.
+        cut = main.index("<p>聽伴會保存您的篩檢作答")
+        top, below = main[:cut], main[cut:]
+        self.assertIn('<h1 class="bird-title">開始使用之前</h1>', top)
         self.assertIn("第 2 步／共 2 步：同意隱私權", top)
         self.assertNotIn("auth-hero", main)
         self.assertIn("聽伴會保存您的篩檢作答", below)
@@ -415,11 +423,10 @@ class GateTests(TestCase):
         # is no page to come back to; the page it was on (its next) is, else the home page.
         self.client.force_login(self.user)
         sent = (
-            (reverse("journey_todo_tick"), {"next": "/"}, "/"),
             (reverse("route_answer"), {"next": reverse("guide")}, reverse("guide")),
             (reverse("report_share_create"), {}, reverse("index")),
             (reverse("report_share_cancel", args=[1]), {}, reverse("index")),
-            (reverse("journey_todo_tick"), {"next": "https://evil.example.com"}, reverse("index")),
+            (reverse("route_answer"), {"next": "https://evil.example.com"}, reverse("index")),
         )
         for url, data, back in sent:
             with self.subTest(url=url, data=data):
@@ -427,10 +434,9 @@ class GateTests(TestCase):
                     self.client.post(url, data), _consent_url(back), fetch_redirect_response=False
                 )
 
-    def test_agreeing_after_a_tick_lands_on_the_home_page(self):
+    def test_agreeing_after_a_form_sent_lands_on_its_page(self):
         self.client.force_login(self.user)
-        data = {"todo": "form-9-book", "ticked": "1", "next": "/", "round": "0"}
-        consent_page = self.client.post(reverse("journey_todo_tick"), data, follow=True)
+        consent_page = self.client.post(reverse("route_answer"), {"next": "/"}, follow=True)
         agreed = self.client.post(
             reverse("consent"), {"agree": "", "next": consent_page.context["next"]}, follow=True
         )
@@ -560,9 +566,8 @@ class PrivacyPageT361Tests(TestCase):
             self.assertNotIn(vague, self.main)
 
     def test_route_answers_are_a_second_level_list_in_the_same_words(self):
-        # Spec #478 put the to-do ticks between it and 同意紀錄.
         item = re.search(
-            r"<li>(健康資料：.*?)</li>\s*<li>照顧旅程的待辦打勾", self.main, re.S
+            r"<li>(健康資料：.*?)</li>\s*<li>您有沒有打開 email 重測提醒", self.main, re.S
         ).group(1)
         inner = re.search(r"<ul>(.*?)</ul>", item, re.S).group(1)
         self.assertEqual(
@@ -582,7 +587,7 @@ class PrivacyPageT361Tests(TestCase):
             "健康資料：每一次篩檢問卷的作答和分數、作答時有沒有戴助聽器、"
             # Whitespace is stripped above, the spaces around iPhone and PDF too.
             "您自己輸入或從iPhone匯入的聽力圖（匯入用的PDF讀完就丟，不保存）、"
-            "您在選配路線上的回答以及您看過哪幾個選配指引章節。",
+            "您在選配路線上的回答以及您看過哪些選配指引頁面、是否查過醫療院所。",
         )
 
     def test_every_section_heading_is_the_same_level(self):
@@ -656,7 +661,7 @@ class VpsPrivacyTests(TestCase):
         self.assertEqual(services[:2], ["Vultr", "Sentry"])
 
     def test_it_shows_version_4_and_the_new_date(self):
-        # Spec #478 raised it to 5 since, with its own date (test_journey_todos).
+        # Spec #478 raised it to 5 since, with its own date.
         self.assertGreaterEqual(models.CONSENT_VERSION, 4)
         self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 12))
         version, updated_on = models.CONSENT_VERSION, f"{models.PRIVACY_UPDATED_ON:%Y/%m/%d}"

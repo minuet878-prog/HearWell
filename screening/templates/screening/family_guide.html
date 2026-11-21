@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 
 {% block extra_head %}
@@ -11,7 +11,7 @@
 {% block body %}
 {# Content reviewed by the audiologist on 2026-10-17 (spec appendix A); change it only after review. #}
 <article class="family-guide wrap-anywhere">
-<h1 class="h3 mt-4">家人專區</h1>
+{% include "screening/bird_dialogue.html" with lead="family_guide"|page_lead title="家人專區" %}
 {# Readability batch 2 (the owner's words, 2026-11-16): one sentence over the list; the talking tips' own words stay on family_talk. #}
 <p>想幫聽力不好的家人，可以從這裡開始。</p>
 
@@ -76,8 +76,9 @@
     </ul>
 </nav>
 
-{# The page's one solid button. #361: where there is no share sheet (a computer), 複製網址 shows in its place; without JavaScript neither does, and the address below is there to copy. #}
+{# The page's one solid button. #361: where there is no share sheet (a computer), 複製網址 shows in its place; without JavaScript neither does, and #741 (owner, 2026-11-21): only then is the address written out, to copy by hand. #}
 <p class="mt-4 mb-0"><button id="share-button" type="button" class="btn btn-primary btn-lg w-full" hidden>傳給家人</button><button id="copy-link" type="button" class="btn btn-primary btn-lg w-full" data-url="{{ family_url }}" data-without-share-sheet hidden>複製網址</button></p>
+<noscript><p class="mt-4 mb-0 wrap-anywhere">網址：<span class="font-bold">{{ family_url }}</span></p></noscript>
 <p id="copy-status" class="visually-hidden" aria-live="polite"></p>
 
 {# Never folded (the #468 mockup). #}
@@ -94,8 +95,6 @@
 </section>
 
 <p class="mt-6">這些是一般性的建議，不能取代醫師或聽力師的診斷。有任何疑問，請和您的醫師或聽力師討論。</p>
-
-<p>可以複製這個網址傳給家人：<span class="wrap-anywhere font-bold">{{ family_url }}</span></p>
 
 <details class="result-details family-sources">
     {% include "screening/result_details_summary.html" with title="出處" %}

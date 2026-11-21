@@ -1,6 +1,7 @@
 import base64
 import json
 import re
+from datetime import datetime
 from unittest.mock import patch
 from urllib.parse import parse_qsl, urlsplit
 
@@ -10,7 +11,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening import models, questionnaires
-from screening.questionnaires import hhie_s
+from screening.questionnaires import hhie_s, ioi_ha
 from screening.questionnaires.definition import Definition
 from screening.questionnaires.results import GradedResult
 
@@ -32,6 +33,18 @@ def consented_user(**kwargs):
     user = models.User.objects.create_user(**kwargs, confirmed_email=kwargs.get("email", ""))
     user.give_consent()
     return user
+
+
+def took_ioi_ha(user, on):
+    """An IOI-HA taken at noon on the day on: from the fitting date on, it is the first IOI-HA
+    配戴之後 needs to be done (ADR 0074)."""
+    questionnaire, _ = models.Questionnaire.objects.get_or_create(
+        code=ioi_ha.CODE, defaults={"questionnaire_name": "IOI-HA"}
+    )
+    submission = models.Submission.objects.create(user=user, questionnaire=questionnaire)
+    moment = timezone.make_aware(datetime(on.year, on.month, on.day, 12))
+    models.Submission.objects.filter(pk=submission.pk).update(created_at=moment)
+    return submission
 
 
 def fake_definition(code, **overrides):
@@ -102,6 +115,23 @@ def step_bar(response):
         return None
     segments = re.findall(r'<span class="step-progress-segment( is-done)?"></span>', bar.group(1))
     return segments.count(" is-done"), len(segments)
+
+
+# What the Tab key stops on, in the page's HTML.
+FOCUSABLE = re.compile(r'<(?:input(?![^>]*type="hidden")|button|a|select|textarea)[\s>]')
+
+
+def assert_toggle_follows_its_input(test, response, input_id):
+    """The 顯示 button for input_id is the next thing Tab reaches after that box (#741)."""
+    content = response.content.decode()
+    box = re.search(rf'<input[^>]*id="{input_id}"[^>]*>', content)
+    toggle = re.search(
+        rf'<button[^>]*class="[^"]*password-toggle[^>]*aria-controls="{input_id}"', content
+    )
+    test.assertIsNotNone(box, input_id)
+    test.assertIsNotNone(toggle, input_id)
+    test.assertLess(box.end(), toggle.start(), f"the 顯示 button comes before {input_id}")
+    test.assertIsNone(FOCUSABLE.search(content, box.end(), toggle.start()), input_id)
 
 
 # Spec #505: Google sign-in. Tests turn Google on with these settings; test_settings leaves it off.

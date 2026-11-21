@@ -11,6 +11,12 @@ export const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 // (sessionStorage) with the receipt numbers kept then; the save page takes it once. An address
 // with ?from=card cannot make one, so without it the save page asks.
 export const SAVE_INTENT = "hearwell:guest-save-intent";
+// The owner, 2026-11-21: right after the answers are sent the result page's bird says 做完了，
+// 辛苦了。, as a signed-in one's does; opened again later, 這是您這一次的結果。. The server cannot
+// tell for a guest, so the answer page leaves this tab a one-shot mark, the result's receipt
+// number, which the result page takes once it has shown that result. Without it (blocked storage,
+// another tab, opened again) the page keeps the words true either way: 這是您這一次的結果。.
+export const JUST_FINISHED = "hearwell:guest-just-finished";
 const LOAD_FAILED = "結果載入失敗，請重新整理這一頁";
 
 function attempt(action) {
@@ -46,6 +52,19 @@ export function saveGuestResult(result) {
     localStorage.setItem(GUEST_PREFIX + result.code, JSON.stringify(result));
     return true;
   }) ?? false;
+}
+
+// The answer page, as it opens the result it just kept.
+export function rememberJustFinished(key) {
+  attempt(() => sessionStorage.setItem(JUST_FINISHED, key));
+}
+
+// True once for the result with this receipt number: the mark goes as it is read.
+function takeJustFinished(key) {
+  const mark = attempt(() => sessionStorage.getItem(JUST_FINISHED));
+  if (mark !== key) return false;
+  attempt(() => sessionStorage.removeItem(JUST_FINISHED));
+  return true;
 }
 
 // Implementation decision I4: asked before a guest starts answering. Writes and deletes a check
@@ -184,14 +203,14 @@ export async function showGuestResult({
   }
   const body = response ? await response.json().catch(() => ({})) : {};
   if (response?.ok) {
-    root.querySelector("[data-guest-date]").textContent = day(result.finishedAt);
-    root.querySelector("[data-guest-wearing]").textContent = body.wearing_text;
     root.querySelector("[data-guest-section]").innerHTML = body.html;
     // The save card's days left (save_card.html): only this browser knows when it was finished.
     const days = root.querySelector("[data-guest-days-left]");
     if (days) days.textContent = String(daysLeft(result.finishedAt, now));
     offerClearing(root, navigate, result.key);
     rememberSaveCardPress(root, clock);
+    const { justFinishedLead, reopenedLead } = root.dataset;
+    root.querySelector(".bird-lead").textContent = takeJustFinished(result.key) ? justFinishedLead : reopenedLead;
     root.querySelector("[data-guest-shown]").hidden = false;
     error.textContent = "";
   } else if (response?.status === 400) {
@@ -256,9 +275,10 @@ export async function saveGuestResults({
   }
   if (failed.length === 0) {
     // The feedback batch (the owner's F3): the page stays and the saving line gives way to the
-    // box with what comes next; the title above it goes, the box's own saying it is saved.
+    // box with what comes next; the bird saying the title above it goes, the box's own bird
+    // saying it is saved (#749).
     saving.hidden = true;
-    root.querySelector("[data-guest-title]").hidden = true;
+    root.querySelector("[data-guest-title]").closest(".bird-dialogue").hidden = true;
     root.querySelector("[data-guest-done]").hidden = false;
     root.querySelector("[data-guest-done-title]").focus();
     return;

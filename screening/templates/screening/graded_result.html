@@ -1,31 +1,44 @@
-{# The graded result page's result section, under its header (#494): the result, its advice and its answers. A result from_answers() (a guest's, spec #492) is drawn by it alone: without a record it has no 照顧旅程 and no records, report or sharing. #461 (the #460 mockup R1): the first screen is the level block, one sentence and the 建議下一步; the rest waits behind 看完整說明, word for word. No reveal motion (ADR 0006). #}
+{# The graded result page's result section, under its header (#494). A result from_answers() (a guest's, spec #492) is drawn by it alone: without a record it has no 照顧旅程 and no records, report or sharing. #750 (spec #741 acceptance 48, canvas ProResult): the score block (the gauge, the score, the level's short name, the two bars against last time), the blue 建議下一步 card, then the rows; the score shows at once and the gauge draws once in view (ADR 0077). Since 2026-11-21 (the owner) 這個分數怎麼算 is open between the block and the 建議下一步 (score_explain.html), not a row. #}
 {% with result=submission.result %}
 <div class="result-banner result-banner-{{ result.level.color }}">
+    {% if gauge %}
+    <div class="result-gauge-row">
+        {% include "screening/semicircle_gauge.html" %}
+        {# Read: the score with the full score, then the level's full name. On screen: the score in the gauge's bowl, whose end says the full score, and the level's short name large (page grill P11). #}
+        <div class="result-gauge-words">
+            <p id="result-score" class="visually-hidden">總分 <span class="result-number">{{ result.total }}</span> 分{% if max_score is not None %}（滿分 {{ max_score }}）{% endif %}</p>
+            {# Its words apart, spaced by the stylesheet: on a page the one 「總分 N 分」 is the read one. The score and 分 alone, as the canvas's, to fit the gauge's bowl (the owner, 2026-11-21: 置中). #}
+            <p class="result-score gauge-score-line" aria-hidden="true"><span class="gauge-score">{{ result.total }}</span><span>分</span></p>
+            <p class="result-level-short" aria-hidden="true">{{ result.level.short }}</p>
+            <h2 class="result-block-level visually-hidden" aria-describedby="result-score">{{ result.level.text }}</h2>
+        </div>
+    </div>
+    {% else %}
+    {# 「無法判讀」: no gauge, its one name. #}
     <p id="result-score" class="result-score">總分 <span class="result-number">{{ result.total }}</span> 分{% if max_score is not None %}（滿分 {{ max_score }}）{% endif %}</p>
     <h2 class="result-block-level" aria-describedby="result-score">{{ result.level.text }}</h2>
-    {# Readability batch 3 (the owner's B6 A): where this score sits, on white under the level; out of 看完整說明, where the text-heavy pages tidy-up had put it. #}
-    {% if score_bar %}{% include "screening/score_bar.html" with bar=score_bar %}{% endif %}
-    {% if result.since_last %}
-    {# #646 (spec #644 H2, the #645 mockup's A): the label first, the sentence under it. #}
+    {% endif %}
+    {% with since=result.since_last %}
+    {% if since %}
+    {# #646's label, the line against last time for screen readers, which skip the bars drawing it, and a changed level; then the bars. #}
     <div class="result-since-last">
-        <p class="change-label">{{ result.since_last.label }}</p>
-        <p>{{ result.since_last.text }}</p>
-        {% if result.since_last.level_change %}<p>{{ result.since_last.level_change }}</p>{% endif %}
+        <p class="change-label">{{ since.label }}</p>
+        <p class="visually-hidden">{{ since.text }}</p>
+        {% if since.level_change %}<p>{{ since.level_change }}</p>{% endif %}
+        <div class="result-bars" aria-hidden="true">
+            <span>上一次</span><span class="result-bar"><span class="result-bar-fill result-bar-fill-last" style="width: {{ since.previous_width|floatformat:2 }}%"></span></span><span class="result-bar-value">{{ since.previous_total }} 分</span>
+            <span>這一次</span><span class="result-bar"><span class="result-bar-fill" style="width: {{ since.width|floatformat:2 }}%"></span></span><span class="result-bar-value">{{ result.total }} 分</span>
+        </div>
     </div>
     {% endif %}
+    {% endwith %}
 </div>
 {% endwith %}
-{% with first=next_steps.0 %}
-{% if first is not advice_step %}
-{# The reviewed step 1, with its links where it has them; 「無法判讀」 has no steps, so its advice is the sentence. #}
-<p class="result-one-line">{% if first %}{{ first.text }}{% else %}{{ advice }}{% endif %}</p>
-{% if first.action_label %}
-<p class="next-steps-links">
-    <a class="next-steps-link" href="{% url first.action_url %}">{{ first.action_label }}</a>
-</p>
+{% if support_message %}
+<p class="mt-4 mb-0">{{ support_message }}</p>
 {% endif %}
-{% endif %}
-{% endwith %}
+{% include "screening/score_explain.html" %}
+{% if submission.result.is_guest %}
 {% if advice_step %}
 {# The 2026-11-14 walkthrough (mockup 3A): a guest's advice to have the hearing checked, before the save card; only the way to where to have it checked (#694 mockup A, the answer 照顧旅程 step 2's 還沒 opens), as the step's own links need an account. #}
 <div class="result-advice result-advice-{{ submission.result.level.color }}">
@@ -33,51 +46,26 @@
     <p class="next-steps-links mb-0"><a class="next-steps-link" href="{% url 'qa_answer' where_to_test %}">去哪裡做聽力檢查</a></p>
 </div>
 {% endif %}
-{% if support_message %}
-<p class="mt-4 mb-0">{{ support_message }}</p>
+{% include "screening/save_card.html" %}
+{% else %}
+{% include "screening/result_next.html" %}
 {% endif %}
-{% if submission.result.is_guest %}{% include "screening/save_card.html" %}{% else %}{% include "screening/result_next.html" %}{% endif %}
-{% if retest_reminder %}{% include "screening/result_reminder.html" %}{% endif %}
 <div class="result-list">
 <details class="result-details">
-    {% include "screening/result_details_summary.html" %}
+    {% include "screening/result_details_summary.html" with icon="list" title="看每一題的回答" %}
     <div class="result-details-body">
-        {% for step in fold_steps %}
-        <p>{{ step.text }}</p>
-        {% if step.action_label %}
-        <p class="next-steps-links">
-            <a class="next-steps-link" href="{% url step.action_url %}">{{ step.action_label }}</a>
-        </p>
-        {% endif %}
-        {% endfor %}
-        {% if next_steps %}
-        <details class="dropdown-line">
-            <summary>看完整建議</summary>
-            <p>{{ advice }}</p>
-        </details>
-        {% endif %}
-        <details class="dropdown-line">
-            <summary>分數細節與作答明細</summary>
-            {% with subscores=submission.result.subscores %}
-            {% if subscores %}
-            <p class="mb-1">情緒分數：{{ subscores.emotional }}　社交分數：{{ subscores.social }}</p>
-            {% endif %}
-            <p class="text-black mb-1">助聽器：{{ submission.get_wearing_hearing_aid_display }}</p>
-            {% if subscores %}
-            <p class="text-black">情緒與社交分項僅供參考，目前沒有正式的解讀標準，請以總分分級為主。</p>
-            {% endif %}
-            {% endwith %}
-            <ol>
-                {% for answer in answers %}
-                <li>{{ answer.question.question_text }}——{{ answer.get_answer_display }}</li>
-                {% endfor %}
-            </ol>
-        </details>
+        <p class="text-black mb-1">助聽器：{{ submission.get_wearing_hearing_aid_display }}</p>
+        <ol>
+            {% for answer in answers %}
+            <li>{{ answer.question.question_text }}——{{ answer.get_answer_display }}</li>
+            {% endfor %}
+        </ol>
     </div>
 </details>
 {% if submission.result.is_guest %}{% include "screening/guest_clear.html" %}{% else %}{% include "screening/result_rows.html" %}{% endif %}
 </div>
-{# HHIA-S's limits stay outside the fold, as the owner chose (text-heavy pages tidy-up). #}
+{% if retest_reminder %}{% include "screening/result_reminder.html" %}{% endif %}
+{# HHIA-S's limits on their own, as the owner chose (text-heavy pages tidy-up); since 2026-11-21 the level's full advice that also says them is not on this page. #}
 {% if submission.questionnaire.definition.result_note %}
 <p class="source-note">{{ submission.questionnaire.definition.result_note }}</p>
 {% endif %}

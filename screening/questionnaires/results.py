@@ -11,6 +11,7 @@ methods break an import cycle: the definitions import this module, and scoring a
 import the definitions.
 """
 
+import math
 from decimal import ROUND_HALF_UP, Decimal
 from functools import cached_property
 
@@ -42,7 +43,6 @@ class Result:
     # line as its row; None: the date alone.
     card_template = None
     page_template = None
-    page_shows_wearing = True  # the result page's header says how the hearing aids were worn
 
     def __init__(self, submission, answers=None):
         self.submission = submission
@@ -125,6 +125,13 @@ class GradedResult(Result):
         return classify(self.total, self.submission.questionnaire.code)
 
     @cached_property
+    def gauge(self):
+        """The semicircle gauge's drawing (#750): the result page's, and since #751 the home
+        page's 上次結果."""
+        definition = self.submission.questionnaire.definition
+        return semicircle_gauge(definition, self.total, self.level["level"])
+
+    @cached_property
     def since_last(self):
         # Against this questionnaire's record just before this one worn the same way, even when
         # a newer one exists (spec #453 acceptance 26; the owner on #461: worn against not worn
@@ -163,29 +170,66 @@ class GradedResult(Result):
         previous_total = previous.result.total
         changed = level["level"] != previous_level["level"]
         difference = self.total - previous_total
+        ceiling = self.gauge["ceiling"]  # the full score; both levels are graded here
         return {
             "label": change_label_text(difference),
             "text": result_since_last_text(day, previous_total, difference),
             "level_change": (
                 level_change_text(previous_level["text"], level["text"]) if changed else None
             ),
+            # #750 (canvas ProResult): the two bars, each total's share of the full score.
+            "previous_total": previous_total,
+            "previous_width": previous_total / ceiling * 100,
+            "width": self.total / ceiling * 100,
         }
+
+    def _impact_parts(self, definition, answers):
+        """這個分數怎麼算's 聽力問題影響在哪裡 (spec #741, 2026-11-21): 情緒 and 社交, each its
+        subscore against its items' full score and its answers; the higher open, 情緒 on a tie.
+        None without subscores (THI)."""
+        subscores = self.subscores
+        if subscores is None:
+            return None
+        parts = []
+        for category, name in (("emotional", "情緒"), ("social", "社交")):
+            items = [answer for answer in answers if answer.question.category == category]
+            ceiling = sum(
+                max(
+                    score
+                    for score, _label in definition.choices(answer.question.question_number)
+                    if isinstance(score, int)
+                )
+                for answer in items
+            )
+            score = subscores[category]
+            parts.append(
+                {
+                    "name": name,
+                    "score": score,
+                    "ceiling": ceiling,
+                    "width": score / ceiling * 100 if ceiling else 0,
+                    "answers": items,
+                }
+            )
+        emotional, social = parts
+        (emotional if emotional["score"] >= social["score"] else social)["open"] = True
+        return parts
 
     def page_context(self):
         from screening.care_journey import WHERE_TO_TEST
         from screening.models import Questionnaire
         from screening.questionnaires import hhia_s, hhie_s, ssq12_tw
-        from screening.scoring import get_advice, max_score
+        from screening.scoring import SCORE_SUM_TEXT, get_advice, max_score
 
         submission = self.submission
         definition = submission.questionnaire.definition
         code = submission.questionnaire.code
-        answers = self._answers()
+        answers = list(self._answers())
         level = self.level["level"]
         next_steps = definition.next_steps.get(level, ())
         # The 2026-11-14 walkthrough (mockup 3A): a guest sees the step that says to have the
-        # hearing checked outside the fold, in place of the 照顧旅程 card's advice. It is the
-        # reviewed step marked HEARING_CHECK; the fold then leaves it out.
+        # hearing checked in its own box, in place of the 照顧旅程 card's advice. It is the
+        # reviewed step marked HEARING_CHECK.
         advice_step = (
             next((step for step in next_steps if step.get("hearing_check")), None)
             if self.is_guest
@@ -195,16 +239,25 @@ class GradedResult(Result):
         return {
             "answers": answers,
             "max_score": max_score(code),
-            "score_bar": score_bar(definition, self.total, level),
+            "gauge": self.gauge,
             "next_steps": next_steps,
             "advice_step": advice_step,
             "where_to_test": WHERE_TO_TEST,
-            "fold_steps": [step for step in next_steps[1:] if step is not advice_step],
+            # 這個分數怎麼算, open (spec #741, 2026-11-21): the ruler and the reviewed first step;
+            # since the owner's acceptance that day, no other step; a guest's step to have the
+            # hearing checked stays in its own box.
+            "ruler": score_ruler(definition, self.total, level),
+            "impact_parts": self._impact_parts(definition, answers),
+            "first_step": (
+                next_steps[0] if next_steps and next_steps[0] is not advice_step else None
+            ),
+            "score_sum_text": SCORE_SUM_TEXT,
+            "level_ranges": level_ranges(definition),
             # A guest's save card (spec #492); "" for a level it has no sentence for.
             "save_reason": definition.save_reasons.get(level, ""),
             "advice": get_advice(level, code),
             "support_message": definition.support(
-                {answer.question.question_number: answer.score for answer in answers}
+                {answer.question.question_number: answer.score for answer in answers}, level
             ),
             "optional_ssq12": (
                 Questionnaire.objects.filter(code=ssq12_tw.CODE).first()
@@ -217,31 +270,90 @@ class GradedResult(Result):
         }
 
 
-def score_bar(definition, score, level):
-    # Ticket #158: a bar segmented by the thresholds, with a marker at this score's position.
-    # "無法判讀" (no thresholds, or an out-of-range score) draws no bar.
+def level_ranges(definition):
+    # 這個分數怎麼算 (#750): each level's lowest and highest total, by its full name.
+    ranges = []
+    low = 0
+    for upper, text, _level in definition.thresholds:
+        ranges.append({"low": low, "high": upper, "text": text})
+        low = upper + 1
+    return ranges
+
+
+def score_ruler(definition, score, level):
+    """這個分數怎麼算's ruler (spec #741, 2026-11-21): each level a band as wide as its share of
+    the full score, as the gauge's arcs, its short name under it, and a dot fixed at the score.
+    "無法判讀" draws none."""
+    from screening.scoring import short_level_name
+
     thresholds = definition.thresholds
     if level == "unknown" or not thresholds:
         return None
     ceiling = thresholds[-1][0]
-    segments = []
+    bands = []
     start = 0
-    for upper, _text, segment_level in thresholds:
-        segments.append(
+    for upper, text, band_level in thresholds:
+        bands.append(
             {
-                "level": segment_level,
-                "color": definition.color(segment_level),
-                "shade": definition.shade(segment_level),
                 "width": (upper - start) / ceiling * 100,
+                "short": short_level_name(definition, band_level, text),
+                "color": definition.color(band_level),
+                "shade": definition.shade(band_level),
+                "current": band_level == level,
             }
         )
         start = upper
-    position = max(0, min(100, score / ceiling * 100))
-    return {
-        "segments": segments,
-        "position": position,
-        "ceiling": ceiling,
-    }
+    dot = max(0, min(1, score / ceiling)) * 100
+    return {"bands": bands, "dot": dot, "rest": 100 - dot, "ceiling": ceiling}
+
+
+# The semicircle gauge's drawing (semicircle_gauge.html, canvas ProResult, and the countdown's
+# countdown_gauge.html beside it): its centre and radius in the SVG's own units, and the gap left
+# at each side of a level's border, as a share of the arc.
+GAUGE_CENTRE = (159, 150)
+GAUGE_RADIUS = 124
+GAUGE_GAP = 0.012
+
+
+def _gauge_point(share):
+    # The point share of the way along the arc, from its left end over the top to its right end.
+    angle = math.pi * (1 - share)
+    centre_x, centre_y = GAUGE_CENTRE
+    x = centre_x + GAUGE_RADIUS * math.cos(angle)
+    y = centre_y - GAUGE_RADIUS * math.sin(angle)
+    return round(x, 1), round(y, 1)
+
+
+def gauge_arc(start, end):
+    """The gauge's arc from start to end, shares of the way from its left end to its right."""
+    begin = _gauge_point(start)
+    finish = _gauge_point(end)
+    return f"M{begin[0]} {begin[1]}A{GAUGE_RADIUS} {GAUGE_RADIUS} 0 0 1 {finish[0]} {finish[1]}"
+
+
+def semicircle_gauge(definition, score, level):
+    """#750 (canvas ProResult): one arc for each level, the score's level drawn thick, and a knob
+    where the score is. "無法判讀" (no thresholds, or an out-of-range score) draws none."""
+    thresholds = definition.thresholds
+    if level == "unknown" or not thresholds:
+        return None
+    ceiling = thresholds[-1][0]
+    arcs = []
+    start = 0
+    for upper, _text, arc_level in thresholds:
+        begin = start / ceiling + (GAUGE_GAP if start else 0)
+        end = upper / ceiling - (GAUGE_GAP if upper < ceiling else 0)
+        arcs.append(
+            {
+                "path": gauge_arc(begin, end),
+                "color": definition.color(arc_level),
+                "shade": definition.shade(arc_level),
+                "current": arc_level == level,
+            }
+        )
+        start = upper
+    knob = _gauge_point(max(0, min(1, score / ceiling)))
+    return {"arcs": arcs, "knob": knob, "ceiling": ceiling}
 
 
 class AverageResult(Result):
@@ -295,7 +407,6 @@ class NormResult(Result):
 
     row_template = "screening/record_rows/norm.html"
     page_template = "screening/result_ioi_ha.html"
-    page_shows_wearing = False  # not asked: IOI-HA is answered about the hearing aids worn
 
     @property
     def norm_group(self):
@@ -322,7 +433,33 @@ class NormResult(Result):
             "below_text": NORM_VERSUS_TEXT["below"],
             "others": [item for item in items if item not in below],
             "scale_ends": SCALE_ENDS,
+            "since_last": self._since_last(),
         }
+
+    def _since_last(self):
+        # #746 (spec #741 acceptance 25, grill Q17): against this person's IOI-HA just before
+        # this one, each item better, worse or the same; no totals (spec #741's 實作中本人補充).
+        # Every item is best at 5 (ADR 0074). None for the first.
+        from screening.models import Submission
+        from screening.scoring import IOI_HA_ITEM_CHANGE, IOI_HA_ITEM_NAMES
+
+        submission = self.submission
+        previous = (
+            Submission.objects.filter(
+                user_id=submission.user_id, questionnaire_id=submission.questionnaire_id
+            )
+            .earlier_than(submission)
+            .first()
+        )
+        if previous is None:
+            return None
+        before = dict(previous.answers.values_list("question__question_number", "score"))
+        items = []
+        for answer in self._answers():
+            number = answer.question.question_number
+            change = (answer.score > before[number]) - (answer.score < before[number])
+            items.append({"name": IOI_HA_ITEM_NAMES[number], "change": IOI_HA_ITEM_CHANGE[change]})
+        return {"items": items}
 
 
 def _ioi_ha_items(submission, answers, texts):
@@ -387,7 +524,6 @@ class SubscaleResult(Result):
     row_template = "screening/record_rows/subscale.html"
     card_template = "screening/summaries/subscale.html"
     page_template = "screening/sadl_result.html"
-    page_shows_wearing = False  # not asked: always worn (always_aided)
     not_applicable_choice = "不適用"
 
     @cached_property

@@ -12,6 +12,7 @@
     <p class="result-summary-lead">需要一筆完整有效的未配戴 HHIA-S／HHIE-S 紀錄，才能跟常模比較。</p>
     {% endif %}
 </div>
+{% if since_last %}{% include "screening/ioi_ha_since_last.html" %}{% endif %}
 {% include "screening/result_next.html" %}
 <div class="result-list">
 <details class="result-details">

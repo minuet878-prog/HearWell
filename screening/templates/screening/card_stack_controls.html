@@ -1,0 +1,9 @@
+{# The stacked cards' ‹ › and where one is (#753, frontend/src/card-stack.js), for two cards or more: hidden until the script runs, so without JavaScript the first card shows alone (spec #741 acceptance 58). `cards`: the stack's cards, any list. #}
+<div class="card-stack-controls" hidden>
+    <button type="button" class="card-stack-prev" aria-label="上一張"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <div class="card-stack-where">
+        <p class="card-stack-position" aria-live="polite">第 1 張，共 {{ cards|length }} 張</p>
+        <span class="card-stack-dots" aria-hidden="true">{% for _ in cards %}<span></span>{% endfor %}</span>
+    </div>
+    <button type="button" class="card-stack-next" aria-label="下一張"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 6l6 6-6 6"/></svg></button>
+</div>

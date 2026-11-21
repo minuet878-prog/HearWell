@@ -20,18 +20,33 @@ from screening.tests.helpers import consented_user, submission_with_answers
 TAIPEI = ZoneInfo("Asia/Taipei")
 # 01:00 on 2026/11/17 in Taiwan, still the 16th in UTC: the day it was turned on is Taiwan's.
 NOW = datetime(2026, 11, 16, 17, tzinfo=UTC)
-# The owner's words beside the switch, settled on 2026-11-17 (#658).
-PURPOSE = (
-    "打開後，上次做完滿半年的那天早上，我們會寄一封提醒信到您的 email。信裡不會寫分數或結果。"
-    "您的 email 只用來寄這個提醒和重設密碼信，隨時可以關掉。"
-)
-
-# Acceptance 2, 13: 「✓ 已開啟，到期會寄到〈信箱〉」, the tick drawn before the words.
+# Acceptance 13: 「✓ 已開啟，到期會寄到〈信箱〉」, the tick drawn before the words. Only the result
+# page's offer says this now (test_result_reminder borrows it).
 TICKED_ON = re.compile(
     r'<p class="reminder-on[^"]*"><svg [^>]*aria-hidden="true"[^>]*>'
     r'<path d="M5 12\.5l4\.5 4\.5L19 7\.5"/></svg>'
     r"<span[^>]*>已開啟，到期會寄到 ([^<]+)</span></p>"
 )
+
+# Spec #741 (the owner's pick at acceptance, compare-reminder.html C): under the title one short
+# line says whether it is on; the bell gets a blue tick only while on, hidden from screen readers
+# because the line already says it.
+STATE_LINE = re.compile(
+    r'<h2 id="retest-reminder-title"[^>]*>email 重測提醒</h2>\s*'
+    r'<p class="reminder-state([^"]*)">([^<]+)</p>'
+)
+TICKED_BELL = re.compile(
+    r'<span class="reminder-bell" aria-hidden="true"><svg [^>]*>.*?</svg>'
+    r'<span class="reminder-tick"><svg [^>]*><path d="M5 12\.5l4\.5 4\.5L19 7\.5"/></svg>'
+    r"</span></span>",
+    re.S,
+)
+# The one full-width outline button, whichever way it turns.
+BUTTON = re.compile(
+    r'<button class="btn btn-outline-primary w-full" type="submit">([^<]+)</button>'
+)
+# What the section no longer says: the reasons are in the privacy notice.
+GONE = ("打開後，上次做完滿半年", "目前", "會寄到", "已開啟")
 
 
 def admin_rows(page):
@@ -80,35 +95,44 @@ class ReminderSwitchTests(TestCase):
         return RetestReminder.objects.get(user=self.user)
 
     # 1
-    def test_off_by_default_says_where_it_would_go(self):
-        text = self._section()
-        self.assertIn("email 重測提醒", text)
-        self.assertIn(PURPOSE, text)
-        self.assertIn("目前 沒有打開", text)
-        self.assertIn("打開提醒", text)
-        self.assertIn("會寄到 a@example.com", text)
-        self.assertNotIn("已開啟", text)
+    def test_off_by_default_says_so_under_the_title(self):
+        page = self._page()
+        self.assertEqual(STATE_LINE.findall(page), [("", "沒有打開")])
+        self.assertNotIn("reminder-tick", page)
+        self.assertEqual(BUTTON.findall(page), ["打開提醒"])
+        text = test_layout._text(page)
+        for words in GONE:
+            self.assertNotIn(words, text)
         self.assertFalse(RetestReminder.objects.filter(user=self.user, enabled=True).exists())
 
     # 2
-    def test_turning_it_on_keeps_taiwan_s_day_and_says_where_it_goes(self):
+    def test_turning_it_on_keeps_taiwan_s_day_and_ticks_the_bell(self):
         response = self._turn("1")
         self.assertRedirects(response, reverse("account_settings"), fetch_redirect_response=False)
         reminder = self._reminder()
         self.assertTrue(reminder.enabled)
         self.assertEqual(reminder.enabled_on, date(2026, 11, 17))
-        self.assertEqual(TICKED_ON.findall(self._page()), ["a@example.com"])
-        text = self._section()
-        self.assertIn("目前 已開啟（2026/11/17 起）", text)
-        self.assertIn("關掉提醒", text)
-        self.assertNotIn("打開提醒", text.replace("關掉提醒", ""))
+        page = self._page()
+        self.assertEqual(STATE_LINE.findall(page), [(" reminder-state-on", "已打開")])
+        self.assertEqual(len(TICKED_BELL.findall(page)), 1)
+        self.assertEqual(BUTTON.findall(page), ["關掉提醒"])
+        text = test_layout._text(page)
+        for words in GONE:
+            self.assertNotIn(words, text)
 
-    def test_the_day_it_falls_due_is_the_home_page_s(self):
+    # Spec #741 (the owner at acceptance, 2026-11-21): on and not yet due, the block names no
+    # date; the home page's countdown says when.
+    def test_on_and_not_due_names_no_date(self):
         self._hhie_s(date(2026, 6, 1))
         self._turn("1")
-        text = self._section()
-        self.assertIn("下次篩檢 2026/12/01，那天早上 9 點寄信。", text)
-        self.assertNotIn("您現在就可以再做一次", text)
+        page = self._page()
+        text = test_layout._text(page)
+        for words in ("下次篩檢", "2026/12/01", "早上 9 點寄信"):
+            with self.subTest(words=words):
+                self.assertNotIn(words, text)
+        self.assertEqual(STATE_LINE.findall(page), [(" reminder-state-on", "已打開")])
+        self.assertEqual(BUTTON.findall(page), ["關掉提醒"])
+        # Not due yet: the home page has the date.
         home = test_layout._text(self.client.get(reverse("index")).content.decode())
         self.assertIn("2026/12/01", home)
 
@@ -120,9 +144,10 @@ class ReminderSwitchTests(TestCase):
         reminder = self._reminder()
         self.assertFalse(reminder.enabled)
         self.assertIsNone(reminder.enabled_on)
-        text = self._section()
-        self.assertIn("目前 沒有打開", text)
-        self.assertNotIn("已開啟", text)
+        page = self._page()
+        self.assertEqual(STATE_LINE.findall(page), [("", "沒有打開")])
+        self.assertNotIn("reminder-tick", page)
+        self.assertEqual(BUTTON.findall(page), ["打開提醒"])
 
     def test_on_again_has_a_new_cancel_code(self):
         self._turn("1")
@@ -136,29 +161,35 @@ class ReminderSwitchTests(TestCase):
         self.assertNotEqual(again.cancel_token, first)
         self.assertGreaterEqual(len(again.cancel_token), 43)  # token_urlsafe(32)
 
-    # 4
-    def test_already_due_says_do_it_now_and_links_to_it(self):
+    # Spec #741 (the owner at acceptance, 2026-11-21): on and due, the block no longer asks for
+    # it now nor links to it, whether it fell due before the day it was turned on or that day;
+    # the home page asks for the retest.
+    def test_on_and_due_neither_asks_for_it_now_nor_names_a_date(self):
         record = self._hhie_s(date(2026, 3, 10))
         self._turn("1")
-        page = self._page()
-        text = test_layout._text(page)
-        self.assertIn("您現在就可以再做一次", text)
-        self.assertIn("上一次是 2026/03/10", text)
-        self.assertIn(f'href="{reverse("screening", args=[record.questionnaire.pk])}"', page)
-        self.assertNotIn("下次篩檢", text)
-        # Due before the day it was turned on: the schedule does not send this one (23).
-        self.assertIn("這一次不另外寄信", text)
-
-    # 4, 23: due the day it is turned on, so the schedule sends it (cross review, Codex 5).
-    def test_due_the_day_it_is_turned_on_does_not_say_no_mail(self):
-        record = self._hhie_s(date(2026, 5, 17))  # + 6 months: 2026/11/17, today
-        self._turn("1")
-        page = self._page()
-        text = test_layout._text(page)
-        self.assertIn("您現在就可以再做一次", text)
-        self.assertIn("上一次是 2026/05/17", text)
-        self.assertIn(f'href="{reverse("screening", args=[record.questionnaire.pk])}"', page)
-        self.assertNotIn("不另外寄信", text)
+        for last in (date(2026, 3, 10), date(2026, 5, 17)):  # due before 11/17, due on 11/17
+            with self.subTest(last=last):
+                moment = datetime(last.year, last.month, last.day, 12, tzinfo=TAIPEI)
+                Submission.objects.filter(pk=record.pk).update(created_at=moment)
+                page = self._page()
+                text = test_layout._text(page)
+                for words in (
+                    "您現在就可以再做一次",
+                    "再做一次",
+                    "上一次是",
+                    "不另外寄信",
+                    "下次篩檢",
+                ):
+                    with self.subTest(words=words):
+                        self.assertNotIn(words, text)
+                screening = reverse("screening", args=[record.questionnaire.pk])
+                self.assertNotIn(f'href="{screening}"', page)
+                self.assertNotIn("<a ", page)
+                self.assertEqual(STATE_LINE.findall(page), [(" reminder-state-on", "已打開")])
+                self.assertEqual(BUTTON.findall(page), ["關掉提醒"])
+                # Due indeed: the home page asks for it.
+                home = self.client.get(reverse("index")).content.decode()
+                self.assertIn(f'href="{screening}">再做一次', home)
 
     def test_off_says_nothing_of_doing_it_now(self):
         self._hhie_s(date(2026, 3, 10))
@@ -170,7 +201,8 @@ class ReminderSwitchTests(TestCase):
         self.user.save()
         page = self._page()
         text = test_layout._text(page)
-        self.assertIn("目前 沒有打開", text)
+        self.assertEqual(STATE_LINE.findall(page), [("", "沒有打開")])
+        self.assertNotIn("reminder-tick", page)
         self.assertIn("您的帳號還沒有 email，要先補上才能收提醒。", text)
         self.assertIn("補上 email", text)
         self.assertNotIn("打開提醒", text)

@@ -10,7 +10,12 @@ from django.urls import reverse
 
 from screening.forms import RegisterForm
 from screening.models import Questionnaire, Submission, User
-from screening.tests.helpers import consented_user, minimum_password_length, step_bar
+from screening.tests.helpers import (
+    assert_toggle_follows_its_input,
+    consented_user,
+    minimum_password_length,
+    step_bar,
+)
 
 
 def page_top(content):
@@ -87,7 +92,6 @@ class LoginRequiredTests(TestCase):
         # Like the consent page (the 405 on tingpal.tw, 2026-11-13): signed out meanwhile, a
         # form that takes only POST would be opened with GET after logging in.
         sent = (
-            (reverse("journey_todo_tick"), {"next": "/"}, "/"),
             (reverse("route_answer"), {"next": reverse("guide")}, reverse("guide")),
             (reverse("report_share_create"), {}, reverse("index")),
             (reverse("report_share_cancel", args=[1]), {}, reverse("index")),
@@ -104,7 +108,6 @@ class LoginRequiredTests(TestCase):
         # #552 acceptance 8: form_address took the place of require_http_methods(["POST"]).
         self.client.force_login(consented_user(username="sender"))
         for url in (
-            reverse("journey_todo_tick"),
             reverse("route_answer"),
             reverse("report_share_create"),
             reverse("report_share_cancel", args=[1]),
@@ -115,7 +118,8 @@ class LoginRequiredTests(TestCase):
 
 class LoginNextTests(TestCase):
     NOTE = "請先登入，沒有帳號請按註冊。登入後會帶您回到剛剛的頁面。"
-    # Spec #148 (ticket #150): the home page's small hint became this button.
+    # Spec #148 (ticket #150): the home page's small hint became this button; spec #741 (#752,
+    # grill P15) took it away again, the header's 登入 being the way in.
     LOGIN_BUTTON = "我已經有帳號，登入"
     PASSWORD = "Xk9#mPq2vLw"
     EXTERNAL = (
@@ -226,8 +230,8 @@ class LoginNextTests(TestCase):
         self.assertNotContains(response, "<script>alert(1)</script>")
         self.assertContains(response, "&lt;script&gt;")
 
-    def test_home_login_button_only_for_anonymous(self):
-        self.assertContains(self.client.get(reverse("index")), self.LOGIN_BUTTON)
+    def test_home_has_no_login_button(self):
+        self.assertNotContains(self.client.get(reverse("index")), self.LOGIN_BUTTON)
         self.client.force_login(self.user)
         self.assertNotContains(self.client.get(reverse("index")), self.LOGIN_BUTTON)
 
@@ -279,6 +283,11 @@ class LoginViewTests(TestCase):
         self.assertIn('aria-label="顯示密碼"', buttons[0])
         self.assertRegex(buttons[0], r"\shidden[\s>]")
 
+    def test_tab_reaches_the_password_before_its_show_button(self):
+        # #741 acceptance bug (2026-11-21): 顯示 sat by the label, so Tab from 使用者名稱 went to it
+        # before the password box.
+        assert_toggle_follows_its_input(self, self.client.get(self.url), "id_password")
+
     def test_register_button_sits_under_the_login_button(self):
         main = self.client.get(self.url).content.decode().split('id="main-content"', 1)[1]
         register = re.search(r'<a [^>]*href="/register"[^>]*>([^<]*)</a>', main)
@@ -289,7 +298,8 @@ class LoginViewTests(TestCase):
     # forgot-password page, in place of #360's line asking people to write in.
     def test_forgotten_password_link_under_the_login_button(self):
         main = self.client.get(self.url).content.decode().split('id="main-content"', 1)[1]
-        link = re.search(r'<a class="inline-link" href="([^"]*)">忘記密碼？</a>', main)
+        # #757: bold, as the canvas's ProLogin.
+        link = re.search(r'<a class="inline-link font-bold" href="([^"]*)">忘記密碼？</a>', main)
         self.assertIsNotNone(link)
         self.assertEqual(link.group(1), reverse("password_reset"))
         self.assertLess(main.index('type="submit">登入</button>'), link.start())
@@ -299,8 +309,8 @@ class LoginViewTests(TestCase):
     def test_title_greets_and_field_icons_stay_silent(self):
         content = self.client.get(self.url).content.decode()
         top = page_top(content)
-        self.assertIn('<h1 class="h3 mt-4">登入</h1>', top)
-        self.assertIn('<p class="text-(--color-muted)">歡迎回來。</p>', top)
+        self.assertIn('<h1 class="bird-title">登入</h1>', top)
+        self.assertIn('<p class="bird-lead">歡迎回來。</p>', top)
         icons = field_icons(content)
         self.assertEqual(len(icons), 2)
         for icon in icons:
@@ -622,8 +632,9 @@ class RegisterPageGuidanceTests(TestCase):
 
     def test_the_top_holds_the_title_the_line_and_the_step(self):
         top = page_top(self.client.get(self.url).content.decode())
-        self.assertIn('<h1 class="h3 mt-4">註冊</h1>', top)
-        self.assertIn('<p class="text-(--color-muted)">建立帳號，篩檢結果會幫您存起來。</p>', top)
+        self.assertIn('<h1 class="bird-title">註冊</h1>', top)
+        # #749: the line under the title became the bird's lead, above it.
+        self.assertIn('<p class="bird-lead">建立帳號，篩檢結果會幫您存起來。</p>', top)
         self.assertIn("第 1 步／共 2 步：建立帳號", top)
 
     # #360 (spec #354): 出生年 says it is optional in its name; 電子郵件 says what it is for and
@@ -707,6 +718,13 @@ class RegisterPageGuidanceTests(TestCase):
                 self.assertIn('type="button"', button)
                 self.assertIn(f'aria-controls="id_{field}"', button)
                 self.assertRegex(button, r"\shidden[\s>]")
+
+    def test_each_show_button_comes_right_after_its_password_box(self):
+        # #741: Tab goes 密碼, its 顯示, 密碼確認, its 顯示.
+        response = self.client.get(self.url)
+        for field in ("id_password1", "id_password2"):
+            with self.subTest(field=field):
+                assert_toggle_follows_its_input(self, response, field)
 
     def test_the_password_count_waits_for_javascript(self):
         # Readability batch 3 (C1 B): the count under 密碼, its minimum the server's; the

@@ -89,10 +89,9 @@ class AccountSettingsTests(TestCase):
     def test_header_and_footer_lead_to_settings(self):
         content = self.client.get(reverse("index")).content.decode()
         header = content.split("</header>", 1)[0]
-        self.assertRegex(
-            header,
-            r'<a[^>]*href="/account"[^>]*aria-label="目前登入：settings_a，帳號設定"[^>]*>'
-            r"\s*目前登入：<strong>settings_a</strong>\s*</a>",
+        # #748: the avatar, the name's first letter.
+        self.assertIn(
+            '<a class="site-avatar" href="/account" aria-label="帳號設定：settings_a">S</a>', header
         )
         self.assertRegex(test_layout._footer(content), ACCOUNT_LINK)
         self.client.logout()
@@ -146,12 +145,15 @@ class AccountSettingsTests(TestCase):
 
     # 12
     def test_home_order_and_text(self):
-        # Spec #655 (#673): the visitor's home is the two doors, then what stays below them.
+        # Spec #741 (#752, the canvas's ProGuest): the bird, the blue hero card, then two doors.
         expected = (
-            "我想了解自己的聽力",
-            "大約 3 分鐘，不用註冊",
-            "我擔心家人的聽力",
-            "我已經有帳號，登入",
+            "聽力變化常常容易被忽略",
+            "想了解自己的聽力？",
+            "大約 3 分鐘",
+            "不用註冊",
+            "開始",
+            "擔心家人的聽力",
+            "想了解助聽器",
             "內容由台灣執業",
         )
         # The visitor's home: a signed-in user's is the 照顧旅程 or the 空狀態首頁 since #459

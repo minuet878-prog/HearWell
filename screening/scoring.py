@@ -48,11 +48,19 @@ def level_change_text(previous_level, level):
     return f"分級從「{previous_level}」變成「{level}」"
 
 
-UNKNOWN = {"text": "無法判讀", "level": "unknown", "color": "unknown"}
+# A graded result page's 這個分數怎麼算 (#750), above the levels' ranges.
+SCORE_SUM_TEXT = "每一題的分數加起來就是總分，分數越高，影響越大。"
+
+UNKNOWN = {"text": "無法判讀", "short": "無法判讀", "level": "unknown", "color": "unknown"}
 UNKNOWN_ADVICE = (
     "這次的作答結果無法判讀分級，可能是資料有誤。建議重新作答一次；"
     "若對聽力有疑慮，請直接諮詢聽力師或耳鼻喉科醫師。"
 )
+
+# An IOI-HA result page's 和上一次比較 (#746): each item's change, by the sign of this answer
+# less the last one, a higher one better as every item is best at 5.
+IOI_HA_ITEM_CHANGE = {1: "變好", -1: "變差", 0: "一樣"}
+
 
 # Short column names for the norm chart on the history page.
 IOI_HA_ITEM_NAMES = {
@@ -117,26 +125,15 @@ CATALOGUE_REASONS = {
 # Why the home page suggests its 建議下一步 (#261), word for word from spec #257's table; the
 # owner settles the drafted ones on review.
 NEXT_STEP_REASONS = {
-    # The 2026-11-14 walkthrough (mockup 2A): asked, as the two buttons answer it.
-    "record": "手上有醫院的聽力檢查報告了嗎？",
     "edit": "這張聽力圖缺少頻率，資料不足，無法判斷。",
-    # 了解助聽器選配與補助, by the 目前這一站 (a stop's slug), spec #291's drafts; none
-    # judges the audiogram, as the route no longer does. Form 25's takes its deadline, the
-    # last day it can be done. #363 (spec #354): four reworded to say why, drafts too.
-    "before-you-go": "第一次去找聽力師前先準備好，看診時比較不會漏問。",
-    "assessment": "先確認有沒有身障證明，才知道能不能申請補助。",
-    "form-9": "您已經有身障證明，可以準備申請九號表的助聽器補助。",
-    "notice": "九號表送出後要等公所的核定公文，先了解接下來會發生什麼。",
-    "types-and-prices": "可以看看助聽器的種類與價格，比較之後再買。",
-    "after-fitting": "記下開始戴的日期，才算得出什麼時候要做使用效益驗證。",
-    "form-25": "您的助聽器要在 {deadline:%Y/%m/%d} 前做使用效益驗證（二十五號表），才能核銷補助。",
-    "payout": "驗證做完了，接下來看補助什麼時候發、怎麼發。",
 }
-# The 照顧旅程's five steps (ADR 0044), step 1 first.
+# The 照顧旅程's seven steps (ADR 0074), step 1 first.
 CARE_JOURNEY_STEPS = (
     "填生活影響問卷",
+    "到醫院進行聽力檢查",
     "記錄聽力圖",
     "了解助聽器選配與補助",
+    "申請補助與配戴助聽器",
     "戴滿 3 個月做效益問卷",
     "半年後再篩檢",
 )
@@ -144,14 +141,64 @@ CARE_JOURNEY_STEPS = (
 LIFE_IMPACT_BECAUSE = "先做一份生活影響問卷，了解聽力對您生活的影響。"
 LIFE_IMPACT_BUTTON = "去做問卷"
 IOI_HA_BUTTON = "做效益問卷"
-# Step 3's card on 助聽器的種類與價格 (the owner on #455): the route itself has no button.
-TYPES_AND_PRICES_BUTTON = "去看助聽器種類與價格"
-# Step 2's two answers to 「手上有醫院的聽力檢查報告了嗎？」 (the 2026-11-14 walkthrough,
-# mockup 2A); 還沒 opens the Q&A on where a hearing test is done.
-RECORD_AUDIOGRAM_YES = "有，記錄聽力圖"
-NO_REPORT_YET = "還沒，看要去哪裡檢查"
-IMPORT_FROM_IPHONE = "從 iPhone 匯入"  # spec #702
-IOI_HA_DUE_BECAUSE = "您已經戴滿 3 個月，可以做使用效益問卷（IOI-HA），看助聽器幫了多少。"
+# Step 6's countdown card before 3 months worn (spec #741, the canvas).
+FITTING_COMPARE = "和上一次進行比較"
+FITTING_AGAIN_FROM = "起可以再做一次"
+# Step 7's card (spec #741, the canvas): its countdown's words, due, or no life impact yet.
+NEXT_SCREENING = "下次篩檢"
+RETEST_TIME_UP = "時間到了！"  # noqa: RUF001
+FIRST_SCREENING_NOT_DONE = "還沒有完成第一次篩檢。"
+# Steps 2 to 4's cards (spec #741, the canvas's 照顧旅程展開): white entry cards.
+FIND_A_HOSPITAL = "查詢醫療院所"
+AUDIOGRAM_SOURCES = "聽力圖來源"
+HOSPITAL_REPORT = "醫院檢查報告"
+AIRPODS_SELF_TEST = "AirPods 自我檢測"
+GUIDE_BECAUSE = "統整助聽器補助流程供您參考。"
+GUIDE_ENTRY = "看助聽器選配與補助"
+TYPES_AND_PRICES_ENTRY = "看助聽器的種類與價格"
+# 不符資格 (GLOSSARY): step 4's two cases by the audiogram's estimates (grill Q12, Q22).
+INELIGIBLE_NORMAL = "您的聽力檢測結果為正常，但若有耳鳴、耳悶等其他症狀，仍建議尋求醫師協助。"
+INELIGIBLE_MILD = "您的聽力未達補助資格，但依舊可以考慮配戴助聽器。"
+# Step 5's card by the 目前這一站 (spec #741, the canvas's 照顧旅程展開; grill Q13, Q15, Q18,
+# Q21, "驗收時再調"). The answer cards: each stop's question, its icon (action_icon.html), and by
+# the value its question's form sends, the box's word, the small line under it and its icon.
+ANSWER_CARDS = {
+    "assessment": (
+        "您有身心障礙證明嗎？",
+        "id-card",
+        {
+            "yes": ("有", "", "yes"),
+            "applying": ("正在申請", "", "clock"),
+            "no_subsidy": ("沒有", "", "no"),
+        },
+    ),
+    "form-9": (
+        "您的九號表完成了嗎？",
+        "clipboard",
+        {"True": ("是", "已經完成", "yes"), "False": ("否", "還沒有", "no")},
+    ),
+    "notice": (
+        "您收到核定公文了嗎？",
+        "mail",
+        {"True": ("是", "已經收到", "yes"), "False": ("否", "還沒收到", "no")},
+    ),
+}
+# The way on after an answer that leaves the stop to do.
+FIND_AN_ASSESSMENT_HOSPITAL = "查詢鑑定醫院"
+FORM_9_STEPS = "看九號表的流程"
+RECORD_THE_NOTICE = "記下核定的耳朵與等級"
+TYPES_AND_PRICES_FIRST = "先了解助聽器種類與價格"
+BEFORE_YOU_GO_BUTTON = "了解須知"
+AFTER_FITTING_WORDS = "配戴一個月後才能做二十五號表，配合問卷使用更能知道助聽器的效果。"
+RECORD_FITTING_DATE = "記下開始配戴的日期"
+FIRST_IOI_HA = "填問卷"
+FIRST_IOI_HA_NOTE = "建議先戴一週再寫"
+FORM_25_FROM = "起可以做二十五號表"
+FORM_25_BY = "{day:%Y/%m/%d} 前要完成，才能核銷補助"
+FORM_25_BUTTON = "看二十五號表要帶什麼"
+# 接著往下一站's name for a stop (grill Q13): the form alone where the title goes on to say what
+# it is for; any other stop by its title.
+NEXT_STOP_NAMES = {"form-9": "九號表", "form-25": "二十五號表"}
 # My guide's 要不要找聽力師評估 by 建議評估選配 (ADR 0067): the owner's words in spec #693,
 # 建議 apart for an ear over 40 dB HL and for 輕度 with a life impact.
 FITTING_ADVICE_OVER_MILD = "您有一耳以上的四頻平均超過 40 dB HL，建議找聽力師評估選配助聽器。"
@@ -172,21 +219,17 @@ FITTING_ADVICE_NORMAL = (
 FITTING_ADVICE_BEFORE_YOU_GO = "去之前要準備什麼"
 
 
-def fitting_countdown_text(days):
-    return f"再 {days} 天滿 3 個月，到時候做使用效益問卷（IOI-HA）。"
-
-
-# Step 5's card while counting down (#458 D8): the 下次篩檢 tile already says the day.
-RETEST_COUNTDOWN_TEXT = "時間到了，這裡會出現「再做一次」的按鈕。"
-# What each step is, said when it is opened on the home page (#459 I1): drafts the owner
-# settles on review, step 1 first.
+# What each step is, said when it is opened on the home page (#459 I1), step 1 first: step 3's,
+# 4's and 6's the canvas's (spec #741); step 2's a draft the owner settles on review.
 CARE_JOURNEY_ABOUT = (
     LIFE_IMPACT_BECAUSE,
-    "選配指引要用聽力圖才能整理下一步。",
+    "到醫院做聽力檢查並取得聽力報告。",
+    "記錄您在醫院做的聽力檢查或 AirPods 自我測試結果。",
+    GUIDE_BECAUSE,
     # #598 (spec #593): no subsidy on everyone's way, the owner's wording on #595.
     "照選配路線一站一站走，從找聽力師到開始戴助聽器。",
-    "買了助聽器、戴滿 3 個月後，做使用效益問卷（IOI-HA），看助聽器幫了多少。",
-    RETEST_COUNTDOWN_TEXT,
+    "戴滿 3 個月後，再做一次問卷和第一次比較，看看助聽器的幫助。",
+    "",  # step 7's is what its card says, by its countdown (care_journey)
 )
 
 
@@ -260,6 +303,11 @@ def max_score(questionnaire_code):
     return thresholds[-1][0] if thresholds else None
 
 
+def short_level_name(definition, level, text):
+    # A level's short name (#750); a test's own definition may have none: its full name then.
+    return definition.short_names.get(level, text)
+
+
 def classify(total_score, questionnaire_code):
     definition = questionnaires.get(questionnaire_code)
     if not (definition and definition.thresholds):
@@ -268,7 +316,12 @@ def classify(total_score, questionnaire_code):
     if total_score >= 0:
         for upper, text, level in definition.thresholds:
             if total_score <= upper:
-                return {"text": text, "level": level, "color": definition.color(level)}
+                return {
+                    "text": text,
+                    "short": short_level_name(definition, level, text),
+                    "level": level,
+                    "color": definition.color(level),
+                }
     logger.error("Score %s out of range for questionnaire %r", total_score, questionnaire_code)
     return UNKNOWN
 

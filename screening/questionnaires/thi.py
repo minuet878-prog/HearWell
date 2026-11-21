@@ -49,6 +49,15 @@ THRESHOLDS = (
     (100, "極重度障礙", "catastrophic"),
 )
 
+# Large type's words (spec #741, page grill P11): the degree alone. The agent's draft.
+SHORT_NAMES = {
+    "none_or_slight": "輕微",
+    "mild": "輕度",
+    "moderate": "中度",
+    "severe": "重度",
+    "catastrophic": "極重度",
+}
+
 # Like the audiogram's degrees (spec #208 Q13): five levels, ADR 0007's three colours.
 LEVEL_COLORS = {
     "none_or_slight": "normal",
@@ -175,14 +184,21 @@ DEFINITION = Definition(
     result=GradedResult,
     choices=choices,
     thresholds=THRESHOLDS,
+    short_names=SHORT_NAMES,
     level_colors=LEVEL_COLORS,
     advice=ADVICE,
     next_steps=NEXT_STEPS,
     concern=TINNITUS,
     trend_chart=True,
     # The hospital form's numbering (not the English original's): 5 絕望, 11 憂鬱, 23 無法忍受,
-    # answered 經常, whatever the total (spec #208 Q6).
-    support_message=SupportMessage(items=(5, 11, 23), score=4, text=SUPPORT_MESSAGE),
+    # answered 經常, whatever the total (spec #208 Q6). At 重度 and 極重度 always: with 看完整建議
+    # gone from result pages, their 1925 line is here alone (the owner, #741 acceptance 2026-11-21).
+    support_message=SupportMessage(
+        items=(5, 11, 23),
+        score=4,
+        text=SUPPORT_MESSAGE,
+        levels=("severe", "catastrophic"),
+    ),
     # Saved as background only (spec #208 Q4): tinnitus cannot be answered as if unaided.
     wearing_question="您現在有沒有配戴助聽器？",
     wearing_error="請選擇您現在有沒有配戴助聽器",

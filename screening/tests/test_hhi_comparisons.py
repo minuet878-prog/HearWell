@@ -224,8 +224,12 @@ class HhiComparisonRadioCardTests(TestCase):
     def test_title_is_followed_by_the_topic_and_code(self):
         # #362: 「主題（代號）」, as the questionnaire cards write it.
         page = self.client.get(self.url)
-        title = '<h1 class="h3 mt-2">比較戴與不戴助聽器</h1>'
-        self.assertContains(page, f'{title}\n<p class="mt-2">聽力對生活的影響（HHIE-S）</p>')
+        # #749: the title in the bird's bubble, the line right under the bird.
+        self.assertRegex(
+            page.content.decode(),
+            r'<h1 class="bird-title">比較戴與不戴助聽器</h1>\s*</div>\s*</div>\s*'
+            r'<p class="mt-2">聽力對生活的影響（HHIE-S）</p>',
+        )
 
     def test_cards_show_date_and_score_with_time_on_shared_days_and_a_lone_record_chosen(self):
         # Verification-flow batch F2 (replacing #190's 「沒有時留空」): with no saved pair, a
@@ -372,7 +376,7 @@ class WearingComparisonEntryTests(TestCase):
         self.assertNotIn("選擇問卷", main)
         # Without a life-impact record or an age, the 建議下一步 box (#455, the 照顧旅程's step
         # 1) opens the catalogue: that is not the page's own button.
-        box = re.search(r'<div class="result-next">.*?</a>\s*</div>', main, re.S).group(0)
+        box = re.search(r'<section class="hero-card">.*?</section>', main, re.S).group(0)
         self.assertIn(f'href="{reverse("questionnaire_list")}"', box)
         self.assertNotIn(f'href="{reverse("questionnaire_list")}"', main.replace(box, ""))
 

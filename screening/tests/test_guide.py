@@ -16,15 +16,6 @@ LOGIN_NOTE = (
     "以及有沒有達到身障鑑定門檻。下面的章節不用登入也能看。"
 )
 CONTENTS_TITLE = "選配與補助，一步一步看"
-CHAPTERS = (
-    "去找聽力師之前",
-    "身障鑑定與鑑定醫院",
-    "九號表：申請助聽器補助",
-    "助聽器的種類與價格",
-    # Verification-flow batch F5: in the order they happen, the first weeks before 1-3 months.
-    "配戴助聽器之後",
-    "二十五號表：使用效益驗證",
-)
 BACK = "回到助聽器選配與補助"
 # Shortened in the guide chapters tidy-up (2026-10-23, the owner's request): things to bring
 # as chips, the questions grouped under three labels. #467 (H2): the parts titled as questions,
@@ -132,13 +123,15 @@ class GuideContentsTests(TestCase):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
-        self.assertIn(f'<h1 class="h3 mt-4">{TITLE}</h1>', content)
+        self.assertIn(f'<h1 class="bird-title">{TITLE}</h1>', content)
         self.assertIn(LOGIN_NOTE, content)
         self.assertIn(CONTENTS_TITLE, content)
         # In the body: the head's description (spec #583) names some chapters too.
         body = content[content.index("<body") :]
-        # #596: signed out the 補助站 are folded, so form 9 and form 25 are no stops.
-        shown = [title for title in CHAPTERS if not title.startswith(("九號表", "二十五號表"))]
+        # #596: signed out the 補助站 are folded, so form 9 and form 25 are no stops; the
+        # chapters as the route orders them (ADR 0074).
+        shown = ["身障鑑定與鑑定醫院", "去找聽力師之前", "助聽器的種類與價格", "配戴助聽器之後"]
+
         positions = [body.index(title) for title in shown]
         self.assertEqual(positions, sorted(positions))
 
@@ -172,7 +165,7 @@ class GuideChapterTests(TestCase):
         self.assertContains(
             response, "<title>第一次配助聽器要準備什麼？去找聽力師之前\uff5c聽伴</title>"
         )
-        self.assertContains(response, '<h1 class="h3 mt-4">去找聽力師之前</h1>')
+        self.assertContains(response, '<h1 class="bird-title">去找聽力師之前</h1>')
         text = article_text(response)
         positions = [text.index(sentence) for sentence in BEFORE_YOU_GO]
         self.assertEqual(positions, sorted(positions))
@@ -256,15 +249,25 @@ class ChapterTidyT367Tests(TestCase):
         )
 
 
-# The chapters' addresses in reading order, beside CHAPTERS' titles.
-CHAPTER_SLUGS = (
-    "before-you-go",
-    "assessment",
-    "form-9",
-    "types-and-prices",
-    "after-fitting",
-    "form-25",
+# #760: the chapters in the fitting route's order (ADR 0074), with the 補助站 shown, and
+# folded (ADR 0063) without 九號表 and 二十五號表.
+ROUTE_CHAPTERS = (
+    ("assessment", "身障鑑定與鑑定醫院"),
+    ("form-9", "九號表：申請助聽器補助"),
+    ("before-you-go", "去找聽力師之前"),
+    ("types-and-prices", "助聽器的種類與價格"),
+    ("after-fitting", "配戴助聽器之後"),
+    ("form-25", "二十五號表：使用效益驗證"),
 )
+FOLDED_NEXT = {
+    "assessment": ("before-you-go", "去找聽力師之前"),
+    # Folded, 九號表 is off the route: on from where it would be, as the route goes.
+    "form-9": ("before-you-go", "去找聽力師之前"),
+    "before-you-go": ("types-and-prices", "助聽器的種類與價格"),
+    "types-and-prices": ("after-fitting", "配戴助聽器之後"),
+    "after-fitting": None,
+    "form-25": None,
+}
 NEXT_ROW = re.compile(r'<a class="link-card" href="(/guide/[^"]*)">(.*?)</a>', re.S)
 
 
@@ -283,26 +286,40 @@ def text_without_hidden(html):
 
 
 class NextChapterTests(TestCase):
-    """#579 (spec #576): a chapter ends by naming the next one in reading order."""
+    """#579 (spec #576): a chapter ends by naming the next one; #760: the next on the fitting
+    route, the 補助站 skipped while folded."""
 
     def chapter(self, slug):
         return self.client.get(reverse("guide_chapter", args=[slug])).content.decode()
 
-    def test_each_chapter_but_the_last_leads_to_the_next_in_reading_order(self):
-        signed_in = consented_user(username="next_chapter_user")
-        for user in (None, signed_in):
+    def test_with_the_subsidy_stops_shown_each_chapter_leads_to_the_next_on_the_route(self):
+        user = consented_user(username="next_chapter_shown")
+        AidAndSubsidy.objects.create(user=user, certificate="yes")
+        self.client.force_login(user)
+        for (slug, _), (next_slug, next_title) in pairwise(ROUTE_CHAPTERS):
+            with self.subTest(chapter=slug):
+                self.assertEqual(
+                    next_rows(self.chapter(slug)),
+                    [(f"/guide/{next_slug}", f"下一章 {next_title}")],
+                )
+        with self.subTest(chapter="form-25"):
+            self.assertEqual(next_rows(self.chapter("form-25")), [])
+
+    def test_with_the_subsidy_stops_folded_the_next_chapter_skips_them(self):
+        unanswered = consented_user(username="next_chapter_unanswered")
+        declined = consented_user(username="next_chapter_declined")
+        AidAndSubsidy.objects.create(user=declined, certificate="no_subsidy")
+        for who, user in (("signed out", None), ("unanswered", unanswered), ("沒有", declined)):
             if user:
                 self.client.force_login(user)
-            for (slug, _), (next_slug, next_title) in pairwise(
-                zip(CHAPTER_SLUGS, CHAPTERS, strict=True)
-            ):
-                with self.subTest(chapter=slug, signed_in=bool(user)):
-                    self.assertEqual(
-                        next_rows(self.chapter(slug)),
-                        [(f"/guide/{next_slug}", f"下一章 {next_title}")],
-                    )
-            with self.subTest(chapter="form-25", signed_in=bool(user)):
-                self.assertEqual(next_rows(self.chapter("form-25")), [])
+            for slug, following in FOLDED_NEXT.items():
+                with self.subTest(who=who, chapter=slug):
+                    rows = next_rows(self.chapter(slug))
+                    if following is None:
+                        self.assertEqual(rows, [])
+                    else:
+                        next_slug, next_title = following
+                        self.assertEqual(rows, [(f"/guide/{next_slug}", f"下一章 {next_title}")])
 
     BACK_BUTTON = ChapterTidyT367Tests.BACK_BUTTON
 
@@ -342,8 +359,8 @@ class NextChapterTests(TestCase):
         # The chapter's end has the one solid button (this chapter has its own above, 查詢).
         self.assertEqual(main[main.index("</article>") :].count("btn-primary"), 1)
         self.assertLess(self.row_at(main), main.index("<summary>資料來源</summary>"))
-        # Acceptance 13: well along the route, the next chapter is still the one in reading
-        # order.
+        # Acceptance 13: well along the route, the next chapter is still the next on the route
+        # (#760), not the 目前這一站.
         self.assertEqual(next_rows(main), [("/guide/form-9", "下一章 九號表：申請助聽器補助")])
 
     # Acceptance 15 on a chapter with no button of its own: one solid button on the page.
@@ -354,6 +371,4 @@ class NextChapterTests(TestCase):
         main = self.main("form-9")
         self.assertIn("已記下：九號表完成了", main)
         self.assertEqual(main.count("btn-primary"), 1)
-        self.assertEqual(
-            next_rows(main), [("/guide/types-and-prices", "下一章 助聽器的種類與價格")]
-        )
+        self.assertEqual(next_rows(main), [("/guide/before-you-go", "下一章 去找聽力師之前")])

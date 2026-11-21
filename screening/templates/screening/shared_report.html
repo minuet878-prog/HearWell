@@ -14,7 +14,7 @@
 <article class="health-report">
 {# Ticket #194: the line and both blocks are for the screen only; the printed report is unchanged. #}
 <p class="no-print mt-4 mb-0 text-(--color-muted)">這是您的家人在聽伴自己作答與輸入的自我篩檢結果。</p>
-<h1 class="h3 mt-2">聽伴聽力報告</h1>
+{% include "screening/bird_dialogue.html" with lead="shared_report"|page_lead title="聽伴聽力報告" %}
 <p class="font-bold text-heading">這是家人分享給您的報告，連結有效到 {{ share.expires_at|date:"Y/m/d" }}。</p>
 {% if life_impact or audiogram %}
 {# #471 (mockup #470 group 3): the life-impact level in its whole level colour (L1); the audiogram's two ears, which may differ, in a grey box with a label each. #}

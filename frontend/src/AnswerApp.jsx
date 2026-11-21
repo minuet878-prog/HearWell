@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { clearDraft, loadDraft, saveDraft } from "./draft.js";
-import { canKeepGuestResults, saveGuestResult } from "./guest-results.js";
+import { canKeepGuestResults, rememberJustFinished, saveGuestResult } from "./guest-results.js";
 import { newReceiptKey } from "./receipt-key.js";
 
 // Same choices as the Django form (forms.HearingAidForm); the question itself is the
@@ -35,7 +35,6 @@ export default function AnswerApp({
   questionnaireId,
   userId,
   csrfToken,
-  minutes,
   introHtml,
   // IOI-HA (#463): its norm basis, in a box of its own on item 1 (ADR 0002), and the intro
   // without it for the fold there, so the norm basis is not said twice.
@@ -239,8 +238,6 @@ export default function AnswerApp({
   const isSent = status.type === "sent";
   // Sent: green for a moment, and still nothing to press or change.
   const isSending = status.type === "sending" || isSent;
-  // The questionnaire's minutes shared out over this question and the ones after it, at least 1.
-  const minutesLeft = Math.max(1, Math.round((minutes * (questions.length - step + 1)) / questions.length));
 
   function choose(value) {
     setStatus({ type: "idle" });
@@ -319,6 +316,8 @@ export default function AnswerApp({
         setStatus({ type: "cannotKeep" });
         return;
       }
+      // Its page's bird says 做完了，辛苦了。 this once (the owner, 2026-11-21).
+      rememberJustFinished(form.key);
       finished.current = true;
       setStatus({ type: "sent" });
       setTimeout(() => navigate(`/guest/result/${questionnaireCode}`), SENT_FOR);
@@ -367,24 +366,26 @@ export default function AnswerApp({
         <legend ref={legend} tabIndex={-1} className="font-bold text-[calc(1.275rem+0.3vw)] min-[1200px]:text-[1.5rem]">
           {!isHearingAid && (
             <>
+              {/* #755 (canvas ProAnswer): the count, this question's number large, and how many
+                  follow it. #326 B4: the flash keeps its room when empty, so showing it moves
+                  nothing; not read aloud on every answer (the footer note says it once). */}
+              <span className="question-progress-line">
+                <span className="question-progress">第 <span className="question-number">{step}</span> 題，共 {questions.length} 題</span>
+                <span className="answer-saved" aria-hidden="true">
+                  {savedFlash > 0 && <span key={savedFlash}>✓ 已儲存</span>}
+                </span>
+                <span className="question-left">{isLast ? "最後一題" : `還有 ${questions.length - step} 題`}</span>
+              </span>
               {/* The register steps' bar (#151), one segment per question answered or not; only the
                   colour changes, the segment a choice just answered filling once (ADR 0028). The
                   text says it all. */}
-              <span className="step-progress-bar mb-2" aria-hidden="true">
+              <span className="step-progress-bar mt-2 mb-4" aria-hidden="true">
                 {questions.map((q) => (
                   <span
                     key={q.id}
                     className={form.answers[q.id] === undefined ? "step-progress-segment" : q.id === justFilled ? "step-progress-segment is-done is-filling" : "step-progress-segment is-done"}
                   />
                 ))}
-              </span>
-              {/* #326 B4: the flash keeps its room when empty, so showing it moves nothing; not read
-                  aloud on every answer (the footer note says it once). */}
-              <span className="question-progress-line">
-                <span className="question-progress">第 {step} 題／共 {questions.length} 題・還剩大約 {minutesLeft} 分鐘</span>
-                <span className="answer-saved" aria-hidden="true">
-                  {savedFlash > 0 && <span key={savedFlash}>✓ 已儲存</span>}
-                </span>
               </span>
             </>
           )}

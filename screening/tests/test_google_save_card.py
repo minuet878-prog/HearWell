@@ -108,7 +108,7 @@ class NewAccountTests(GoogleSaveTestCase):
         page = self.client.get(SAVE_FROM_CARD)
         self.assertContains(
             page,
-            '<h1 class="h3 mt-4" data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">'
+            '<h1 class="bird-title" data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">'
             "保存這次結果</h1>",
         )
         self.assertNotContains(page, "data-asking")
@@ -139,8 +139,9 @@ class AccountThereAlreadyTests(GoogleSaveTestCase):
         self.assertContains(page, "data-asking")
         self.assertContains(page, f"data-guest-ask-yes>{test_guest_save.YES}</button>")
         self.assertContains(page, f"data-guest-ask-no>{test_guest_save.NO}</button>")
-        # The #493 mockup's question screen names the account in the header, above the question.
-        self.assertContains(page, "目前登入：<strong>阿明的帳號</strong>")
+        # The #493 mockup's question screen names the account in the header, above the question:
+        # the avatar since #748.
+        self.assertContains(page, 'aria-label="帳號設定：阿明的帳號">阿</a>')
         self.assertFalse(Submission.objects.exists())
 
     def test_not_agreed_to_the_latest_notice_the_consent_comes_before_the_question(self):

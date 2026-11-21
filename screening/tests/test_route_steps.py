@@ -9,7 +9,7 @@ from screening.fitting_route import AUDIOGRAM, fitting_state
 from screening.models import AidAndSubsidy, Consent, GuideChapterView, Questionnaire, User
 from screening.questionnaires import hhie_s, ioi_ha
 from screening.tests import test_fitting_route, test_guide_summary
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, took_ioi_ha
 
 TODAY = date(2026, 10, 23)
 PTA_55 = test_guide_summary.PTA_55
@@ -131,15 +131,11 @@ class HereTests(TestCase):
         self.assertNotIn(AUDIOGRAM, self.state().done)
 
     # 2
-    def test_a_complete_audiogram_over_40_is_done_and_here_moves_to_before_you_go(self):
+    def test_a_complete_audiogram_over_40_is_done_and_here_moves_to_the_assessment(self):
+        # ADR 0074: the certificate first, whether or not the threshold is reached.
         self.make(*OVER_40)
         self.assertEqual(self.state().done, {AUDIOGRAM})
-        self.assertEqual(self.state().stop, "before-you-go")
-
-    def test_reaching_the_threshold_still_starts_at_before_you_go(self):
-        # Default 4: in place of #257 Q5's 達到就到身障鑑定.
-        self.make(PTA_55, PTA_55)
-        self.assertEqual(self.state().stop, "before-you-go")
+        self.assertEqual(self.state().stop, "assessment")
 
     def test_viewing_before_you_go_makes_it_done_and_moves_on_to_the_assessment(self):
         self.make(PTA_55, PTA_55)
@@ -156,7 +152,7 @@ class HereTests(TestCase):
     def test_both_ears_within_25_after_any_answer_follow_the_rule(self):
         self.make(*WITHIN_25)
         AidAndSubsidy.objects.create(user=self.user, certificate="applying")
-        self.assertEqual(self.state().stop, "before-you-go")
+        self.assertEqual(self.state().stop, "assessment")
 
     def test_viewing_a_chapter_without_a_stop_of_its_own_does_not_start_the_route(self):
         # #695 (spec #693 Q9): viewing is not starting, whichever chapter.
@@ -261,6 +257,7 @@ class CertificateStopTests(TestCase):
         AidAndSubsidy.objects.create(
             user=self.user, certificate="no_subsidy", fitted_on=date(2026, 5, 1), subsidy="other"
         )
+        took_ioi_ha(self.user, date(2026, 5, 1))
         state = self.state()
         self.assertEqual(state.stops, FIVE_STOPS)
         self.assertEqual(state.not_applicable, frozenset())
@@ -274,13 +271,14 @@ class CertificateStopTests(TestCase):
         self.assertEqual(state.stop, "assessment")
 
 
-FIVE_STOPS = ("audiogram", "before-you-go", "assessment", "types-and-prices", "after-fitting")
+# ADR 0074: 去找聽力師之前 after the notice.
+FIVE_STOPS = ("audiogram", "assessment", "before-you-go", "types-and-prices", "after-fitting")
 NINE_STOPS = (
     "audiogram",
-    "before-you-go",
     "assessment",
     "form-9",
     "notice",
+    "before-you-go",
     "types-and-prices",
     "after-fitting",
     "form-25",
@@ -346,6 +344,7 @@ class SubsidyStopsFoldTests(TestCase):
 
     def test_bought_paying_otherwise_without_the_certificate_stays_folded_with_no_stop(self):
         # Acceptance 13; folded, form 25 and the payout are not 不適用 either.
+        took_ioi_ha(self.user, date(2026, 5, 1))
         state = self.state(fitted_on=date(2026, 5, 1), subsidy="other")
         self.assertEqual(state.stops, FIVE_STOPS)
         self.assertEqual(state.not_applicable, frozenset())
@@ -363,6 +362,7 @@ class SubsidyStopsFoldTests(TestCase):
         self.assertIn("form-9", unfolded.done)
 
     def test_none_and_fitted_with_the_subsidy_has_no_form_25_date_or_stop_in_them(self):
+        took_ioi_ha(self.user, date(2026, 5, 1))
         state = self.state(
             certificate="no_subsidy", fitted_on=date(2026, 5, 1), subsidy="disability", level="mid"
         )
@@ -466,12 +466,13 @@ class Form9AndNoticeStopTests(TestCase):
         GuideChapterView.objects.all().delete()
         self.make(*WITHIN_25)
         AidAndSubsidy.objects.create(user=self.user, form_9_done=False)
-        self.assertEqual(fitting_state(self.user, TODAY).stop, "before-you-go")
+        self.assertEqual(fitting_state(self.user, TODAY).stop, "assessment")
 
 
 class FittingStopTests(TestCase):
     """#295 (spec #291 acceptance 12, 13, Q9): 配戴之後 is done once a fitting date is filled
-    in; from then on 您在這裡 looks only at 二十五號表 and 等待補助發放."""
+    in and, since ADR 0074, an IOI-HA is taken from it; from then on 您在這裡 looks only at
+    二十五號表 and 等待補助發放."""
 
     @classmethod
     def setUpTestData(cls):
@@ -491,6 +492,7 @@ class FittingStopTests(TestCase):
         AidAndSubsidy.objects.create(
             user=self.user, fitted_on=date(2026, 5, 1), subsidy="disability", level="mid"
         )
+        took_ioi_ha(self.user, date(2026, 5, 1))
         state = self.state()
         self.assertEqual(state.done, {AUDIOGRAM, "after-fitting"})
         self.assertEqual(state.stop, "form-25")
@@ -509,6 +511,7 @@ class Form25AndPayoutStopTests(TestCase):
 
     def setUp(self):
         self.user = consented_user(username="form_25_stop_user")
+        took_ioi_ha(self.user, date(2026, 5, 1))  # 配戴之後 needs it too (ADR 0074)
 
     def state(self, **answers):
         AidAndSubsidy.objects.update_or_create(

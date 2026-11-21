@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block title %}確認本人｜聽伴{% endblock %}
 
@@ -10,20 +10,21 @@
 {% block body %}
 {# Spec #505 (the #507 mockup section 6, W15, W16), #506 (the #539 mockup 6): one thing to do, the password or a provider on the account; the line under the title says what comes next. #}
 <div class="narrow-form">
-    <h1 class="h3 mt-4">先確認是您本人</h1>
+    {% include "screening/bird_dialogue.html" with lead="confirm_identity"|page_lead title="先確認是您本人" %}
     {% if confirm_error %}<div class="error-box" role="alert">{{ confirm_error }}</div>{% endif %}
     {% if form %}
     <p>接下來要<strong>{{ words }}</strong>。請輸入 {{ user.username }} 的密碼。</p>
     <form method="post" class="auth-form">
         {% csrf_token %}
         <div class="mb-4 auth-field">
-            <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
-                <label for="id_password">密碼</label>
+            <label for="id_password" class="form-label">密碼</label>
+            <div class="password-row">
+                <div class="auth-input">
+                    {% include "screening/auth_field_icon.html" with icon="lock" %}
+                    <input {% if form.password.errors %}autofocus aria-invalid="true" aria-describedby="id_password_error" {% endif %}class="form-control" id="id_password" type="password" name="password" autocomplete="current-password" required>
+                </div>
+                {# After the box (#741), so Tab reaches the box first. #}
                 <button type="button" class="btn btn-outline-primary password-toggle" aria-controls="id_password" aria-label="顯示密碼" data-label="密碼" hidden>顯示</button>
-            </div>
-            <div class="auth-input">
-                {% include "screening/auth_field_icon.html" with icon="lock" %}
-                <input {% if form.password.errors %}autofocus aria-invalid="true" aria-describedby="id_password_error" {% endif %}class="form-control" id="id_password" type="password" name="password" autocomplete="current-password" required>
             </div>
             {% include "screening/field_messages.html" with field=form.password %}
         </div>

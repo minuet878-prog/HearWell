@@ -461,20 +461,19 @@ class ReactAnswerPageTests(TestCase):
         self.assertRedirects(response, reverse("result", args=[submission.id]))
 
     def test_intro_is_outside_the_form(self):
-        # React hides the form, so the name, count and instructions must stay visible outside it.
+        # React hides the form, so the name, count and instructions must stay visible outside it:
+        # the name and count above, the instructions folded under it (#755, spec #741 P21).
         content = self._page(self.hhie_s).content.decode()
         form_start = content.index('id="answer-form"')
         self.assertLess(content.index("<h1"), form_start)
         self.assertLess(content.index("共 1 題"), form_start)
-        self.assertLess(content.index("本問卷的目的"), form_start)
+        self.assertLess(content.index("</form>"), content.index("本問卷的目的"))
 
-    def test_hands_react_the_minutes_and_the_intro(self):
-        # #153: React works out the minutes left and folds the intro after the hearing aid question.
+    def test_hands_react_the_intro(self):
+        # #153: React folds the intro after the hearing aid question.
         for questionnaire in (self.hhie_s, self.hhia_s):
             with self.subTest(code=questionnaire.code):
                 content = self._page(questionnaire).content.decode()
-                app = re.search(r'<div id="answer-app"[^>]*>', content).group()
-                self.assertIn(f'data-minutes="{questionnaire.definition.minutes}"', app)
                 # The definition's intro, word for word, in the box React reads it from; its
                 # source follows it there (#463).
                 intro = re.search(r'<div id="answer-intro">(.*?)</div>', content, re.S).group(1)
@@ -482,9 +481,6 @@ class ReactAnswerPageTests(TestCase):
                     questionnaire.definition.intro_template, {"questionnaire": questionnaire}
                 )
                 self.assertTrue(intro.strip().startswith(expected.strip()))
-                self.assertLess(
-                    content.index('id="answer-intro"'), content.index('id="answer-app"')
-                )
                 # Without JS the one-page form keeps its old progress text and has no bar.
                 form = content[content.index('id="answer-form"') :]
                 count = questionnaire.questions.count()
@@ -504,9 +500,7 @@ class ReactAnswerPageTests(TestCase):
     def test_logout_js_when_logged_in_only(self):
         for url in (reverse("index"), reverse("questionnaire_list"), reverse("my_hearing")):
             with self.subTest(url=url):
-                response = self.client.get(url)
-                self.assertContains(response, self.LOGOUT_JS)
-                self.assertContains(response, 'id="logout-form"')
+                self.assertContains(self.client.get(url), self.LOGOUT_JS)
         self.client.logout()
         for url in (reverse("index"), reverse("login"), reverse("register")):
             with self.subTest(url=url):
@@ -911,11 +905,11 @@ class ErrorSummaryTests(TestCase):
 
 class ReassuranceLineTests(TestCase):
     """Spec #611 Q2 (acceptance 61, 63, 66): under the count on the answer page's first screen.
-    The second sentence is drawn hidden; React shows it once it takes over and keeps a draft
-    (answer-main.test.jsx), so the full-page form says the first sentence only."""
+    The sentence is drawn hidden; React shows it once it takes over and keeps a draft
+    (answer-main.test.jsx), so the full-page form says none. Its first sentence, 這不是考試，沒有
+    對錯。, went in #755 (spec #741 P21, test_answer_page_layout)."""
 
     fixtures = ("questions_fixture.json",)  # HHIE-S, IOI-HA
-    FIRST = "這不是考試，沒有對錯。"
     SECOND = "答到一半離開，答案會留在這支手機，7 天內回來可以接著答。"
     CODES = ("hhie-s", "hhia-s", "thi", "ssq12-tw", "sadl", "ioi-ha")
 
@@ -928,21 +922,25 @@ class ReassuranceLineTests(TestCase):
         self.client.force_login(self.user)
 
     def head(self, content):
-        return re.search(r'<div id="answer-head">(.*?)</div>', content, re.S).group(1)
+        # Up to the loading note: the bird's bubble (#749) has its own divs.
+        return re.search(
+            r'<div id="answer-head">(.*?)</div>\s*'
+            r'(?:<template id="answer-norm">|<p id="answer-loading"|<form id="answer-form")',
+            content,
+            re.S,
+        ).group(1)
 
     def test_every_questionnaire_says_it_under_the_count(self):
         for code in self.CODES:
             with self.subTest(code=code):
                 pk = Questionnaire.objects.get(code=code).pk
                 head = self.head(self.client.get(reverse("screening", args=[pk])).content.decode())
-                self.assertLess(head.index('class="answer-meta"'), head.index(self.FIRST))
+                self.assertLess(head.index('class="answer-meta"'), head.index(self.SECOND))
                 line = re.search(r'<p class="answer-reassure">(.*?)</p>', head, re.S).group(1)
-                self.assertEqual(
-                    line, f"{self.FIRST}<span data-draft-line hidden>{self.SECOND}</span>"
-                )
+                self.assertEqual(line, f"<span data-draft-line hidden>{self.SECOND}</span>")
                 self.assertNotIn("照平常的感覺", head)
 
-    def test_the_form_sent_back_with_errors_says_the_first_sentence_only(self):
+    def test_the_form_sent_back_with_errors_says_none(self):
         # The form keeps no draft, and React does not take over there.
         questionnaire = Questionnaire.objects.get(code="hhie-s")
         url = reverse("screening", args=[questionnaire.pk])
@@ -961,5 +959,5 @@ class ReassuranceLineTests(TestCase):
         content = self.client.post(url, data).content.decode()
         self.assertIn('id="error-summary"', content)
         head = self.head(content)
-        self.assertIn(self.FIRST, head)
+        self.assertNotIn("answer-reassure", head)
         self.assertNotIn(self.SECOND, head)

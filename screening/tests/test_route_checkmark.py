@@ -6,7 +6,7 @@ from django.urls import reverse
 
 from screening.models import AidAndSubsidy, GuideChapterView
 from screening.tests import test_guide_summary
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, took_ioi_ha
 
 PTA_55 = test_guide_summary.PTA_55
 STOP = r'<li class="route-stop[^"]*" data-stop="([^"]+)"[^>]*>(.*?)</li>'
@@ -55,7 +55,7 @@ class RouteCheckmarkTests(TestCase):
         self.assertRegex(
             stops["assessment"],
             r'<span class="route-number"><svg class="route-tick" aria-hidden="true" '
-            r'focusable="false"[^>]*>.*?</svg><span class="visually-hidden">3</span></span>',
+            r'focusable="false"[^>]*>.*?</svg><span class="visually-hidden">2</span></span>',
         )
 
     def test_a_refresh_shows_no_tick(self):
@@ -96,7 +96,9 @@ class RouteCheckmarkTests(TestCase):
             subsidy="disability",
             level="mid",
         )
+        took_ioi_ha(self.user, date(2026, 9, 1))  # 配戴之後 done (ADR 0074)
         self.assertIn('data-stop="form-25" aria-current="step"', self.page())
+
         self.answer(stop="after-fitting", fitted_on="2026-09-01", ear="both", subsidy="other")
         page = self.page()
         self.assertRegex(page, r'<li class="route-stop is-na" data-stop="form-25"')

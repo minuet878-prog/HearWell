@@ -36,10 +36,12 @@ SAVE_REASONS = {
 @dataclass(frozen=True)
 class SupportMessage:
     # Shown under the level on the result page alone, whatever the total, when any item
-    # numbered in `items` is answered `score` (spec #208 Q6).
+    # numbered in `items` is answered `score` (spec #208 Q6), and at the levels in `levels`
+    # whatever those answers (the owner at #741 acceptance, 2026-11-21).
     items: tuple
     score: int
     text: str
+    levels: tuple = ()
 
 
 @dataclass(frozen=True)
@@ -68,6 +70,10 @@ class Definition:
     # orange, severe red), which badges, banners, the score bar and the trend chart draw. A level
     # not listed is coloured by its own code: HHIE-S and HHIA-S levels are named like the colours.
     level_colors: dict = field(default_factory=dict)
+    # Graded only: level -> its short name, written in large type (the result page's level, the
+    # home page's last result, 紀錄's latest); the full name (thresholds) everywhere else: reports,
+    # the download, the shared page and screen readers (spec #741, page grill P11).
+    short_names: dict = field(default_factory=dict)
     advice: dict = field(default_factory=dict)  # Graded only: level -> advice text
     # Graded only: level -> numbered "接下來建議您" steps (ADR 0010). Each step is a dict with
     # "text" and, where it links to a next action, "action_label" and "action_url" (a URL name
@@ -127,9 +133,12 @@ class Definition:
             run += 1
         return "deep" if run % 2 else "pale"
 
-    def support(self, scores):
-        """The support message for these answers (item number -> score), or ""."""
+    def support(self, scores, level):
+        """The support message for these answers (item number -> score) at this level's code,
+        or ""."""
         rule = self.support_message
-        if rule and any(scores.get(number) == rule.score for number in rule.items):
+        if rule and (
+            level in rule.levels or any(scores.get(number) == rule.score for number in rule.items)
+        ):
             return rule.text
         return ""

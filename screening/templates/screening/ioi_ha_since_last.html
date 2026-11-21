@@ -1,0 +1,7 @@
+{# #746 (spec #741 acceptance 25, as the 實作中本人補充 rewrote it): an IOI-HA result's 和上一次比較, each item better, worse or the same, with no totals. `since_last`: NormResult's. #}
+<section class="ioi-since-last" aria-labelledby="ioi-since-last-title">
+    <h2 id="ioi-since-last-title" class="h4">和上一次比較</h2>
+    <ul class="ioi-since-last-items" role="list">
+        {% for item in since_last.items %}<li><span>{{ item.name }}</span> <strong>{{ item.change }}</strong></li>{% endfor %}
+    </ul>
+</section>

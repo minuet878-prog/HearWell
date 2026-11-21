@@ -1,8 +1,8 @@
-{# #461 (the #460 mockup R1): a result page's 建議下一步, the 照顧旅程's 現在這一步 (ADR 0044), in pale blue with the page's one solid button (ADR 0043). The box is not a link: only its button is (ADR 0006). #}
-<div class="result-next">
-    <p class="result-next-label">建議您下一步</p>
-    <h2 class="result-next-title">{{ next_step.card.title }}</h2>
-    <a class="btn btn-primary btn-lg w-full" href="{{ next_step.card.href }}{% if next_step.come_back %}?next={{ request.path|urlencode }}{% endif %}">{{ next_step.button }}</a>
-    {# The 2026-11-14 walkthrough (mockup 2A): the home card's second way, in outline. #}
-    {% if next_step.second %}<a class="btn btn-outline-primary btn-lg w-full" href="{{ next_step.second.1 }}">{{ next_step.second.0 }}</a>{% endif %}
-</div>
+{# #461 (the #460 mockup R1): a result page's 建議下一步, the 照顧旅程's 現在這一步 (ADR 0044); since #749 the page's one thing in the blue hero card, its button white (ADR 0076). The card is not a link: only its button is (ADR 0006). #}
+{% load custom_filters %}
+{% capture hero %}
+    <p class="hero-card-label">建議您下一步</p>
+    <h2 class="hero-card-title">{{ next_step.card.title }}</h2>
+    <a class="btn btn-hero btn-lg" href="{{ next_step.card.href }}">{{ next_step.button }}</a>
+{% endcapture %}
+{% include "screening/hero_card.html" with body=hero %}

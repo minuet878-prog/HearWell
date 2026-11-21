@@ -26,24 +26,18 @@
     <link rel="apple-touch-icon" href="{% static 'screening/pwa/apple-touch-icon.png' %}">
     <meta name="apple-mobile-web-app-title" content="聽伴">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    {# Back button and pull to refresh in the home-screen app (spec phase10_pwa_back_refresh.md). #}
+    {# Pull to refresh in the home-screen app (spec phase10_pwa_back_refresh.md); its back button is every page's ‹ since #748. #}
     <script type="module" src="{% static 'screening/frontend/pwa-nav.js' %}"></script>
     {# Bar and 載入中… while the next page loads; 送出中… on the pressed button (page-loading.js). #}
     <script type="module" src="{% static 'screening/frontend/page-loading.js' %}"></script>
-    {# #334: the pill of 問卷｜聽力圖 and 右耳｜左耳 slides; every other change of page skips the transition. #}
+    {# #334: the pill of 問卷｜聽力圖 and 右耳｜左耳 slides, and the tab bar's (#748); every other change of page skips the transition. #}
     <script type="module" src="{% static 'screening/frontend/switch-slide.js' %}"></script>
-    {# Scroll helpers (spec #338): the back-to-top button, entrance animations played in view, the box a jump lands on lit up, the line over a table that scrolls sideways, and the phone's tab bar making way while scrolling down (#457). #}
+    {# #748 (ADR 0028): a slow phone painted before the tab bar was parsed, and the tab bar's pill was just gone rather than slid. The first paint waits for <main>, which comes after the whole tab bar (Chrome 124+; elsewhere the pill is just gone, or just there, site.css). #}
+    <link rel="expect" href="#main-content" blocking="render">
+    {# Scroll helpers (spec #338): the back-to-top button, entrance animations played in view, the box a jump lands on lit up, the line over a table that scrolls sideways, the phone's tab bar making way while scrolling down (#457), and the header's ‹ once scrolled (#748). #}
     <script type="module" src="{% static 'screening/frontend/scroll-helpers.js' %}"></script>
     {# Copy buttons: every page's 複製信箱 in the footer (#580), the share and family pages' own. A plain static file, as it was on those two pages. #}
     <script defer src="{% static 'screening/copy-link.js' %}"></script>
-    {# Header wave (#138, ADR 0006): only a tab's first page plays it; runs before the page is drawn. #}
-    <script nonce="{{ request.csp_nonce }}">
-        if (sessionStorage.getItem("header-wave-played")) {
-            document.documentElement.classList.add("header-wave-played");
-        } else {
-            sessionStorage.setItem("header-wave-played", "1");
-        }
-    </script>
     {# Entrance animations wait until they are in view (#341, ADR 0029): marked before the page is drawn, so they hold their first frame until scroll-helpers.js starts them. Without JavaScript they play at once. #}
     {# If in-view.js has not taken over 3 seconds after the page starts (scroll-helpers.js failed to load or stopped), they play at once too, rather than hold for ever: long enough for a slow phone to load that small file, short enough that a still first frame does not look broken. #}
     <script nonce="{{ request.csp_nonce }}">
@@ -78,23 +72,37 @@
     {# #359: everything above the footer, grown to fill the window on a short page (site.css). #}
     <div class="site-page">
     <header class="site-header">
-        {# The wave chosen in #136: 28 bars in the template, so it shows without JavaScript too. #}
-        <div class="site-wave" aria-hidden="true" data-play-in-view>{% for _ in "1234567890123456789012345678" %}<span></span>{% endfor %}</div>
-        <div class="container site-header-bar py-2">
-            <div class="flex flex-wrap items-center gap-2">
+        <div class="container site-header-bar">
+            {# #748 (ADR 0079): a round ‹ before the name from the start, on every page but the home page (the owner, 2026-11-21); scrolled past the header the name goes and the ‹ turns frosted (site-header.js). It is a link home, made the browser's back when the page before is of this site. #}
+            {# header_start, header_end: the answer page puts its own 離開 and topic here (#755). #}
+            <div class="site-header-start">
+                {% block header_start %}
                 {% if request.resolver_match.url_name != "index" %}
-                <button id="pwa-back" class="btn btn-outline-primary site-back" type="button" hidden><span aria-hidden="true">‹</span> 上一頁</button>
+                <a class="site-back" href="{% url 'index' %}" aria-label="回首頁" data-site-back><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></a>
                 {% endif %}
-                <p class="site-brand"><a href="{% url 'index' %}"><span class="site-logo" aria-hidden="true"></span><span>聽<span class="site-wordmark-tint">伴</span></span></a></p>
+                <p class="site-brand"><a href="{% url 'index' %}"><span>聽<span class="site-wordmark-tint">伴</span></span></a></p>
+                {% endblock %}
             </div>
+            {# #748 (spec #741 P8): signed in, the first letter of the name; signed out, 登入 in a blue frame. #}
+            {# Spec #741 at acceptance (compare-avatar-menu.html A): tapping it opens a small menu, the name, 帳號設定 and 登出. site-header.js swaps the link for the menu button; without JavaScript it stays a link to account settings, where logout also is, at the foot. #}
+            {% block header_end %}
             {% if user.is_authenticated %}
-            {# Spec phase9_ui_refresh_3_structure.md 4.2: the name leads to account settings. #}
-            <a class="site-account wrap-anywhere" href="{% url 'account_settings' %}" aria-label="目前登入：{{ user.username }}，帳號設定">目前登入：<strong>{{ user.username }}</strong></a>
-            <form id="logout-form" action="{% url 'logout' %}" method="post">
-                {% csrf_token %}
-                <button class="btn btn-outline-primary" type="submit">登出</button>
-            </form>
+            <div class="site-account" data-site-account>
+                <a class="site-avatar" href="{% url 'account_settings' %}" aria-label="帳號設定：{{ user.username }}">{{ user.username|first|upper }}</a>
+                <button class="site-avatar" type="button" aria-label="帳號設定：{{ user.username }}" aria-expanded="false" aria-controls="site-account-menu" hidden data-site-account-toggle>{{ user.username|first|upper }}</button>
+                <div class="site-account-menu" id="site-account-menu" hidden>
+                    <p class="site-account-name">{{ user.username }}</p>
+                    <a class="site-account-item" href="{% url 'account_settings' %}"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>帳號設定</a>
+                    <form id="header-logout-form" action="{% url 'logout' %}" method="post">
+                        {% csrf_token %}
+                        <button class="site-account-item site-account-logout" type="submit"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3M14 3h6v18h-6"/></svg>登出</button>
+                    </form>
+                </div>
+            </div>
+            {% else %}
+            <a class="btn btn-outline-primary site-login" href="{% url 'login' %}">登入</a>
             {% endif %}
+            {% endblock %}
         </div>
     </header>
 
@@ -108,31 +116,21 @@
                     <span>首頁</span>
                 </a>
             </li>
-            {# The 2026-11-14 walkthrough (mockup 11A): a visitor answers without an account too, so 篩檢 is theirs as well, a guest result under it. #}
+            {# The 2026-11-14 walkthrough (mockup 11A): a visitor answers without an account too, so 問卷 is theirs as well, a guest result under it. Named 問卷 like its page since spec #741 (P1). #}
             <li>
                 <a href="{% url 'questionnaire_list' %}"{% if page == "questionnaire_list" or page == "screening" or page == "guest_result" %} aria-current="page"{% endif %}>
                     <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M9 3h6v4H9zM6 5h12v16H6zM9 11h6M9 15h6"/></svg>
-                    <span>篩檢</span>
+                    <span>問卷</span>
                 </a>
             </li>
-            {% if user.is_authenticated %}
+            {# Spec #741 (P9): the same four tabs signed out, where 紀錄 asks to log in first; so the login pages sit under it (#527: the password reset and register pages are reached from the login page). #}
             <li>
-                <a href="{% url 'my_hearing' %}"{% if page == "my_hearing" or page == "result" or page|slice:":10" == "audiogram_" or page == "hhi_comparison" or page == "health_report" or page == "share_report" %} aria-current="page"{% endif %}>
+                <a href="{% url 'my_hearing' %}"{% if page == "my_hearing" or page == "result" or page|slice:":10" == "audiogram_" or page == "hhi_comparison" or page == "health_report" or page == "share_report" %} aria-current="page"{% elif not user.is_authenticated %}{% if page == "login" or page == "register" or page|slice:":14" == "password_reset" %} aria-current="page"{% endif %}{% endif %}>
                     <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
                     <span>紀錄</span>
                 </a>
             </li>
             {% include "screening/nav_learn.html" %}
-            {% else %}
-            {% include "screening/nav_learn.html" %}
-            <li>
-                {# #527 (mockup #524): the password reset pages come from the login page and stay on its tab; so does the register page since the walkthrough took its tab (its link is on the login page). #}
-                <a href="{% url 'login' %}"{% if page == "login" or page == "register" or page|slice:":14" == "password_reset" %} aria-current="page"{% endif %}>
-                    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3M14 3h6v18h-6"/></svg>
-                    <span>登入</span>
-                </a>
-            </li>
-            {% endif %}
         </ul>
     </nav>
     {% endwith %}

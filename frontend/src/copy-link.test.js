@@ -13,8 +13,7 @@ const status = () => document.getElementById("copy-status");
 function page() {
   document.body.innerHTML = `
     <button id="copy-link" type="button" class="btn btn-outline-primary btn-lg" data-url="https://example.com/shared/abc" hidden>複製連結</button>
-    <p id="copy-status" aria-live="polite"></p>
-    <p id="share-url">可以複製這個網址傳給家人</p>`;
+    <p id="copy-status" aria-live="polite"></p>`;
   new Function(readFileSync(SCRIPT, "utf-8"))();
 }
 
@@ -95,11 +94,11 @@ describe("copy link button", () => {
     expect(button().className).toBe("btn btn-outline-primary btn-lg");
   });
 
-  it("shows the address instead when the browser refuses to copy", async () => {
+  // #741: no address is written on the page any more, so no button that does nothing.
+  it("goes away when the browser refuses to copy", async () => {
     navigator.clipboard.writeText.mockImplementation(() => Promise.reject(new Error("denied")));
     await copy();
-    expect(document.getElementById("share-url").hidden).toBe(false);
-    expect(button().textContent).toBe("複製連結");
+    expect(button().hidden).toBe(true);
     expect(status().textContent).toBe("");
   });
 });

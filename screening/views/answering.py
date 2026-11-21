@@ -14,6 +14,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from screening import models
+from screening.fitting_route import latest_submission, wearing_hearing_aids
 from screening.forms import (
     AgeGroupForm,
     AnswerFormSet,
@@ -29,7 +30,7 @@ from screening.main_flow import (
     get_user_state,
     life_impact_questionnaire,
 )
-from screening.models import Answer, Questionnaire
+from screening.models import AidAndSubsidy, Answer, Questionnaire
 from screening.questionnaires.definition import (
     HEARING_AID,
     LIFE_IMPACT,
@@ -41,7 +42,7 @@ from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.questionnaires.results import SubscaleResult
 from screening.questionnaires.ssq12_tw import CODE as SSQ12
 from screening.scoring import AIDED_RETAKE_NOTE, AIDED_RETAKE_TITLE, RECOMMENDATION_REASONS
-from screening.views.common import health_data_page
+from screening.views.common import JUST_SAVED, health_data_page
 
 
 def continue_notice(user, questionnaires=None):
@@ -113,6 +114,30 @@ def catalogue_groups(questionnaires):
     ]
 
 
+# #753 (P3, P4): the stacked cards on top of the catalogue hold three at most.
+STACK_SIZE = 3
+
+
+def stack_cards(user, questionnaires, state, recommendation):
+    """The catalogue's stacked cards as [(questionnaire, why)], `why` set on the 推薦問卷 alone:
+    the recommended first, then the rest that suit this person, in list order, STACK_SIZE at
+    most. A life-impact questionnaire suits by age (both when the age is unknown), a hearing-aid
+    one only someone wearing hearing aids; the others suit anyone."""
+    life_impact = life_impact_questionnaire(user, questionnaires, state, None)
+    wearing = wearing_hearing_aids(latest_submission(user), AidAndSubsidy.for_user(user))
+
+    def suits(questionnaire):
+        definition = questionnaire.definition
+        if definition.life_impact:
+            return life_impact is None or questionnaire == life_impact
+        return wearing or definition.concern != HEARING_AID
+
+    recommended = recommendation.questionnaires if recommendation else []
+    cards = [(q, recommendation.why) for q in recommended]
+    cards += [(q, "") for q in questionnaires if q not in recommended and suits(q)]
+    return cards[:STACK_SIZE]
+
+
 # The recommendation wizard's GET parameters: `wizard` from the catalogue's 「幫我選問卷」, the rest
 # its answers. Without any, a returning user sees the catalogue.
 WIZARD_PARAMS = ("wizard", "concern", "chosen", "age_group")
@@ -166,16 +191,18 @@ def questionnaire_list(request):
         questionnaires = sorted(questionnaires, key=list_order)
         for questionnaire in questionnaires:
             questionnaire.last_submission = latest.get(questionnaire.pk)
+        # A new user has no record to recommend by.
+        recommendation = (
+            catalogue_recommendation(user, questionnaires, state) if returning else None
+        )
         return render(
             request,
             "screening/questionnaire.html",
             {
                 "groups": catalogue_groups(questionnaires),
                 "continue_notice": continue_notice(user, questionnaires),
-                # A new user has no record to recommend by.
-                "recommendation": catalogue_recommendation(user, questionnaires, state)
-                if returning
-                else None,
+                "recommendation": recommendation,
+                "stack": stack_cards(user, questionnaires, state, recommendation),
             },
         )
     questionnaires = sorted(questionnaires, key=list_order)
@@ -393,6 +420,7 @@ def screening(request, questionnaire_id):
                 if not existing:
                     raise
                 return _already_sent(request, existing)
+            request.session[JUST_SAVED] = submission.pk
             return redirect("result", submission_id=submission.id)
         else:
             # Only questions shown on the page, so the list matches the marked ones. A form

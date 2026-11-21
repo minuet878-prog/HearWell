@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 
 {% block extra_head %}{% include "screening/continue_notice.html" %}{% if journey %}
@@ -8,23 +8,56 @@
 {# #499 (spec #492, the #493 mockup's A1): guest-home.js fills #guest-home with the guest results kept in this browser. #}
 {{ guest_questionnaires|json_script:"guest-home-data" }}
 <script type="module" src="{% static 'screening/frontend/guest-home.js' %}"></script>{% endif %}{% if not user.is_authenticated %}
-{# Spec #655 (#673): door-count.js counts which of the two doors is pressed. #}
+{# Spec #655 (#673): door-count.js counts which door is pressed; since spec #741 (#752) the hero card's 開始 and two doors. #}
 <script type="module" src="{% static 'screening/frontend/door-count.js' %}"></script>{% endif %}{% endblock %}
 
 {% block body %}
 {% if continue_notice %}<div id="continue-notice"></div>{% endif %}
 {% if journey %}
 {# #459 (ADR 0044, mockup #458): the 照顧旅程, its 現在這一步 the one thing to do today. #}
-<h1 class="h3">{{ greeting }}，{% if journey.card.button %}今天只要做一件事{% else %}今天沒有要做的事{% endif %}</h1>
-{# 上次結果 is the latest life-impact record, its whole tile a link in its level's colour (L1); 下次篩檢 is grey, information only. Without a life-impact record both are grey and say not yet (#458 D6). #}
+{# Spec #741 (#751, page grill P12): the bird greets the account by name, its title. #}
+{% include "screening/bird_dialogue.html" with title=greeting %}
+{# Spec #741 (#751, the canvas's ProHome): the 現在這一步's card is the page's blue hero card, on top; after its words, 「第 N 步，共 7 步」 and a bar of the seven, filled as far as this step, its own segment growing once in view (ADR 0077). #}
+{# #journey-now: an answer that finishes its stop comes back here, its stamp in view (#745). #}
+{% with card=journey.card %}
+<div class="journey-card" id="journey-now">
+    {% capture hero %}
+        <p class="hero-card-label">現在這一步</p>
+        <h2 class="hero-card-title">{{ card.title }}</h2>
+        {% if card.because %}<p>{{ card.because }}</p>{% endif %}
+        <div class="journey-progress">
+            <span class="journey-progress-bar" aria-hidden="true">{% for step in journey.steps %}<span class="journey-progress-segment{% if forloop.counter <= journey.current %} is-filled{% endif %}{% if forloop.counter == journey.current %} play-once-grow{% endif %}"></span>{% endfor %}</span>
+            <p class="journey-progress-text">第 {{ journey.current }} 步，共 {{ journey.steps|length }} 步</p>
+        </div>
+        {# Spec #741 (#745): step 5's certificate, form 9 and notice are answer cards; form 25 a calendar date card. #}
+        {% if card.question %}{% include "screening/answer_card.html" with question=card.question done=card.moved_on %}{% endif %}
+        {% if card.date %}{% include "screening/date_card.html" with day=card.date %}{% endif %}
+        {# Steps 6 and 7 counting down (#746). #}
+        {% if card.countdown %}{% include "screening/countdown_card.html" with countdown=card.countdown %}{% endif %}
+        {# Spec #741: steps 2 and 4 are white entry cards, nothing else; step 3 without an audiogram its two sources under their small heading. #}
+        {% if card.entries_title %}<p class="journey-entries-title">{{ card.entries_title }}</p>{% endif %}
+        {% if card.entries %}<ul class="journey-entries" role="list">{% for entry in card.entries %}<li>{% include "screening/entry_card.html" with icon=entry.icon text=entry.text href=entry.href come_back=entry.come_back note=entry.note %}</li>{% endfor %}</ul>{% endif %}
+        {% if card.button %}
+        <a class="btn btn-hero btn-lg" href="{{ card.button.1 }}">{{ card.button.0 }}</a>
+        {% endif %}
+        {# Grill Q13: the stop just finished moves on only when this is pressed. #}
+        {% if card.moved_on %}<a class="journey-card-link" href="{% url 'index' %}#journey-now">接著往下一站：{{ card.moved_on }}<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a>{% endif %}
+    {% endcapture %}
+    {% include "screening/hero_card.html" with body=hero attrs="data-play-in-view" %}
+</div>
+{% endwith %}
+{# 上次結果 is the latest life-impact record, its whole tile a link in its level's colour (L1); 下次篩檢 is grey, information only. Without a life-impact record both are grey and say not yet (#458 D6). Since #751 (the canvas's ProHome) 上次結果 is the semicircle gauge with the score in it and the level's short name, its full name read (P11); 離下次篩檢 the countdown semicircle (drawn as the gauge, the owner 2026-11-21) and the day. #}
 <div class="journey-tiles">
     {% with submission=journey.last_result %}
     {% if submission %}
     {% with result=submission.result %}
     <a class="journey-tile result-banner-{{ result.level.color }}" href="{% url 'result' submission.id %}">
         <span class="journey-tile-label">上次結果</span>
-        <span class="journey-tile-score">{{ result.total }} <small>分</small></span>
-        <span class="journey-tile-level">{{ result.level.text }}</span>
+        <div class="journey-tile-gauge">
+            {% if result.gauge %}{% include "screening/semicircle_gauge.html" with gauge=result.gauge %}{% endif %}
+            <span class="journey-tile-score"><span>{{ result.total }}</span> <small>分</small></span>
+        </div>
+        <span class="journey-tile-level" aria-hidden="true">{{ result.level.short }}</span><span class="visually-hidden">{{ result.level.text }}</span>
         <span class="journey-tile-arrow" aria-hidden="true">›</span>
     </a>
     {% endwith %}
@@ -45,11 +78,10 @@
         <span class="journey-tile-small">做完問卷後算出</span>
         {% elif screening.due %}
         <span class="journey-tile-date">已到期</span>
-        {# #458 D4: at step 5 the card's button is the same thing, so no second way here. #}
-        {% if journey.current != 5 %}<a class="journey-tile-link" href="{{ screening.href }}">再做一次</a>{% endif %}
+        {# #458 D4: at step 7 the card's button is the same thing, so no second way here. #}
+        {% if journey.current != 7 %}<a class="journey-tile-link" href="{{ screening.href }}">再做一次</a>{% endif %}
         {% else %}
-        {# The days left big, as 上次結果's score; the day small under them. #}
-        <span class="journey-tile-score">{{ screening.days_left }} <small>天</small></span>
+        {% include "screening/countdown_gauge.html" with countdown=screening.countdown %}
         <span class="journey-tile-small">{{ screening.on|date:"Y/m/d" }}</span>
         {% endif %}
         {% endwith %}
@@ -58,52 +90,39 @@
 <section class="journey" aria-labelledby="journey-title">
     <div class="journey-head">
         <h2 id="journey-title" class="h4">照顧旅程</h2>
-        <p class="journey-count"><span class="visually-hidden">進度 </span>{{ journey.progress }} / 5</p>
     </div>
-    {# N3 dots on a line, blue as far as the 現在這一步 (#459 I2): done ones a blue tick and their day, the 現在這一步 a pale blue card beside the line, always open, the rest pale. Every other step opens to say what it is (I1); care-journey.js keeps one open at a time. On a tab's first visit the ticks, the line and the ring play once, when the 現在這一步 is in view (ADR 0028's 2026-11-12 exception, ADR 0029). #}
+    {# N3 dots on a line, blue as far as the 現在這一步 (#459 I2): done ones a blue tick and their day, the 現在這一步 marked 現在 (its card is the hero card on top, #751), the rest pale. Every step opens to say what it is (I1); care-journey.js keeps one open at a time. On a tab's first visit the ticks, the line and the countdown semicircle play once, when the 現在這一步's row is in view (ADR 0028's 2026-11-12 exception, ADR 0029). #}
     <ol class="journey-steps" role="list">
         {% for step in journey.steps %}
-        <li class="journey-step is-{{ step.state }}{% if forloop.counter < journey.current %} is-walked{% endif %}" style="--journey-step: {{ forloop.counter0 }}"{% if step.state == "current" %} aria-current="step"{% endif %}>
+        <li class="journey-step is-{{ step.state }}{% if forloop.counter < journey.current %} is-walked{% endif %}" style="--journey-step: {{ forloop.counter0 }}"{% if step.state == "current" %} aria-current="step" data-play-in-view{% endif %}>
             {% if step.state == "done" %}
             <span class="journey-dot"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
             {% else %}
             <span class="journey-dot">{{ forloop.counter }}</span>
             {% endif %}
-            {% if step.state == "current" %}
-            {% with card=journey.card %}
-            <div class="journey-card">
-                {# The entrance waits for the card's one thing, not the whole step: #480 moved data-play-in-view here from the step, as the to-dos under it made the step too tall to be in view on arrival (ADR 0029 itself unchanged). #}
-                <div class="journey-card-main" data-play-in-view>
-                    <p class="journey-card-label">現在這一步</p>
-                    <h3 class="journey-card-title">{{ card.title }}</h3>
-                    <p class="journey-card-because">{{ card.because }}</p>
-                    {% if card.button %}
-                    <a class="btn btn-primary btn-lg w-full" href="{{ card.button.1 }}{% if card.come_back %}?next={{ request.path|urlencode }}{% endif %}">{{ card.button.0 }}</a>
-                    {% if card.import_button %}<a class="btn btn-outline-primary btn-lg w-full" href="{{ card.import_button.1 }}">{{ card.import_button.0 }}</a>{% endif %}
-                    {% if card.second %}<a class="btn btn-outline-primary btn-lg w-full" href="{{ card.second.1 }}">{{ card.second.0 }}</a>{% endif %}
-                    {% elif card.href %}
-                    <a class="journey-card-link" href="{{ card.href }}">看這一站的說明</a>
-                    {% endif %}
-                </div>
-                {% include "screening/journey_todos.html" with todos=card.todos %}
-            </div>
-            {% endwith %}
-            {% else %}
             <details class="journey-about">
-                <summary><span class="journey-step-body"><span>{{ step.title }}</span>{% if step.state == "done" %}<span class="visually-hidden">已完成</span> <span class="journey-when">{{ step.done_on|date:"Y/m/d" }}</span>{% elif step.state == "not-needed" %} <span class="journey-when">目前不需要</span>{% endif %}</span><span class="journey-about-arrow" aria-hidden="true">›</span></summary>
+                <summary><span class="journey-step-body"><span>{{ step.title }}</span>{% if step.state == "current" %} <span class="journey-now-label">現在</span>{% elif step.state == "done" %}<span class="visually-hidden">已完成</span> <span class="journey-when">{{ step.done_on|date:"Y/m/d" }}</span>{% elif step.ineligible %} <span class="journey-when">不符資格</span>{% elif step.state == "not-needed" %} <span class="journey-when">目前不需要</span>{% endif %}</span><span class="journey-about-arrow" aria-hidden="true">›</span></summary>
+                {# Spec #741 (the canvas): a done step opens to its stamp, step 3 also to its audiogram's result; any other to what it is. Then its entry cards, if any. #}
                 <div class="journey-about-body">
-                    <p>{{ step.about }}</p>
-                    {% if forloop.counter == 1 and journey.last_result %}
-                    <p class="journey-when">上次結果：{{ journey.last_result.result.level.text }}</p>
-                    <a href="{% url 'result' journey.last_result.id %}">看上次結果</a>
-                    {% elif forloop.counter == 2 or forloop.counter == 3 %}
-                    <a href="{% url 'guide' %}">看助聽器選配與補助</a>
-                    {% elif forloop.counter == 5 and journey.next_screening and not journey.next_screening.due %}
-                    <p class="journey-when">下次篩檢 {{ journey.next_screening.on|date:"Y/m/d" }}・還有 {{ journey.next_screening.days_left }} 天</p>
+                    {% if step.state == "done" %}
+                    {% include "screening/done_stamp.html" %}
+                    {% if forloop.counter == 3 %}{% with result=journey.audiogram %}
+                    <a class="journey-audiogram" href="{{ result.href }}">
+                        <span class="journey-audiogram-head"><strong>聽力圖結果</strong> <span class="journey-when">{{ result.tested_on|date:"Y/m/d" }}</span></span>
+                        <span class="journey-audiogram-ears">{% for ear in result.ears %}<span class="journey-audiogram-ear"><span class="journey-audiogram-side is-{{ ear.side }}"><span aria-hidden="true">{% if ear.side == "right" %}○{% else %}×{% endif %} </span>{{ ear.label }}</span>{% include "screening/level_badge.html" with text=ear.degree|default:"資料不足" color=ear.degree|degree_level %}{% if ear.pta is not None %}<span class="journey-when">平均 {{ ear.pta|stringformat:"g" }} dB</span>{% endif %}</span>{% endfor %}</span>
+                        <span class="journey-audiogram-link">看聽力圖<span aria-hidden="true"> ›</span></span>
+                    </a>
+                    {% endwith %}{% endif %}
+                    {% else %}
+                    {# Step 7 counting down opens to its countdown card (the canvas's 5-a, #746). #}
+                    {% if step.countdown %}{% include "screening/countdown_card.html" with countdown=step.countdown %}{% else %}<p>{{ step.about }}</p>{% endif %}
+                    {% endif %}
+                    {% if step.entries %}
+                    {% if step.entries_title %}<p class="journey-entries-title">{{ step.entries_title }}</p>{% endif %}
+                    <ul class="journey-entries" role="list">{% for entry in step.entries %}<li>{% include "screening/entry_card.html" with icon=entry.icon text=entry.text href=entry.href come_back=entry.come_back %}</li>{% endfor %}</ul>
                     {% endif %}
                 </div>
             </details>
-            {% endif %}
         </li>
         {% endfor %}
     </ol>
@@ -116,10 +135,14 @@
 </ul>
 {% else %}
 {# #459 (mockup #458 A): the 空狀態首頁, for a signed-in user without a questionnaire or an audiogram. The dashed box is a preview, not a link. Since spec #655 (#673) a visitor sees the two doors below instead. #}
-{% if guest_questionnaires %}<div id="guest-home" class="grid gap-3 mb-6" hidden></div>{% endif %}
 {% if user.is_authenticated %}
-<h1 class="h3">從一份問卷開始</h1>
-<p>聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。</p>
+{% include "screening/bird_dialogue.html" with title="從一份問卷開始" %}
+{# #749 (ADR 0076): the one thing to do, in the blue hero card. #}
+{% capture hero %}
+    <p>聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。</p>
+    <a class="btn btn-hero btn-lg btn-start" href="{% url 'questionnaire_list' %}">開始篩檢</a>
+{% endcapture %}
+{% include "screening/hero_card.html" with body=hero attrs="data-play-in-view" %}
 <div class="empty-preview">
     <p class="empty-preview-title">做完第一份問卷，這裡會排出您的照顧旅程</p>
     <ol class="step-list" role="list">
@@ -128,39 +151,42 @@
         <li><span class="step-list-number">3</span><span class="step-list-body">首頁一次告訴您一件該做的事</span></li>
     </ol>
 </div>
-<a class="btn btn-primary btn-lg btn-start w-full" data-play-in-view href="{% url 'questionnaire_list' %}">開始篩檢</a>
 <ul class="home-links" role="list">
     <li><a href="{% url 'guide' %}">了解助聽器選配與補助</a></li>
     <li><a href="{% url 'family_guide' %}">我是家人</a></li>
     <li data-hide-in-app><a href="{% url 'add_to_home' %}">加到手機主畫面</a></li>
 </ul>
 {% else %}
-{# Spec #655 (#673, the #669 mockup's A, grill Q3, Q4): someone not signed in first sees two doors, pale blue blocks one above the other, in the owner's words (#671). They take the place of the heading, the three-step preview, 開始篩檢 and 我是家人; the doors are plain links, and door-count.js counts a press. #}
-<h1 class="visually-hidden">聽伴</h1>
-<ul class="home-doors list-unstyled grid gap-3 m-0" role="list">
-    <li><a class="link-card action-card home-door" href="{% url 'questionnaire_list' %}" data-door="door_self">
-        {% include "screening/action_icon.html" with icon="clipboard" %}
-        <span class="link-card-body">
-            <span class="link-card-title">我想了解自己的聽力</span>
-            <span>大約 3 分鐘，不用註冊</span>
-        </span>
-        <span class="link-card-arrow" aria-hidden="true">›</span>
+{# Spec #741 (#752, the canvas's ProGuest, grill P14, P15): the bird, the blue hero card that starts a questionnaire with no account first, and two doors under it. The card's 開始 and both doors are plain links; door-count.js counts a press of each (P15). #}
+{% include "screening/bird_dialogue.html" with title="聽力變化常常容易被忽略" %}
+{# P14: a guest result kept in this browser for 7 days, drawn by guest-home.js above the card. #}
+<div id="guest-home" class="grid gap-3" hidden></div>
+{% capture hero %}
+    {% include "screening/hero_wave.html" %}
+    <h2 class="hero-card-title">想了解自己的聽力？</h2>
+    <p class="hero-chips">
+        <span class="hero-chip"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3a9 9 0 100 18 9 9 0 000-18zM12 7v5l3 2"/></svg>大約 3 分鐘</span>
+        <span class="hero-chip"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>不用註冊</span>
+    </p>
+    <a class="btn btn-hero btn-lg" href="{% url 'questionnaire_list' %}" data-door="door_self">開始<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 6l6 6-6 6"/></svg></a>
+{% endcapture %}
+{% include "screening/hero_card.html" with body=hero attrs="data-play-in-view" %}
+<ul class="home-doors list-unstyled m-0" role="list">
+    <li><a class="link-card home-door" href="{% url 'family_guide' %}" data-door="door_family">
+        <span class="home-door-top">{% include "screening/action_icon.html" with icon="family" %}<span class="link-card-arrow" aria-hidden="true">›</span></span>
+        <span class="link-card-title">擔心家人的聽力</span>
     </a></li>
-    <li><a class="link-card action-card home-door" href="{% url 'family_guide' %}" data-door="door_family">
-        {% include "screening/action_icon.html" with icon="family" %}
-        <span class="link-card-body">
-            <span class="link-card-title">我擔心家人的聽力</span>
-            <span>看看可以怎麼幫他</span>
-        </span>
-        <span class="link-card-arrow" aria-hidden="true">›</span>
+    <li><a class="link-card home-door" href="{% url 'guide' %}" data-door="door_aids">
+        <span class="home-door-top">{% include "screening/action_icon.html" with icon="sound" %}<span class="link-card-arrow" aria-hidden="true">›</span></span>
+        <span class="link-card-title">想了解助聽器</span>
     </a></li>
 </ul>
-<p class="mt-4 mb-0"><a class="home-login" href="{% url 'login' %}">我已經有帳號，登入</a></p>
+{# P13: 加到手機主畫面 stays, a small line at the bottom. #}
 <ul class="home-links" role="list">
-    <li><a href="{% url 'guide' %}">了解助聽器選配與補助</a></li>
     <li data-hide-in-app><a href="{% url 'add_to_home' %}">加到手機主畫面</a></li>
 </ul>
 {% endif %}
-<p class="empty-credit">內容由台灣執業聽力師設計與審定。</p>
+{# Spec #741's 實作中本人補充: a shield with a tick before it, in the brand blue. #}
+<p class="empty-credit"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM8.5 12l2.5 2.5 4.5-5"/></svg>內容由台灣執業聽力師設計與審定。</p>
 {% endif %}
 {% endblock %}

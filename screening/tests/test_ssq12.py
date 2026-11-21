@@ -55,7 +55,7 @@ class Ssq12Tests(TestCase):
                 self.assertContains(
                     page, f'整體平均 <span class="result-number">{expected}</span> 分（滿分 10）'
                 )
-                self.assertNotContains(page, "情緒分數")
+                self.assertNotContains(page, "聽力問題影響在哪裡")
                 self.assertNotContains(page, "總分")
                 history = self.client.get(reverse("my_hearing"), {"questionnaire": "ssq12-tw"})
                 self.assertContains(history, f"整體平均：{expected}／10")
@@ -275,10 +275,9 @@ class Ssq12ResultRedesignTests(TestCase):
     def test_page_reads_topic_status_average_then_folded_answers_and_disclaimer_last(self):
         latest = self.record((2026, 10, 15), total=78, wearing=True)
         main = self.main(latest)
-        self.assertIn('<h1 class="h3 mt-2 mb-0">日常聆聽能力</h1>', main)
+        self.assertIn('<h1 class="bird-title">看看日常聆聽能力</h1>', main)
         text = self.text(main)
         order = [
-            "SSQ12-TW・2026/10/15 作答・有戴助聽器",
             "整體平均 6.5 分（滿分 10）",
             "分數越高，代表您回報的聆聽能力越好。",
             "看全部 12 題的回答",

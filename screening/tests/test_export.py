@@ -11,6 +11,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
+from screening.fitting_route import HOSPITAL_SEARCH
 from screening.models import (
     AidAndSubsidy,
     Answer,
@@ -338,7 +339,7 @@ class AidAndSubsidyExportTests(TestCase):
         aid = AidAndSubsidy.objects.create(user=self.user)
         for answer, wording in (
             ("yes", "有"),
-            ("applying", "還沒有，打算申請或正在申請鑑定"),
+            ("applying", "正在申請"),
             ("no_subsidy", "沒有"),
         ):
             with self.subTest(answer=answer):
@@ -454,6 +455,15 @@ class ViewedChaptersExportTests(TestCase):
         self.assertEqual(
             self.exported()["viewed_chapters"],
             [{"chapter": "old-chapter", "first_viewed_at": "2026-10-19T21:05:00+08:00"}],
+        )
+
+    def test_the_hospital_search_opened_is_exported_by_its_name(self):
+        # Spec #741's 實作中本人補充: step 2's 查詢醫療院所, kept as a view of its own.
+        taipei = timezone.get_default_timezone()
+        self.view(self.user, HOSPITAL_SEARCH, datetime(2026, 11, 2, 9, 30, tzinfo=taipei))
+        self.assertEqual(
+            self.exported()["viewed_chapters"],
+            [{"chapter": "查詢醫療院所", "first_viewed_at": "2026-11-02T09:30:00+08:00"}],
         )
 
     def test_each_chapter_read_with_its_name_and_first_time_in_order(self):

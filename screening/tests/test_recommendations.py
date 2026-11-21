@@ -63,7 +63,7 @@ class RecommendationTests(TestCase):
                 )
                 Answer.objects.create(submission=submission, question=question, score=0)
                 page = self.client.get(reverse("result", args=[submission.pk]))
-                self.assertContains(page, "看我的紀錄")
+                self.assertContains(page, ">看紀錄")
                 if not wearing:
                     self.assertContains(page, OPTIONAL_SSQ12)
                     self.assertContains(page, reverse("screening", args=[self.ssq.pk]))
@@ -152,7 +152,7 @@ class ConcernWizardTests(TestCase):
         recommended = self.by_code[code]
         self.assertEqual(page.context["recommended"], recommended)
         main = page.content.decode()
-        self.assertIn('<h1 class="h3 mt-2">推薦您做這一份</h1>', main)
+        self.assertIn('<h1 class="bird-title">推薦您做這一份</h1>', main)
         self.assertIn(f"{recommended.definition.topic}<span", main)
         self.assertIn(f">{recommended}</span>", main)
         self.assertIn(f'<p class="recommended-why"><strong>為什麼推薦：</strong>{why}</p>', main)
@@ -419,7 +419,7 @@ class ConcernWizardTests(TestCase):
     def test_choose_yourself_lists_every_questionnaire(self):
         self.login_age(None)
         page = self.wizard(choose="self")
-        self.assertContains(page, '<h1 class="h3 mt-2">選問卷</h1>', html=False)
+        self.assertContains(page, '<h1 class="bird-title">問卷</h1>', html=False)
         self.assertNotContains(page, 'name="concern"')
         self.assert_catalog(page.content.decode())
 
@@ -476,7 +476,7 @@ class ConcernWizardTests(TestCase):
         choose = f"{reverse('questionnaire_list')}?choose=self"
         response = self.register_and_agree(choose)
         self.assertRedirects(response, f"{choose}&from=consent")
-        self.assertContains(self.client.get(response.url), "選問卷</h1>")
+        self.assertContains(self.client.get(response.url), '<h1 class="bird-title">問卷</h1>')
 
     def test_a_new_account_with_an_outside_next_still_goes_home(self):
         for bad in ("https://evil.example.com/questionnaire_list", "//evil.example.com"):
@@ -614,7 +614,9 @@ class ReturningCatalogueTests(TestCase):
             with CaptureQueriesContext(connection) as queries:
                 page = self.catalogue()
             self.assertIsNone(page.context["recommendation"])
-            self.assertEqual(page.content.decode().count("上次 "), len(codes))
+            # The catalogue's cards, below the stacked ones (#753).
+            cards = "".join(text for _, text in self.cards(page))
+            self.assertEqual(cards.count("上次 "), len(codes))
             counts.append(len(queries))
         self.assertEqual(counts[0], counts[1])
 
@@ -623,9 +625,9 @@ class ReturningCatalogueTests(TestCase):
         self.login("hhie-s")
         catalogue = reverse("questionnaire_list")
         main = self.catalogue().content.decode()
-        # The 2026-11-14 walkthrough: a button under the title (it was #463's last row), said once.
-        self.assertIn(f'href="{catalogue}?wizard=1">不確定做哪一份？幫我選</a>', main)
-        self.assertEqual(main.count("不確定做哪一份？"), 1)
+        # #753 (P4): in the bird's bubble under the title, said once.
+        self.assertIn(f'<a class="bird-pick" href="{catalogue}?wizard=1">', main)
+        self.assertEqual(main.count("?wizard=1"), 1)
         page = self.catalogue(wizard="1")
         self.assertContains(
             page, '<legend class="font-bold text-xl/normal">您最想了解什麼？</legend>'
@@ -658,14 +660,14 @@ class ReturningCatalogueTests(TestCase):
         self.assertEqual(len(self.cards(page)), 6)
         self.assertNotContains(page, "上次")
         wizard = f"{reverse('questionnaire_list')}?wizard=1"
-        self.assertContains(page, f'href="{wizard}">不確定做哪一份？幫我選</a>')
+        self.assertContains(page, f'<a class="bird-pick" href="{wizard}">')
 
     def test_a_returning_users_choose_yourself_is_the_same_catalogue(self):
         # The wizard's 自己選問卷 link, followed by a returning user who came in by 「幫我選問卷」.
         self.login("thi")
         page = self.catalogue(choose="self")
         self.assertContains(page, "上次 ")
-        self.assertContains(page, "不確定做哪一份？幫我選")
+        self.assertContains(page, '<a class="bird-pick" href="/questionnaire_list?wizard=1">')
         self.assertNotContains(page, 'name="concern"')
 
 
@@ -704,21 +706,18 @@ class RecommendedQuestionnaireTests(TestCase):
         return submission
 
     def recommended(self, page=None):
-        # The 推薦您做這一份 block, or None without one.
+        # The stacked cards that say 推薦您做這一份 (#753), or None without one.
         page = page or self.client.get(reverse("questionnaire_list"))
-        block = re.search(
-            r'<section aria-labelledby="catalogue-recommended"[^>]*>(.*?)</section>',
+        cards = re.findall(
+            r'<article class="hero-card card-stack-card"[^>]*>(.*?)</article>',
             page.content.decode(),
             re.S,
         )
-        return block and block.group(1)
+        return "".join(card for card in cards if "推薦您做這一份" in card) or None
 
     def starts(self, block):
-        # The block's 開始作答 links, or with two (#463) its rows, in order.
-        return re.findall(
-            r'<a class="(?:btn btn-primary btn-lg|link-card questionnaire-card)" href="([^"]+)">',
-            block,
-        )
+        # The recommended cards' 開始作答 links, in order.
+        return re.findall(r'<a class="btn btn-hero btn-lg" href="([^"]+)">', block)
 
     def start_url(self, code):
         return reverse("screening", args=[self.by_code[code].pk])
@@ -729,15 +728,13 @@ class RecommendedQuestionnaireTests(TestCase):
         self.record(user, "hhia-s", wearing=False, days_ago=200)
         page = self.client.get(reverse("questionnaire_list"))
         block = self.recommended(page)
-        self.assertIn(
-            '<h2 id="catalogue-recommended" class="recommended-label">推薦您做這一份</h2>', block
-        )
+        self.assertIn('<p class="hero-card-label">推薦您做這一份</p>', block)
         self.assertEqual(self.starts(block), [self.start_url("hhia-s")])
         self.assertIn(f"<strong>為什麼推薦：</strong>{RETEST_DUE_TEXT}</p>", block)
-        # On top: the whole block comes before the first card.
+        # On top: the stacked cards come before the catalogue's first card (#753).
         main = page.content.decode()
         card = '<a class="link-card questionnaire-card"'
-        section = main.index('<section aria-labelledby="catalogue-recommended"')
+        section = main.index('<section class="card-stack"')
         self.assertLess(main.index("</section>", section), main.index(card))
         # Still in the catalogue below, all six cards.
         cards = re.findall(rf'{card} href="(/questionnaire/[^"]+)">', main)
@@ -768,14 +765,11 @@ class RecommendedQuestionnaireTests(TestCase):
                 self.assertEqual(
                     self.starts(block), [self.start_url("hhie-s"), self.start_url("hhia-s")]
                 )
-                self.assertEqual(block.count("為什麼推薦："), 1)
-                # #463: two rows, each saying whom it suits; no 開始作答 button at all.
+                # #753: two stacked cards, each with the reason and whom it suits.
+                self.assertEqual(block.count("為什麼推薦："), 2)
                 for code in ("hhie-s", "hhia-s"):
-                    questionnaire = self.by_code[code]
-                    item = block[block.index(f'href="{self.start_url(code)}"') :]
-                    item = item[: item.index("</a>")]
-                    self.assertIn(f"<span>{questionnaire.definition.audience}</span>", item)
-                self.assertNotIn("開始作答", block)
+                    audience = self.by_code[code].definition.audience
+                    self.assertIn(f'<p class="recommended-audience">{audience}</p>', block)
 
     def test_aided_and_unaided_records_without_ioi_ha_recommend_ioi_ha(self):
         # #339 acceptance 6: an unaided HHIE-S within six months, and a record answered wearing

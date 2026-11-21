@@ -19,7 +19,7 @@ from screening.tests.helpers import (
 )
 from screening.views.answering import list_order
 
-GUIDE = "選問卷</h1>"
+GUIDE = "問卷</h1>"
 ICON = re.compile(r'<span class="questionnaire-icon" aria-hidden="true" data-icon="([a-z]+)">')
 # #463: the count and minutes in one line of muted words, where they were tags.
 FACTS = re.compile(r"<span>(\d+ 題・約 \d+ 分鐘)</span>")
@@ -207,15 +207,14 @@ class LastResultTests(TestCase):
             self.facts("hhie-s"), "10 題・約 3 分鐘・" + LAST.format("2026/09/26・無／極輕微影響")
         )
 
-    # 35
+    # 35: on the stacked cards' first, the recommended one (#753).
     def test_the_recommendation_says_it_too(self):
         day = date.today() - timedelta(days=200)
         self.record("hhie-s", [4, 4, 2, 2, 0, 0, 0, 0, 0, 0], day, wearing_hearing_aid=False)
         recommended = re.search(
-            r'<section aria-labelledby="catalogue-recommended"[^>]*>(.*?)</section>',
-            self.main(),
-            re.S,
+            r'<article class="hero-card card-stack-card"[^>]*>(.*?)</article>', self.main(), re.S
         ).group(1)
+        self.assertIn("推薦您做這一份", recommended)
         last = LAST.format(f"{day:%Y/%m/%d}・輕度到中度影響")
         self.assertIn(f'<p class="recommended-facts">10 題・約 3 分鐘・{last}</p>', recommended)
 
@@ -247,6 +246,8 @@ class LastResultTests(TestCase):
             with CaptureQueriesContext(connection) as queries:
                 page = self.client.get(reverse("questionnaire_list"))
             self.assertIsNone(page.context["recommendation"])
-            self.assertEqual(page.content.decode().count("上次 "), 6 if many else 1)
+            # The catalogue's cards, below the stacked ones (#753).
+            cards = "".join(test_layout._cards(page.content.decode()))
+            self.assertEqual(cards.count("上次 "), 6 if many else 1)
             counts.append(len(queries))
         self.assertEqual(counts[0], counts[1])

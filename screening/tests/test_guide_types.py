@@ -74,7 +74,7 @@ class TypesAndPricesChapterTests(TestCase):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "<title>助聽器是不是都很貴？種類、價格與補助上限")
-        self.assertContains(response, '<h1 class="h3 mt-4">助聽器的種類與價格</h1>')
+        self.assertContains(response, '<h1 class="bird-title">助聽器的種類與價格</h1>')
         text = "".join(test_guide.article_text(response).split())
         positions = [text.index("".join(sentence.split())) for sentence in SENTENCES]
         self.assertEqual(positions, sorted(positions))

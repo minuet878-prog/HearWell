@@ -72,9 +72,7 @@ class EmptyStateTestCase(TestCase):
     def home_step_one(self):
         """The address of the home page's 去做問卷, on its journey card."""
         main = self.main(reverse("index"))
-        found = re.search(
-            r'<a class="btn btn-primary btn-lg w-full" href="([^"]*)">去做問卷</a>', main
-        )
+        found = re.search(r'<a class="btn btn-hero btn-lg" href="([^"]*)">去做問卷</a>', main)
         self.assertIsNotNone(found)
         return found.group(1)
 
@@ -231,7 +229,7 @@ class ReportAndShareEmptyTests(EmptyStateTestCase):
         self.assertIn('id="print-button"', report)
         share = self.main(reverse("share_report"))
         self.assertIsNone(_empty_state(share))
-        self.assertIn("我知道了，產生連結", share)
+        self.assertIn("產生分享連結</button>", share)
 
     def test_the_title_is_a_heading_and_the_icon_is_not_read(self):
         # Acceptance 26: a heading of its own under the page's h1; the icon aria-hidden (as

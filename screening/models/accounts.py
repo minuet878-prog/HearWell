@@ -32,8 +32,10 @@ CONSENT_VERSION = 9
 # #633, #641) is new data linked to no one, so only the date moved (ADR 0064), to the day it
 # went live (#643). The email 重測提醒 (spec #656, #664) is a new use of the email that each one
 # ticks on, so again only the date moved (ADR 0065); set it to the day it goes live. Version 9
-# (spec #733) moves it with the version: set it to the day version 9 goes live.
-PRIVACY_UPDATED_ON = date(2026, 11, 19)
+# (spec #733) moves it with the version: set it to the day version 9 goes live. Spec #741's
+# wording (the guide pages and the hospital search read, the to-do ticks gone) moved only the
+# date, to the day it goes live.
+PRIVACY_UPDATED_ON = date(2026, 11, 22)
 
 
 class User(AbstractUser):
@@ -79,7 +81,6 @@ class User(AbstractUser):
         self.report_shares.all().delete()
         AidAndSubsidy.objects.filter(user=self).delete()
         self.guide_views.all().delete()
-        self.todo_ticks.all().delete()
         RetestReminder.objects.filter(user=self).delete()  # email 重測提醒 (#659)
         RetestReminderSent.objects.filter(user=self).delete()  # 重測提醒信 sent (#663)
         self.delete()

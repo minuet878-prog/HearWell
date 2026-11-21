@@ -471,10 +471,12 @@ class GuideSummaryStatesTests(TestCase):
                 self.client.get(reverse("guide"))
             return len(captured)
 
+        self.client.get(reverse("guide"))  # 看過指引頁 is kept the first time only
         for day in (1, 2):
             self.answer(day=day)
             self.make(PTA_55, PTA_55, tested_on=date(2026, 10, day))
         two = queries()
+
         for day in range(3, 8):
             self.answer(day=day)
             self.make(PTA_55, PTA_55, tested_on=date(2026, 10, day))

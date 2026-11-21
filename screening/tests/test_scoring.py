@@ -234,8 +234,9 @@ class HistoryScorePathTests(TestCase):
         self.assertContains(history, "總分：26")
         self.assertContains(history, "顯著影響")
         self.assertContains(result, '總分 <span class="result-number">26</span> 分')
-        self.assertContains(result, "情緒分數：20")
-        self.assertContains(result, "社交分數：6")
+        # 這個分數怎麼算's 聽力問題影響在哪裡 (spec #741, 2026-11-21).
+        self.assertRegex(result.content.decode(), r'(?s)>情緒</span>.*?"score-impact-points">20 分')
+        self.assertRegex(result.content.decode(), r'(?s)>社交</span>.*?"score-impact-points">6 分')
         self.assertContains(result, "顯著影響")
 
     def test_submission_without_answers_scores_zero(self):
@@ -285,8 +286,9 @@ class SubscaleNoteTests(TestCase):
         response = self.client.get(reverse("result", args=[submission.id]))
         content = response.content.decode()
         self.assertIn(self.NOTE, content)
-        self.assertLess(content.index("建議"), content.index("社交分數"))
-        self.assertLess(content.index("社交分數"), content.index(self.NOTE))
+        # Under the two rows of 聽力問題影響在哪裡 (spec #741, 2026-11-21).
+        self.assertLess(content.index("聽力問題影響在哪裡"), content.index(">社交</span>"))
+        self.assertLess(content.index(">社交</span>"), content.index(self.NOTE))
 
     def test_note_shown_when_unclassifiable(self):
         submission = self._make_submission(self.unknown)

@@ -16,7 +16,12 @@ from django.utils import timezone
 from screening import forms
 from screening.forms import PASSWORD_RULES
 from screening.models import User
-from screening.tests.helpers import consented_user, minimum_password_length, without_nonce
+from screening.tests.helpers import (
+    assert_toggle_follows_its_input,
+    consented_user,
+    minimum_password_length,
+    without_nonce,
+)
 from screening.views.accounts import RESET_EMAIL
 
 PASSWORD = "Xk9#mPq2vLw"
@@ -229,6 +234,14 @@ class SetNewPasswordTests(TestCase):
         self.assertEqual(len(buttons), 2)
         self.assertIn("screening/password-toggle.js", content)
 
+    def test_each_show_button_comes_right_after_its_password_box(self):
+        # #741: Tab reaches each new password box before its 顯示 button.
+        user = consented_user(username="wang_ming", email="a@example.com", password=PASSWORD)
+        response = self._open_link(user)
+        for field in ("id_new_password1", "id_new_password2"):
+            with self.subTest(field=field):
+                assert_toggle_follows_its_input(self, response, field)
+
     def test_the_new_password_has_the_register_pages_count(self):
         # Readability batch 3 (C1 B): the count under 新密碼 too, not under its second typing.
         user = consented_user(username="wang_ming", email="a@example.com", password=PASSWORD)
@@ -419,7 +432,10 @@ class ResetPagesSiteWideTests(TestCase):
                 self.assertEqual(len(re.findall(r"<h1\b", main)), 1)
                 self.assertIn('href="#main-content"', content)
                 self.assertIn('<footer class="site-footer">', content)
-                self.assertRegex(content, rf'<a href="{reverse("login")}" aria-current="page">')
+                # Under 紀錄, as the login page (#748).
+                self.assertRegex(
+                    content, rf'<a href="{reverse("my_hearing")}" aria-current="page">'
+                )
 
 
 TOO_MANY = "試太多次了，請一小時後再試"

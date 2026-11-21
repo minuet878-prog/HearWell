@@ -519,7 +519,6 @@ NOT_PAGES = {
     "line_add",
     "qa_search",
     "route_answer",
-    "journey_todo_tick",
     "report_share_create",
     "report_share_cancel",
     "download_my_data",
@@ -632,9 +631,9 @@ class FormDetailsTests(TestCase):
         (email,) = re.findall(r'<input[^>]*name="email"[^>]*>', self.page())
         self.assertIn('value=""', email)
 
-    def test_the_sent_page_has_its_tick(self):
+    def test_the_sent_page_says_so_in_the_bird_s_bubble(self):
         response = self.client.get(reverse("feedback_sent"))
-        self.assertContains(response, '<span aria-hidden="true">✓ </span>已送出，謝謝您')
+        self.assertContains(response, '<h1 class="bird-title">已送出，謝謝您</h1>')
 
     def test_an_empty_box_keeps_nothing(self):
         response = self.client.post(reverse("feedback"), {"text": ""})

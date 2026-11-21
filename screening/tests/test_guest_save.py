@@ -135,10 +135,11 @@ class SaveCardTests(GuestSaveTestCase):
         self.assertLess(buttons, html.index("換手機或換瀏覽器就看不到這次結果。"))
 
     def test_after_the_one_sentence_where_the_journey_card_is(self):
-        # B1: in the 照顧旅程 card's place, after the level's one sentence and before the fold.
+        # B1: in the 照顧旅程 card's place, after the level's one sentence (since 2026-11-21 in
+        # 這個分數怎麼算) and before the fold.
         html = self.guest_html([0] * 10)
         card = html.index(SAVE_TITLE)
-        self.assertLess(html.index('class="result-one-line"'), card)
+        self.assertLess(html.index('class="score-explain-advice"'), card)
         self.assertLess(card, html.index('class="result-list"'))
 
 
@@ -167,11 +168,10 @@ class GuestAdviceTests(GuestSaveTestCase):
             questionnaire = self.hhie_s if code == hhie_s.CODE else self.hhia_s
             with self.subTest(questionnaire=code, level=level):
                 html = self.guest_html(self.LEVELS[level], questionnaire)
-                # Once before the fold, and not again as a step in it (看完整建議's whole
-                # paragraph may quote it).
-                self.assertEqual(html[: html.index('class="result-list"')].count(advice), 1)
-                fold = html[html.index('class="result-list"') :]
-                self.assertNotIn(f"<p>{advice}</p>", fold)
+                # Once: 這個分數怎麼算 has no 看完整建議 since the owner's acceptance
+                # (2026-11-21), so it is not said again there.
+                self.assertNotIn("看完整建議", html)
+                self.assertEqual(html.count(advice), 1)
                 box = html.index('class="result-advice')
                 self.assertLess(box, html.index(advice))
                 self.assertLess(html.index(advice), html.index(SAVE_TITLE))
@@ -436,7 +436,7 @@ class GuestAskRedirectTests(GuestSaveTestCase):
 
 
 ASK_TITLE = (
-    '<h1 class="h3 mt-4" data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">'
+    '<h1 class="bird-title" data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">'
     "要把這次結果存到這個帳號嗎？</h1>"
 )
 YES = "要，存進這個帳號"
@@ -467,7 +467,7 @@ class GuestAskQuestionTests(GuestSaveTestCase):
         response = self.client.get(SAVE_FROM_CARD)
         self.assertContains(
             response,
-            '<h1 class="h3 mt-4" data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">'
+            '<h1 class="bird-title" data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">'
             "保存這次結果</h1>",
         )
         self.assertContains(

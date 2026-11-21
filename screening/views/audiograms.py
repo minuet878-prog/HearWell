@@ -80,9 +80,9 @@ def audiogram_new(request):
     )
 
 
-# The 2026-11-14 walkthrough (mockup 2A): sent here by the care journey's 有，記錄聽力圖, someone
-# who finds they have no report yet goes back to that page; None: the list, as before.
-WAYS_BACK = {"index": "還沒有報告，回首頁", "result": "還沒有報告，回結果"}
+# The 2026-11-14 walkthrough (mockup 2A): sent here by the care journey's 醫院檢查報告 (spec
+# #741), someone who finds they have no report yet goes back home; None: the list, as before.
+WAYS_BACK = {"index": "還沒有報告，回首頁"}
 
 
 def way_back(request):

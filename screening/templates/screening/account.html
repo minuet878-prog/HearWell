@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block title %}帳號設定｜聽伴{% endblock %}
 
@@ -11,15 +11,19 @@
 {# Spec phase9_ui_refresh_3_structure.md 4.1: look only; deleting comes last, set apart. #}
 {# #195 (spec #183 stories 62-70): groups of rows; only the rows that go somewhere are links. #}
 {# #303 (#298's pick, ADR 0022): the details are flat rows; each link row is a white card. #}
-<h1 class="h3 mt-4">帳號設定</h1>
+{% include "screening/bird_dialogue.html" with lead="account_settings"|page_lead:user.username title="帳號設定" %}
 
 <section class="mt-6" aria-labelledby="account-title">
     <h2 id="account-title" class="h4">我的帳號</h2>
+    {# #757 (spec #741 P19, the canvas's ProAccount): the name beside the header's avatar, larger, in a pale blue block. #}
+    <div class="account-card">
+        <span class="account-avatar" aria-hidden="true">{{ user.username|first|upper }}</span>
+        <dl class="account-card-name">
+            <dt>使用者名稱</dt>
+            <dd>{{ user.username }}</dd>
+        </dl>
+    </div>
     <dl class="settings-group">
-        <div class="settings-row">
-            <dt class="settings-row-note">使用者名稱</dt>
-            <dd class="settings-row-title">{{ user.username }}</dd>
-        </div>
         {% if user.email_confirmed %}
         <div class="settings-row">
             <dt class="settings-row-note">電子郵件</dt>
@@ -38,7 +42,7 @@
         <div class="settings-row grid grid-cols-[1fr_auto] items-center gap-x-3">
             <dt class="settings-row-note">電子郵件</dt>
             <dd class="settings-row-title">未填</dd>
-            <dd class="col-start-2 row-span-2 row-start-1"><a class="btn btn-outline-primary" href="{% url 'add_email' %}" aria-label="補上電子郵件">補上</a></dd>
+            <dd class="col-start-2 row-span-2 row-start-1"><a class="btn btn-outline-primary btn-pill" href="{% url 'add_email' %}" aria-label="補上電子郵件">補上</a></dd>
         </div>
         {% endif %}
         <div class="settings-row">
@@ -52,46 +56,29 @@
     <p class="mt-2 mb-0">{% include "screening/copy_address_button.html" %}</p>{% endif %}
 </section>
 
-{# #659 (spec #656 acceptance 1-6, the #657 mockup's C): the state, then one button saying what it does; once on, a text link turns it off. An ordinary form, no JavaScript. Without an email it cannot be turned on. #}
+{# #659 (spec #656 acceptance 1-6): one button saying what it does, an ordinary form, no JavaScript. Without an email it cannot be turned on. #}
+{# Spec #741 (the owner's pick at acceptance, compare-reminder.html C): in one grey block, the bell beside the title and one short line saying whether it is on; the tick on the bell only repeats that line, so screen readers skip it. What the email is for is in the privacy notice. #}
 <section id="retest-reminder" class="mt-6" aria-labelledby="retest-reminder-title">
-    <h2 id="retest-reminder-title" class="h4">email 重測提醒</h2>
-    {% if reminder.enabled %}
-    <p class="reminder-on"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="wrap-anywhere">已開啟，到期會寄到 {{ user.email }}</span></p>
-    {% if retest.retest_due %}
-    {# Once on this page only, so Tailwind's own classes (CODING_STANDARDS 21): a pale box asking for it now. #}
-    <div class="mb-2 rounded-(--radius-medium) bg-surface px-4 py-3.5">
-        <p class="m-0 font-bold text-heading">您現在就可以再做一次</p>
-        <p class="mt-1 mb-0">上一次是 {{ retest.life_impact.created_at|date:"Y/m/d" }}，{% if no_mail_this_time %}已經超過半年。這一次不另外寄信，做完之後，半年後會寄提醒給您。{% else %}已經滿半年。{% endif %}</p>
-        <a class="btn btn-primary w-full mt-3" href="{% url 'screening' retest.retest_questionnaire.pk %}">再做一次</a>
-    </div>
-    {% endif %}
-    <dl class="settings-group">
-        <div class="settings-row">
-            <dt class="settings-row-note">目前</dt>
-            <dd class="settings-row-title">已開啟（{{ reminder.enabled_on|date:"Y/m/d" }} 起）</dd>
+    <div class="reminder-box">
+    <div class="reminder-head">
+        <span class="reminder-bell" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"/></svg>{% if reminder.enabled %}<span class="reminder-tick"><svg viewBox="0 0 24 24" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>{% endif %}</span>
+        <div>
+            <h2 id="retest-reminder-title" class="reminder-title">email 重測提醒</h2>
+            {% if reminder.enabled %}<p class="reminder-state reminder-state-on">已打開</p>{% else %}<p class="reminder-state">沒有打開</p>{% endif %}
         </div>
-    </dl>
-    {% if retest.next_suggested_date %}<p class="field-help mt-0 mb-0">下次篩檢 {{ retest.next_suggested_date|date:"Y/m/d" }}，那天早上 9 點寄信。</p>{% endif %}
+    </div>
+    {% if reminder.enabled %}
     <form method="post" action="{% url 'retest_reminder' %}">
         {% csrf_token %}
         <input type="hidden" name="enabled" value="0">
-        <button class="btn btn-link px-0" type="submit">關掉提醒</button>
+        <button class="btn btn-outline-primary w-full" type="submit">關掉提醒</button>
     </form>
-    {% else %}
-    {% include "screening/retest_reminder_purpose.html" %}
-    <dl class="settings-group">
-        <div class="settings-row">
-            <dt class="settings-row-note">目前</dt>
-            <dd class="settings-row-title">沒有打開</dd>
-        </div>
-    </dl>
-    {% if user.email_confirmed %}
+    {% elif user.email_confirmed %}
     <form method="post" action="{% url 'retest_reminder' %}">
         {% csrf_token %}
         <input type="hidden" name="enabled" value="1">
         <button class="btn btn-outline-primary w-full" type="submit">打開提醒</button>
     </form>
-    <p class="field-help mt-2 mb-0 wrap-anywhere">會寄到 {{ user.email }}</p>
     {% elif user.email %}
     <p class="mt-0">您的 email 還沒確認，確認以後才能收提醒。</p>
     {% include "screening/email_confirm_resend.html" %}
@@ -99,7 +86,7 @@
     <p class="mt-0">您的帳號還沒有 email，要先補上才能收提醒。</p>
     <a class="btn btn-outline-primary w-full" href="{% url 'add_email' %}">補上 email</a>
     {% endif %}
-    {% endif %}
+    </div>
 </section>
 
 {# Spec #505 acceptance 22, 27, 28 (the #507 mockup 5, D5, W12) and #506 acceptance 15, 18 (the #539 mockup 5, D4): one row per way to sign in, 帳號密碼, Google, LINE; adding is a small blue frame, removing a red text link. A provider without its keys has no row; admin accounts have no group, nor anyone when no provider has keys. #}
@@ -123,7 +110,7 @@
                 <button class="danger-link" type="submit" aria-label="移除 {{ row.name }} 登入">移除</button>
             </form>
             {% elif row.add_url %}
-            <a class="btn btn-outline-primary" href="{{ row.add_url }}" aria-label="新增 {{ row.name }} 登入">新增</a>
+            <a class="btn btn-outline-primary btn-pill" href="{{ row.add_url }}" aria-label="新增 {{ row.name }} 登入">新增</a>
             {% endif %}
         </li>
         {% endfor %}
@@ -210,4 +197,9 @@
         <span class="link-card-arrow" aria-hidden="true">›</span>
     </a></li>
 </ul>
+{# #748 (spec #741 P8): logout moved here from the header, the last thing on the page. #}
+<form id="logout-form" action="{% url 'logout' %}" method="post">
+    {% csrf_token %}
+    <button class="btn btn-outline-primary w-full mt-6" type="submit">登出</button>
+</form>
 {% endblock %}

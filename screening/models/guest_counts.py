@@ -26,6 +26,8 @@ class GuestMonth(models.Model):
     door_self = models.PositiveIntegerField("門：了解自己", default=0)
     door_family = models.PositiveIntegerField("門：擔心家人", default=0)
     send_opened = models.PositiveIntegerField("從傳給他打開", default=0)
+    # Spec #741 (#752, grill P15): the third door, 想了解助聽器, counted with the other two.
+    door_aids = models.PositiveIntegerField("門：想了解助聽器", default=0)
 
     class Meta:
         verbose_name = verbose_name_plural = "訪客月計數"
@@ -34,8 +36,16 @@ class GuestMonth(models.Model):
         return f"{self.month.year}/{self.month.month:02d}"
 
 
-# The columns a page may add one to through the API, each named as its column (specs #677, #655).
-PAGE_COUNT_COLUMNS = ("clinic_elder", "clinic_family", "door_self", "door_family", "send_opened")
+# The columns a page may add one to through the API, each named as its column (specs #677, #655,
+# #741).
+PAGE_COUNT_COLUMNS = (
+    "clinic_elder",
+    "clinic_family",
+    "door_self",
+    "door_family",
+    "send_opened",
+    "door_aids",
+)
 
 
 # The 保存 column of how an account was registered: the provider of the sign-in method it was
