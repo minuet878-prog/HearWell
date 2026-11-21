@@ -88,6 +88,8 @@ class LearnStackTests(TestCase):
         # The owner (2026-11-21, at acceptance): the words on these cards centred.
         css = (settings.BASE_DIR / "frontend/src/site.css").read_text()
         self.assertRegex(css, r"\.learn-card \{[^}]*text-align: center;")
+        # Its line bigger than body text (owner, 2026-11-21): 22px at the 18px root.
+        self.assertRegex(css, r"\.learn-card > p \{[^}]*font-size: 1\.2222rem;")
         # And the simulator's wave no taller than the other cards' drawings, so the words lead.
         self.assertRegex(css, r"\.learn-card \.hero-wave \{[^}]*height: 2\.6667rem;")
         # Every card its own drawing, each playing once when its card comes to the front.
