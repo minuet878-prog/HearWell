@@ -718,7 +718,7 @@ class StepAboutTests(CareJourneyTestCase):
             [step.about for step in steps],
             [
                 "先做一份生活影響問卷，了解聽力對您生活的影響。",
-                "到醫院做聽力檢查，拿到聽力圖報告。",
+                "到醫院做聽力檢查並取得聽力報告。",
                 "記錄您在醫院做的聽力檢查或 AirPods 自我測試結果。",
                 GUIDE_WORDS,
                 "照選配路線一站一站走，從找聽力師到開始戴助聽器。",

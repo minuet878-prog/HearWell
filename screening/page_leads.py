@@ -2,7 +2,7 @@
 
 The one place for every page's lead. Keyed by the page's URL name; a page with more than one
 state (a link that no longer works, a form already sent) has a key of its own for each. The owner
-reviews every line before it goes live: the canvas's are hers already, the rest are drafts.
+reviewed every line on 2026-11-21; a new or changed lead goes to the owner before it goes live.
 A lead with {name} takes the account's name.
 """
 

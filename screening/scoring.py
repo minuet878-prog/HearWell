@@ -223,7 +223,7 @@ FITTING_ADVICE_BEFORE_YOU_GO = "去之前要準備什麼"
 # 4's and 6's the canvas's (spec #741); step 2's a draft the owner settles on review.
 CARE_JOURNEY_ABOUT = (
     LIFE_IMPACT_BECAUSE,
-    "到醫院做聽力檢查，拿到聽力圖報告。",
+    "到醫院做聽力檢查並取得聽力報告。",
     "記錄您在醫院做的聽力檢查或 AirPods 自我測試結果。",
     GUIDE_BECAUSE,
     # #598 (spec #593): no subsidy on everyone's way, the owner's wording on #595.
