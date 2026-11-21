@@ -4387,7 +4387,11 @@ class SiteHeaderTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
                     nav = self.page.get_by_role("navigation", name="主要導覽")
                     nav.get_by_role("link", name="問卷").click()
                     expect(self.page).to_have_url(f"{self.live_server_url}/questionnaire_list")
+                    # The URL changes as the page starts: scrolled before it has loaded (and its
+                    # tab pill has slid), a slow machine scrolled a page not all there yet.
+                    self.page.wait_for_load_state("load")
                     self.scroll_to(400)
+                    expect(self.header()).to_have_attribute("data-scrolled", "")
                     self.header().get_by_role("link", name="回上一頁").click()
                     expect(self.page).to_have_url(f"{self.live_server_url}/learn")
 
