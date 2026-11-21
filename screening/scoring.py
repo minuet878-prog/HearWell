@@ -300,6 +300,11 @@ def max_score(questionnaire_code):
     return thresholds[-1][0] if thresholds else None
 
 
+def short_level_name(definition, level, text):
+    # A level's short name (#750); a test's own definition may have none: its full name then.
+    return definition.short_names.get(level, text)
+
+
 def classify(total_score, questionnaire_code):
     definition = questionnaires.get(questionnaire_code)
     if not (definition and definition.thresholds):
@@ -310,8 +315,7 @@ def classify(total_score, questionnaire_code):
             if total_score <= upper:
                 return {
                     "text": text,
-                    # A test's own definition may have none: its full name then.
-                    "short": definition.short_names.get(level, text),
+                    "short": short_level_name(definition, level, text),
                     "level": level,
                     "color": definition.color(level),
                 }

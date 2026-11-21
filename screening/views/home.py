@@ -26,6 +26,11 @@ def greeting(hour, name):
     return f"{words}，{name}" if len(name) <= GREETING_NAME_LIMIT else words
 
 
+def _has_records(user):
+    # A questionnaire or an audiogram: the 照顧旅程 has somewhere to stand (ADR 0044).
+    return user.submissions.defined().exists() or user.audiograms.exists()
+
+
 def index(request):
     user = request.user
     if not user.is_authenticated:
@@ -44,7 +49,7 @@ def index(request):
         )
     # #459 (ADR 0044): the 照顧旅程 for anyone with a questionnaire or an audiogram, else the
     # 空狀態首頁.
-    has_records = user.submissions.defined().exists() or user.audiograms.exists()
+    has_records = _has_records(user)
     # #745 (grill Q13): the stop an answer card here just finished (route_answer's ?done=),
     # stamped only while it is done and step 5 is still the 現在這一步.
     done_now = request.GET.get("done")
@@ -140,7 +145,7 @@ def learn(request):
     # then), the rest in the list's order; the whole list under them.
     user = request.user
     first = SIMULATOR
-    if user.is_authenticated and (user.submissions.defined().exists() or user.audiograms.exists()):
+    if user.is_authenticated and _has_records(user):
         first = FIRST_FOR_STEP.get(care_journey(user, timezone.localdate()).current, SIMULATOR)
     stack = [first, *(item for item in LEARN_ITEMS if item != first)]
     response = render(request, "screening/learn.html", {"stack": stack, "items": LEARN_ITEMS})

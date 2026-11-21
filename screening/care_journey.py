@@ -15,6 +15,7 @@ from screening.fitting_route import (
     HOSPITAL_SEARCH,
     add_months,
     fitting_state,
+    ioi_ha_since,
 )
 from screening.forms import STOP_QUESTIONS
 from screening.main_flow import get_user_state, life_impact_questionnaire
@@ -270,9 +271,7 @@ def care_journey(user, today, done_now=None):
     three_months = add_months(fitted_on, FITTING_MONTHS) if fitted_on is not None else None
     # The second IOI-HA, 3 months on from the fitting date (ADR 0074); the latest gives the day.
     ioi_ha = (
-        user.submissions.filter(questionnaire__code=IOI_HA, created_at__date__gte=three_months)
-        .order_by("-created_at")
-        .first()
+        ioi_ha_since(user, three_months).order_by("-created_at").first()
         if three_months is not None
         else None
     )
@@ -483,8 +482,7 @@ def _card(
         if today < three_months:
             wait = countdown(fitted_on, three_months, today, below=FITTING_AGAIN_FROM)
             return JourneyCard(title, FITTING_COMPARE, countdown=wait)
-        ioi_ha = Questionnaire.objects.get(code=IOI_HA)
-        button = (IOI_HA_BUTTON, reverse("screening", args=[ioi_ha.pk]))
+        button = (IOI_HA_BUTTON, _ioi_ha_href(questionnaires))
         return JourneyCard(title, "", button=button)
     # Step 7 by the canvas (spec #741 acceptance 26).
     if next_screening is None:
@@ -495,6 +493,12 @@ def _card(
         return JourneyCard(title, "", countdown=next_screening.countdown)
     button = (RETEST_BUTTON_TEXT, next_screening.href)
     return JourneyCard(title, RETEST_TIME_UP, button=button)
+
+
+def _ioi_ha_href(questionnaires):
+    # IOI-HA from the questionnaires already read; the catalogue where it is not offered.
+    ioi_ha = next((q for q in questionnaires if q.code == IOI_HA), None)
+    return reverse("screening", args=[ioi_ha.pk]) if ioi_ha else reverse("questionnaire_list")
 
 
 def _stop_card(route, questionnaires):
@@ -511,14 +515,9 @@ def _stop_card(route, questionnaires):
         return JourneyCard(stop.title, "", (BEFORE_YOU_GO_BUTTON, stop.url))
     if slug == "after-fitting":
         # Grill Q15, Q16, Q18: the date and the first IOI-HA, both needed, side by side.
-        # IOI-HA from the questionnaires already read; the catalogue where it is not offered.
-        ioi_ha = next((q for q in questionnaires if q.code == IOI_HA), None)
-        ioi_ha_href = (
-            reverse("screening", args=[ioi_ha.pk]) if ioi_ha else reverse("questionnaire_list")
-        )
         entries = (
             Entry(RECORD_FITTING_DATE, f"{stop.url}#stop-question", "calendar"),
-            Entry(FIRST_IOI_HA, ioi_ha_href, "clipboard", note=FIRST_IOI_HA_NOTE),
+            Entry(FIRST_IOI_HA, _ioi_ha_href(questionnaires), "clipboard", note=FIRST_IOI_HA_NOTE),
         )
         return JourneyCard(stop.title, AFTER_FITTING_WORDS, entries=entries)
     # Form 25: from when it can be done, a calendar's day, and the deadline under it; with no

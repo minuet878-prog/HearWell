@@ -171,7 +171,7 @@ class GradedResult(Result):
         previous_total = previous.result.total
         changed = level["level"] != previous_level["level"]
         difference = self.total - previous_total
-        ceiling = self.submission.questionnaire.definition.thresholds[-1][0]
+        ceiling = self.gauge["ceiling"]  # the full score; both levels are graded here
         return {
             "label": change_label_text(difference),
             "text": result_since_last_text(day, previous_total, difference),

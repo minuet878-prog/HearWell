@@ -172,10 +172,10 @@ def keep_view(user, chapter):
         GuideChapterView.objects.get_or_create(user=user, chapter=chapter)
 
 
-def _ioi_ha_since(user, aid):
-    # Taken on the fitting date or later (ADR 0074), as the 照顧旅程 counts it.
-    since = user.submissions.filter(questionnaire__code=IOI_HA, created_at__date__gte=aid.fitted_on)
-    return since.exists()
+def ioi_ha_since(user, day):
+    """The user's IOI-HA submissions taken on day or later: the fitting date's (ADR 0074) for the
+    first, 3 months on for the second."""
+    return user.submissions.filter(questionnaire__code=IOI_HA, created_at__date__gte=day)
 
 
 def wearing_hearing_aids(latest, aid):
@@ -226,7 +226,11 @@ def fitting_state(user, today):
         done.add("form-9")
     if aid is not None and aid.notice_received and aid.approved_ears and aid.level:
         done.add("notice")  # #294: 收到了 is done only with both of the notice's answers
-    if _fitted(aid) and (aid.notice_received or aid.subsidy) and _ioi_ha_since(user, aid):
+    if (
+        _fitted(aid)
+        and (aid.notice_received or aid.subsidy)
+        and ioi_ha_since(user, aid.fitted_on).exists()
+    ):
         # #295, spec #291 Q16: the fitting date, and without the notice the subsidy answered;
         # ADR 0074: and a first IOI-HA from that day on.
         done.add("after-fitting")
