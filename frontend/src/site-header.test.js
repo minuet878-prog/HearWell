@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { setUpSiteHeader } from "./site-header.js";
+import { setUpAccountMenu, setUpSiteHeader } from "./site-header.js";
 
 // #748 (spec #741 acceptance 38, 39, story 51; ADR 0079). jsdom neither scrolls nor leaves the
 // page, so a stand-in window holds where the page is, its history and where it came from.
@@ -117,5 +117,106 @@ describe("a page without the back button", () => {
     document.querySelector(".site-leave").dispatchEvent(event);
     expect(win.history.back).not.toHaveBeenCalled();
     expect(event.defaultPrevented).toBe(false);
+  });
+});
+
+// Spec #741 at acceptance (2026-11-21, compare-avatar-menu.html A): signed in, tapping the
+// avatar opens a small menu of 帳號設定 and 登出. The page has both the link (no JavaScript) and
+// the menu button, hidden; this swaps them.
+describe("the avatar menu", () => {
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <header class="site-header">
+        <div class="site-account" data-site-account>
+          <a class="site-avatar" href="/account" aria-label="帳號設定：jason">J</a>
+          <button class="site-avatar" type="button" aria-label="帳號設定：jason"
+            aria-expanded="false" aria-controls="site-account-menu" hidden
+            data-site-account-toggle>J</button>
+          <div class="site-account-menu" id="site-account-menu" hidden>
+            <p class="site-account-name">jason</p>
+            <a class="site-account-item" href="/account">帳號設定</a>
+            <form id="header-logout-form" action="/logout" method="post">
+              <button class="site-account-item site-account-logout" type="submit">登出</button>
+            </form>
+          </div>
+        </div>
+      </header>
+      <main><p>內容</p><a href="/learn">了解</a></main>`;
+    setUpAccountMenu();
+  });
+
+  const link = () => document.querySelector("a.site-avatar");
+  const avatar = () => document.querySelector("[data-site-account-toggle]");
+  const menu = () => document.getElementById("site-account-menu");
+  const isOpen = () => !menu().hidden && avatar().getAttribute("aria-expanded") === "true";
+  const isClosed = () => menu().hidden && avatar().getAttribute("aria-expanded") === "false";
+  const click = (element) => element.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  const pressKey = (key) =>
+    document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+
+  it("puts the menu button in place of the link to account settings", () => {
+    expect(link().hidden).toBe(true);
+    expect(avatar().hidden).toBe(false);
+    expect(isClosed()).toBe(true);
+  });
+
+  it("opens on tapping the avatar, with the focus on 帳號設定", () => {
+    click(avatar());
+    expect(isOpen()).toBe(true);
+    expect(document.activeElement.textContent).toBe("帳號設定");
+  });
+
+  it("closes on tapping the avatar again, with the focus back on it", () => {
+    click(avatar());
+    click(avatar());
+    expect(isClosed()).toBe(true);
+    expect(document.activeElement).toBe(avatar());
+  });
+
+  // A finger or mouse going down, which an iPhone sends for a tap on plain text too.
+  const touch = (element) =>
+    element.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+
+  it("stays open on tapping inside it", () => {
+    click(avatar());
+    touch(document.querySelector(".site-account-name"));
+    expect(isOpen()).toBe(true);
+  });
+
+  it("closes on tapping outside it, with the focus back on the avatar", () => {
+    click(avatar());
+    touch(document.querySelector("main p"));
+    expect(isClosed()).toBe(true);
+    expect(document.activeElement).toBe(avatar());
+  });
+
+  // Tabbed out of the menu, a tap outside leaves the focus where it was.
+  it("leaves the focus alone once it has left the menu", () => {
+    click(avatar());
+    const learn = document.querySelector("main a");
+    learn.focus();
+    touch(learn);
+    expect(isClosed()).toBe(true);
+    expect(document.activeElement).toBe(learn);
+  });
+
+  it("closes on Escape, with the focus back on the avatar", () => {
+    click(avatar());
+    pressKey("Escape");
+    expect(isClosed()).toBe(true);
+    expect(document.activeElement).toBe(avatar());
+  });
+
+  it("leaves Escape alone while closed", () => {
+    const learn = document.querySelector("main a");
+    learn.focus();
+    pressKey("Escape");
+    expect(isClosed()).toBe(true);
+    expect(document.activeElement).toBe(learn);
+  });
+
+  it("does nothing on a page signed out", () => {
+    document.body.innerHTML = '<header class="site-header"><a href="/login">登入</a></header>';
+    expect(() => setUpAccountMenu()).not.toThrow();
   });
 });

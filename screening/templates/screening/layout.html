@@ -79,10 +79,22 @@
                 <a class="site-back" href="{% url 'index' %}" aria-label="回首頁" data-site-back><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></a>
                 {% endblock %}
             </div>
-            {# #748 (spec #741 P8): signed in, the first letter of the name leads to account settings (logout is at the foot of that page); signed out, 登入 in a blue frame. #}
+            {# #748 (spec #741 P8): signed in, the first letter of the name; signed out, 登入 in a blue frame. #}
+            {# Spec #741 at acceptance (compare-avatar-menu.html A): tapping it opens a small menu, the name, 帳號設定 and 登出. site-header.js swaps the link for the menu button; without JavaScript it stays a link to account settings, where logout also is, at the foot. #}
             {% block header_end %}
             {% if user.is_authenticated %}
-            <a class="site-avatar" href="{% url 'account_settings' %}" aria-label="帳號設定：{{ user.username }}">{{ user.username|first|upper }}</a>
+            <div class="site-account" data-site-account>
+                <a class="site-avatar" href="{% url 'account_settings' %}" aria-label="帳號設定：{{ user.username }}">{{ user.username|first|upper }}</a>
+                <button class="site-avatar" type="button" aria-label="帳號設定：{{ user.username }}" aria-expanded="false" aria-controls="site-account-menu" hidden data-site-account-toggle>{{ user.username|first|upper }}</button>
+                <div class="site-account-menu" id="site-account-menu" hidden>
+                    <p class="site-account-name">{{ user.username }}</p>
+                    <a class="site-account-item" href="{% url 'account_settings' %}"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>帳號設定</a>
+                    <form id="header-logout-form" action="{% url 'logout' %}" method="post">
+                        {% csrf_token %}
+                        <button class="site-account-item site-account-logout" type="submit"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3M14 3h6v18h-6"/></svg>登出</button>
+                    </form>
+                </div>
+            </div>
             {% else %}
             <a class="btn btn-outline-primary site-login" href="{% url 'login' %}">登入</a>
             {% endif %}

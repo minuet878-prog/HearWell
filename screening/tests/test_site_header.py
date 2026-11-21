@@ -34,12 +34,47 @@ class SignedInHeaderTests(TestCase):
                     r' aria-label="帳號設定：jason">J</a>',
                 )
 
-    def test_header_has_no_signed_in_line_logout_or_wave(self):
+    def test_header_has_no_signed_in_line_or_wave(self):
         content = self.client.get(reverse("index")).content.decode()
-        top = header(content)
         self.assertNotIn("目前登入", content)
-        self.assertNotIn("登出", top)
         self.assertNotIn("site-wave", content)
+
+    # Spec #741, at acceptance (2026-11-21, compare-avatar-menu.html A): tapping the avatar opens
+    # a small menu, the name, 帳號設定 and 登出. It is in the page hidden; site-header.js shows
+    # the menu button in place of the link, so without JavaScript the avatar stays the link.
+    def test_avatar_menu_is_in_the_page_hidden(self):
+        top = header(self.client.get(reverse("index")).content.decode())
+        self.assertRegex(
+            top,
+            r'<button class="site-avatar" type="button" aria-label="帳號設定：jason"'
+            r' aria-expanded="false" aria-controls="site-account-menu" hidden'
+            r" data-site-account-toggle>J</button>",
+        )
+        menu = re.search(
+            r'<div class="site-account-menu" id="site-account-menu" hidden>.*?</div>', top, re.S
+        )
+        self.assertIsNotNone(menu)
+        self.assertRegex(menu.group(0), r'<p class="site-account-name">jason</p>')
+        self.assertRegex(
+            menu.group(0),
+            rf'<a class="site-account-item" href="{reverse("account_settings")}">'
+            r"<svg[^>]*>.*?</svg>帳號設定</a>",
+        )
+
+    def test_menu_logout_posts_to_logout_with_the_csrf_token(self):
+        top = header(self.client.get(reverse("index")).content.decode())
+        form = re.search(
+            rf'<form id="header-logout-form" action="{reverse("logout")}" method="post">.*?</form>',
+            top,
+            re.S,
+        )
+        self.assertIsNotNone(form)
+        self.assertIn('name="csrfmiddlewaretoken"', form.group(0))
+        self.assertRegex(
+            form.group(0),
+            r'<button class="site-account-item site-account-logout" type="submit">'
+            r"<svg[^>]*>.*?</svg>登出</button>",
+        )
 
     def test_header_keeps_the_name_without_the_bird(self):
         # The owner (2026-11-21, at acceptance): the bird is the dialogue's alone, as the
@@ -71,6 +106,8 @@ class SignedOutHeaderTests(TestCase):
             rf'<a class="btn btn-outline-primary site-login" href="{reverse("login")}">登入</a>',
         )
         self.assertNotIn("site-avatar", top)
+        self.assertNotIn("site-account-menu", top)
+        self.assertNotIn("登出", top)
 
 
 class BackButtonTests(TestCase):

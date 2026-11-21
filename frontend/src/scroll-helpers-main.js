@@ -4,14 +4,14 @@ import { setUpBackToTop } from "./back-to-top.js";
 import { setUpPlayInView } from "./in-view.js";
 import { setUpJumpHighlight } from "./jump-highlight.js";
 import { setUpScrollHint } from "./scroll-hint.js";
-import { setUpSiteHeader } from "./site-header.js";
+import { setUpAccountMenu, setUpSiteHeader } from "./site-header.js";
 import { setUpTabBar } from "./tab-bar.js";
 
 // Each on its own: one that stops with an error leaves the others working. Play-in-view first,
 // as the page's entrance animations hold their first frame until it takes over.
 const helpers = [
   setUpPlayInView, setUpBackToTop, setUpJumpHighlight, setUpScrollHint, setUpTabBar,
-  setUpSiteHeader,
+  setUpSiteHeader, setUpAccountMenu,
 ];
 for (const setUp of helpers) {
   try {

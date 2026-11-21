@@ -28,3 +28,47 @@ export function setUpSiteHeader(win = window) {
     });
   }
 }
+
+// Spec #741 at acceptance (2026-11-21, compare-avatar-menu.html A): signed in, tapping the avatar
+// opens a small menu of 帳號設定 and 登出. layout.html has both the avatar as a link to account
+// settings (without JavaScript) and the menu button, hidden; here the button takes the link's
+// place. A disclosure button (aria-expanded, aria-controls), not an ARIA menu: Tab and Enter
+// reach the two items as on the rest of the page, with no arrow keys to learn.
+export function setUpAccountMenu(doc = document) {
+  const account = doc.querySelector("[data-site-account]");
+  if (!account) return;
+  const link = account.querySelector("a.site-avatar");
+  const avatar = account.querySelector("[data-site-account-toggle]");
+  const menu = doc.getElementById(avatar.getAttribute("aria-controls"));
+  link.hidden = true;
+  avatar.hidden = false;
+
+  const setOpen = (open) => {
+    menu.hidden = !open;
+    avatar.setAttribute("aria-expanded", String(open));
+  };
+
+  avatar.addEventListener("click", () => {
+    if (menu.hidden) {
+      setOpen(true);
+      menu.querySelector("a, button").focus();
+    } else {
+      setOpen(false);
+      avatar.focus();
+    }
+  });
+
+  // A tap outside closes it: pointerdown, as an iPhone sends no click to the page for a tap on
+  // plain text. The focus, if still in the menu, would be lost in it hidden: back to the avatar.
+  doc.addEventListener("pointerdown", (event) => {
+    if (menu.hidden || account.contains(event.target)) return;
+    setOpen(false);
+    if (menu.contains(doc.activeElement)) avatar.focus();
+  });
+
+  doc.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || menu.hidden) return;
+    setOpen(false);
+    avatar.focus();
+  });
+}

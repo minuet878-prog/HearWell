@@ -46,3 +46,14 @@ it("deleting the account clears the guest results too", async () => {
   document.getElementById("delete-account-form").dispatchEvent(new Event("submit"));
   expect(localStorage.getItem(`${GUEST_PREFIX}hhie-s`)).toBeNull();
 });
+
+// Spec #741 at acceptance (2026-11-21): the header's avatar menu has its own 登出.
+it("logging out from the header's menu clears the unfinished answers and guest results", async () => {
+  document.body.innerHTML = '<form id="header-logout-form" action="/logout" method="post"></form>';
+  localStorage.setItem(`${DRAFT_PREFIX}1`, "{}");
+  localStorage.setItem(`${GUEST_PREFIX}hhie-s`, "{}");
+  await import("./logout.js");
+  document.getElementById("header-logout-form").dispatchEvent(new Event("submit"));
+  expect(localStorage.getItem(`${DRAFT_PREFIX}1`)).toBeNull();
+  expect(localStorage.getItem(`${GUEST_PREFIX}hhie-s`)).toBeNull();
+});

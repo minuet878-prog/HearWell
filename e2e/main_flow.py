@@ -715,7 +715,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         )
         self.assert_step_bar(2, 2)
         self.main().get_by_role("button", name="我同意，開始篩檢", exact=True).click()
-        expect(self.page.get_by_role("link", name="帳號設定：e2e_user")).to_be_visible()
+        expect(self.page.get_by_role("button", name="帳號設定：e2e_user")).to_be_visible()
         expect(self.page).to_have_url(re.compile(r"/questionnaire_list\?from=consent$"))
 
     def fill_register_form(self):
@@ -4486,7 +4486,7 @@ class SiteHeaderTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
         return self.header().get_by_role("link", name="聽伴")
 
     def avatar(self):
-        return self.header().get_by_role("link", name="帳號設定：header_e2e")
+        return self.header().get_by_role("button", name="帳號設定：header_e2e")
 
     def scroll_to(self, y):
         self.page.evaluate("y => scrollTo({ top: y, behavior: 'instant' })", y)
@@ -4524,6 +4524,62 @@ class SiteHeaderTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             expect(back).to_be_hidden()
             expect(self.avatar()).to_have_css("background-color", "rgb(238, 243, 250)")
 
+    # Spec #741 at acceptance (2026-11-21, compare-avatar-menu.html A): the avatar opens a small
+    # menu of 帳號設定 and 登出.
+    def menu(self):
+        return self.header().locator("#site-account-menu")
+
+    def test_avatar_menu_opens_closes_and_logs_out(self):
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/learn")
+            expect(self.menu()).to_be_hidden()
+            self.avatar().click()
+            expect(self.menu()).to_be_visible()
+            expect(self.avatar()).to_have_attribute("aria-expanded", "true")
+            expect(self.menu().locator(".site-account-name")).to_have_text("header_e2e")
+            settings_link = self.menu().get_by_role("link", name="帳號設定")
+            expect(settings_link).to_be_focused()
+            for item in (settings_link, self.menu().get_by_role("button", name="登出")):
+                self.assertGreaterEqual(item.bounding_box()["height"], 55.5)
+            self.page.keyboard.press("Escape")
+            expect(self.menu()).to_be_hidden()
+            expect(self.avatar()).to_be_focused()
+            self.avatar().click()
+            self.page.get_by_role("main").get_by_role("heading", level=1).click()
+            expect(self.menu()).to_be_hidden()
+            expect(self.avatar()).to_have_attribute("aria-expanded", "false")
+            self.avatar().click()
+            self.avatar().click()
+            expect(self.menu()).to_be_hidden()
+            self.avatar().click()
+            self.menu().get_by_role("button", name="登出").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/")
+            expect(self.page.get_by_role("status").filter(has_text="已登出。")).to_be_visible()
+            expect(self.header().get_by_role("link", name="登入")).to_be_visible()
+            expect(self.header().locator(".site-avatar")).to_have_count(0)
+
+    def test_avatar_menu_leads_to_account_settings(self):
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/learn")
+            self.avatar().click()
+            self.menu().get_by_role("link", name="帳號設定").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/account")
+
+    # Scrolled, the avatar is frosted and still opens its menu over the page.
+    def test_avatar_menu_opens_from_the_frosted_header(self):
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/learn")
+            self.scroll_to(400)
+            expect(self.header()).to_have_attribute("data-scrolled", "")
+            expect(self.avatar()).to_have_css("background-color", self.FROSTED_AVATAR)
+            self.avatar().click()
+            expect(self.menu()).to_be_visible()
+            self.menu().get_by_role("link", name="帳號設定").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/account")
+
     # 39: from another page of the site it goes back there, in the browser or the home-screen
     # app (whose own 上一頁 it replaced).
     def test_back_button_returns_to_the_previous_page_of_the_site(self):
@@ -4560,6 +4616,17 @@ class SiteHeaderTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             self.header().get_by_role("link", name="回首頁").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/")
 
+    # Spec #741 at acceptance: without JavaScript the avatar stays a link to account settings.
+    def test_without_javascript_the_avatar_is_a_link_to_account_settings(self):
+        self.open(javascript=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/learn")
+            expect(self.header().get_by_role("button", name="帳號設定：header_e2e")).to_be_hidden()
+            expect(self.menu()).to_be_hidden()
+            self.header().get_by_role("link", name="帳號設定：header_e2e").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/account")
+            expect(self.page.get_by_role("main").get_by_role("button", name="登出")).to_be_visible()
+
     # Story 51: without JavaScript it is a link home, beside the name.
     def test_without_javascript_the_back_button_is_a_link_home(self):
         self.open(javascript=False)
@@ -4581,7 +4648,7 @@ class SiteHeaderTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/my_hearing")
             self.double_text()
-            avatar = self.header().locator(".site-avatar")
+            avatar = self.header().locator(".site-avatar:visible")
             for y in (0, 600):
                 with self.subTest(scrolled=y):
                     self.scroll_to(y)
@@ -5999,7 +6066,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     # Spec #741 (the owner at acceptance): no bird in the header, the
                     # dialogue's is the page's one.
                     expect(brand.locator(".site-logo")).to_have_count(0)
-                    avatar = header.get_by_role("link", name="帳號設定：style_e2e")
+                    avatar = header.get_by_role("button", name="帳號設定：style_e2e")
                     expect(avatar).to_have_text("S")
                     for text in (brand.locator(".site-wordmark-tint"), avatar):
                         colour = self.style(text, "color")
@@ -16154,7 +16221,7 @@ class GuestSavesFromTheCard(SavesFailureArtifacts, OnAPhone):
                 self.main().get_by_role("heading", name="要把這次結果存到這個帳號嗎？")
             ).to_be_visible()
             expect(
-                self.page.get_by_role("link", name=f"帳號設定：{self.username}_had")
+                self.page.get_by_role("button", name=f"帳號設定：{self.username}_had")
             ).to_be_visible()
             self.assertFalse(Submission.objects.exists())
             self.assertEqual(self.guest_results(), ["hearwell:guest-result:hhie-s"])
