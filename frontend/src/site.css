@@ -824,29 +824,30 @@
     justify-content: space-between;
     gap: 0.5rem 1rem;
     padding-block: 0.5rem;
+    container-type: inline-size;
   }
 
-  /* Without JavaScript the ‹ is a link home beside the name. With it, the ‹ sits over the name
-     from the first paint, shown only once site-header.js marks the header scrolled. */
+  /* The ‹ before the name from the start (the owner, 2026-11-21; not on the home page).
+     Scrolled, the name goes and leaves its place empty, so the ‹ stays where it was. */
   .site-header-start {
-    position: relative;
     display: flex;
     align-items: center;
     gap: 0.5rem;
     min-width: 0;
   }
 
-  @media (scripting: enabled) {
-    .site-back {
-      position: absolute;
-      top: 50%;
-      left: 0;
-      translate: 0 -50%;
+  /* Where ‹, 聽伴 and the avatar (or 登入) cannot share the line, as on a phone at double text
+     size, the name goes as it does scrolled: the ‹ and the avatar stay whole. In rem, so it
+     follows the text size: the three widths and the gaps between them. */
+  @container (width < 10.75rem) {
+    .site-back + .site-brand {
+      display: none;
     }
+  }
 
-    .site-header:not([data-scrolled]) .site-back {
-      opacity: 0;
-      visibility: hidden;
+  @container (width < 13rem) {
+    .site-header-bar:has(.site-login) .site-back + .site-brand {
+      display: none;
     }
   }
 
@@ -1091,11 +1092,11 @@
       transition: background-color 0.25s;
     }
 
-    :is(.site-brand, .site-back) {
+    .site-brand {
       transition: opacity 0.2s, visibility 0.2s;
     }
 
-    .site-avatar {
+    :is(.site-back, .site-avatar) {
       transition: background-color 0.25s, box-shadow 0.25s, border-color 0.25s;
     }
   }

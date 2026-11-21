@@ -1,5 +1,6 @@
-// #748 (ADR 0079): scrolled past the header, 聽伴 gives way to a round frosted ‹ and the avatar
-// turns frosted (site.css, by data-scrolled); back at the top they swap again. The ‹ is a link
+// #748 (ADR 0079): a round ‹ before 聽伴 on every page but the home page (the owner, 2026-11-21).
+// Scrolled past the header, 聽伴 goes and the ‹ and the avatar turn frosted (site.css, by
+// data-scrolled); back at the top they are as before. The ‹ is a link
 // home in the page, so it still works without JavaScript; here it goes back instead when the
 // page before this one is of this site. This took over the home-screen app's own 上一頁.
 

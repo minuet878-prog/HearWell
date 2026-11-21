@@ -274,9 +274,15 @@ class RedesignLayoutTests(TestCase):
                 self.assertEqual(self._nav_labels(nav), list(self.LOGGED_IN_ITEMS))
                 content = response.content.decode()
                 # The answer page's header has 離開 and the topic instead (#755).
+                logout = f'action="{reverse("logout")}"'
                 if url != reverse("screening", args=[self.questionnaire.id]):
                     self.assertIn('aria-label="帳號設定：alice_account">A</a>', content)
-                self.assertNotIn(f'action="{reverse("logout")}"', content)
+                    # Spec #741 at acceptance: logout only in the avatar's menu, hidden until
+                    # it is opened.
+                    self.assertEqual(content.count(logout), 1)
+                    self.assertIn(f'<form id="header-logout-form" {logout}', content)
+                else:
+                    self.assertNotIn(logout, content)
 
     def test_logged_out_nav(self):
         for url in (reverse("index"), reverse("login"), reverse("register")):

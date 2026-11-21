@@ -71,12 +71,14 @@
     <div class="site-page">
     <header class="site-header">
         <div class="container site-header-bar">
-            {# #748 (ADR 0079): scrolled past the header, the name gives way to a round frosted ‹ (site-header.js). Without JavaScript that is a link home beside the name. #}
+            {# #748 (ADR 0079): a round ‹ before the name from the start, on every page but the home page (the owner, 2026-11-21); scrolled past the header the name goes and the ‹ turns frosted (site-header.js). It is a link home, made the browser's back when the page before is of this site. #}
             {# header_start, header_end: the answer page puts its own 離開 and topic here (#755). #}
             <div class="site-header-start">
                 {% block header_start %}
-                <p class="site-brand"><a href="{% url 'index' %}"><span>聽<span class="site-wordmark-tint">伴</span></span></a></p>
+                {% if request.resolver_match.url_name != "index" %}
                 <a class="site-back" href="{% url 'index' %}" aria-label="回首頁" data-site-back><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></a>
+                {% endif %}
+                <p class="site-brand"><a href="{% url 'index' %}"><span>聽<span class="site-wordmark-tint">伴</span></span></a></p>
                 {% endblock %}
             </div>
             {# #748 (spec #741 P8): signed in, the first letter of the name; signed out, 登入 in a blue frame. #}

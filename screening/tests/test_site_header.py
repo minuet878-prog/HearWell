@@ -119,16 +119,27 @@ class BackButtonTests(TestCase):
         "</svg></a>"
     )
 
-    def test_every_page_has_the_back_link_in_the_header(self):
+    # The owner, 2026-11-21: it shows from the start, before 聽伴, on every page but the home page.
+    def test_every_page_but_home_has_the_back_link_before_the_name(self):
         user = consented_user(username="backtester")
-        pages = [(False, reverse("index")), (False, reverse("login"))]
-        pages += [(True, reverse(name)) for name in ("index", "questionnaire_list", "learn")]
+        pages = [(False, reverse("login")), (False, reverse("learn"))]
+        pages += [(True, reverse(name)) for name in ("questionnaire_list", "learn", "my_hearing")]
         for logged_in, url in pages:
             with self.subTest(url=url):
                 if logged_in:
                     self.client.force_login(user)
                 top = header(self.client.get(url).content.decode())
                 self.assertIn(self.BACK, top)
+                self.assertLess(top.index("site-back"), top.index("site-brand"))
+
+    def test_home_has_no_back_link(self):
+        for logged_in in (False, True):
+            if logged_in:
+                self.client.force_login(consented_user(username="hometester"))
+            with self.subTest(logged_in=logged_in):
+                top = header(self.client.get(reverse("index")).content.decode())
+                self.assertNotIn("site-back", top)
+                self.assertIn('<p class="site-brand">', top)
 
     # The home-screen app's own 上一頁 is merged into this one.
     def test_the_old_home_screen_app_button_is_gone(self):

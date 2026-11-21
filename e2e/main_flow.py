@@ -4491,24 +4491,32 @@ class SiteHeaderTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     def scroll_to(self, y):
         self.page.evaluate("y => scrollTo({ top: y, behavior: 'instant' })", y)
 
-    # 38
-    def test_scrolled_past_the_header_the_name_gives_way_to_a_frosted_back_button(self):
+    # 38, and the owner (2026-11-21): the back button shows from the start before the name;
+    # scrolled, the name goes, the button stays where it was and turns frosted.
+    def test_back_button_before_the_name_turns_frosted_when_scrolled(self):
         self.open()
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/learn")
             # By class: a role locator skips hidden elements, so it would pass "hidden" unfound.
             back, brand = self.header().locator(".site-back"), self.header().locator(".site-brand")
-            # Hidden from the first paint: it does not show by the name and fade as the page
-            # opens.
-            self.assertEqual(back.evaluate("el => el.getAnimations().length"), 0)
             expect(brand).to_be_visible()
-            expect(back).to_be_hidden()
-            expect(self.avatar()).to_have_text("H")
-            expect(self.avatar()).to_have_css("background-color", "rgb(238, 243, 250)")
-            self.scroll_to(400)
             expect(back).to_be_visible()
             expect(back).to_have_accessible_name("回首頁")
+            at_top = back.bounding_box()
+            self.assertLess(at_top["x"] + at_top["width"], brand.bounding_box()["x"])
+            expect(back).to_have_css("background-color", "rgb(238, 243, 250)")
+            expect(self.avatar()).to_have_text("H")
+            expect(self.avatar()).to_have_css("background-color", "rgb(238, 243, 250)")
+            # A ring shows where the keyboard is.
+            self.page.keyboard.press("Tab")
+            self.page.keyboard.press("Tab")
+            expect(back).to_be_focused()
+            self.assertNotEqual(back.evaluate("el => getComputedStyle(el).outlineStyle"), "none")
+            back.blur()
+            self.scroll_to(400)
+            expect(back).to_be_visible()
             expect(brand).to_be_hidden()
+            self.assertEqual(back.bounding_box(), at_top)
             expect(self.avatar()).to_have_css("background-color", self.FROSTED_AVATAR)
             expect(back).to_have_css("backdrop-filter", re.compile("blur"))
             # It floats over the page: the header stays at the top with no white band.
@@ -4521,8 +4529,20 @@ class SiteHeaderTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
                 self.assertGreaterEqual(box["y"], 0)
             self.scroll_to(0)
             expect(brand).to_be_visible()
-            expect(back).to_be_hidden()
+            expect(back).to_be_visible()
             expect(self.avatar()).to_have_css("background-color", "rgb(238, 243, 250)")
+
+    # The owner (2026-11-21): no back button on the home page, at the top or scrolled.
+    def test_home_page_has_no_back_button(self):
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            expect(self.brand()).to_be_visible()
+            expect(self.header().locator(".site-back")).to_have_count(0)
+            self.scroll_to(400)
+            expect(self.header()).to_have_attribute("data-scrolled", "")
+            expect(self.header().locator(".site-back")).to_have_count(0)
+            expect(self.avatar()).to_have_css("background-color", self.FROSTED_AVATAR)
 
     # Spec #741 at acceptance (2026-11-21, compare-avatar-menu.html A): the avatar opens a small
     # menu of 帳號設定 and 登出.
@@ -4641,27 +4661,44 @@ class SiteHeaderTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             expect(self.page).to_have_url(f"{self.live_server_url}/")
 
     # Spec phase10 acceptance 12, 13 and #741 acceptance 57: a phone at double text size keeps the
-    # name and the avatar on one line inside the screen, scrolled or not.
+    # name and the avatar on one line inside the screen, scrolled or not. With the back button
+    # before the name (the owner, 2026-11-21) the name gives way where the three cannot share the
+    # line, as it does scrolled; the home page has no back button and keeps it.
     def test_header_fits_a_phone_at_double_text_size(self):
         self.sign_in_as("family_shared_phone_account_for_grandma_and_grandpa_lin")
-        self.open(width=320, height=640)
-        with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/my_hearing")
-            self.double_text()
-            avatar = self.header().locator(".site-avatar:visible")
-            for y in (0, 600):
-                with self.subTest(scrolled=y):
-                    self.scroll_to(y)
-                    visible = self.brand() if y == 0 else self.header().locator(".site-back")
-                    expect(visible).to_be_visible()
-                    left, right = visible.bounding_box(), avatar.bounding_box()
+        for signed_in, path, has_brand in (
+            (True, "/my_hearing", False),
+            (True, "/", True),
+            (False, "/learn", False),
+        ):
+            with self.subTest(path=path, signed_in=signed_in):
+                self.open(width=320, height=640)
+                if not signed_in:
+                    self.context.clear_cookies()
+                with self.saving_artifacts():
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    self.double_text()
+                    self.assert_header_on_one_line(has_brand)
+
+    def assert_header_on_one_line(self, has_brand):
+        start = self.header().locator(".site-header-start > :visible")
+        end = self.header().locator(":is(.site-avatar, .site-login):visible")
+        for y in (0, 600):
+            with self.subTest(scrolled=y):
+                self.scroll_to(y)
+                if has_brand and y == 0:
+                    expect(self.brand()).to_be_visible()
+                else:
+                    expect(self.brand()).to_be_hidden()
+                right = end.bounding_box()
+                for left in [item.bounding_box() for item in start.all()]:
                     self.assertGreaterEqual(left["x"], 0)
                     self.assertLessEqual(left["x"] + left["width"], right["x"])
-                    self.assertLessEqual(right["x"] + right["width"], 320)
                     self.assertLess(right["y"], left["y"] + left["height"])
-                    self.assertLessEqual(
-                        self.page.evaluate("document.documentElement.scrollWidth"), 320
-                    )
+                self.assertLessEqual(right["x"] + right["width"], 320)
+                self.assertLessEqual(
+                    self.page.evaluate("document.documentElement.scrollWidth"), 320
+                )
 
 
 class BottomTabsTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
