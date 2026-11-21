@@ -694,7 +694,7 @@ class ReviewedPagesTests(SimpleTestCase):
                 # Spec #741's 實作中本人補充: 看過哪些選配指引頁面, my guide's page and step 2's
                 # 查詢醫療院所 kept as views too (the version stays 9); the owner reviews it at
                 # acceptance.
-                "以及您看過哪些選配指引頁面。",
+                "以及您看過哪些選配指引頁面、是否查過醫療院所。",
             ),
             # #471 (the #470 mockup B) folded each part into a row and dropped the 這一頁的段落
             # list; the visible words are the same as main's apart from that list's title.
