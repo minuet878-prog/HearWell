@@ -212,7 +212,6 @@ class JourneyCard:
 
     title: str
     because: str
-    icon: str  # an action_icon.html icon
     button: tuple[str, str] | None = None
     entries: tuple[Entry, ...] = ()
     entries_title: str = ""  # the entry cards' small heading
@@ -463,41 +462,39 @@ def _card(
     title = CARE_JOURNEY_STEPS[current - 1]
     if current == 1:
         button = (LIFE_IMPACT_BUTTON, life_impact_href)
-        return JourneyCard(title, LIFE_IMPACT_BECAUSE, "clipboard", button=button)
+        return JourneyCard(title, LIFE_IMPACT_BECAUSE, button=button)
     if current == 2:
-        return JourneyCard(title, "", "pin", entries=(_hospital_entry(),))
+        return JourneyCard(title, "", entries=(_hospital_entry(),))
     if current == 3 and route.audiogram is None:
         # Step 2 done by opening 查詢醫療院所 (spec #741 acceptance 4).
-        return JourneyCard(
-            title, "", "audiogram", entries=_audiogram_sources(), entries_title=AUDIOGRAM_SOURCES
-        )
+        return JourneyCard(title, "", entries=_audiogram_sources(), entries_title=AUDIOGRAM_SOURCES)
     if current == 3:
         # Step 2 is done on any audiogram, step 3 on one that can tell: here it cannot.
         edit = reverse("audiogram_edit", args=[route.audiogram.pk])
         button = ("修改這張聽力圖", edit)
-        return JourneyCard(title, NEXT_STEP_REASONS["edit"], "audiogram", button=button)
+        return JourneyCard(title, NEXT_STEP_REASONS["edit"], button=button)
     if current == 4:
         because, entries = _guide_words(eligibility)
-        return JourneyCard(title, because, "guide", entries=entries)
+        return JourneyCard(title, because, entries=entries)
     if current == 5:
         return _stop_card(route, questionnaires)
     if current == 6:
         # The canvas: counting down to 3 months worn, then its button alone (spec #741).
         if today < three_months:
             wait = countdown(fitted_on, three_months, today, below=FITTING_AGAIN_FROM)
-            return JourneyCard(title, FITTING_COMPARE, "clipboard", countdown=wait)
+            return JourneyCard(title, FITTING_COMPARE, countdown=wait)
         ioi_ha = Questionnaire.objects.get(code=IOI_HA)
         button = (IOI_HA_BUTTON, reverse("screening", args=[ioi_ha.pk]))
-        return JourneyCard(title, "", "clipboard", button=button)
+        return JourneyCard(title, "", button=button)
     # Step 7 by the canvas (spec #741 acceptance 26).
     if next_screening is None:
         # Without a life-impact record step 7 is due: one to do first (spec #453).
         button = (LIFE_IMPACT_BUTTON, life_impact_href)
-        return JourneyCard(title, FIRST_SCREENING_NOT_DONE, "clipboard", button=button)
+        return JourneyCard(title, FIRST_SCREENING_NOT_DONE, button=button)
     if not next_screening.due:
-        return JourneyCard(title, "", "clipboard", countdown=next_screening.countdown)
+        return JourneyCard(title, "", countdown=next_screening.countdown)
     button = (RETEST_BUTTON_TEXT, next_screening.href)
-    return JourneyCard(title, RETEST_TIME_UP, "clipboard", button=button)
+    return JourneyCard(title, RETEST_TIME_UP, button=button)
 
 
 def _stop_card(route, questionnaires):
@@ -509,11 +506,9 @@ def _stop_card(route, questionnaires):
     slug, aid = stop.slug, route.aid
     if slug in ANSWER_CARDS:
         question = _answer_card(slug, aid)
-        return JourneyCard(
-            stop.title, "", "guide", _way_on(slug, aid), question=question, away=stop.action
-        )
+        return JourneyCard(stop.title, "", _way_on(slug, aid), question=question, away=stop.action)
     if slug == "before-you-go":
-        return JourneyCard(stop.title, "", "guide", (BEFORE_YOU_GO_BUTTON, stop.url))
+        return JourneyCard(stop.title, "", (BEFORE_YOU_GO_BUTTON, stop.url))
     if slug == "after-fitting":
         # Grill Q15, Q16, Q18: the date and the first IOI-HA, both needed, side by side.
         # IOI-HA from the questionnaires already read; the catalogue where it is not offered.
@@ -525,14 +520,14 @@ def _stop_card(route, questionnaires):
             Entry(RECORD_FITTING_DATE, f"{stop.url}#stop-question", "calendar"),
             Entry(FIRST_IOI_HA, ioi_ha_href, "clipboard", note=FIRST_IOI_HA_NOTE),
         )
-        return JourneyCard(stop.title, AFTER_FITTING_WORDS, "guide", entries=entries)
+        return JourneyCard(stop.title, AFTER_FITTING_WORDS, entries=entries)
     # Form 25: from when it can be done, a calendar's day, and the deadline under it; with no
     # date (no 身障補助 at a level that needs it) only what to bring.
     day = None
     if route.form_25 is not None:
         opens, closes = route.form_25
         day = DateCard(opens, FORM_25_FROM, FORM_25_BY.format(day=closes))
-    return JourneyCard(stop.title, "", "guide", (FORM_25_BUTTON, stop.url), date=day)
+    return JourneyCard(stop.title, "", (FORM_25_BUTTON, stop.url), date=day)
 
 
 def _answer_card(slug, aid):
@@ -570,7 +565,7 @@ def _done_card(slug, route, card):
     card is at now (its title before any 「：」), pressed to move on."""
     title = here_stop(replace(route, stop=slug)).title
     question = _answer_card(slug, route.aid)
-    return JourneyCard(title, "", "guide", question=question, moved_on=card.title.split("：")[0])
+    return JourneyCard(title, "", question=question, moved_on=card.title.split("：")[0])
 
 
 def next_step(user, today):

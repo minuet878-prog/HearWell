@@ -286,7 +286,7 @@ class AudiogramStepsTests(CareJourneyTestCase):
         self.assertEqual(journey.current, 3)
         self.assertEqual(
             journey.card,
-            JourneyCard("記錄聽力圖", "", "audiogram", entries=SOURCES, entries_title="聽力圖來源"),
+            JourneyCard("記錄聽力圖", "", entries=SOURCES, entries_title="聽力圖來源"),
         )
 
     def test_step_2_is_done_on_whichever_came_first(self):
@@ -332,7 +332,6 @@ class AudiogramStepsTests(CareJourneyTestCase):
             JourneyCard(
                 "記錄聽力圖",
                 "這張聽力圖缺少頻率，資料不足，無法判斷。",
-                "audiogram",
                 button=("修改這張聽力圖", f"/audiograms/{audiogram.pk}/edit"),
             ),
         )
@@ -370,7 +369,7 @@ class GuideStepTests(CareJourneyTestCase):
         self.assertEqual(journey.current, 4)
         self.assertEqual(
             journey.card,
-            JourneyCard("了解助聽器選配與補助", GUIDE_WORDS, "guide", entries=(GUIDE,)),
+            JourneyCard("了解助聽器選配與補助", GUIDE_WORDS, entries=(GUIDE,)),
         )
         self.view(GUIDE_PAGE, on=date(2026, 11, 2))
         step = self.step_4()
@@ -398,7 +397,7 @@ class GuideStepTests(CareJourneyTestCase):
         self.assertEqual(journey.current, 4)
         self.assertEqual(
             journey.card,
-            JourneyCard("了解助聽器選配與補助", MILD_WORDS, "guide", entries=(TYPES_AND_PRICES,)),
+            JourneyCard("了解助聽器選配與補助", MILD_WORDS, entries=(TYPES_AND_PRICES,)),
         )
         self.assertTrue(self.step_4().ineligible)
         self.view("types-and-prices", on=date(2026, 11, 5))
