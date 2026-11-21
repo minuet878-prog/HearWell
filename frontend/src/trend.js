@@ -62,3 +62,9 @@ export function fittingDays(days, fittedOn) {
   if (days[after].date === fittedOn) return [fittedOn, fittedOn];
   return [days[after - 1].date, days[after].date];
 }
+
+// #756 (page grill P18): a chart day, YYYY/MM/DD, as the axis writes it: "11/19", "5/2".
+export function monthDay(date) {
+  const [, month, day] = date.split("/");
+  return `${Number(month)}/${Number(day)}`;
+}

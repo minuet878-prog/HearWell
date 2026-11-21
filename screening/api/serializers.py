@@ -45,6 +45,8 @@ class QuestionnaireSummarySerializer(serializers.ModelSerializer):
 class LevelBandSerializer(serializers.Serializer):
     code = serializers.CharField()
     text = serializers.CharField()
+    # The trend chart writes it inside its band (#756, ADR 0078); large type takes the short name.
+    short = serializers.CharField()
     max = serializers.IntegerField()
     color = serializers.CharField()  # one of the three level colours (Definition.level_colors)
     shade = serializers.CharField()  # "pale" or "deep" (Definition.shade)
@@ -64,6 +66,7 @@ class QuestionnaireSerializer(QuestionnaireSummarySerializer):
             {
                 "code": level,
                 "text": text,
+                "short": definition.short_names.get(level, text),
                 "max": upper,
                 "color": definition.color(level),
                 "shade": definition.shade(level),

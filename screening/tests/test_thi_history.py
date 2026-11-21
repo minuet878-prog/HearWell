@@ -42,22 +42,23 @@ class ThiHistoryTests(test_thi.ThiTestCase):
         self._record(30, True, (2026, 7, 15))
         main = self._main()
         trend = self._trend(main)
-        self.assertRegex(trend, r"<h2[^>]*>\s*THI 總分變化\s*</h2>")
+        self.assertRegex(trend, r"<h2[^>]*>\s*分數趨勢\s*</h2>")
         self.assertIn('data-questionnaire="thi"', trend)
-        bands = re.search(r'class="trend-bands">(.*?)</ul>', trend, re.S).group(1)
-        items = re.findall(
-            r'<li class="trend-band-(\w+)( trend-band-deep)?">(.*?)</li>', bands, re.S
+        # #756 (ADR 0078): the chart writes each band's short name inside it, from the API. The
+        # higher of two levels sharing a colour is the deeper shade, so the five bands differ.
+        levels = next(
+            q["levels"]
+            for q in self.client.get("/api/questionnaires/").json()
+            if q["code"] == "thi"
         )
-        # The higher of two levels sharing a colour is the deeper shade, so the five names match
-        # the chart's five bands.
         self.assertEqual(
-            [(colour, bool(deep), self._text(text)) for colour, deep, text in items],
+            [(level["color"], level["shade"], level["short"]) for level in levels],
             [
-                ("severe", True, "極重度障礙"),
-                ("severe", False, "重度障礙"),
-                ("mild_to_moderate", True, "中度障礙"),
-                ("mild_to_moderate", False, "輕度障礙"),
-                ("normal", False, "無障礙或輕微障礙"),
+                ("normal", "pale", "輕微"),
+                ("mild_to_moderate", "pale", "輕度"),
+                ("mild_to_moderate", "deep", "中度"),
+                ("severe", "pale", "重度"),
+                ("severe", "deep", "極重度"),
             ],
         )
         self.assertContains(
@@ -84,6 +85,7 @@ class ThiHistoryTests(test_thi.ThiTestCase):
             [
                 "最近一次（2026/07/15，有戴助聽器）",
                 "30 分",
+                "輕度",
                 "輕度障礙",
                 "比上次少 22 分",
                 "上一次（2026/01/15）：52 分（分數越低越好）",
@@ -95,7 +97,7 @@ class ThiHistoryTests(test_thi.ThiTestCase):
         self._record(30, True, (2026, 1, 15))
         self._record(36, False, (2026, 7, 15))
         self.assertEqual(
-            self._since_last_lines(self._main())[3:],
+            self._since_last_lines(self._main())[4:],
             [
                 "比上次多 6 分",
                 "上一次（2026/01/15）：30 分（分數越低越好）",
@@ -108,7 +110,7 @@ class ThiHistoryTests(test_thi.ThiTestCase):
         self._record(30, True, (2026, 7, 15))
         main = self._main()
         self.assertEqual(
-            self._since_last_lines(main)[3:],
+            self._since_last_lines(main)[4:],
             ["比上次少 22 分", "上一次（2026/01/15）：52 分（分數越低越好）"],
         )
         # #646: 「比上次少 22 分」 says 上次 too; no 上次沒戴／有戴 line anywhere.
@@ -124,6 +126,7 @@ class ThiHistoryTests(test_thi.ThiTestCase):
             [
                 "最近一次（2026/01/15，有戴助聽器）",
                 "52 分",
+                "中度",
                 "中度障礙",
                 # THI is not a screening (GLOSSARY: 篩檢問卷 is not every questionnaire).
                 "再做一次，就能看到分數的變化。",
@@ -136,7 +139,9 @@ class ThiHistoryTests(test_thi.ThiTestCase):
         self._record(30, True, (2026, 7, 15))
         main = self._main()
         block = main[main.index("records-score") : main.index('id="trend-chart"')]
-        self.assertNotIn("aria-hidden", block)
+        # #756: only the short level name is skipped; its full name is read in its place.
+        self.assertEqual(re.findall(r"<p[^>]*aria-hidden[^>]*>([^<]*)</p>", block), ["輕度"])
+        self.assertIn('<p class="result-block-level visually-hidden">輕度障礙</p>', block)
         self.assertLess(main.index("上次沒戴、這次有戴助聽器。"), main.index('id="trend-plot"'))
 
     def test_hhie_s_still_compares_records_worn_the_same_way(self):

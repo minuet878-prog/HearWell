@@ -1,11 +1,12 @@
 {# The trend chart's text is on the page from the start; React draws only inside #trend-plot, #}
 {# a box of fixed height, so the record cards below do not move when the chart arrives. Its 最近一次 is in my_hearing.html's score block (#465). #}
+{# #756 (ADR 0078, canvas TrendA): the canvas's title; the level names are in the chart's bands, how to read it under the chart. #}
 <div id="trend-chart">
 <section aria-labelledby="trend-title" class="mb-6">
-    <h2 id="trend-title" class="h4">{{ questionnaire.questionnaire_name }} 總分變化</h2>
-    <p>分數越低，{{ questionnaire.definition.topic }}越小。</p>
+    <h2 id="trend-title" class="h4">分數趨勢</h2>
     <div class="chart-canvas">
-        <div id="trend-plot" class="h-[20rem]" data-questionnaire="{{ questionnaire.code }}"{% if chart.fitted_on %} data-fitted-on="{{ chart.fitted_on|date:'Y/m/d' }}"{% endif %}>
+        {# #756: its line draws once in view (ADR 0077, site.css play-once-trace), watched from the start as React draws it later. #}
+        <div id="trend-plot" class="h-[20rem] play-once-trace" data-play-in-view data-questionnaire="{{ questionnaire.code }}"{% if chart.fitted_on %} data-fitted-on="{{ chart.fitted_on|date:'Y/m/d' }}"{% endif %}>
             {# Shown until React draws; TrendChart.jsx shows the same text while it loads. Hidden #}
             {# from screen readers like the chart: the score block and the cards say the same. #}
             <p class="trend-plot-message loading-message" aria-hidden="true">趨勢圖載入中…</p>
@@ -29,18 +30,12 @@
             </li>
             {% endfor %}
         </ul>
-        {% if chart.levels %}
-        <ul class="trend-bands">
-            {% for level in chart.levels %}
-            <li class="trend-band-{{ level.color }}{% if level.shade == "deep" %} trend-band-deep{% endif %}"><span class="trend-band-swatch" aria-hidden="true"></span><span>{{ level.text }}</span></li>
-            {% endfor %}
-        </ul>
-        {% endif %}
     </div>
     {% if chart.fitted_on %}
     {# #650 (spec #644 R2): outside the frame, which pages without JavaScript hide; screen #}
     {# readers skip the chart's line, so they hear the day here. #}
     <p class="trend-fitted">{{ chart.fitted_on|date:"Y/m/d" }} 開始戴助聽器。</p>
     {% endif %}
+    <p class="trend-note">分數越低，{{ questionnaire.definition.topic }}越小。</p>
 </section>
 </div>

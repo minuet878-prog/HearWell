@@ -567,6 +567,8 @@ components:
           type: string
         text:
           type: string
+        short:
+          type: string
         max:
           type: integer
         color:
@@ -578,6 +580,7 @@ components:
       - color
       - max
       - shade
+      - short
       - text
     PaginatedSubmissionList:
       type: object
