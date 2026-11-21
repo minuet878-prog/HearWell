@@ -3552,7 +3552,7 @@
     list-style: none;
   }
 
-  /* #746: 和上一次比較, the two totals, then each item and its change, a row each. */
+  /* #746: 和上一次比較, each item and its change, a row each. */
   .ioi-since-last {
     margin: 1.25rem 0;
   }

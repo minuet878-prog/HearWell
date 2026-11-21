@@ -373,10 +373,10 @@ class NormResult(Result):
 
     def _since_last(self):
         # #746 (spec #741 acceptance 25, grill Q17): against this person's IOI-HA just before
-        # this one, as the HHI comparison: both totals, and each item better, worse or the same.
+        # this one, each item better, worse or the same; no totals (spec #741's 實作中本人補充).
         # Every item is best at 5 (ADR 0074). None for the first.
         from screening.models import Submission
-        from screening.scoring import IOI_HA_ITEM_CHANGE, IOI_HA_ITEM_NAMES, ioi_ha_since_last_text
+        from screening.scoring import IOI_HA_ITEM_CHANGE, IOI_HA_ITEM_NAMES
 
         submission = self.submission
         previous = (
@@ -384,7 +384,6 @@ class NormResult(Result):
                 user_id=submission.user_id, questionnaire_id=submission.questionnaire_id
             )
             .earlier_than(submission)
-            .with_scores()
             .first()
         )
         if previous is None:
@@ -395,16 +394,7 @@ class NormResult(Result):
             number = answer.question.question_number
             change = (answer.score > before[number]) - (answer.score < before[number])
             items.append({"name": IOI_HA_ITEM_NAMES[number], "change": IOI_HA_ITEM_CHANGE[change]})
-        # Both totals, the sum of the 7 answers, for this comparison only: IOI-HA's result has
-        # no total of its own (read item by item against the norms).
-        total, previous_total = submission.total_answer_score, previous.total_answer_score
-        return {
-            "previous": previous,
-            "previous_total": previous_total,
-            "total": total,
-            "text": ioi_ha_since_last_text(total - previous_total),
-            "items": items,
-        }
+        return {"items": items}
 
 
 def _ioi_ha_items(submission, answers, texts):
