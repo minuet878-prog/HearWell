@@ -4153,9 +4153,10 @@ class RouteCheckmarkTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
 
 
 class CountUpTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
-    """Spec #741 (ticket #747, ADR 0077, acceptance 54-56): the result page's score counts up from
-    0 once, in view on arrival; a screen reader reads the end value throughout; reduced motion
-    shows the end value at once. The page's clock stands still, and steps only when told."""
+    """Spec #741 (ticket #747, ADR 0077, acceptance 54-56): the home page's days to the next
+    screening count up from 0 once, in view; a screen reader reads the end value throughout;
+    reduced motion shows the end value at once. A score is shown as it is (ADR 0077 since
+    2026-11-21). The page's clock stands still, and steps only when told."""
 
     fixtures = ("questions_fixture.json",)
     START = datetime(2026, 11, 21, 12, tzinfo=ZoneInfo("Asia/Taipei"))
@@ -4201,15 +4202,18 @@ class CountUpTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
         self.addCleanup(self.context.close)
         self.page.clock.install(time=self.START)
         self.page.clock.pause_at(self.START + timedelta(seconds=1))
-        self.page.goto(f"{self.live_server_url}/submission/{self.record.pk}")
-        self.score = self.main().locator("#result-score")
-        self.number = self.score.locator("[data-count-up]")
+        self.page.goto(f"{self.live_server_url}/")
+        self.days = self.main().locator(".journey-tiles .countdown-ring-days")
+        self.number = self.days.locator("[data-count-up]")
+        self.number.scroll_into_view_if_needed()
 
     def assert_reads_the_end_value(self):
-        expect(self.number).to_have_text("40")
-        expect(self.score).to_match_aria_snapshot("- paragraph: 總分 40 分（滿分 40）")
+        today = timezone.localdate()
+        days = (add_months(today, 6) - today).days
+        expect(self.number).to_have_text(str(days))
+        expect(self.days).to_match_aria_snapshot(f"- paragraph: 還有 {days} 天")
 
-    def test_the_score_counts_up_once_and_reads_as_its_end_value(self):
+    def test_the_days_count_up_once_and_read_as_their_end_value(self):
         with self.saving_artifacts():
             self.open("no-preference")
             expect(self.number).to_have_attribute("data-in-view", "")
@@ -4220,7 +4224,7 @@ class CountUpTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
 
             self.page.clock.run_for(450)
             shown = int(self.number.get_attribute("data-count-now"))
-            self.assertTrue(0 < shown < 40, shown)
+            self.assertTrue(0 < shown < int(self.number.text_content()), shown)
             self.assertIn(f'"{shown}"', self.number.evaluate(self.SHOWN))
             self.assert_reads_the_end_value()
 
@@ -4237,6 +4241,14 @@ class CountUpTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             self.page.clock.run_for(100)
             expect(self.number).not_to_have_attribute("data-count-now", re.compile(".*"))
             self.assertEqual(self.number.evaluate(self.SHOWN), "none")
+
+    def test_the_result_page_s_score_does_not_count(self):
+        with self.saving_artifacts():
+            self.open("no-preference")
+            self.page.goto(f"{self.live_server_url}/submission/{self.record.pk}")
+            score = self.main().locator("#result-score")
+            expect(score).to_match_aria_snapshot("- paragraph: 總分 40 分（滿分 40）")
+            expect(self.main().locator("[data-count-up]")).to_have_count(0)
 
     def test_reduced_motion_shows_the_end_value_at_once(self):
         with self.saving_artifacts():
@@ -5641,6 +5653,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     expect(badge).to_be_visible()
                     self.assertEqual(self.style(badge, "color"), colour)
                     self.assertEqual(self.style(badge, "backgroundColor"), background)
+                    # Spec #741 (the owner at acceptance): a level's tag has no frame.
+                    self.assertEqual(self.style(badge, "borderTopWidth"), "0px")
 
     # #149: each level's text reaches 7:1 on its soft background and on white.
     def test_level_text_reaches_7_to_1_on_its_soft_background_and_on_white(self):
@@ -5945,10 +5959,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.assertEqual(self.style(found, "borderTopRightRadius"), radius)
                     self.assertEqual(self.style(found, "borderTopLeftRadius"), radius)
 
-    # Brand refresh: a white header with the logo on a gradient; #748 (spec #741 P8): no wave,
-    # the avatar on the right.
-    LOGO_GRADIENT = "linear-gradient(135deg, rgb(31, 78, 140), rgb(29, 111, 153))"
-
+    # Brand refresh: a white header; #748 (spec #741 P8): no wave, the avatar on the right; the
+    # owner at #741's acceptance: no bird beside the name.
     def mask(self, locator, pseudo):
         return locator.evaluate(f"el => getComputedStyle(el, '{pseudo}').maskImage")
 
@@ -5965,11 +5977,9 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.assertEqual(self.style(brand, "color"), self.PRIMARY)
                     tint = brand.locator(".site-wordmark-tint")
                     self.assertEqual(self.style(tint, "color"), "rgb(29, 111, 153)")
-                    logo = brand.locator(".site-logo")
-                    self.assertEqual(self.style(logo, "backgroundImage"), self.LOGO_GRADIENT)
-                    # The pebble: uneven corners, not a circle.
-                    self.assertEqual(self.style(logo, "borderTopLeftRadius"), "42% 48%")
-                    self.assertIn("data:image/svg+xml", self.mask(logo, "::after"))
+                    # Spec #741 (the owner at acceptance): no bird in the header, the
+                    # dialogue's is the page's one.
+                    expect(brand.locator(".site-logo")).to_have_count(0)
                     avatar = header.get_by_role("link", name="帳號設定：style_e2e")
                     expect(avatar).to_have_text("S")
                     for text in (brand.locator(".site-wordmark-tint"), avatar):
@@ -6196,6 +6206,72 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.page.goto(f"{self.live_server_url}/")
             expect(self.page.get_by_role("banner")).to_be_visible()
             self.assertEqual(self.page.evaluate("document.getAnimations().length"), 0)
+
+    # Spec #741 acceptance 54 (#758; ADR 0006, 0028, 0077): with reduced motion nothing on the
+    # redesigned pages moves, scrolled through to the foot and with every 照顧旅程 step opened:
+    # no animation runs, no colour or size fades in on a hover or a press (it changes at once),
+    # and a number that would count up shows its end value. Two HHIE-S records, an audiogram
+    # reaching the assessment threshold and my guide opened: the home page has its hero card at
+    # the 身障鑑定 answer card and its tiles, the result 和上一次比, and 紀錄 its trend chart.
+    STILL_PAGE = """() => ({
+        animations: document.getAnimations().map(a => a.animationName ?? a.transitionProperty),
+        fading: [...new Set([...document.querySelectorAll('*')]
+            .filter(e => getComputedStyle(e).transitionDuration.split(',')
+                .some(d => parseFloat(d) > 0))
+            .map(e => `${e.className} ${getComputedStyle(e).transitionProperty}`))],
+        counting: [...document.querySelectorAll('[data-count-up]')]
+            .filter(n => !n.hasAttribute('data-count-done')
+                         || getComputedStyle(n, '::after').content !== 'none')
+            .map(n => n.textContent),
+    })"""
+
+    def test_reduced_motion_nothing_moves_on_the_redesigned_pages(self):
+        self.submission(self.hhie_s, [4] * 5 + [0] * 5)
+        latest = self.submission(self.hhie_s, [4] * 3 + [0] * 7)
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=55)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000)
+        )
+        GuideChapterView.objects.create(user=self.user, chapter="guide")
+        self.open(width=390)  # reduced motion
+        still = {"animations": [], "fading": [], "counting": []}
+
+        def assert_still(where):
+            self.assertEqual(self.page.evaluate(self.STILL_PAGE), still, where)
+
+        with self.saving_artifacts():
+            for path in (
+                "/",
+                f"/submission/{latest.pk}",
+                "/my_hearing",
+                "/learn",
+                "/questionnaire_list",
+            ):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    self.page.wait_for_load_state("load")
+                    if path == "/":
+                        card = self.page.get_by_role("main").locator(".journey-card .answer-card")
+                        expect(card.locator("legend")).to_have_text("您有身心障礙證明嗎？")
+                        days = self.page.get_by_role("main").locator(
+                            ".journey-tiles [data-count-up]"
+                        )
+                        expect(days).to_have_text(re.compile(r"^\d+$"))
+                    if path == "/my_hearing":
+                        expect(self.page.locator("#trend-plot .recharts-surface")).to_be_visible()
+                    height = self.page.evaluate("document.documentElement.scrollHeight")
+                    for y in range(0, height + 400, 400):
+                        self.page.evaluate("y => scrollTo({ top: y, behavior: 'instant' })", y)
+                        assert_still(f"scrolled to {y}")
+                    if path == "/":
+                        rows = self.page.locator(".journey-about > summary")
+                        expect(rows).to_have_count(7)
+                        for number, row in enumerate(rows.all(), start=1):
+                            row.click()
+                            row.evaluate("el => el.scrollIntoView({ block: 'start' })")
+                            assert_still(f"step {number} open")
 
     # #139 (2a): primary buttons follow choice C in #136 (docs/verification/issue-136.md); every
     # button is a pill and only changes colour.
@@ -17006,12 +17082,12 @@ class ChangeLabelT646Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
         return self.main().locator(".result-since-last")
 
     def assert_neutral(self, label):
-        # Acceptance 7: the heading colour on white in a thin muted frame, in every level's box.
+        # Acceptance 7: the heading colour on white, in every level's box; spec #741 (the owner
+        # at acceptance): tags like this have no frame.
         self.assertEqual(self.style(label, "color"), self.HEADING)
         self.assertEqual(self.style(label, "backgroundColor"), self.WHITE)
         for side in ("Top", "Right", "Bottom", "Left"):
-            self.assertEqual(self.style(label, f"border{side}Color"), self.MUTED, side)
-            self.assertEqual(self.style(label, f"border{side}Width"), "2px", side)
+            self.assertEqual(self.style(label, f"border{side}Width"), "0px", side)
         self.assertEqual(self.style(label, "fontWeight"), "700")
         self.assertGreaterEqual(self.lowest_contrast(self.HEADING, self.WHITE), 4.5)
         expect(label.locator("svg, img")).to_have_count(0)
@@ -17267,6 +17343,12 @@ class LastResultT649Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
                     for place in range(3):
                         if place:
                             self.main().get_by_role("button", name="下一張").click()
+                            # Measured once the cards stop sliding: scrollWidth is the card's
+                            # own width, its left edge a card still scaled down behind (#758).
+                            self.main().locator(".card-stack").evaluate(
+                                "e => Promise.all(e.getAnimations({ subtree: true })"
+                                ".map(a => a.finished))"
+                            )
                         for tag in tags.all():
                             if tag.evaluate("e => !!e.closest('[inert]')"):
                                 continue
@@ -17924,3 +18006,29 @@ class BirdAndHeroCardTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
                             self.assertLessEqual(box["x"] + box["width"], 320, part)
                             cut = element.evaluate("el => el.scrollWidth - el.clientWidth")
                             self.assertLessEqual(cut, 0, part)
+
+    # Spec #741 acceptance 57 (#758): on the three pages it names, the small cards keep their
+    # words inside too: the home page's white entry card and two tiles, the front stacked card
+    # and the list's cards, the result's rows; each at least once. The answer card's boxes are
+    # in HearingAidGuideTest.
+    def test_the_small_cards_wrap_on_a_phone_at_double_text_size(self):
+        pages = (
+            ("/", (".entry-card", ".journey-tile")),
+            ("/questionnaire_list", ('.card-stack-card[data-offset="0"]', ".questionnaire-card")),
+            (f"/submission/{self.record.pk}", (".action-card",)),
+        )
+        for path, parts in pages:
+            with self.subTest(path=path):
+                self.open(path, size=(320, 640))
+                with self.saving_artifacts():
+                    self.assert_fits_a_phone_at_double_text_size(path)
+                    for part in parts:
+                        shown = [e for e in self.main().locator(part).all() if e.is_visible()]
+                        self.assertTrue(shown, part)
+                        for element in shown:
+                            words = element.text_content().split()[0]
+                            box = element.bounding_box()
+                            self.assertGreaterEqual(box["x"], 0, words)
+                            self.assertLessEqual(box["x"] + box["width"], 320, words)
+                            cut = element.evaluate("el => el.scrollWidth - el.clientWidth")
+                            self.assertLessEqual(cut, 0, words)

@@ -1,4 +1,4 @@
-{# The graded result page's result section, under its header (#494). A result from_answers() (a guest's, spec #492) is drawn by it alone: without a record it has no 照顧旅程 and no records, report or sharing. #750 (spec #741 acceptance 48, canvas ProResult): the score block (the gauge, the score, the level's short name, the two bars against last time), the blue 建議下一步 card, then the rows; the score counts up and the gauge draws once in view (ADR 0077). #}
+{# The graded result page's result section, under its header (#494). A result from_answers() (a guest's, spec #492) is drawn by it alone: without a record it has no 照顧旅程 and no records, report or sharing. #750 (spec #741 acceptance 48, canvas ProResult): the score block (the gauge, the score, the level's short name, the two bars against last time), the blue 建議下一步 card, then the rows; the score shows at once and the gauge draws once in view (ADR 0077). #}
 {% with result=submission.result %}
 <div class="result-banner result-banner-{{ result.level.color }}">
     {% if gauge %}
@@ -6,16 +6,16 @@
         {% include "screening/semicircle_gauge.html" %}
         {# Read: the score with the full score, then the level's full name. On screen: the score beside the gauge, whose end says the full score, and the level's short name large (page grill P11). #}
         <div class="result-gauge-words">
-            <p id="result-score" class="visually-hidden">總分 <span class="result-number" data-count-up>{{ result.total }}</span> 分{% if max_score is not None %}（滿分 {{ max_score }}）{% endif %}</p>
+            <p id="result-score" class="visually-hidden">總分 <span class="result-number">{{ result.total }}</span> 分{% if max_score is not None %}（滿分 {{ max_score }}）{% endif %}</p>
             {# Its words apart, spaced by the stylesheet: on a page the one 「總分 N 分」 is the read one. #}
-            <p class="result-score gauge-score-line" aria-hidden="true"><span>總分</span><span class="gauge-score" data-count-up>{{ result.total }}</span><span>分</span></p>
+            <p class="result-score gauge-score-line" aria-hidden="true"><span>總分</span><span class="gauge-score">{{ result.total }}</span><span>分</span></p>
             <p class="result-level-short" aria-hidden="true">{{ result.level.short }}</p>
             <h2 class="result-block-level visually-hidden" aria-describedby="result-score">{{ result.level.text }}</h2>
         </div>
     </div>
     {% else %}
     {# 「無法判讀」: no gauge, its one name. #}
-    <p id="result-score" class="result-score">總分 <span class="result-number" data-count-up>{{ result.total }}</span> 分{% if max_score is not None %}（滿分 {{ max_score }}）{% endif %}</p>
+    <p id="result-score" class="result-score">總分 <span class="result-number">{{ result.total }}</span> 分{% if max_score is not None %}（滿分 {{ max_score }}）{% endif %}</p>
     <h2 class="result-block-level" aria-describedby="result-score">{{ result.level.text }}</h2>
     {% endif %}
     {% with since=result.since_last %}

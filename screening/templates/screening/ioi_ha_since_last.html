@@ -1,12 +1,6 @@
-{# #746 (spec #741 acceptance 25): an IOI-HA result's 和上一次比較, as the HHI comparison's card (comparisons/card.html): the two totals side by side, then each item better, worse or the same. `since_last`: NormResult's. #}
+{# #746 (spec #741 acceptance 25, as the 實作中本人補充 rewrote it): an IOI-HA result's 和上一次比較, each item better, worse or the same, with no totals. `since_last`: NormResult's. #}
 <section class="ioi-since-last" aria-labelledby="ioi-since-last-title">
     <h2 id="ioi-since-last-title" class="h4">和上一次比較</h2>
-    <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-center">
-        <p class="m-0">上一次<br><strong class="text-2xl/snug text-heading">{{ since_last.previous_total }} 分</strong><br><span class="text-base">{{ since_last.previous.created_at|date:"Y/m/d" }}</span></p>
-        <svg aria-hidden="true" viewBox="0 0 24 24" class="size-9 shrink-0 fill-none stroke-primary stroke-[2.5]" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M14 6l6 6-6 6"/></svg>
-        <p class="m-0">這一次<br><strong class="text-2xl/snug text-primary">{{ since_last.total }} 分</strong><br><span class="text-base">{{ submission.created_at|date:"Y/m/d" }}</span></p>
-    </div>
-    <p class="mt-4 text-xl/normal font-bold text-heading">{{ since_last.text }}</p>
     <ul class="ioi-since-last-items" role="list">
         {% for item in since_last.items %}<li><span>{{ item.name }}</span> <strong>{{ item.change }}</strong></li>{% endfor %}
     </ul>

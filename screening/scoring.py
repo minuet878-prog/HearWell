@@ -57,20 +57,12 @@ UNKNOWN_ADVICE = (
     "若對聽力有疑慮，請直接諮詢聽力師或耳鼻喉科醫師。"
 )
 
-# Short column names for the norm chart on the history page.
-# An IOI-HA result page's 和上一次比較 (#746): the totals, a higher one better, as every item is
-# best at 5; and each item's change, by the sign of this answer less the last one.
+# An IOI-HA result page's 和上一次比較 (#746): each item's change, by the sign of this answer
+# less the last one, a higher one better as every item is best at 5.
 IOI_HA_ITEM_CHANGE = {1: "變好", -1: "變差", 0: "一樣"}
 
 
-def ioi_ha_since_last_text(difference):
-    if difference > 0:
-        return f"這一次比上一次多 {difference} 分（分數越高越好）"
-    if difference < 0:
-        return f"這一次比上一次少 {-difference} 分（分數越高越好）"
-    return "兩次的總分一樣"
-
-
+# Short column names for the norm chart on the history page.
 IOI_HA_ITEM_NAMES = {
     1: "使用時間",
     2: "幫助程度",
@@ -204,6 +196,9 @@ FIRST_IOI_HA_NOTE = "建議先戴一週再寫"
 FORM_25_FROM = "起可以做二十五號表"
 FORM_25_BY = "{day:%Y/%m/%d} 前要完成，才能核銷補助"
 FORM_25_BUTTON = "看二十五號表要帶什麼"
+# 接著往下一站's name for a stop (grill Q13): the form alone where the title goes on to say what
+# it is for; any other stop by its title.
+NEXT_STOP_NAMES = {"form-9": "九號表", "form-25": "二十五號表"}
 # My guide's 要不要找聽力師評估 by 建議評估選配 (ADR 0067): the owner's words in spec #693,
 # 建議 apart for an ear over 40 dB HL and for 輕度 with a life impact.
 FITTING_ADVICE_OVER_MILD = "您有一耳以上的四頻平均超過 40 dB HL，建議找聽力師評估選配助聽器。"
@@ -228,7 +223,7 @@ FITTING_ADVICE_BEFORE_YOU_GO = "去之前要準備什麼"
 # 4's and 6's the canvas's (spec #741); step 2's a draft the owner settles on review.
 CARE_JOURNEY_ABOUT = (
     LIFE_IMPACT_BECAUSE,
-    "到醫院做聽力檢查，拿到聽力圖報告。",
+    "到醫院做聽力檢查並取得聽力報告。",
     "記錄您在醫院做的聽力檢查或 AirPods 自我測試結果。",
     GUIDE_BECAUSE,
     # #598 (spec #593): no subsidy on everyone's way, the owner's wording on #595.
@@ -308,6 +303,11 @@ def max_score(questionnaire_code):
     return thresholds[-1][0] if thresholds else None
 
 
+def short_level_name(definition, level, text):
+    # A level's short name (#750); a test's own definition may have none: its full name then.
+    return definition.short_names.get(level, text)
+
+
 def classify(total_score, questionnaire_code):
     definition = questionnaires.get(questionnaire_code)
     if not (definition and definition.thresholds):
@@ -318,8 +318,7 @@ def classify(total_score, questionnaire_code):
             if total_score <= upper:
                 return {
                     "text": text,
-                    # A test's own definition may have none: its full name then.
-                    "short": definition.short_names.get(level, text),
+                    "short": short_level_name(definition, level, text),
                     "level": level,
                     "color": definition.color(level),
                 }

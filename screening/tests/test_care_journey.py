@@ -20,7 +20,7 @@ from screening.care_journey import (
     NextScreening,
     care_journey,
 )
-from screening.fitting_route import GUIDE_PAGE, fitting_state
+from screening.fitting_route import GUIDE_PAGE, HOSPITAL_SEARCH, fitting_state
 from screening.models import (
     AidAndSubsidy,
     AidLevel,
@@ -164,6 +164,16 @@ class SevenStepsTests(CareJourneyTestCase):
                 [D, D, D, C, L, L, L],
                 4,
             ),
+            "hhie-s, the hospital search opened": (
+                [hhie, lambda: self.view(HOSPITAL_SEARCH)],
+                [D, D, C, L, L, L, L],
+                3,
+            ),
+            "hhie-s, the hospital search opened and an audiogram": (
+                [hhie, lambda: self.view(HOSPITAL_SEARCH), lambda: self.make(PTA_55, PTA_55)],
+                [D, D, D, C, L, L, L],
+                4,
+            ),
             "a frequency missing": ([hhie, self.missing_frequency], [D, D, C, L, L, L, L], 3),
             "normal hearing": (
                 [hhie, lambda: self.make(NORMAL, NORMAL)],
@@ -265,10 +275,44 @@ class AudiogramStepsTests(CareJourneyTestCase):
         self.assertEqual([step.state for step in steps[1:3]], [D, D])
         self.assertEqual([step.done_on for step in steps[1:3]], [date(2026, 10, 3)] * 2)
 
+    def test_opening_the_hospital_search_finishes_step_2_and_step_3_asks_for_an_audiogram(self):
+        # Spec #741's 實作中本人補充 (acceptance 1, 4): 查詢醫療院所 opened is step 2 done on
+        # that day; step 3, the 現在這一步 without an audiogram, is the small heading and the
+        # audiogram's two sources.
+        self.answer()
+        self.view(HOSPITAL_SEARCH, on=date(2026, 11, 2))
+        journey = self.journey()
+        self.assertEqual((journey.steps[1].state, journey.steps[1].done_on), (D, date(2026, 11, 2)))
+        self.assertEqual(journey.current, 3)
+        self.assertEqual(
+            journey.card,
+            JourneyCard("記錄聽力圖", "", entries=SOURCES, entries_title="聽力圖來源"),
+        )
+
+    def test_step_2_is_done_on_whichever_came_first(self):
+        # Opened, or any audiogram (grill Q9): the day is the earlier one.
+        self.answer()
+        self.view(HOSPITAL_SEARCH, on=date(2026, 11, 2))
+        self.self_test(PTA_55, PTA_55, tested_on=date(2026, 10, 3))
+        self.assertEqual(self.journey().steps[1].done_on, date(2026, 10, 3))
+
+    def test_step_2_done_still_opens_to_the_hospital_search(self):
+        # Spec #741's 實作中本人補充: done, step 2 opens to 查詢醫療院所 under its stamp, done by
+        # either way.
+        for name, record in (
+            ("opened", lambda: self.view(HOSPITAL_SEARCH)),
+            ("audiogram", lambda: self.self_test(PTA_55, PTA_55)),
+        ):
+            with self.subTest(name):
+                self.fresh_user(name)
+                self.answer()
+                record()
+                step = self.journey().steps[1]
+                self.assertEqual((step.state, step.entries), (D, (HOSPITAL,)))
+
     def test_without_an_audiogram_step_3_opens_to_the_audiogram_s_sources(self):
-        # Spec #741 acceptance 4, story 4. Steps 2 and 3 are done together (grill Q9), so with
-        # no audiogram step 2 is the 現在這一步 and step 3 is never: it opens, under its
-        # sentence, to the small heading and the two entry cards instead (the owner to confirm).
+        # Spec #741 acceptance 4, story 4: with no audiogram, step 3 opens, under its sentence,
+        # to the small heading and the two entry cards, whether it is the 現在這一步 or not yet.
         self.answer()
         step = self.journey().steps[2]
         self.assertEqual(step.state, L)
@@ -288,7 +332,6 @@ class AudiogramStepsTests(CareJourneyTestCase):
             JourneyCard(
                 "記錄聽力圖",
                 "這張聽力圖缺少頻率，資料不足，無法判斷。",
-                "audiogram",
                 button=("修改這張聽力圖", f"/audiograms/{audiogram.pk}/edit"),
             ),
         )
@@ -326,7 +369,7 @@ class GuideStepTests(CareJourneyTestCase):
         self.assertEqual(journey.current, 4)
         self.assertEqual(
             journey.card,
-            JourneyCard("了解助聽器選配與補助", GUIDE_WORDS, "guide", entries=(GUIDE,)),
+            JourneyCard("了解助聽器選配與補助", GUIDE_WORDS, entries=(GUIDE,)),
         )
         self.view(GUIDE_PAGE, on=date(2026, 11, 2))
         step = self.step_4()
@@ -354,7 +397,7 @@ class GuideStepTests(CareJourneyTestCase):
         self.assertEqual(journey.current, 4)
         self.assertEqual(
             journey.card,
-            JourneyCard("了解助聽器選配與補助", MILD_WORDS, "guide", entries=(TYPES_AND_PRICES,)),
+            JourneyCard("了解助聽器選配與補助", MILD_WORDS, entries=(TYPES_AND_PRICES,)),
         )
         self.assertTrue(self.step_4().ineligible)
         self.view("types-and-prices", on=date(2026, 11, 5))
@@ -540,7 +583,6 @@ class RetestStepTests(CareJourneyTestCase):
         self.assertEqual(journey.card.countdown, wait)
         self.assertEqual(journey.card.because, "")
         self.assertIsNone(journey.card.button)
-        self.assertEqual(journey.progress, 6)
         # Step 7 opened before it is the 現在這一步 shows the same card (the canvas's 5-a).
         self.assertEqual(journey.next_screening.countdown, wait)
 
@@ -676,7 +718,7 @@ class StepAboutTests(CareJourneyTestCase):
             [step.about for step in steps],
             [
                 "先做一份生活影響問卷，了解聽力對您生活的影響。",
-                "到醫院做聽力檢查，拿到聽力圖報告。",
+                "到醫院做聽力檢查並取得聽力報告。",
                 "記錄您在醫院做的聽力檢查或 AirPods 自我測試結果。",
                 GUIDE_WORDS,
                 "照選配路線一站一站走，從找聽力師到開始戴助聽器。",
@@ -701,15 +743,16 @@ class StepAboutTests(CareJourneyTestCase):
         step = self.journey().steps[6]
         self.assertEqual((step.about, step.countdown), (TIME_UP, None))
 
-    def test_a_done_step_opens_to_its_stamp_alone_but_step_4(self):
+    def test_a_done_step_opens_to_its_stamp_alone_but_steps_2_and_4(self):
         # Spec #741 acceptance 27: step 1 only the stamp; step 3 the audiogram's card, which
-        # CareJourney.audiogram holds; step 4 still its way to my guide.
+        # CareJourney.audiogram holds; step 2 still 查詢醫療院所 (實作中本人補充), step 4 its
+        # way to my guide.
         self.answer()
         self.make(PTA_55, PTA_55)
         self.view(GUIDE_PAGE)
         steps = self.journey().steps
         self.assertEqual([step.state for step in steps[:4]], [D, D, D, D])
-        self.assertEqual([step.entries for step in steps[:4]], [(), (), (), (GUIDE,)])
+        self.assertEqual([step.entries for step in steps[:4]], [(), (HOSPITAL,), (), (GUIDE,)])
 
 
 class ViewingDoesNotStartRouteJourneyTests(CareJourneyTestCase):
@@ -841,8 +884,7 @@ class SelfReview693UnreadableLifeImpactTests(test_fitting_advice.LifeImpactTestC
         content = response.content.decode()
         # #751: a 無法判讀 score has no gauge to draw; the score stands alone.
         self.assertIn(
-            '<span class="journey-tile-score"><span data-count-up>44</span> '
-            "<small>分</small></span>",
+            '<span class="journey-tile-score"><span>44</span> <small>分</small></span>',
             content,
         )
         self.assertNotIn('<div class="gauge"', content)

@@ -26,6 +26,11 @@ def greeting(hour, name):
     return f"{words}，{name}" if len(name) <= GREETING_NAME_LIMIT else words
 
 
+def _has_records(user):
+    # A questionnaire or an audiogram: the 照顧旅程 has somewhere to stand (ADR 0044).
+    return user.submissions.defined().exists() or user.audiograms.exists()
+
+
 def index(request):
     user = request.user
     if not user.is_authenticated:
@@ -44,7 +49,7 @@ def index(request):
         )
     # #459 (ADR 0044): the 照顧旅程 for anyone with a questionnaire or an audiogram, else the
     # 空狀態首頁.
-    has_records = user.submissions.defined().exists() or user.audiograms.exists()
+    has_records = _has_records(user)
     # #745 (grill Q13): the stop an answer card here just finished (route_answer's ?done=),
     # stamped only while it is done and step 5 is still the 現在這一步.
     done_now = request.GET.get("done")
@@ -95,8 +100,8 @@ class LearnItem:
     row_line: str = ""  # under the row's title
 
 
-# The list's order (#469, #487, #640), its rows' words the canvas's ProLearn. The cards' lines
-# and buttons past the simulator's are drafts for the owner's review.
+# The list's order (#469, #487, #640), its rows' words the canvas's ProLearn. The cards' words,
+# drawings and the first card for each step: the owner reviewed them on 2026-11-21.
 SIMULATOR = LearnItem(
     "simulator",
     "hearing_loss_simulator",
@@ -107,7 +112,13 @@ SIMULATOR = LearnItem(
     "聽聽看他聽到的聲音",
 )
 GUIDE = LearnItem(
-    "guide", "guide", "guide", "了解助聽器選配與補助", "從聽力檢查到申請補助", "開始了解"
+    "guide",
+    "guide",
+    "guide",
+    "了解助聽器選配與補助",
+    "從聽力檢查到申請補助",
+    "開始了解",
+    "從聽力檢查到申請補助",
 )
 QA = LearnItem(
     "qa", "qa_home", "question", "問答小助手", "常見問題一次查", "問問看", "常見問題一次查"
@@ -140,7 +151,7 @@ def learn(request):
     # then), the rest in the list's order; the whole list under them.
     user = request.user
     first = SIMULATOR
-    if user.is_authenticated and (user.submissions.defined().exists() or user.audiograms.exists()):
+    if user.is_authenticated and _has_records(user):
         first = FIRST_FOR_STEP.get(care_journey(user, timezone.localdate()).current, SIMULATOR)
     stack = [first, *(item for item in LEARN_ITEMS if item != first)]
     response = render(request, "screening/learn.html", {"stack": stack, "items": LEARN_ITEMS})

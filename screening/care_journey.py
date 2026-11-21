@@ -12,8 +12,11 @@ from django.utils import timezone
 from screening.audiogram import FittingAdvice, interpret
 from screening.fitting_route import (
     GUIDE_PAGE,
+    HOSPITAL_SEARCH,
+    TYPES_AND_PRICES,
     add_months,
     fitting_state,
+    ioi_ha_since,
 )
 from screening.forms import STOP_QUESTIONS
 from screening.main_flow import get_user_state, life_impact_questionnaire
@@ -48,6 +51,7 @@ from screening.scoring import (
     LIFE_IMPACT_BUTTON,
     NEXT_SCREENING,
     NEXT_STEP_REASONS,
+    NEXT_STOP_NAMES,
     RECORD_FITTING_DATE,
     RECORD_THE_NOTICE,
     RETEST_BUTTON_TEXT,
@@ -72,7 +76,6 @@ WEARING_FROM = 5  # someone wearing hearing aids looks for the 現在這一步 f
 LAST_STEP = 7
 FITTING_MONTHS = 3  # IOI-HA again once hearing aids are worn 3 months (ADR 0074)
 WHERE_TO_TEST = "where-to-get-a-hearing-test"  # the Q&A answer step 2's 查詢醫療院所 opens
-TYPES_AND_PRICES = "types-and-prices"
 # 等待補助發放 is never done and the home page never shows it (grill Q10): step 5 is done once
 # the route is past everything else.
 ROUTE_DONE_AT = (None, "payout")
@@ -211,9 +214,9 @@ class JourneyCard:
 
     title: str
     because: str
-    icon: str  # an action_icon.html icon
     button: tuple[str, str] | None = None
     entries: tuple[Entry, ...] = ()
+    entries_title: str = ""  # the entry cards' small heading
     countdown: Countdown | None = None
     question: AnswerCard | None = None
     date: DateCard | None = None
@@ -247,11 +250,6 @@ class CareJourney:
     next_screening: NextScreening | None
     audiogram: AudiogramResult | None = None  # step 3 done: what opening it shows
 
-    @property
-    def progress(self):
-        """The steps passed, done or 目前不需要: at most 6 of 7, as step 7 is never done."""
-        return sum(step.state in (DONE, NOT_NEEDED) for step in self.steps)
-
 
 def _hospital_entry():
     return Entry(FIND_A_HOSPITAL, reverse("qa_answer", args=[WHERE_TO_TEST]), "pin")
@@ -274,9 +272,7 @@ def care_journey(user, today, done_now=None):
     three_months = add_months(fitted_on, FITTING_MONTHS) if fitted_on is not None else None
     # The second IOI-HA, 3 months on from the fitting date (ADR 0074); the latest gives the day.
     ioi_ha = (
-        user.submissions.filter(questionnaire__code=IOI_HA, created_at__date__gte=three_months)
-        .order_by("-created_at")
-        .first()
+        ioi_ha_since(user, three_months).order_by("-created_at").first()
         if three_months is not None
         else None
     )
@@ -290,13 +286,17 @@ def care_journey(user, today, done_now=None):
     # Each step's day, None while it is not done; step 7 never is, a retest only moves the
     # next one on. A 無法判讀 record leaves step 1 to do again, whatever the hearing, as
     # fitting_advice counts it as none (the owner, 2026-11-17). Steps 2 and 3 go together on
-    # an audiogram (grill Q9), but one missing a frequency leaves step 3 to edit it.
+    # an audiogram (grill Q9), but one missing a frequency leaves step 3 to edit it; step 2 is
+    # also done once 查詢醫療院所 is opened (spec #741's 實作中本人補充), on the earlier day.
     readable = life_impact is not None and life_impact.result.level["level"] != UNKNOWN["level"]
     audiogram_on = route.audiogram.tested_on if route.audiogram is not None else None
+    searched = route.viewed.get(HOSPITAL_SEARCH)
+    searched_on = timezone.localtime(searched).date() if searched is not None else None
+    hospital_on = min((day for day in (audiogram_on, searched_on) if day), default=None)
     route_done = not route.waiting and route.home_stop in ROUTE_DONE_AT
     done_on = {
         1: _day(life_impact) if readable else None,
-        2: audiogram_on,
+        2: hospital_on,
         3: None if route.insufficient else audiogram_on,
         4: timezone.localtime(min(guide_views)).date() if guide_views else None,
         5: fitted_on if route_done else None,
@@ -380,8 +380,7 @@ def _step(
     if number == 2:
         entries = (_hospital_entry(),)
     if number == 3 and no_audiogram:
-        # Spec #741 story 4: with no audiogram step 2 is the 現在這一步, never step 3, as they
-        # are done together (grill Q9); so step 3 opens to the audiogram's sources.
+        # Spec #741 story 4, acceptance 4: without an audiogram step 3 opens to its sources.
         entries, entries_title = _audiogram_sources(), AUDIOGRAM_SOURCES
     if number == 4:
         about, entries = _guide_words(eligibility)
@@ -400,8 +399,10 @@ def _step(
         state = NOT_NEEDED
     else:
         state = CURRENT if number == current else LATER
-    if state == DONE and number != 4:
-        entries = ()  # a done step opens to its stamp; step 4's keeps the way to my guide
+    if state == DONE and number not in (2, 4):
+        # A done step opens to its stamp; step 2's keeps 查詢醫療院所 (spec #741's 實作中本人
+        # 補充), step 4's the way to my guide.
+        entries = ()
     return JourneyStep(title, state, done_on, about, ineligible, entries, entries_title, wait)
 
 
@@ -461,36 +462,44 @@ def _card(
     title = CARE_JOURNEY_STEPS[current - 1]
     if current == 1:
         button = (LIFE_IMPACT_BUTTON, life_impact_href)
-        return JourneyCard(title, LIFE_IMPACT_BECAUSE, "clipboard", button=button)
+        return JourneyCard(title, LIFE_IMPACT_BECAUSE, button=button)
     if current == 2:
-        return JourneyCard(title, "", "pin", entries=(_hospital_entry(),))
+        return JourneyCard(title, "", entries=(_hospital_entry(),))
+    if current == 3 and route.audiogram is None:
+        # Step 2 done by opening 查詢醫療院所 (spec #741 acceptance 4).
+        return JourneyCard(title, "", entries=_audiogram_sources(), entries_title=AUDIOGRAM_SOURCES)
     if current == 3:
         # Step 2 is done on any audiogram, step 3 on one that can tell: here it cannot.
         edit = reverse("audiogram_edit", args=[route.audiogram.pk])
         button = ("修改這張聽力圖", edit)
-        return JourneyCard(title, NEXT_STEP_REASONS["edit"], "audiogram", button=button)
+        return JourneyCard(title, NEXT_STEP_REASONS["edit"], button=button)
     if current == 4:
         because, entries = _guide_words(eligibility)
-        return JourneyCard(title, because, "guide", entries=entries)
+        return JourneyCard(title, because, entries=entries)
     if current == 5:
         return _stop_card(route, questionnaires)
     if current == 6:
         # The canvas: counting down to 3 months worn, then its button alone (spec #741).
         if today < three_months:
             wait = countdown(fitted_on, three_months, today, below=FITTING_AGAIN_FROM)
-            return JourneyCard(title, FITTING_COMPARE, "clipboard", countdown=wait)
-        ioi_ha = Questionnaire.objects.get(code=IOI_HA)
-        button = (IOI_HA_BUTTON, reverse("screening", args=[ioi_ha.pk]))
-        return JourneyCard(title, "", "clipboard", button=button)
+            return JourneyCard(title, FITTING_COMPARE, countdown=wait)
+        button = (IOI_HA_BUTTON, _ioi_ha_href(questionnaires))
+        return JourneyCard(title, "", button=button)
     # Step 7 by the canvas (spec #741 acceptance 26).
     if next_screening is None:
         # Without a life-impact record step 7 is due: one to do first (spec #453).
         button = (LIFE_IMPACT_BUTTON, life_impact_href)
-        return JourneyCard(title, FIRST_SCREENING_NOT_DONE, "clipboard", button=button)
+        return JourneyCard(title, FIRST_SCREENING_NOT_DONE, button=button)
     if not next_screening.due:
-        return JourneyCard(title, "", "clipboard", countdown=next_screening.countdown)
+        return JourneyCard(title, "", countdown=next_screening.countdown)
     button = (RETEST_BUTTON_TEXT, next_screening.href)
-    return JourneyCard(title, RETEST_TIME_UP, "clipboard", button=button)
+    return JourneyCard(title, RETEST_TIME_UP, button=button)
+
+
+def _ioi_ha_href(questionnaires):
+    # IOI-HA from the questionnaires already read; the catalogue where it is not offered.
+    ioi_ha = next((q for q in questionnaires if q.code == IOI_HA), None)
+    return reverse("screening", args=[ioi_ha.pk]) if ioi_ha else reverse("questionnaire_list")
 
 
 def _stop_card(route, questionnaires):
@@ -502,30 +511,23 @@ def _stop_card(route, questionnaires):
     slug, aid = stop.slug, route.aid
     if slug in ANSWER_CARDS:
         question = _answer_card(slug, aid)
-        return JourneyCard(
-            stop.title, "", "guide", _way_on(slug, aid), question=question, away=stop.action
-        )
+        return JourneyCard(stop.title, "", _way_on(slug, aid), question=question, away=stop.action)
     if slug == "before-you-go":
-        return JourneyCard(stop.title, "", "guide", (BEFORE_YOU_GO_BUTTON, stop.url))
+        return JourneyCard(stop.title, "", (BEFORE_YOU_GO_BUTTON, stop.url))
     if slug == "after-fitting":
         # Grill Q15, Q16, Q18: the date and the first IOI-HA, both needed, side by side.
-        # IOI-HA from the questionnaires already read; the catalogue where it is not offered.
-        ioi_ha = next((q for q in questionnaires if q.code == IOI_HA), None)
-        ioi_ha_href = (
-            reverse("screening", args=[ioi_ha.pk]) if ioi_ha else reverse("questionnaire_list")
-        )
         entries = (
             Entry(RECORD_FITTING_DATE, f"{stop.url}#stop-question", "calendar"),
-            Entry(FIRST_IOI_HA, ioi_ha_href, "clipboard", note=FIRST_IOI_HA_NOTE),
+            Entry(FIRST_IOI_HA, _ioi_ha_href(questionnaires), "clipboard", note=FIRST_IOI_HA_NOTE),
         )
-        return JourneyCard(stop.title, AFTER_FITTING_WORDS, "guide", entries=entries)
+        return JourneyCard(stop.title, AFTER_FITTING_WORDS, entries=entries)
     # Form 25: from when it can be done, a calendar's day, and the deadline under it; with no
     # date (no 身障補助 at a level that needs it) only what to bring.
     day = None
     if route.form_25 is not None:
         opens, closes = route.form_25
         day = DateCard(opens, FORM_25_FROM, FORM_25_BY.format(day=closes))
-    return JourneyCard(stop.title, "", "guide", (FORM_25_BUTTON, stop.url), date=day)
+    return JourneyCard(stop.title, "", (FORM_25_BUTTON, stop.url), date=day)
 
 
 def _answer_card(slug, aid):
@@ -560,10 +562,11 @@ def _way_on(slug, aid):
 
 def _done_card(slug, route, card):
     """Grill Q13: the answer card of the stop just finished, stamped, and 接著往下一站 the stop
-    card is at now (its title before any 「：」), pressed to move on."""
+    card is at now, pressed to move on."""
     title = here_stop(replace(route, stop=slug)).title
     question = _answer_card(slug, route.aid)
-    return JourneyCard(title, "", "guide", question=question, moved_on=card.title.split("：")[0])
+    moved_on = NEXT_STOP_NAMES.get(route.home_stop, card.title)
+    return JourneyCard(title, "", question=question, moved_on=moved_on)
 
 
 def next_step(user, today):
