@@ -113,7 +113,8 @@ class LoginRequiredTests(TestCase):
 
 class LoginNextTests(TestCase):
     NOTE = "請先登入，沒有帳號請按註冊。登入後會帶您回到剛剛的頁面。"
-    # Spec #148 (ticket #150): the home page's small hint became this button.
+    # Spec #148 (ticket #150): the home page's small hint became this button; spec #741 (#752,
+    # grill P15) took it away again, the header's 登入 being the way in.
     LOGIN_BUTTON = "我已經有帳號，登入"
     PASSWORD = "Xk9#mPq2vLw"
     EXTERNAL = (
@@ -224,8 +225,8 @@ class LoginNextTests(TestCase):
         self.assertNotContains(response, "<script>alert(1)</script>")
         self.assertContains(response, "&lt;script&gt;")
 
-    def test_home_login_button_only_for_anonymous(self):
-        self.assertContains(self.client.get(reverse("index")), self.LOGIN_BUTTON)
+    def test_home_has_no_login_button(self):
+        self.assertNotContains(self.client.get(reverse("index")), self.LOGIN_BUTTON)
         self.client.force_login(self.user)
         self.assertNotContains(self.client.get(reverse("index")), self.LOGIN_BUTTON)
 

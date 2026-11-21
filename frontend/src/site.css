@@ -613,20 +613,46 @@
     border: 0.125rem solid currentColor;
   }
 
-  /* Header: white since the brand refresh, the same as the app's status bar (theme-color, #138). */
+  /* Header: white since the brand refresh, the same as the app's status bar (theme-color, #138).
+     #748 (ADR 0079): it stays at the top; scrolled past it (site-header.js marks data-scrolled),
+     its white goes and only the frosted ‹ and avatar float over the page, which shows between
+     them and stays clickable there. Without JavaScript nothing floats, so it scrolls away with
+     the page: kept, its white would take a third of a small phone at 200% text. */
   .site-header {
-    position: relative;
-    overflow: hidden;
     background-color: #fff;
-    border-bottom: 1px solid var(--color-line);
     color: var(--color-primary);
     /* viewport-fit=cover (layout.html) lets the page run under the iPhone's status bar; the
        header's white fills it and its contents start below. 0 everywhere else. */
     padding-top: env(safe-area-inset-top);
   }
 
+  .site-header[data-scrolled] {
+    background-color: transparent;
+    pointer-events: none;
+  }
+
+  /* A jump into the page stops below the header rather than under it: about its height (the
+     56px 登入 and its padding). Only on the jump's target: as the page's scroll-padding it
+     would also count the header's own ‹ as under the header, and focusing or scrolling to it
+     would scroll the page back up and hide it. */
+  @media (scripting: enabled) {
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 1020;
+    }
+
+    :target {
+      scroll-margin-top: calc(env(safe-area-inset-top) + 4.25rem);
+    }
+  }
+
+  .site-header[data-scrolled] :is(.site-back, .site-avatar, .site-login) {
+    pointer-events: auto;
+  }
+
   /* An iPhone home-screen app softly blurs about 1.25rem more under its status bar (iOS 26 on),
-     which the page cannot turn off: the logo and logout start below it. Only iOS reads
+     which the page cannot turn off: the logo and avatar start below it. Only iOS reads
      -webkit-touch-callout, so Android's home-screen app keeps the plain header. */
   @media (display-mode: standalone) {
     @supports (-webkit-touch-callout: none) {
@@ -634,10 +660,6 @@
         padding-top: calc(env(safe-area-inset-top) + 1.5rem);
       }
     }
-  }
-
-  .site-header-bar {
-    position: relative;
   }
 
   /* Entrance animations wait until they are in view (#341, ADR 0029). With JavaScript, layout.html
@@ -659,7 +681,8 @@
      - play-once-slide-up: a block slides up a little as it fades in.
      - play-once-stamp: the 已完成 stamp presses down; its own tilt (transform) is left alone.
      - play-once-ring, play-once-gauge: an SVG stroke draws itself from its start. Give the path
-       pathLength="1" and draw only the arc of the value, so the stroke ends where the value is. */
+       pathLength="1" and draw only the arc of the value, so the stroke ends where the value is.
+     - play-once-wave: on an SVG, its shapes (up to 14) fade in one after another. */
   @media (prefers-reduced-motion: no-preference) {
     .play-once-slide-up {
       animation: play-once-slide-up 0.6s ease-out both;
@@ -677,6 +700,32 @@
 
     .play-once-gauge {
       animation-delay: 0.3s;
+    }
+
+    /* play-once-wave: an SVG sound wave's bars fade in one after another (the guest home's hero
+       card, #752), about 1.3 seconds in all. */
+    .play-once-wave > * {
+      animation: play-once-fade 0.6s ease-out both;
+    }
+
+    .play-once-wave > :nth-child(2) { animation-delay: 0.05s; }
+    .play-once-wave > :nth-child(3) { animation-delay: 0.1s; }
+    .play-once-wave > :nth-child(4) { animation-delay: 0.15s; }
+    .play-once-wave > :nth-child(5) { animation-delay: 0.2s; }
+    .play-once-wave > :nth-child(6) { animation-delay: 0.25s; }
+    .play-once-wave > :nth-child(7) { animation-delay: 0.3s; }
+    .play-once-wave > :nth-child(8) { animation-delay: 0.35s; }
+    .play-once-wave > :nth-child(9) { animation-delay: 0.4s; }
+    .play-once-wave > :nth-child(10) { animation-delay: 0.45s; }
+    .play-once-wave > :nth-child(11) { animation-delay: 0.5s; }
+    .play-once-wave > :nth-child(12) { animation-delay: 0.55s; }
+    .play-once-wave > :nth-child(13) { animation-delay: 0.6s; }
+    .play-once-wave > :nth-child(14) { animation-delay: 0.65s; }
+  }
+
+  @keyframes play-once-fade {
+    from {
+      opacity: 0;
     }
   }
 
@@ -734,96 +783,134 @@
     }
   }
 
-  /* The header wave chosen in #136 (values in docs/verification/issue-136.md): bars jump and a
-     soft light sweeps once, about 3.7 seconds, then the bars stay level and low. The resting look
-     is the plain style, so no animation (reduced motion, a tab's later pages) means a still row.
-     On the white header the bars are 8% brand blue, so blue text over them stays above 7:1. */
-  .site-wave {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: flex-end;
-    gap: 4px;
-    padding: 0 1rem;
-    pointer-events: none;
-  }
-
-  .site-wave span {
-    flex: 1;
-    height: 22%;
-    border-radius: 4px 4px 0 0;
-    background-color: var(--color-primary);
-    opacity: 0.08;
-    transform-origin: bottom;
-    animation: wave-jump 3.5s ease-in-out var(--wave-delay, 0s) both;
-  }
-
-  /* Each bar jumps to its own heights: seven patterns, staggered over five delays. */
-  .site-wave span:nth-child(7n + 1) { --wave-1: 1.5; --wave-2: 2.88; --wave-3: 2.01; }
-  .site-wave span:nth-child(7n + 2) { --wave-1: 2.67; --wave-2: 2.05; --wave-3: 2.02; }
-  .site-wave span:nth-child(7n + 3) { --wave-1: 2.96; --wave-2: 3.1; --wave-3: 1.41; }
-  .site-wave span:nth-child(7n + 4) { --wave-1: 2.14; --wave-2: 1.56; --wave-3: 1.6; }
-  .site-wave span:nth-child(7n + 5) { --wave-1: 2.16; --wave-2: 3.2; --wave-3: 2.08; }
-  .site-wave span:nth-child(7n + 6) { --wave-1: 2.97; --wave-2: 1.35; --wave-3: 1.9; }
-  .site-wave span:nth-child(7n + 7) { --wave-1: 2.66; --wave-2: 3.16; --wave-3: 1.19; }
-  .site-wave span:nth-child(5n + 2) { --wave-delay: 0.05s; }
-  .site-wave span:nth-child(5n + 3) { --wave-delay: 0.1s; }
-  .site-wave span:nth-child(5n + 4) { --wave-delay: 0.15s; }
-  .site-wave span:nth-child(5n + 5) { --wave-delay: 0.2s; }
-
-  .site-wave::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    transform: translateX(-100%);
-    background-image: linear-gradient(105deg, transparent 30%, rgba(31, 78, 140, 0.1) 50%, transparent 70%);
-    animation: wave-sweep 2.5s ease-in-out 1s both;
-  }
-
-  .header-wave-played .site-wave span,
-  .header-wave-played .site-wave::after {
-    animation: none;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .site-wave span,
-    .site-wave::after {
-      animation: none;
-    }
-  }
-
-  /* Phones: brand and logout share the first line, the signed-in name gets the second, so a
-     back button or a long name never pushes logout down. The name stays first in the source,
-     so screen readers and Tab still reach it before logout. */
+  /* #748 (canvas ProHome, ProScrollDemo): the name on the left, the avatar or 登入 on the
+     right, one line at any text size. */
   .site-header-bar {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem 1rem;
+    padding-block: 0.5rem;
   }
 
-  .site-header-bar .site-account {
-    order: 1;
-    flex-basis: 100%;
+  /* Without JavaScript the ‹ is a link home beside the name. With it, the ‹ sits over the name
+     from the first paint, shown only once site-header.js marks the header scrolled. */
+  .site-header-start {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
   }
 
-  /* #357: on a phone the name's own line sits over the wave's bars; the header's white hides
-     them behind it. */
-  @media (max-width: 47.99em) {
-    .site-header-bar .site-account {
-      background-color: #fff;
+  @media (scripting: enabled) {
+    .site-back {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      translate: 0 -50%;
+    }
+
+    .site-header:not([data-scrolled]) .site-back {
+      opacity: 0;
+      visibility: hidden;
     }
   }
 
-  /* Wide screens: one line. A zero basis makes the name take the space left and wrap inside it;
-     sized by its full text, a long name would drop to a new line with logout. */
-  @media (min-width: 48em) {
-    .site-header-bar .site-account {
-      order: 0;
-      flex: 1 1 0;
-      min-width: 0;
-      text-align: end;
+  .site-header[data-scrolled] .site-brand {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  /* Round, the size of a fingertip: the ‹ on the page's pale blue, as the avatar. */
+  :is(.site-back, .site-avatar) {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: var(--spacing-touch);
+    height: var(--spacing-touch);
+    border: 1px solid transparent;
+    border-radius: 50%;
+    background-color: var(--color-brand-soft);
+    color: var(--color-primary);
+    text-decoration: none;
+  }
+
+  .site-back svg {
+    width: 1.5556rem;
+    height: 1.5556rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .site-avatar {
+    font-size: 1.1111rem;
+    font-weight: 700;
+  }
+
+  /* Under a finger or a mouse colour only (ADR 0006). */
+  :is(.site-back, .site-avatar):hover {
+    color: var(--color-primary-hover);
+  }
+
+  :is(.site-back, .site-avatar):active {
+    background-color: var(--color-brand-soft-deep);
+  }
+
+  /* A site button as any (#453 acceptance 32, ADR 0043 S1): 56px tall, a rounded square. */
+  .site-login {
+    flex: none;
+  }
+
+  /* Scrolled: frosted glass as the tab bar (ADR 0045, 0079), 88% white, solid where the browser
+     cannot blur or with reduced transparency. */
+  .site-header[data-scrolled] :is(.site-back, .site-avatar) {
+    background-color: #fff;
+    border-color: var(--color-line);
+    box-shadow: 0 0.375rem 1rem rgba(33, 37, 41, 0.18);
+  }
+
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .site-header[data-scrolled] .site-back {
+      background-color: rgba(255, 255, 255, 0.88);
+    }
+
+    .site-header[data-scrolled] .site-avatar {
+      background-color: rgba(238, 243, 250, 0.88);
+    }
+
+    .site-header[data-scrolled] :is(.site-back, .site-avatar) {
+      border-color: rgba(255, 255, 255, 0.7);
+      -webkit-backdrop-filter: blur(14px) saturate(1.6);
+      backdrop-filter: blur(14px) saturate(1.6);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .site-header[data-scrolled] :is(.site-back, .site-avatar) {
+      background-color: #fff;
+      border-color: var(--color-line);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+
+  /* The swap fades; with reduced motion it just changes. */
+  @media (prefers-reduced-motion: no-preference) {
+    .site-header {
+      transition: background-color 0.25s;
+    }
+
+    :is(.site-brand, .site-back) {
+      transition: opacity 0.2s, visibility 0.2s;
+    }
+
+    .site-avatar {
+      transition: background-color 0.25s, box-shadow 0.25s, border-color 0.25s;
     }
   }
 
@@ -841,14 +928,6 @@
     gap: 0.5rem;
     color: var(--color-primary);
     text-decoration: none;
-  }
-
-  /* In the home-screen app the back button needs the logo's room so logout stays on the first
-     line (#118); the app's own icon already shows the logo there. */
-  @media (max-width: 47.99em) {
-    .site-header-bar:has(.site-back:not([hidden])) .site-logo {
-      display: none;
-    }
   }
 
   /* Wordmark in two colours: "聽" in the primary blue, "伴" in the gradient's teal end. */
@@ -874,14 +953,6 @@
     /* Prefixed too: iPhones before iOS 15.4 only read -webkit-mask. */
     -webkit-mask: var(--logo-glyph) center / contain no-repeat;
     mask: var(--logo-glyph) center / contain no-repeat;
-  }
-
-  /* Home-screen app only (spec phase10_pwa_back_refresh.md): pwa-nav.js reveals both. */
-  .site-back {
-    min-width: var(--spacing-touch);
-    min-height: var(--spacing-touch);
-    font-size: 1rem;
-    font-weight: 700;
   }
 
   .pwa-pull {
@@ -1025,13 +1096,17 @@
     stroke-linejoin: round;
   }
 
-  /* W1 (#454, ADR 0043, without the frosted glass of ADR 0045, which is #457): the current page
-     is a pale blue pill with bold blue words, the others the heading colour (grey on a phone, as
-     W1); under a finger or a mouse colour only, never position (ADR 0006). */
+  /* W1 (#454, ADR 0043, without the frosted glass of ADR 0045, which is #457): the others the
+     heading colour (grey on a phone, as W1). #748 (spec #741 P9): the current page is a solid
+     blue pill with bold white words; pressing another tab, it slides there as the pill of
+     問卷｜聽力圖 (#334, switch-slide.js), under its own name, as a page can have both. Under a
+     finger or a mouse colour only, never position (ADR 0006). */
   .site-nav a[aria-current="page"] {
     border-radius: var(--radius-tab);
-    background-color: var(--color-brand-selected);
+    background-color: var(--color-primary);
+    color: #fff;
     font-weight: 700;
+    view-transition-name: tab-pill;
   }
 
   .site-nav a:active {
@@ -1040,9 +1115,8 @@
   }
 
   .site-nav a[aria-current="page"]:active {
-    background-color: var(--color-brand-soft-deep);
+    background-color: var(--color-primary-active);
   }
-
   @media (min-width: 48em) {
     /* White like the header, a thin line under it; the padding keeps the current-page pill
        inside the bar instead of filling it. */
@@ -1548,16 +1622,32 @@
     }
   }
 
-  /* Spec #655 (#673, the #669 mockup's A): the signed-out home's two doors, each a single link in
-     a pale blue block (as a single clickable thing sits in a colour block), one above the other,
-     the icon in a white circle. A mouse or a finger deepens the blue instead of turning it pale
-     blue; at large text sizes the words drop under the icon as every action card's do. */
+  /* Spec #741 (#752, the canvas's ProGuest): the signed-out home's two doors under the blue hero
+     card, side by side, each a single link in a pale blue block (as a single clickable thing sits
+     in a colour block): the icon in a white circle and the arrow on top, the words under them. A
+     mouse or a finger deepens the blue instead of turning it pale blue. Where two would be too
+     narrow (large text on a phone) they go one above the other. */
+  .home-doors {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+    gap: 0.6667rem;
+  }
+
   .home-doors > li > .link-card.home-door {
-    min-height: 5.5rem;
-    padding: 1rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    height: 100%;
+    padding: 0.7778rem;
     border: 0;
-    border-radius: var(--radius-medium);
+    border-radius: 1.1111rem;
     background-color: var(--color-brand-soft);
+  }
+
+  .home-door-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
 
   .home-door .action-card-icon {
@@ -1565,7 +1655,7 @@
   }
 
   .home-door .link-card-title {
-    font-size: 1.15rem;
+    line-height: 1.4;
   }
 
   @media (hover: hover) and (pointer: fine) {
@@ -1806,16 +1896,6 @@
   .more-group-title {
     margin: 1.25rem 0 0.5rem;
     color: var(--color-heading);
-    font-size: 1.125rem;
-    font-weight: 700;
-  }
-
-  /* The login link under the start button: a full touch target, still a plain link; #471: at
-     the left edge, under the start button, as the text links below it. */
-  .home-login {
-    display: inline-flex;
-    align-items: center;
-    min-height: var(--spacing-touch);
     font-size: 1.125rem;
     font-weight: 700;
   }
@@ -3002,6 +3082,17 @@
 
   :is(.records-switch a[aria-current="page"], .ear-switch a[aria-current="true"]) {
     view-transition-name: switch-pill;
+  }
+
+  /* #748: a tab pressed on a page with 問卷｜聽力圖 leaves that pill behind, and a page without a
+     current tab has no tab pill to slide from. A pill on one side only neither fades out over
+     the next page nor fades in: it is just gone, or just there. */
+  ::view-transition-old(*):only-child {
+    display: none;
+  }
+
+  ::view-transition-new(*):only-child {
+    animation: none;
   }
 
   /* Legend under both charts. */
@@ -4558,15 +4649,6 @@
 
   .settings-card-danger .action-card-icon svg {
     stroke: var(--color-severe);
-  }
-
-  /* The account link sits on the white header. */
-  .site-account {
-    color: var(--color-primary);
-  }
-
-  .site-account:hover {
-    color: var(--color-primary-hover);
   }
 
   /* Questionnaire list (spec phase9_ui_refresh_4b_questionnaire_cards.md 4.1); the continue
@@ -6193,18 +6275,6 @@
   }
 }
 
-/* Header wave (#138). */
-@keyframes wave-jump {
-  20% { transform: scaleY(var(--wave-1)); }
-  45% { transform: scaleY(var(--wave-2)); }
-  70% { transform: scaleY(var(--wave-3)); }
-  to { transform: scaleY(1); }
-}
-
-@keyframes wave-sweep {
-  to { transform: translateX(100%); }
-}
-
 /* Questionnaire icon ripple (#141). */
 @keyframes icon-ripple {
   from { opacity: 1; transform: scale(1); }
@@ -7582,6 +7652,55 @@
     margin-top: 0.25rem;
   }
 
+  /* The guest home's card (#752, the canvas's ProGuest): a white sound wave on top, and what
+     the start asks of you in pale chips under the title. */
+  .hero-wave {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin-bottom: 0.5rem;
+    fill: #fff;
+  }
+
+  .hero-wave > :nth-child(even) {
+    opacity: 0.5;
+  }
+
+  .hero-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4444rem;
+    margin: 0.25rem 0 0.5rem;
+  }
+
+  .hero-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3333rem;
+    min-height: 2rem;
+    padding: 0 0.6667rem;
+    border-radius: 1rem;
+    background-color: rgba(255, 255, 255, 0.18);
+    font-weight: 700;
+  }
+
+  .hero-chip svg,
+  .btn-hero svg {
+    flex: none;
+    width: 1.1111rem;
+    height: 1.1111rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .btn-hero svg {
+    margin-left: 0.3333rem;
+    stroke-width: 2.5;
+  }
+
   /* A recommended questionnaire in the card (questionnaire page): its words white, its icon's
      circle white so it stays apart. */
   .hero-card :is(.recommended-label, .recommended-title, .recommended-code, .recommended-facts) {
@@ -7618,5 +7737,241 @@
     --btn-active-color: #fff;
     --btn-active-bg: rgba(255, 255, 255, 0.24);
     --btn-active-border-color: #fff;
+  }
+}
+
+/* #753 (spec #741 P3, P4; the canvas's ProScreening): 幫我選 in the bird's bubble, and the
+   stacked cards (card-stack.js), one blue card in front and the next ones peeking behind it. */
+@layer components {
+  .bird-pick {
+    display: flex;
+    align-items: center;
+    gap: 0.6667rem;
+    margin-top: 0.6667rem;
+    min-height: 3.5556rem;
+    padding: 0.4444rem 0.7778rem 0.4444rem 0.4444rem;
+    border: 2px solid var(--color-primary);
+    border-radius: 1.7778rem;
+    background-color: #fff;
+    color: var(--color-primary);
+    font-size: 1.1111rem;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 0.3333rem 0.7778rem rgba(23, 59, 106, 0.18);
+    transition: background-color 0.15s;
+  }
+
+  @media (hover: hover) {
+    .bird-pick:hover {
+      background-color: var(--color-brand-soft);
+      color: var(--color-primary-hover);
+    }
+  }
+
+  .bird-pick:active {
+    background-color: var(--color-brand-soft-deep);
+  }
+
+  .bird-pick svg {
+    display: block;
+    width: 1.4444rem;
+    height: 1.4444rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .bird-pick-icon {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5556rem;
+    height: 2.5556rem;
+    border-radius: 50%;
+    background-image: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+    color: #fff;
+  }
+
+  .bird-pick-text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .bird-pick-arrow svg {
+    stroke-width: 2.5;
+  }
+
+  .card-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7778rem;
+    margin: 1.25rem 0;
+    /* The cards peeking out on either side stay inside the page: no sideways scrolling. */
+    overflow-x: clip;
+  }
+
+  /* Every card in one grid cell, so the stack is as tall as its tallest card at any text
+     size, and every card that tall. */
+  .card-stack-cards {
+    display: grid;
+    padding: 0.5rem 0 0.75rem;
+  }
+
+  .card-stack-card {
+    grid-area: 1 / 1;
+    margin: 0;
+  }
+
+  .card-stack-card .btn {
+    margin-top: auto;
+  }
+
+  .hero-card .recommended-audience {
+    color: #fff;
+  }
+
+  /* Without JavaScript, or before it runs, the first card alone (spec #741 acceptance 58). */
+  .card-stack:not([data-ready]) .card-stack-card:not(:first-child) {
+    display: none;
+  }
+
+  .card-stack[data-ready] .card-stack-cards {
+    /* Sideways is the card's; up and down still scrolls the page. */
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: grab;
+  }
+
+  .card-stack[data-ready] .card-stack-card {
+    justify-self: center;
+    width: calc(100% - min(2.5rem, 14%));
+    transition: transform 0.4s cubic-bezier(0.3, 0.7, 0.2, 1), opacity 0.3s, filter 0.3s;
+  }
+
+  .card-stack-card[data-offset="0"] {
+    z-index: 3;
+    transform: translateX(var(--card-stack-drag, 0px));
+  }
+
+  .card-stack-card:is([data-offset="1"], [data-offset="-1"]) {
+    z-index: 2;
+    opacity: 0.55;
+    filter: brightness(0.8);
+  }
+
+  .card-stack-card[data-offset="1"] {
+    transform: translateX(min(1.25rem, 7%)) scale(0.9);
+  }
+
+  .card-stack-card[data-offset="-1"] {
+    transform: translateX(max(-1.25rem, -7%)) scale(0.9);
+  }
+
+  .card-stack-card:is([data-offset="2"], [data-offset="-2"]) {
+    z-index: 1;
+    opacity: 0;
+    transform: scale(0.8);
+  }
+
+  /* The front card follows the finger; the rest wait. */
+  .card-stack[data-dragging] .card-stack-card {
+    transition: none;
+  }
+
+  /* Reduced motion: the card changes without sliding (card-stack.js does not let it follow
+     the finger either). */
+  @media (prefers-reduced-motion: reduce) {
+    .card-stack[data-ready] .card-stack-card,
+    .card-stack-dots > span {
+      transition: none;
+    }
+  }
+
+  .card-stack-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6667rem;
+  }
+
+  .card-stack-prev,
+  .card-stack-next {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.1111rem;
+    height: 3.1111rem;
+    padding: 0;
+    border: 2px solid var(--color-primary);
+    border-radius: 50%;
+    background-color: #fff;
+    color: var(--color-primary);
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+
+  .card-stack-prev svg,
+  .card-stack-next svg {
+    display: block;
+    width: 1.5556rem;
+    height: 1.5556rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .card-stack-controls button:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  @media (hover: hover) {
+    .card-stack-controls button:hover:not(:disabled) {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .card-stack-controls button:active:not(:disabled) {
+    background-color: var(--color-brand-soft-deep);
+  }
+
+  .card-stack-where {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3333rem;
+    min-width: 0;
+    text-align: center;
+  }
+
+  .card-stack-position {
+    margin: 0;
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
+  .card-stack-dots {
+    display: flex;
+    gap: 0.4444rem;
+  }
+
+  .card-stack-dots > span {
+    width: 0.5556rem;
+    height: 0.5556rem;
+    border-radius: 0.2778rem;
+    background-color: var(--color-border);
+    transition: width 0.3s, background-color 0.3s;
+  }
+
+  .card-stack-dots > [data-current] {
+    width: 1.5556rem;
+    background-color: var(--color-primary);
   }
 }

@@ -16,7 +16,7 @@ Each capture also writes styles.json: the font family and root font size every p
 since the screenshots themselves cannot show a lost web font.
 
 The site's clock and the browser's clock are both fixed, the browser asks for reduced motion
-(the header wave stays still), and Google Fonts is blocked (the system font stands in), so two
+(entrance animations stay still), and Google Fonts is blocked (the system font stands in), so two
 captures of the same commit match. Font loading itself is
 therefore not compared. Capture the baseline on main and the new set on your branch.
 """
@@ -299,9 +299,9 @@ class Screenshots(StaticLiveServerTestCase):
         return shots
 
     def open(self, shot, width, standalone=False):
-        # Reduced motion keeps the header wave still: Chromium layers a page differently while the
-        # wave plays than after it ends (about 3.7 s), so pages captured near its end, like the
-        # charts after SETTLE_MS, differed between captures by a few anti-aliased pixels.
+        # Reduced motion keeps animations still: Chromium layered a page differently while the
+        # header wave (gone since #748) played than after it ended, so pages captured near its
+        # end, like the charts after SETTLE_MS, differed between captures by a few pixels.
         context = self.browser.new_context(
             viewport={"width": width, "height": 900},
             java_script_enabled=shot.javascript,
@@ -313,7 +313,7 @@ class Screenshots(StaticLiveServerTestCase):
         if self.cookies[shot.who]:
             context.add_cookies([self.cookies[shot.who]])
         if standalone:
-            context.add_init_script(main_flow.PwaNavTest.STANDALONE)
+            context.add_init_script(main_flow.SiteHeaderTest.STANDALONE)
         page = context.new_page()
         page.clock.set_fixed_time(NOW)
         page.emulate_media(media=shot.media)

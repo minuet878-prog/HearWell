@@ -714,7 +714,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         )
         self.assert_step_bar(2, 2)
         self.main().get_by_role("button", name="我同意，開始篩檢", exact=True).click()
-        expect(self.page.get_by_text("目前登入：e2e_user")).to_be_visible()
+        expect(self.page.get_by_role("link", name="帳號設定：e2e_user")).to_be_visible()
         expect(self.page).to_have_url(re.compile(r"/questionnaire_list\?from=consent$"))
 
     def fill_register_form(self):
@@ -1424,6 +1424,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
 
     fixtures = ("questions_fixture.json",)
     TAIPEI = ZoneInfo("Asia/Taipei")
+    HHIE_CARD = "第 1 張，共 3 張：聽力對生活的影響（HHIE-S）"
     REMINDER = "距離上次的生活影響評估已經滿 6 個月，建議再做一次追蹤。"
     RETEST_BUTTON = "再做一次（大約 3 分鐘）"
 
@@ -1492,14 +1493,14 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
             self.assert_fits_a_phone_at_double_text_size("home, next date")
 
     def test_screening_tab_shows_the_catalogue_with_last_dates(self):
-        """#346 (#339 acceptance 1, 2, 8, 22): 篩檢 opens the catalogue, not the wizard."""
+        """#346 (#339 acceptance 1, 2, 8, 22): 問卷 (篩檢 before #748) opens the catalogue."""
         call_command("seed_questionnaires", verbosity=0)
         self.open(viewport={"width": 320, "height": 640})
         with self.saving_artifacts():
             self.page.goto(self.live_server_url)
             nav = self.page.get_by_role("navigation", name="主要導覽")
-            nav.get_by_role("link", name="篩檢").click()
-            expect(nav.locator('a[aria-current="page"]')).to_have_text("篩檢")
+            nav.get_by_role("link", name="問卷").click()
+            expect(nav.locator('a[aria-current="page"]')).to_have_text("問卷")
             expect(self.main().get_by_role("group", name="您最想了解什麼？")).to_have_count(0)
             # The six questionnaires in the walkthrough's three groups, 幫我選 above them.
             cards = self.main().locator('a.questionnaire-card[href^="/questionnaire/"]')
@@ -1512,23 +1513,24 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
             expect(cards.first.locator(".inline-block")).to_have_text(
                 f"上次 {self.old_date}・顯著影響"
             )
-            # #347: the retest is due, so HHIE-S is recommended on top, and still a card below.
-            recommended = self.main().get_by_role("region", name="推薦您做這一份")
-            expect(recommended).to_contain_text("HHIE-S")
+            # #347, #753: the retest is due, so HHIE-S is the first stacked card, and still a
+            # card below.
+            recommended = self.main().get_by_role("group", name=self.HHIE_CARD)
+            expect(recommended).to_contain_text("推薦您做這一份")
             expect(recommended).to_contain_text(self.REMINDER)
             self.assert_fits_a_phone_at_double_text_size("catalogue")
             tag = cards.first.locator(".inline-block")
             self.assertEqual(tag.evaluate("e => e.getClientRects().length"), 1)
             self.assertLessEqual(tag.evaluate("e => e.getBoundingClientRect().right"), 320)
-            self.main().get_by_role("link", name="不確定做哪一份？幫我選").click()
+            self.main().get_by_role("link", name="幫我選").click()
             expect(self.main().get_by_role("group", name="您最想了解什麼？")).to_be_visible()
             self.main().get_by_role("link", name="上一步").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/questionnaire_list")
             expect(cards).to_have_count(6)
 
     def test_both_recommended_life_impact_questionnaires_fit_a_phone(self):
-        """#347 (#339 acceptance 5, 22): only THI and no birth year, so the recommendation lists
-        HHIE-S and HHIA-S, each a row with its ages (#463: no solid button); 320px at 200%
+        """#347 (#339 acceptance 5, 22): only THI and no birth year, so HHIE-S and HHIA-S are
+        both recommended, the first two stacked cards (#753), each with its ages; 320px at 200%
         text."""
         call_command("seed_questionnaires", verbosity=0)
         user = consented_user(username="thi_only_e2e")
@@ -1538,16 +1540,94 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         self.open(viewport={"width": 320, "height": 640})
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/questionnaire_list")
-            recommended = self.main().get_by_role("region", name="推薦您做這一份")
-            starts = recommended.locator("a.questionnaire-card")
-            expect(starts).to_have_count(2)
-            expect(starts.first).to_contain_text("HHIE-S")
+            stack = self.main().get_by_role("region", name="問卷卡片")
             expect(self.main().locator(".btn-primary")).to_have_count(0)
-            expect(recommended).to_contain_text("適合 65 歲以上的長輩。")
-            expect(recommended).to_contain_text("適合 18–64 歲成人")
             self.assert_fits_a_phone_at_double_text_size("catalogue, both recommended")
-            content_width, box_width = recommended.evaluate("e => [e.scrollWidth, e.clientWidth]")
-            self.assertLessEqual(content_width, box_width, "推薦您做這一份")
+            for place, code, ages in (
+                (1, "HHIE-S", "適合 65 歲以上的長輩。"),
+                (2, "HHIA-S", "適合 18–64 歲成人"),
+            ):
+                card = stack.get_by_role("group", name=re.compile(rf"^第 {place} 張"))
+                expect(card).to_contain_text(code)
+                expect(card).to_contain_text("推薦您做這一份")
+                expect(card).to_contain_text(ages)
+                content_width, box_width = card.evaluate("e => [e.scrollWidth, e.clientWidth]")
+                self.assertLessEqual(content_width, box_width, code)
+                stack.get_by_role("button", name="下一張").click()
+
+    def stack_card(self, place):
+        # The front stacked card, checked to be the one at this place of three (#753).
+        expect(self.main().locator(".card-stack-position")).to_have_text(f"第 {place} 張，共 3 張")
+        card = self.main().get_by_role("group", name=re.compile(rf"^第 {place} 張，共 3 張："))
+        expect(card).to_be_visible()
+        return card
+
+    def drag_front_card(self, dx):
+        box = self.main().locator('.card-stack-card[data-offset="0"]').bounding_box()
+        x, y = box["x"] + box["width"] * 0.75, box["y"] + box["height"] / 3
+        self.page.mouse.move(x, y)
+        self.page.mouse.down()
+        self.page.mouse.move(x + dx, y, steps=8)
+        self.page.mouse.up()
+
+    def test_the_stacked_cards_change_by_drag_keys_and_buttons_then_start_answering(self):
+        """#753 (spec #741 acceptance 44, 46): HHIE-S recommended, then the two for anyone;
+        a short drag snaps back, a long one changes card, and so do 上一張, 下一張 and the
+        arrow keys."""
+        call_command("seed_questionnaires", verbosity=0)
+        self.open(viewport={"width": 390, "height": 844})
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            stack = self.main().get_by_role("region", name="問卷卡片")
+            expect(stack).not_to_contain_text("HHIA-S")
+            expect(self.stack_card(1)).to_contain_text("HHIE-S")
+            self.drag_front_card(-20)
+            self.stack_card(1)
+            self.drag_front_card(-120)
+            expect(self.stack_card(2)).to_contain_text("SSQ12-TW")
+            self.drag_front_card(120)
+            self.stack_card(1)
+            stack.get_by_role("button", name="下一張").click()
+            self.stack_card(2)
+            self.page.keyboard.press("ArrowRight")
+            expect(self.stack_card(3)).to_contain_text("THI")
+            # At the end 下一張 can no longer be pressed, and the focus goes to 上一張.
+            expect(stack.get_by_role("button", name="下一張")).to_be_disabled()
+            expect(stack.get_by_role("button", name="上一張")).to_be_focused()
+            self.page.keyboard.press("ArrowLeft")
+            card = self.stack_card(2)
+            card.get_by_role("link", name="開始作答").click()
+            ssq12 = Questionnaire.objects.get(code="ssq12-tw")
+            expect(self.page).to_have_url(f"{self.live_server_url}/questionnaire/{ssq12.pk}")
+
+    def test_without_javascript_the_first_stacked_card_and_the_list(self):
+        """#753 (spec #741 acceptance 58)."""
+        call_command("seed_questionnaires", verbosity=0)
+        self.open(java_script_enabled=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            cards = self.main().locator(".card-stack-card")
+            expect(cards).to_have_count(3)
+            expect(cards.first).to_be_visible()
+            expect(cards.first).to_contain_text("推薦您做這一份")
+            expect(cards.nth(1)).to_be_hidden()
+            expect(cards.nth(2)).to_be_hidden()
+            expect(self.main().locator(".card-stack-controls")).to_be_hidden()
+            expect(self.main().locator("a.questionnaire-card")).to_have_count(6)
+
+    def test_reduced_motion_changes_card_without_sliding(self):
+        """#753 (P3, P4's 從其他決定推出): the card changes, nothing slides."""
+        call_command("seed_questionnaires", verbosity=0)
+        self.open(reduced_motion="reduce")
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            cards = self.main().locator(".card-stack-card")
+            for i in range(3):
+                self.assertEqual(
+                    cards.nth(i).evaluate("e => getComputedStyle(e).transitionDuration"), "0s"
+                )
+            self.main().get_by_role("button", name="下一張").click()
+            self.stack_card(2)
 
     def test_history_fits_a_phone_at_double_text_size(self):
         """#163 acceptance 3: 我的紀錄 due, with the reminder and its button, and after the
@@ -2881,9 +2961,11 @@ class RecordsSwitchTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
 
 
 # Runs before the site's own scripts on every page: notes whether the page arrived with a view
-# transition, which parts of the page it animates, where the pill starts (its group's first
-# keyframe) and where the pill is on the new page, both [left, top] in the viewport.
+# transition, which parts of the page it animates, where each pill starts (its group's first
+# keyframe) and where it is on the new page, both [left, top] in the viewport: window.pills by
+# name, window.pill the switch's. #748: the tab bar's pill takes part too.
 REVEAL_WATCH = """
+const PILLS = { "switch-pill": "main [aria-current]", "tab-pill": ".site-nav [aria-current]" };
 addEventListener("pagereveal", async (event) => {
     if (!event.viewTransition) {
         window.revealed = "none";
@@ -2909,17 +2991,29 @@ addEventListener("pagereveal", async (event) => {
     window.moving = [...new Set(animations.map((a) => a.effect.pseudoElement))].sort();
     // Without the new pill (a page painted before its switch was parsed) there is no group to
     // slide; window.moving then says so and the test fails at once rather than time out.
-    const group = animations.find((a) => a.effect.pseudoElement.includes("-group("));
-    if (group) {
+    window.pills = {};
+    for (const group of animations.filter((a) => a.effect.pseudoElement.includes("-group("))) {
+        const name = group.effect.pseudoElement.match(/[(](.*)[)]/)[1];
         const start = new DOMMatrix(group.effect.getKeyframes()[0].transform);
-        const end = document.querySelector("main [aria-current]").getBoundingClientRect();
-        window.pill = [[start.e, start.f], [end.left, end.top]].map((at) => at.map(Math.round));
+        const end = document.querySelector(PILLS[name]).getBoundingClientRect();
+        window.pills[name] = [[start.e, start.f], [end.left, end.top]].map((at) =>
+            at.map(Math.round)
+        );
     }
+    window.pill = window.pills["switch-pill"];
     await event.viewTransition.finished;
     window.settled = true;
 });
 """
+# A jump's target landed at the top, just under the header that stays there since #748 (the
+# target's scroll-margin-top in site.css).
+LANDED_UNDER_THE_HEADER = (
+    "id => { const target = document.getElementById(id); return Math.abs("
+    "target.getBoundingClientRect().top - parseFloat(getComputedStyle(target).scrollMarginTop))"
+    " < 10 && window.scrollY > 0; }"
+)
 PILL_PARTS = [f"::view-transition-{part}(switch-pill)" for part in ("group", "new", "old")]
+TAB_PILL_PARTS = [f"::view-transition-{part}(tab-pill)" for part in ("group", "new", "old")]
 # Chromium made into a browser without cross-document view transitions: it never fires pageswap
 # or pagereveal, and it does not know @view-transition, so site.css cannot opt a page in.
 NO_VIEW_TRANSITIONS = """
@@ -3008,9 +3102,12 @@ class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase)
 
     def assert_pill_slid(self):
         wait_until(self.page, "window.settled")
-        self.assertEqual(self.page.evaluate("window.moving"), PILL_PARTS)
+        # #748: 紀錄 is the current tab on both sides, so its pill takes part, and stays put.
+        self.assertEqual(self.page.evaluate("window.moving"), sorted(PILL_PARTS + TAB_PILL_PARTS))
         start, end = self.page.evaluate("window.pill")
         self.assertNotEqual(start, end)
+        start, end = self.page.evaluate("window.pills['tab-pill']")
+        self.assertEqual(start, end)
 
     def assert_slid(self, current):
         arrived = self.arrived(current)
@@ -3127,16 +3224,37 @@ class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase)
         wait_until(self.page, "window.revealed")
         return self.page.evaluate("window.revealed")
 
-    def test_no_other_change_of_page_transitions(self):
+    # #748 (spec #741 acceptance 37): the tab bar's solid blue pill slides to the tab pressed,
+    # alone: the page itself does not fade, nor does the switch's pill on the page left.
+    def test_tab_pill_slides_to_the_tab_pressed(self):
         self.open()
         tabs = self.page.get_by_role("navigation", name="主要導覽")
+        current = tabs.locator("[aria-current]")
         with self.saving_artifacts():
-            # 紀錄 comes back to this same list (a redirect), the pill in the same place.
-            for tab in ("紀錄", "首頁"):
+            for start, tab in (("/learn", "問卷"), ("/my_hearing?view=questionnaires", "首頁")):
                 with self.subTest(tab=tab):
-                    self.page.goto(f"{self.live_server_url}/audiograms")
+                    self.page.goto(f"{self.live_server_url}{start}")
                     link = tabs.get_by_role("link", name=tab)
-                    self.assertEqual(self.changes_page(link.click), "none")
+                    self.assertEqual(self.changes_page(link.click), "transition")
+                    expect(current).to_have_text(tab)
+                    expect(current).to_have_css("background-color", "rgb(31, 78, 140)")
+                    expect(current).to_have_css("color", "rgb(255, 255, 255)")
+                    wait_until(self.page, "window.settled")
+                    self.assertEqual(self.page.evaluate("window.moving"), TAB_PILL_PARTS)
+                    start, end = self.page.evaluate("window.pills['tab-pill']")
+                    self.assertNotEqual(start, end)
+
+    def test_reduced_motion_tab_pill_does_not_slide(self):
+        self.open(reduced_motion="reduce")
+        tabs = self.page.get_by_role("navigation", name="主要導覽")
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/learn")
+            link = tabs.get_by_role("link", name="問卷")
+            self.assertEqual(self.changes_page(link.click), "none")
+
+    def test_no_other_change_of_page_transitions(self):
+        self.open()
+        with self.saving_artifacts():
             with self.subTest("an audiogram's card"):
                 self.page.goto(f"{self.live_server_url}/audiograms")
                 card = self.main().locator("a.audiogram-card").first
@@ -3897,9 +4015,14 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                 "return still; }",
                 polling=200,
             )
-            # At the top, where the jump puts it, not just somewhere on screen.
+            # At the top, where the jump puts it, not just somewhere on screen: just under the
+            # header, which stays there since #748 (the target's scroll-margin-top).
             heading = self.main().get_by_role("heading", name="用了幾年可以換新的？")
-            self.assertLess(abs(heading.bounding_box()["y"]), 10)
+            margin = self.page.evaluate(
+                "parseFloat(getComputedStyle(document.getElementById('reapply')).scrollMarginTop)"
+            )
+            self.assertGreater(margin, 0)
+            self.assertLess(abs(heading.bounding_box()["y"] - margin), 10)
             # Jumps within the page, once loaded, still scroll smoothly.
             expect(self.page.locator("html")).to_have_css("scroll-behavior", "smooth")
 
@@ -4115,7 +4238,7 @@ class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
             # Spec #655 (#673): the visitor's home has a door to the zone, not a text link.
-            self.main().get_by_role("link", name=re.compile("^我擔心家人的聽力")).click()
+            self.main().get_by_role("link", name=re.compile("^擔心家人的聽力")).click()
             expect(self.page).to_have_url(f"{self.live_server_url}/family")
             expect(self.main().get_by_role("heading", level=1)).to_have_text("家人專區")
             current = self.page.get_by_role("navigation", name="主要導覽").locator(
@@ -4169,11 +4292,7 @@ class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
     def test_old_jump_link_lands_on_its_section(self):
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/family#urgent-title")
-            wait_until(
-                self.page,
-                "Math.abs(document.getElementById('urgent-title').getBoundingClientRect().top)"
-                " < 10 && window.scrollY > 0",
-            )
+            wait_until(self.page, LANDED_UNDER_THE_HEADER, arg="urgent-title")
 
 
 class LoadingIndicatorTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
@@ -4251,11 +4370,16 @@ class LoadingIndicatorTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             expect(self.send_login()).to_be_hidden()
 
 
-class PwaNavTest(SavesFailureArtifacts, StaticLiveServerTestCase):
-    """Spec phase10_pwa_back_refresh.md acceptance 1-4, 12 and 13 (gestures are in Vitest)."""
+class SiteHeaderTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#748 (spec #741 acceptance 35, 38, 39, story 51; ADR 0079): the header's avatar and the
+    frosted back button scrolling brings. It took over the home-screen app's 上一頁 (spec
+    phase10_pwa_back_refresh.md acceptance 1-4, 12 and 13; gestures are in Vitest)."""
 
     # Pretends to be the iPhone home-screen app; Chromium cannot emulate display-mode.
     STANDALONE = "Object.defineProperty(Navigator.prototype, 'standalone', { get: () => true });"
+    FROSTED_AVATAR = "rgba(238, 243, 250, 0.88)"
+    # Questionnaires enough for the list to scroll.
+    fixtures = ("questions_fixture.json",)
 
     @classmethod
     def setUpClass(cls):
@@ -4269,16 +4393,21 @@ class PwaNavTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         cls.playwright.stop()
         super().tearDownClass()
 
-    def setUp(self):
-        self.client.force_login(consented_user(username="pwa_nav_e2e"))
+    def sign_in_as(self, username):
+        self.client.force_login(consented_user(username=username))
         self.cookie = {
             "name": settings.SESSION_COOKIE_NAME,
             "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
             "url": self.live_server_url,
         }
 
-    def open(self, standalone=True, width=412, height=900):
-        self.context = self.browser.new_context(viewport={"width": width, "height": height})
+    def setUp(self):
+        self.sign_in_as("header_e2e")
+
+    def open(self, width=390, height=640, javascript=True, standalone=False):
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": height}, java_script_enabled=javascript
+        )
         self.context.add_cookies([self.cookie])
         if standalone:
             self.context.add_init_script(self.STANDALONE)
@@ -4286,109 +4415,121 @@ class PwaNavTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.page = self.context.new_page()
         self.addCleanup(self.context.close)
 
-    def back(self):
-        return self.page.get_by_role("button", name="上一頁")
+    def header(self):
+        return self.page.get_by_role("banner")
 
-    # 1
-    def test_browser_tab_shows_no_back_button(self):
-        self.open(standalone=False)
-        with self.saving_artifacts():
-            # goto waits for the load event, and pwa-nav.js, a module script, has run before it.
-            self.page.goto(f"{self.live_server_url}/questionnaire_list")
-            expect(self.page.locator("#pwa-back")).to_be_hidden()
+    def brand(self):
+        return self.header().get_by_role("link", name="聽伴")
 
-    # 2, 3, 4
-    def test_back_button_returns_to_the_previous_page(self):
+    def avatar(self):
+        return self.header().get_by_role("link", name="帳號設定：header_e2e")
+
+    def scroll_to(self, y):
+        self.page.evaluate("y => scrollTo({ top: y, behavior: 'instant' })", y)
+
+    # 38
+    def test_scrolled_past_the_header_the_name_gives_way_to_a_frosted_back_button(self):
         self.open()
         with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/")
-            expect(self.page.locator("#pwa-back")).to_have_count(0)
-            self.page.get_by_role("navigation", name="主要導覽").get_by_role(
-                "link", name="篩檢"
-            ).click()
-            expect(self.back()).to_be_visible()
-            box = self.back().bounding_box()
-            self.assertGreaterEqual(box["width"], 44)
-            self.assertGreaterEqual(box["height"], 44)
-            self.back().click()
+            self.page.goto(f"{self.live_server_url}/learn")
+            # By class: a role locator skips hidden elements, so it would pass "hidden" unfound.
+            back, brand = self.header().locator(".site-back"), self.header().locator(".site-brand")
+            # Hidden from the first paint: it does not show by the name and fade as the page
+            # opens.
+            self.assertEqual(back.evaluate("el => el.getAnimations().length"), 0)
+            expect(brand).to_be_visible()
+            expect(back).to_be_hidden()
+            expect(self.avatar()).to_have_text("H")
+            expect(self.avatar()).to_have_css("background-color", "rgb(238, 243, 250)")
+            self.scroll_to(400)
+            expect(back).to_be_visible()
+            expect(back).to_have_accessible_name("回首頁")
+            expect(brand).to_be_hidden()
+            expect(self.avatar()).to_have_css("background-color", self.FROSTED_AVATAR)
+            expect(back).to_have_css("backdrop-filter", re.compile("blur"))
+            # It floats over the page: the header stays at the top with no white band.
+            expect(self.header()).to_have_css("position", "sticky")
+            expect(self.header()).to_have_css("background-color", "rgba(0, 0, 0, 0)")
+            for button in (back, self.avatar()):
+                box = button.bounding_box()
+                self.assertGreaterEqual(box["width"], 44)
+                self.assertGreaterEqual(box["height"], 44)
+                self.assertGreaterEqual(box["y"], 0)
+            self.scroll_to(0)
+            expect(brand).to_be_visible()
+            expect(back).to_be_hidden()
+            expect(self.avatar()).to_have_css("background-color", "rgb(238, 243, 250)")
+
+    # 39: from another page of the site it goes back there, in the browser or the home-screen
+    # app (whose own 上一頁 it replaced).
+    def test_back_button_returns_to_the_previous_page_of_the_site(self):
+        for standalone in (False, True):
+            with self.subTest(standalone=standalone):
+                self.open(standalone=standalone)
+                with self.saving_artifacts():
+                    self.page.goto(f"{self.live_server_url}/learn")
+                    nav = self.page.get_by_role("navigation", name="主要導覽")
+                    nav.get_by_role("link", name="問卷").click()
+                    expect(self.page).to_have_url(f"{self.live_server_url}/questionnaire_list")
+                    # The URL changes as the page starts: scrolled before it has loaded (and its
+                    # tab pill has slid), a slow machine scrolled a page not all there yet.
+                    self.page.wait_for_load_state("load")
+                    self.scroll_to(400)
+                    expect(self.header()).to_have_attribute("data-scrolled", "")
+                    self.header().get_by_role("link", name="回上一頁").click()
+                    expect(self.page).to_have_url(f"{self.live_server_url}/learn")
+
+    # 39: opened straight from outside (LINE, a bookmark), it goes home.
+    def test_back_button_goes_home_when_opened_from_outside(self):
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/learn")
+            self.scroll_to(400)
+            self.header().get_by_role("link", name="回首頁").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/")
 
-    # 12, 13
-    def test_back_button_fits_a_phone_at_double_text_size(self):
+    # Story 51: without JavaScript it is a link home, beside the name.
+    def test_without_javascript_the_back_button_is_a_link_home(self):
+        self.open(javascript=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/learn")
+            back = self.header().get_by_role("link", name="回首頁")
+            expect(back).to_be_visible()
+            expect(self.brand()).to_be_visible()
+            # Nothing floats without JavaScript, so the header scrolls away with the page.
+            expect(self.header()).to_have_css("position", "static")
+            back.click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/")
+
+    # Spec phase10 acceptance 12, 13 and #741 acceptance 57: a phone at double text size keeps the
+    # name and the avatar on one line inside the screen, scrolled or not.
+    def test_header_fits_a_phone_at_double_text_size(self):
+        self.sign_in_as("family_shared_phone_account_for_grandma_and_grandpa_lin")
         self.open(width=320, height=640)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/my_hearing")
-            self.page.add_style_tag(content="html { font-size: 225% !important; }")  # 2 x 112.5%
-            expect(self.back()).to_be_visible()
-            back = self.back().bounding_box()
-            self.assertGreaterEqual(back["x"], 0)
-            self.assertLessEqual(back["x"] + back["width"], 320)
-            clipped = self.back().evaluate("b => b.scrollWidth > b.clientWidth")
-            self.assertFalse(clipped)
-            logout = self.page.get_by_role("button", name="登出").bounding_box()
-            brand = self.page.locator(".site-brand").bounding_box()
-            back_bottom, logout_bottom = back["y"] + back["height"], logout["y"] + logout["height"]
-            same_line = logout["y"] < back_bottom and back["y"] < logout_bottom
-            if same_line:
-                self.assertGreaterEqual(brand["x"], back["x"] + back["width"])
-                self.assertLessEqual(brand["x"] + brand["width"], logout["x"])
-
-    def sign_in_as(self, username):
-        self.client.force_login(consented_user(username=username))
-        self.cookie["value"] = self.client.cookies[settings.SESSION_COOKIE_NAME].value
-
-    def header_boxes(self, username):
-        self.page.goto(f"{self.live_server_url}/my_hearing")
-        self.page.evaluate("document.fonts.ready")
-        return (
-            self.page.locator(".site-brand").bounding_box(),
-            self.page.get_by_role("button", name="登出").bounding_box(),
-            self.page.get_by_role("link", name=f"目前登入：{username}，帳號設定").bounding_box(),
-        )
-
-    @staticmethod
-    def on_same_line(a, b):
-        return a["y"] < b["y"] + b["height"] and b["y"] < a["y"] + a["height"]
-
-    LONG_NAME = "family_shared_phone_account_for_grandma_and_grandpa_lin"
-
-    def test_logout_shares_the_first_header_line_on_phones(self):
-        """Logout stays beside the brand however long the name is; the name gets its own line."""
-        self.sign_in_as(self.LONG_NAME)
-        for width, standalone in ((360, True), (390, True), (390, False)):
-            with self.subTest(width=width, standalone=standalone):
-                self.open(standalone=standalone, width=width)
-                with self.saving_artifacts():
-                    brand, logout, account = self.header_boxes(self.LONG_NAME)
-                    if standalone:
-                        expect(self.back()).to_be_visible()
-                    self.assertTrue(self.on_same_line(brand, logout))
-                    self.assertLessEqual(logout["x"] + logout["width"], width)
-                    self.assertGreaterEqual(logout["width"], 44)
-                    self.assertGreaterEqual(logout["height"], 44)
-                    self.assertGreaterEqual(account["y"], logout["y"] + logout["height"])
-                    # Screen readers and Tab still reach the name before logout.
-                    name_first = self.page.evaluate(
-                        "document.querySelector('.site-account').compareDocumentPosition("
-                        "document.getElementById('logout-form')) & Node.DOCUMENT_POSITION_FOLLOWING"
+            self.double_text()
+            avatar = self.header().locator(".site-avatar")
+            for y in (0, 600):
+                with self.subTest(scrolled=y):
+                    self.scroll_to(y)
+                    visible = self.brand() if y == 0 else self.header().locator(".site-back")
+                    expect(visible).to_be_visible()
+                    left, right = visible.bounding_box(), avatar.bounding_box()
+                    self.assertGreaterEqual(left["x"], 0)
+                    self.assertLessEqual(left["x"] + left["width"], right["x"])
+                    self.assertLessEqual(right["x"] + right["width"], 320)
+                    self.assertLess(right["y"], left["y"] + left["height"])
+                    self.assertLessEqual(
+                        self.page.evaluate("document.documentElement.scrollWidth"), 320
                     )
-                    self.assertTrue(name_first)
-
-    def test_header_is_one_line_on_wide_screens(self):
-        """Just past the 48em breakpoint, a long name wraps in its own space beside logout."""
-        self.sign_in_as(self.LONG_NAME)
-        self.open(standalone=False, width=800)
-        with self.saving_artifacts():
-            brand, logout, account = self.header_boxes(self.LONG_NAME)
-            self.assertTrue(self.on_same_line(brand, logout))
-            self.assertTrue(self.on_same_line(account, logout))
-            self.assertLessEqual(account["x"] + account["width"], logout["x"])
 
 
 class BottomTabsTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """#271 (spec #268): the four signed-in tabs, at 200% text and without JavaScript."""
 
-    TABS = ("首頁", "篩檢", "紀錄", "了解")
+    # #748 (spec #741 P1): 問卷 for 篩檢.
+    TABS = ("首頁", "問卷", "紀錄", "了解")
 
     @classmethod
     def setUpClass(cls):
@@ -4503,7 +4644,7 @@ class BottomTabsTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
 
     def test_tabs_change_page_without_javascript(self):
         tabs = (
-            ("篩檢", "/questionnaire_list", None),
+            ("問卷", "/questionnaire_list", None),
             ("紀錄", "/my_hearing", "我的紀錄"),
             ("了解", "/learn", "了解"),
             ("首頁", "/", None),
@@ -4518,6 +4659,7 @@ class BottomTabsTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
                     if heading:
                         expect(self.main().get_by_role("heading", level=1)).to_have_text(heading)
 
+    # #748 (spec #741 P9): the same four signed out; 紀錄 asks to log in first.
     def test_signed_out_tabs_change_page_without_javascript(self):
         self.open(390, javascript=False, signed_in=False)
         with self.saving_artifacts():
@@ -4525,9 +4667,9 @@ class BottomTabsTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             self.click_through(
                 self.nav(),
                 (
-                    ("篩檢", "/questionnaire_list"),
+                    ("問卷", "/questionnaire_list"),
                     ("了解", "/learn"),
-                    ("登入", "/login"),
+                    ("紀錄", "/login?next=/my_hearing"),
                     ("首頁", "/"),
                 ),
             )
@@ -4575,7 +4717,7 @@ class MoreYouCanDoTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         )
         self.context.add_cookies([self.cookie])
         if standalone:
-            self.context.add_init_script(PwaNavTest.STANDALONE)
+            self.context.add_init_script(SiteHeaderTest.STANDALONE)
         self.context.tracing.start(screenshots=True, snapshots=True)
         self.page = self.context.new_page()
         self.addCleanup(self.context.close)
@@ -4656,7 +4798,7 @@ class GettingOnTheHomeScreenTest(SavesFailureArtifacts, StaticLiveServerTestCase
     def open_home(self, width, standalone=False):
         self.context = self.browser.new_context(viewport={"width": width, "height": 800})
         if standalone:
-            self.context.add_init_script(PwaNavTest.STANDALONE)
+            self.context.add_init_script(SiteHeaderTest.STANDALONE)
         self.context.tracing.start(screenshots=True, snapshots=True)
         self.page = self.context.new_page()
         self.addCleanup(self.context.close)
@@ -5758,32 +5900,14 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.assertEqual(self.style(found, "borderTopRightRadius"), radius)
                     self.assertEqual(self.style(found, "borderTopLeftRadius"), radius)
 
-    # #138 (2a): the header gradient and its wave, which plays once per tab (ADR 0006).
-    WAVE_ANIMATIONS = """() => document.getAnimations()
-        .filter(a => a.effect.target.closest('.site-wave'))
-        .map(a => ({ state: a.playState, end: a.effect.getComputedTiming().endTime }))"""
-
-    def assert_wave_plays_and_settles(self, page):
-        animations = page.evaluate(self.WAVE_ANIMATIONS)
-        self.assertGreater(len(animations), 0)
-        self.assertLessEqual(max(a["end"] for a in animations), 4000)
-        page.wait_for_timeout(4200)
-        self.assertEqual(
-            [a for a in page.evaluate(self.WAVE_ANIMATIONS) if a["state"] == "running"], []
-        )
-        heights = page.locator(".site-wave span").evaluate_all(
-            "bars => bars.map(bar => bar.getBoundingClientRect().height)"
-        )
-        self.assertEqual(len(heights), 28)
-        self.assertEqual(len(set(heights)), 1)
-
-    # Brand refresh: a white header with the logo on a gradient; the wave stays, pale blue.
+    # Brand refresh: a white header with the logo on a gradient; #748 (spec #741 P8): no wave,
+    # the avatar on the right.
     LOGO_GRADIENT = "linear-gradient(135deg, rgb(31, 78, 140), rgb(29, 111, 153))"
 
     def mask(self, locator, pseudo):
         return locator.evaluate(f"el => getComputedStyle(el, '{pseudo}').maskImage")
 
-    def test_header_is_white_with_the_logo_and_a_hidden_wave(self):
+    def test_header_is_white_with_the_logo_and_the_avatar(self):
         self.open()
         with self.saving_artifacts():
             for path in ("/", "/questionnaire_list"):
@@ -5801,23 +5925,19 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     # The pebble: uneven corners, not a circle.
                     self.assertEqual(self.style(logo, "borderTopLeftRadius"), "42% 48%")
                     self.assertIn("data:image/svg+xml", self.mask(logo, "::after"))
-                    texts = (
-                        brand.locator(".site-wordmark-tint"),
-                        header.get_by_role("link", name="目前登入：style_e2e，帳號設定"),
-                        header.get_by_role("button", name="登出"),
-                    )
-                    for text in texts:
+                    avatar = header.get_by_role("link", name="帳號設定：style_e2e")
+                    expect(avatar).to_have_text("S")
+                    for text in (brand.locator(".site-wordmark-tint"), avatar):
                         colour = self.style(text, "color")
                         self.assertGreaterEqual(self.lowest_contrast(colour, self.WHITE), 4.5)
-                    wave = header.locator(".site-wave")
-                    self.assertEqual(wave.get_attribute("aria-hidden"), "true")
-                    expect(wave.locator("span")).to_have_count(28)
+                    expect(header.locator(".site-wave")).to_have_count(0)
 
     # Brand refresh: the first-visit home's start button sends out one ring, inside ADR 0006's
     # four seconds. #471 (mockup #458 ⑪): the swaying illustration went with the old visitor
     # home. Reduced motion keeps it still (test_reduced_motion_keeps_the_header_still counts
     # every animation on "/"). Since spec #655 (#673) the button is only on a signed-in user's
-    # 空狀態首頁 (this user has no records); a visitor has the two doors, which do not move.
+    # 空狀態首頁 (this user has no records); a visitor has the two doors, which do not move, and
+    # since spec #741 (#752) the blue hero card's sound wave.
     def test_first_visit_home_start_button_rings_once(self):
         self.open(motion=True)
         with self.saving_artifacts():
@@ -5843,48 +5963,43 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.assertIn("data:image/svg+xml", self.mask(start, "::before"))
             self.assertGreaterEqual(self.text_contrast(start), 4.5)
 
-    def test_visitor_home_doors_stay_still_and_login_is_a_text_link(self):
+    def test_visitor_home_doors_stay_still_and_only_the_hero_wave_plays_once(self):
+        # Spec #741 (#752, the canvas's ProGuest, ADR 0077): the hero card's 14 sound wave bars
+        # fade in once, one after another, within 2 seconds; nothing else in the page moves.
         self.open(signed_in=False, motion=True)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
             main = self.page.get_by_role("main")
-            self.assertEqual(
-                self.page.evaluate(
-                    "() => document.getAnimations()"
-                    ".filter(a => a.effect.target.closest('main')).length"
-                ),
-                0,
+            animations = self.page.evaluate(
+                """() => document.getAnimations()
+                    .filter(a => a.effect.target.closest('main'))
+                    .map(a => ({ name: a.animationName,
+                                 wave: !!a.effect.target.closest('.hero-wave'),
+                                 iterations: a.effect.getComputedTiming().iterations,
+                                 end: a.effect.getComputedTiming().endTime }))"""
             )
-            login = main.get_by_role("link", name="我已經有帳號，登入")
-            self.assertEqual(self.style(login, "backgroundImage"), "none")
-            self.assertEqual(self.style(login, "textDecorationLine"), "underline")
-            self.assertGreaterEqual(login.bounding_box()["height"], 44)
+            self.assertEqual(len(animations), 14)
+            for animation in animations:
+                with self.subTest(animation=animation):
+                    self.assertEqual(
+                        (animation["name"], animation["wave"]), ("play-once-fade", True)
+                    )
+                    self.assertEqual(animation["iterations"], 1)
+                    self.assertLessEqual(animation["end"], 2000)
+            # Spec #741 acceptance 42 (grill P15): no login link in the page body.
+            expect(main.get_by_role("link", name="我已經有帳號，登入")).to_have_count(0)
 
-    def test_header_wave_plays_on_a_tabs_first_page_only(self):
+    # Nothing anywhere on the page loops for ever (ADR 0006); this was checked beside the
+    # header wave, which #748 took away.
+    def test_nothing_loops_for_ever(self):
         self.open(motion=True)
         with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/")
-            self.assert_wave_plays_and_settles(self.page)
             self.page.goto(f"{self.live_server_url}/questionnaire_list")
-            self.assertEqual(self.page.evaluate(self.WAVE_ANIMATIONS), [])
-            # A new tab starts again.
-            self.page = self.context.new_page()
-            self.page.goto(f"{self.live_server_url}/questionnaire_list")
-            self.assert_wave_plays_and_settles(self.page)
-            # Nothing anywhere on the page loops for ever.
             loops = self.page.evaluate(
                 "document.getAnimations()"
                 ".filter(a => a.effect.getTiming().iterations === Infinity).length"
             )
             self.assertEqual(loops, 0)
-
-    def test_header_wave_plays_on_every_page_without_javascript(self):
-        self.open(javascript=False, motion=True)
-        with self.saving_artifacts():
-            for path in ("/", "/questionnaire_list"):
-                with self.subTest(path=path):
-                    self.page.goto(f"{self.live_server_url}{path}")
-                    self.assert_wave_plays_and_settles(self.page)
 
     # #459 I2 (ADR 0028's 2026-11-12 exception, replacing ADR 0026's welcome back): the
     # 照顧旅程's ticks, blue line and ring play once in a tab, inside ADR 0006's four seconds,
@@ -5963,7 +6078,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.open()  # reduced motion
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
-            expect(self.page.locator(".site-wave span")).to_have_count(28)
+            expect(self.page.get_by_role("banner")).to_be_visible()
             self.assertEqual(self.page.evaluate("document.getAnimations().length"), 0)
 
     # #139 (2a): primary buttons follow choice C in #136 (docs/verification/issue-136.md); every
@@ -6044,7 +6159,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         cases = (
             (False, "/login", "button", "登入"),
             (False, "/login", "link", "註冊新帳號"),
-            (True, "/", "button", "登出"),
+            (True, "/account", "button", "登出"),
             (True, "/account/delete", "button", "刪除帳號"),
         )
         with self.saving_artifacts():
@@ -6136,12 +6251,13 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             current = nav.locator('a[aria-current="page"]')
             others = nav.locator("a:not([aria-current])")
             self.assertGreater(others.count(), 0)
+            # #748 (spec #741 P9): the current tab is a solid blue pill with white words.
             self.assertEqual(
                 self.styles(current, "backgroundColor", "backgroundImage", "color", "fontWeight"),
                 {
-                    "backgroundColor": self.BRAND_SELECTED,
+                    "backgroundColor": self.PRIMARY,
                     "backgroundImage": "none",
-                    "color": self.PRIMARY,
+                    "color": self.WHITE,
                     "fontWeight": "700",
                 },
             )
@@ -6184,7 +6300,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
 
             self.open()
             self.page.goto(f"{self.live_server_url}/questionnaire_list?choose=self")
-            icon = self.page.locator(".questionnaire-icon").first
+            icon = self.page.locator(".questionnaire-card .questionnaire-icon").first
             self.assertEqual(self.style(icon, "backgroundColor"), self.BRAND_SOFT)
             self.assertEqual(self.style(icon, "borderTopLeftRadius"), "50%")
             stroke = self.style(icon.locator("svg"), "stroke")
@@ -6193,7 +6309,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
 
     # W1 (ADR 0043; its frosted glass, #457, is TabBarHidesOnScrollT457Test's): on a phone the
     # tab bar is a capsule of 88% white floating over the foot of the screen; the current tab is
-    # a pale blue pill, its words bold blue, the others grey.
+    # a solid blue pill, its words bold white (#748, spec #741 P9), the others grey.
     def test_phone_tab_bar_is_a_capsule_with_the_current_tab_in_a_pill(self):
         self.open(width=390)
         with self.saving_artifacts():
@@ -6208,11 +6324,11 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.assertLess(box["x"] + box["width"], 390)
             self.assertLess(box["y"] + box["height"], 900)
             current = nav.locator('a[aria-current="page"]')
-            self.assertEqual(self.style(current, "backgroundColor"), self.BRAND_SELECTED)
-            self.assertEqual(self.style(current.locator("svg"), "stroke"), self.PRIMARY)
+            self.assertEqual(self.style(current, "backgroundColor"), self.PRIMARY)
+            self.assertEqual(self.style(current.locator("svg"), "stroke"), self.WHITE)
             self.assertEqual(
                 self.styles(current.locator("span"), "color", "fontWeight"),
-                {"color": self.PRIMARY, "fontWeight": "700"},
+                {"color": self.WHITE, "fontWeight": "700"},
             )
             self.assertGreaterEqual(min(self.size(current)), 44)
             for other in nav.locator("a:not([aria-current])").all():
@@ -6749,8 +6865,8 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
             for states in (("hover",), ("hover", "active")):
                 self.assertEqual(self.under(current, *states, props=props), at_rest)
 
-    # A3 with W1 (ADR 0043): under the finger a tab turns pale blue, the current tab's pale blue
-    # pill a step deeper; the wide screens' top bar does the same. Colour only.
+    # A3 with W1 (ADR 0043): under the finger a tab turns pale blue, the current tab's solid blue
+    # pill (#748) a step deeper; the wide screens' top bar does the same. Colour only.
     def test_navigation_items_change_colour_when_pressed(self):
         self.open(width=390, touch=True)
         self.assertFalse(self.page.evaluate("matchMedia('(hover: hover)').matches"))
@@ -6765,8 +6881,8 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
                     self.assertEqual(self.style(other, "backgroundColor"), self.CLEAR)
                     self.assertEqual(self.under(other, "hover", "active"), self.BRAND_SOFT)
                     current = nav.locator('a[aria-current="page"]')
-                    self.assertEqual(self.style(current, "backgroundColor"), self.BRAND_SELECTED)
-                    self.assertEqual(self.under(current, "hover", "active"), self.BRAND_SOFT_DEEP)
+                    self.assertEqual(self.style(current, "backgroundColor"), self.PRIMARY)
+                    self.assertEqual(self.under(current, "hover", "active"), "rgb(18, 47, 85)")
 
     # A4: a text link's underline thickens under a mouse, and a light blue shows behind its
     # words while it is pressed.
@@ -7485,7 +7601,8 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     )
     # #453 acceptance 32: the sizes a button, and anything else to tap, keeps at least.
     SIZES = """() => {
-        const shown = (el) => el.checkVisibility() && el.getBoundingClientRect().width > 1;
+        const shown = (el) => el.checkVisibility() && el.getBoundingClientRect().width > 1
+            && !el.closest("[inert]");
         const height = (el) => el.getBoundingClientRect().height;
         const name = (el) => `${el.tagName.toLowerCase()}.${el.getAttribute("class")} `
             + el.textContent.trim().replace(/\\s+/g, " ").slice(0, 20);
@@ -9293,8 +9410,7 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
         )
 
     # Each animation's name and state, by what it moves: route-ring on the 目前這一站; on the
-    # home's journey gauge-draw on the ticks, journey-line and journey-ring; wave-jump and
-    # wave-sweep on the header.
+    # home's journey gauge-draw on the ticks, journey-line and journey-ring.
     ANIMATIONS = """(within) => document.getAnimations()
         .filter(a => a.effect.target.closest(within))
         .map(a => ({ name: a.animationName, state: a.playState, time: a.currentTime }))"""
@@ -9306,7 +9422,6 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
     # end.
     JOURNEY_HERE = '.journey-step[aria-current="step"] [data-play-in-view]'
     TICK = ".journey-step.is-done .journey-dot path"
-    WAVE = ".site-wave"
 
     @classmethod
     def setUpClass(cls):
@@ -9413,7 +9528,7 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
             expect(self.page.locator(self.TICK).first).to_have_css("stroke-dashoffset", "0px")
 
     # #338 acceptance 11 (this ticket's part): without JavaScript nothing waits for the screen:
-    # the meters below it play on arrival, and the header wave on every page. The home's journey
+    # the meters below it play on arrival. The home's journey
     # and the route's entrance play only on a tab's first visit, which takes JavaScript to know
     # (#459, #467 I2): they show the end.
     def test_without_javascript_animations_play_on_arrival(self):
@@ -9423,16 +9538,13 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
             expect(self.main().locator(meter)).not_to_be_in_viewport()
             self.assert_plays_without_waiting(meter)
             self.assertEqual(self.states(self.STOP), set())
-            self.assert_plays_without_waiting(self.WAVE)
             self.page.goto(f"{self.live_server_url}/")
             self.assertEqual(self.animations(self.JOURNEY), [])
             expect(self.page.locator(self.TICK).first).to_have_css("stroke-dashoffset", "0px")
-            self.assert_plays_without_waiting(self.WAVE)
 
     # #338 acceptance 12: at 200% text on a phone the returning user's journey, its 現在這一步
-    # below the screen, waits; the header wave, on screen, plays at once (on the tab's first
-    # page only).
-    def test_double_text_journey_waits_and_header_wave_plays_at_once(self):
+    # below the screen, waits (the header wave that played at once went with #748).
+    def test_double_text_journey_waits(self):
         self.open("/", width=320, double=True)
         with self.saving_artifacts():
             here = self.page.locator(self.JOURNEY_HERE)
@@ -9445,15 +9557,12 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
                 {a["name"] for a in self.animations(self.JOURNEY)},
                 {"gauge-draw", "journey-ring"},
             )
-            self.assert_plays_without_waiting(self.WAVE)
             # Not yet drawn: the tick still hidden.
             expect(self.page.locator(self.TICK).first).to_have_css("stroke-dashoffset", "1px")
 
             self.bring_into_view(self.JOURNEY_HERE)
             self.wait_until(self.JOURNEY, "finished")
             expect(self.page.locator(self.TICK).first).to_have_css("stroke-dashoffset", "0px")
-            self.page.goto(f"{self.live_server_url}/questionnaire_list")
-            self.assertEqual(self.animations(self.WAVE), [])
 
     # #338 review: the layout changing without a scroll (here the text going back to its usual
     # size; a fold opening, a late font or a chart growing does the same) brings the journey's
@@ -10776,18 +10885,6 @@ class TypeSizesT357Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerT
             self.assertEqual(self.style(box, "borderLeftWidth"), "0px")
             for corner in ("TopLeft", "BottomLeft", "TopRight"):
                 self.assertEqual(self.style(box, f"border{corner}Radius"), "13.5px")
-
-    # Acceptance 7: on a phone the signed-in line has an opaque background over the header wave.
-    def test_signed_in_line_hides_the_header_wave_on_a_phone(self):
-        self.visit(True, "/", width=390)
-        with self.saving_artifacts():
-            account = self.page.locator(".site-account")
-            expect(account).to_have_text("目前登入：type_sizes_e2e")
-            self.assertEqual(self.style(account, "backgroundColor"), self.WHITE)
-            # The line does sit over the wave's bars, which is why it needs the background.
-            line = account.bounding_box()
-            wave = self.page.locator(".site-wave").bounding_box()
-            self.assertGreater(line["y"] + line["height"], wave["y"] + wave["height"] * 0.7)
 
 
 class AudiogramPagesT365Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
@@ -12158,7 +12255,7 @@ class FamilyScenarioTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
         with self.saving_artifacts():
             self.open("/", signed_in=False)
             # Spec #655 (#673): the visitor's door to the zone.
-            self.main().get_by_role("link", name=re.compile("^我擔心家人的聽力")).click()
+            self.main().get_by_role("link", name=re.compile("^擔心家人的聽力")).click()
             expect(self.page).to_have_url(f"{self.live_server_url}/family")
             self.main().get_by_role("navigation", name="專區內容").get_by_role(
                 "link", name=re.compile("怎麼跟他說話")
@@ -12265,12 +12362,7 @@ class FamilyScenarioTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
             ):
                 with self.subTest(anchor=anchor):
                     self.open(f"{path}#{anchor}", signed_in=False)
-                    wait_until(
-                        self.page,
-                        "id => Math.abs(document.getElementById(id).getBoundingClientRect().top)"
-                        " < 10 && window.scrollY > 0",
-                        arg=anchor,
-                    )
+                    wait_until(self.page, LANDED_UNDER_THE_HEADER, arg=anchor)
 
 
 class FamilyReluctantTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
@@ -13899,14 +13991,15 @@ class TabBarHidesOnScrollT457Test(SavesFailureArtifacts, LayoutOnAPhone, StaticL
             self.wait_for_bar("shown")
 
     # Acceptance 29: Tab from the header's last link moves onto the first tab; the bar comes
-    # back where the page is, without scrolling it.
+    # back where the page is, without scrolling it. That link: the avatar or 登入 since #748.
     def test_keyboard_focus_on_a_tab_brings_the_bar_back(self):
         self.open_phone()
         with self.saving_artifacts():
             self.page.mouse.wheel(0, 600)
             self.wait_for_bar("hidden")
             scrolled = self.scroll_y()
-            self.page.locator(".site-brand a").evaluate("el => el.focus({preventScroll: true})")
+            last = self.page.get_by_role("banner").get_by_role("link").last
+            last.evaluate("el => el.focus({preventScroll: true})")
             self.page.keyboard.press("Tab")
             first_tab = self.page.get_by_role("navigation", name="主要導覽").get_by_role(
                 "link", name="首頁"
@@ -14261,19 +14354,21 @@ class ScreeningAnsweringT463Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLi
 
     def test_one_solid_button_on_the_catalogue_and_the_wizards_result(self):
         with self.saving_artifacts():
-            # Two recommended (no birth year): rows, no solid button.
+            # Two recommended (no birth year): the first two stacked cards (#753), no solid
+            # blue button.
             self.user.birth_year = None
             self.user.save()
             self.record("thi")
             self.open("/questionnaire_list")
-            expect(self.main().locator(".recommended-block .questionnaire-card")).to_have_count(2)
+            cards = self.main().locator(".card-stack-card", has_text="推薦您做這一份")
+            expect(cards).to_have_count(2)
             expect(self.main().locator(".btn-primary")).to_have_count(0)
-            # Due for a retest: one 開始作答 in the first screen, white on the blue hero card
-            # since #749.
+            # Due for a retest: one 開始作答 to reach in the first screen, white on the front
+            # stacked card (#749, #753).
             self.record("hhie-s", wearing=False, days_ago=200)
             self.open("/questionnaire_list")
             expect(self.main().locator(".btn-primary")).to_have_count(0)
-            solid = self.main().locator(".btn-hero")
+            solid = self.main().get_by_role("link", name="開始作答")
             expect(solid).to_have_count(1)
             box = solid.bounding_box()
             tab_bar = self.page.locator(".site-nav ul").bounding_box()
@@ -15001,12 +15096,11 @@ class GuestSaveFromCardTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTes
 
     def test_registering_from_the_top_asks_and_yes_saves_it_to_the_new_account(self):
         """#492 acceptance 26 (Codex cross review, second round): registering not from the save
-        card (the tab bar's 登入, then 註冊新帳號), agreeing, the question, and only 要 makes the
-        record in the new account."""
+        card (the header's 登入 since #748, then 註冊新帳號), agreeing, the question, and only 要
+        makes the record in the new account."""
         with self.saving_artifacts():
             self.guest_answers_hhie_s()
-            nav = self.page.get_by_role("navigation", name="主要導覽")
-            nav.get_by_role("link", name="登入").click()
+            self.page.get_by_role("banner").get_by_role("link", name="登入").click()
             self.main().get_by_role("link", name="註冊新帳號").click()
             self.page.get_by_label("使用者名稱").fill("top_register_e2e")
             self.page.get_by_label("電子郵件").fill("top_register_e2e@example.com")
@@ -15149,9 +15243,9 @@ class GuestAnswerAfterFiveSecondsTest(SavesFailureArtifacts, OnAPhone, StaticLiv
 
 
 class GuestHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
-    """#499 (#492 acceptance 1 and 21): the way to screening on the logged-out home (the door
-    我想了解自己的聽力 since spec #655, #673) opens the wizard's age step;
-    after answering, the home shows that result on top, the whole tile a link to its page."""
+    """#499 (#492 acceptance 1 and 21): the way to screening on the logged-out home (the blue hero
+    card's 開始 since spec #741, #752) opens the wizard's age step; after answering, the home
+    shows that result above the card, the whole tile a link to its page (#741 acceptance 43)."""
 
     fixtures = ("questions_fixture.json",)
 
@@ -15180,7 +15274,7 @@ class GuestHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
             expect(self.main().locator("#guest-home")).to_be_hidden()
-            self.main().get_by_role("link", name=re.compile("^我想了解自己的聽力")).click()
+            self.main().locator(".hero-card").get_by_role("link", name="開始").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/questionnaire_list")
             self.main().get_by_role("group", name="您目前的實際年齡？").get_by_label(
                 "65 歲以上", exact=True
@@ -15209,11 +15303,12 @@ class GuestHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             ):
                 with self.subTest(text=text):
                     expect(tile).to_contain_text(text)
-            # On top, above the two doors (spec #655 acceptance 13), and inside a phone's width.
-            first_door = self.main().locator(".home-door").first
+            # Above the blue hero card (spec #741 acceptance 43, grill P14), and inside a phone's
+            # width.
+            hero = self.main().locator(".hero-card")
             self.assertLess(
                 tile.bounding_box()["y"] + tile.bounding_box()["height"],
-                first_door.bounding_box()["y"],
+                hero.bounding_box()["y"],
             )
             self.assertLessEqual(self.page.evaluate("document.documentElement.scrollWidth"), 412)
             tile.click()
@@ -15266,9 +15361,8 @@ class GuestDeclineSaveTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             self.main().get_by_role("button", name="送出").click()
             expect(self.main().get_by_text("總分 20 分")).to_be_visible()
 
-            # Not the save card's 登入保存: the tab bar's 登入.
-            nav = self.page.get_by_role("navigation", name="主要導覽")
-            nav.get_by_role("link", name="登入").click()
+            # Not the save card's 登入保存: the header's 登入 (the tab bar's before #748).
+            self.page.get_by_role("banner").get_by_role("link", name="登入").click()
             self.main().get_by_label("使用者名稱").fill("decline_e2e")
             self.main().get_by_label("密碼", exact=True).fill(self.PASSWORD)
             self.main().get_by_role("button", name="登入").click()
@@ -15294,6 +15388,7 @@ class GuestDeclineSaveTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             self.assertEqual(self.guest_results(), [])
             self.assertFalse(Submission.objects.filter(user=self.account).exists())
             # Not asked again.
+            nav = self.page.get_by_role("navigation", name="主要導覽")
             nav.get_by_role("link", name="紀錄").click()
             expect(self.page).to_have_url(re.compile(r"/my_hearing$"))
             self.assertFalse(Submission.objects.exists())
@@ -15407,9 +15502,9 @@ class GuestSavesFromTheCard(SavesFailureArtifacts, OnAPhone):
             expect(
                 self.main().get_by_role("heading", name="要把這次結果存到這個帳號嗎？")
             ).to_be_visible()
-            expect(self.page.locator(".site-account")).to_contain_text(
-                f"目前登入：{self.username}_had"
-            )
+            expect(
+                self.page.get_by_role("link", name=f"帳號設定：{self.username}_had")
+            ).to_be_visible()
             self.assertFalse(Submission.objects.exists())
             self.assertEqual(self.guest_results(), ["hearwell:guest-result:hhie-s"])
             self.main().get_by_role("button", name="不要，清掉這次結果").click()
@@ -15517,7 +15612,8 @@ class FeedbackBatchTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         for width, double in ((390, False), (320, True)):
             with self.subTest(width=width, double_text=double), self.saving_artifacts():
                 self.open(width)
-                self.page.goto(f"{self.live_server_url}/")
+                # #748: logout is at the foot of account settings.
+                self.page.goto(f"{self.live_server_url}/account")
                 self.page.get_by_role("button", name="登出").click()
                 bar = self.main().get_by_role("status").filter(has_text="已登出。")
                 expect(bar).to_be_visible()
@@ -16568,7 +16664,6 @@ class AttemptNumberT647Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
         # The owner's pick A (2026-11-16): with the sentence added, the space outside the boxes
         # shrinks so the one solid button stays on a 390 x 844 phone's first screen, above the
         # floating tab bar, as ResultPagesT461Test asks of HHIE-S. Its records: 18, then 14.
-        # A short name: a long one wraps 目前登入 at the top onto a second line.
         self.sign_in(consented_user(username="t647_first"))
         latest = {}
         for code, earlier, now in (
@@ -16675,7 +16770,7 @@ class LastResultT649Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
     # Where the words end, overflow too, and where their card or the recommended block ends.
     WORDS_END = """e => [
         e.getBoundingClientRect().left + e.scrollWidth,
-        e.closest("a, section").getBoundingClientRect().right,
+        e.closest("a, article, section").getBoundingClientRect().right,
     ]"""
 
     def setUp(self):
@@ -16698,7 +16793,9 @@ class LastResultT649Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
             for width in (320, 390):
                 with self.subTest(width=width):
                     self.open("/questionnaire_list", (width, 844))
-                    recommended = self.main().get_by_role("region", name="推薦您做這一份")
+                    # #753: the first stacked card.
+                    recommended = self.main().locator(".card-stack-card").first
+                    expect(recommended).to_contain_text("推薦您做這一份")
                     expect(recommended.locator(".inline-block")).to_have_text(
                         f"上次 {self.days['hhie-s']}・輕度到中度影響"
                     )
@@ -16708,11 +16805,18 @@ class LastResultT649Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
                         last = f"上次 {self.days[code]}" + (f"・{said}" if said else "")
                         expect(card.locator(".inline-block")).to_have_text(last)
                     self.assert_fits_a_phone_at_double_text_size("catalogue", width)
-                    # Each 上次 and its words end inside their card or the recommended block; the
-                    # recommended block's words alone in NarrowOverflowsT668Test (#668).
-                    for tag in self.main().locator(".inline-block", has_text="上次").all():
-                        words_end, box_end = tag.evaluate(self.WORDS_END)
-                        self.assertLessEqual(words_end, box_end, tag.text_content())
+                    # Each 上次 and its words end inside their card; the recommended card's words
+                    # alone in NarrowOverflowsT668Test (#668). A stacked card is measured in
+                    # front, not drawn smaller behind it (#753).
+                    tags = self.main().locator(".inline-block", has_text="上次")
+                    for place in range(3):
+                        if place:
+                            self.main().get_by_role("button", name="下一張").click()
+                        for tag in tags.all():
+                            if tag.evaluate("e => !!e.closest('[inert]')"):
+                                continue
+                            words_end, box_end = tag.evaluate(self.WORDS_END)
+                            self.assertLessEqual(words_end, box_end, tag.text_content())
 
 
 class FittingDayT650Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
@@ -16901,15 +17005,16 @@ class NarrowOverflowsT668Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveS
                 with self.subTest(width=width):
                     self.open("/questionnaire_list", (width, 844))
                     self.assert_fits_a_phone_at_double_text_size("catalogue", width)
-                    # #749: on the blue hero card.
-                    facts = self.main().locator(".hero-card .recommended-facts")
+                    # #749, #753: on the front stacked card, blue.
+                    front = self.main().locator('.card-stack-card[data-offset="0"]')
+                    facts = front.locator(".recommended-facts")
                     expect(facts).to_contain_text(f"上次 {old:%Y/%m/%d}")
                     words_end, room_end = facts.locator(".inline-block").evaluate(self.WORDS_END)
                     # Half a pixel for sub-pixel rounding of the text's box.
                     self.assertLessEqual(words_end, room_end + 0.5, f"{width}px")
                     # Acceptance 4: the block keeps its 1.125rem sides where the date fits: at
                     # 390px even at 200% (40.5px), and at the usual size (20.25px).
-                    block = self.main().locator(".hero-card")
+                    block = front
                     if width == 390:
                         for side in ("paddingLeft", "paddingRight"):
                             self.assertEqual(self.style(block, side), "40.5px", "390px at 200%")
@@ -17178,16 +17283,18 @@ class FamilyDoorsAndSendTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
         self.assertEqual(self.count(column), value, column)
 
     def test_each_door_goes_to_its_page_and_its_press_counts(self):
-        # Acceptance 12 and 23.
+        # Acceptance 12 and 23. Spec #741 acceptance 42 (#752, grill P15): the hero card's 開始
+        # and two doors, 想了解助聽器 counted with the others.
         self.open_context()
         with self.saving_artifacts():
             for door, address, column in (
-                ("我想了解自己的聽力", "/questionnaire_list", "door_self"),
-                ("我擔心家人的聽力", "/family", "door_family"),
+                ("開始", "/questionnaire_list", "door_self"),
+                ("擔心家人的聽力", "/family", "door_family"),
+                ("想了解助聽器", "/guide", "door_aids"),
             ):
                 with self.subTest(door=door):
                     self.page.goto(f"{self.live_server_url}/")
-                    self.main().get_by_role("link", name=re.compile(f"^{door}")).click()
+                    self.main().get_by_role("link", name=door, exact=True).click()
                     expect(self.page).to_have_url(f"{self.live_server_url}{address}")
                     self.wait_for_count(column, 1)
 

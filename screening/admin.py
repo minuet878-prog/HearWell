@@ -203,6 +203,7 @@ class GuestMonthAdmin(ViewOnlyAdmin):
         "door_self",
         "door_family",
         "send_opened",
+        "door_aids",  # spec #741 (#752): the third door
     )
     ordering = ("-month",)
 
