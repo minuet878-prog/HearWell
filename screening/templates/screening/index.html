@@ -34,7 +34,8 @@
         {% if card.date %}{% include "screening/date_card.html" with day=card.date %}{% endif %}
         {# Steps 6 and 7 counting down (#746). #}
         {% if card.countdown %}{% include "screening/countdown_card.html" with countdown=card.countdown %}{% endif %}
-        {# Spec #741: steps 2 and 4 are white entry cards, nothing else. #}
+        {# Spec #741: steps 2 and 4 are white entry cards, nothing else; step 3 without an audiogram its two sources under their small heading. #}
+        {% if card.entries_title %}<p class="journey-entries-title">{{ card.entries_title }}</p>{% endif %}
         {% if card.entries %}<ul class="journey-entries" role="list">{% for entry in card.entries %}<li>{% include "screening/entry_card.html" with icon=entry.icon text=entry.text href=entry.href come_back=entry.come_back note=entry.note %}</li>{% endfor %}</ul>{% endif %}
         {% if card.button %}
         <a class="btn btn-hero btn-lg" href="{{ card.button.1 }}">{{ card.button.0 }}</a>

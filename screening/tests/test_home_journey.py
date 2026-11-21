@@ -15,6 +15,7 @@ from screening.models import (
     AidAndSubsidy,
     Answer,
     Category,
+    GuideChapterView,
     Question,
     Questionnaire,
     Submission,
@@ -358,6 +359,43 @@ class JourneyHomeTests(HomeJourneyTestCase):
         for gone in ("要做的事", "checkbox", "網站會知道"):
             self.assertNotIn(gone, main)
 
+    def test_opening_the_hospital_search_moves_on_to_the_audiogram_s_sources(self):
+        # Spec #741's 實作中本人補充 (acceptance 1, 4): 查詢醫療院所 opened signed in finishes
+        # step 2, which then opens to its stamp and the same card; step 3's card is the small
+        # heading and the two sources.
+        self.answer()
+        self.client.get(reverse("qa_answer", args=["where-to-get-a-hearing-test"]))
+        main = self.main()
+        self.assertEqual(self.steps(main)[1][0], "done")
+        body = self.body(main, 1)
+        self.assertIn(STAMP, body)
+        self.assertEqual(self.entries(body), [("/qa/where-to-get-a-hearing-test", "查詢醫療院所")])
+        card = self.card(main)
+        self.assertEqual(
+            self.text(card), "現在這一步 記錄聽力圖 聽力圖來源 醫院檢查報告 AirPods 自我檢測"
+        )
+        self.assertIn('<p class="journey-entries-title">聽力圖來源</p>', card)
+        self.assertEqual(
+            self.entries(card),
+            [
+                ("/audiograms/new?next=/", "醫院檢查報告"),
+                ("/audiograms/import", "AirPods 自我檢測"),
+            ],
+        )
+
+    def test_the_hospital_search_is_kept_only_signed_in_and_consented(self):
+        # As 看過指引頁 (#743): signed out, or before agreeing to the privacy notice, nothing.
+        url = reverse("qa_answer", args=["where-to-get-a-hearing-test"])
+        undecided = type(self.user).objects.create_user(username="hospital_undecided")
+        self.client.force_login(undecided)
+        self.client.get(url)
+        self.client.logout()
+        self.client.get(url)
+        self.assertFalse(GuideChapterView.objects.exists())
+        self.client.force_login(self.user)
+        self.client.get(reverse("qa_answer", args=["my-results"]))
+        self.assertFalse(GuideChapterView.objects.exists())
+
     def test_without_an_audiogram_step_3_opens_to_its_two_sources(self):
         # Spec #741 acceptance 4, story 4: the small heading and two entry cards of one size, to
         # recording one (coming back here) and to the iPhone import.
@@ -688,14 +726,15 @@ class StepInteractionTests(HomeJourneyTestCase):
 
     def test_every_step_opens_to_say_what_it_is(self):
         # I1: native <details>, so it opens without JavaScript too. A done step opens to its
-        # stamp (spec #741 acceptance 27); since #751 the 現在這一步's card is on top, so its row
-        # opens as any other, to what it is and its entry card.
+        # stamp (spec #741 acceptance 27), step 2's also to 查詢醫療院所 (實作中本人補充); since
+        # #751 the 現在這一步's card is on top, so its row opens as any other, to what it is and
+        # its entry card.
         self.step_4_with_three_done()
         main = self.main()
         items = self.items(main)
         self.assertEqual(["<details" in body for _, body in items], [True] * 7)
         self.assertEqual(self.opened(main, 0), ("已完成", []))
-        self.assertEqual(self.opened(main, 1), ("已完成", []))
+        self.assertEqual(self.opened(main, 1), ("已完成 查詢醫療院所", []))
         self.assertEqual(self.opened(main, 3), (f"{GUIDE_WORDS} 看助聽器選配與補助", []))
         self.assertEqual(
             self.opened(main, 4), ("照選配路線一站一站走，從找聽力師到開始戴助聽器。", [])

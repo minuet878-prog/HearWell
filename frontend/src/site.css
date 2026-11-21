@@ -8418,6 +8418,9 @@
   /* The 照顧旅程's white entry cards (#744) keep their dark words on the blue card. */
   .hero-card a.entry-card { color: var(--color-heading); }
 
+  /* Step 3's 聽力圖來源 over its two entry cards (spec #741 acceptance 4), white on the blue. */
+  .hero-card .journey-entries-title { color: #fff; }
+
   .hero-card-label {
     font-weight: 700;
   }

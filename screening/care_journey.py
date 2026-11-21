@@ -12,6 +12,7 @@ from django.utils import timezone
 from screening.audiogram import FittingAdvice, interpret
 from screening.fitting_route import (
     GUIDE_PAGE,
+    HOSPITAL_SEARCH,
     add_months,
     fitting_state,
 )
@@ -214,6 +215,7 @@ class JourneyCard:
     icon: str  # an action_icon.html icon
     button: tuple[str, str] | None = None
     entries: tuple[Entry, ...] = ()
+    entries_title: str = ""  # the entry cards' small heading
     countdown: Countdown | None = None
     question: AnswerCard | None = None
     date: DateCard | None = None
@@ -290,13 +292,17 @@ def care_journey(user, today, done_now=None):
     # Each step's day, None while it is not done; step 7 never is, a retest only moves the
     # next one on. A 無法判讀 record leaves step 1 to do again, whatever the hearing, as
     # fitting_advice counts it as none (the owner, 2026-11-17). Steps 2 and 3 go together on
-    # an audiogram (grill Q9), but one missing a frequency leaves step 3 to edit it.
+    # an audiogram (grill Q9), but one missing a frequency leaves step 3 to edit it; step 2 is
+    # also done once 查詢醫療院所 is opened (spec #741's 實作中本人補充), on the earlier day.
     readable = life_impact is not None and life_impact.result.level["level"] != UNKNOWN["level"]
     audiogram_on = route.audiogram.tested_on if route.audiogram is not None else None
+    searched = route.viewed.get(HOSPITAL_SEARCH)
+    searched_on = timezone.localtime(searched).date() if searched is not None else None
+    hospital_on = min((day for day in (audiogram_on, searched_on) if day), default=None)
     route_done = not route.waiting and route.home_stop in ROUTE_DONE_AT
     done_on = {
         1: _day(life_impact) if readable else None,
-        2: audiogram_on,
+        2: hospital_on,
         3: None if route.insufficient else audiogram_on,
         4: timezone.localtime(min(guide_views)).date() if guide_views else None,
         5: fitted_on if route_done else None,
@@ -380,8 +386,7 @@ def _step(
     if number == 2:
         entries = (_hospital_entry(),)
     if number == 3 and no_audiogram:
-        # Spec #741 story 4: with no audiogram step 2 is the 現在這一步, never step 3, as they
-        # are done together (grill Q9); so step 3 opens to the audiogram's sources.
+        # Spec #741 story 4, acceptance 4: without an audiogram step 3 opens to its sources.
         entries, entries_title = _audiogram_sources(), AUDIOGRAM_SOURCES
     if number == 4:
         about, entries = _guide_words(eligibility)
@@ -400,8 +405,10 @@ def _step(
         state = NOT_NEEDED
     else:
         state = CURRENT if number == current else LATER
-    if state == DONE and number != 4:
-        entries = ()  # a done step opens to its stamp; step 4's keeps the way to my guide
+    if state == DONE and number not in (2, 4):
+        # A done step opens to its stamp; step 2's keeps 查詢醫療院所 (spec #741's 實作中本人
+        # 補充), step 4's the way to my guide.
+        entries = ()
     return JourneyStep(title, state, done_on, about, ineligible, entries, entries_title, wait)
 
 
@@ -464,6 +471,11 @@ def _card(
         return JourneyCard(title, LIFE_IMPACT_BECAUSE, "clipboard", button=button)
     if current == 2:
         return JourneyCard(title, "", "pin", entries=(_hospital_entry(),))
+    if current == 3 and route.audiogram is None:
+        # Step 2 done by opening 查詢醫療院所 (spec #741 acceptance 4).
+        return JourneyCard(
+            title, "", "audiogram", entries=_audiogram_sources(), entries_title=AUDIOGRAM_SOURCES
+        )
     if current == 3:
         # Step 2 is done on any audiogram, step 3 on one that can tell: here it cannot.
         edit = reverse("audiogram_edit", args=[route.audiogram.pk])

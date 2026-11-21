@@ -42,6 +42,9 @@ STOPS = (
 WEARING_STOPS = STOPS[STOPS.index("after-fitting") :]
 # 看過指引頁 (spec #741): my guide opened signed in, kept as a chapter view of its own.
 GUIDE_PAGE = "guide"
+# 點過查詢醫療院所 (spec #741's 實作中本人補充): the 照顧旅程's step 2 opened signed in, kept the
+# same way; the Q&A answer it opens is care_journey's WHERE_TO_TEST.
+HOSPITAL_SEARCH = "find-a-hospital"
 # The stop the home page passes by (ADR 0074): a chapter to read, so the 照顧旅程 shows the one
 # after it while my guide is still here.
 HOME_SKIPS = "types-and-prices"

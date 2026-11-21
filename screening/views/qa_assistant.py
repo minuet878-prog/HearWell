@@ -5,10 +5,13 @@ from django.utils.cache import add_never_cache_headers
 from django.views.decorators.http import require_http_methods
 from rest_framework.throttling import BaseThrottle
 
+from screening.care_journey import WHERE_TO_TEST
+from screening.fitting_route import HOSPITAL_SEARCH
 from screening.forms import QaQuestionForm, add_attempt, attempts
 from screening.models import QuestionLog, purge_question_log
 from screening.qa_assistant import content
 from screening.qa_assistant.matching import match
+from screening.views.guide import _keep_view
 
 # #399 (spec #396): the codes of the questions a typed question matched, never the question
 # itself: the session is tied to the cookie, so to whoever is signed in.
@@ -94,6 +97,9 @@ def qa_answer(request, code):
     faq = content.BY_CODE.get(code)
     if faq is None:
         raise Http404
+    if code == WHERE_TO_TEST:
+        # The 照顧旅程's step 2 done once 查詢醫療院所 is opened (spec #741's 實作中本人補充).
+        _keep_view(request, HOSPITAL_SEARCH)
     topic = _listed_topic(faq)
     return render(
         request,
