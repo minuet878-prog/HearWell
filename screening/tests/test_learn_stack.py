@@ -77,7 +77,7 @@ class LearnStackTests(TestCase):
         body = self.cards(main)[0][1]
         # The canvas's ProLearn card: its sound wave plays once (ADR 0077), then the words.
         self.assertIn('class="hero-wave play-once-wave" data-play-in-view', body)
-        self.assertIn('<h2 class="hero-card-title">聽損模擬</h2>', body)
+        self.assertIn('<h2 class="hero-card-title text-balance">聽損模擬</h2>', body)
         self.assertIn("<p>了解聽損者的感覺</p>", body)
         self.assertRegex(
             body,

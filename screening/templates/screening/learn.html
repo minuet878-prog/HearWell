@@ -13,7 +13,7 @@
     {% for item in stack %}
         <article class="hero-card card-stack-card" role="group" aria-roledescription="卡片" aria-label="第 {{ forloop.counter }} 張，共 {{ stack|length }} 張：{{ item.title }}"{% if not forloop.first %} inert{% endif %}>
             {% include "screening/learn_drawing.html" with key=item.key %}
-            <h2 class="hero-card-title">{{ item.title }}</h2>
+            <h2 class="hero-card-title text-balance">{{ item.title }}</h2>
             <p>{{ item.line }}</p>
             <a class="btn btn-hero btn-lg" href="{% url item.url_name %}">{{ item.button }}<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 6l6 6-6 6"/></svg></a>
         </article>
