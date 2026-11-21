@@ -685,6 +685,8 @@
      - play-once-ring, play-once-gauge: an SVG stroke draws itself from its start. Give the path
        pathLength="1" and draw only the arc of the value, so the stroke ends where the value is.
      - play-once-wave: on an SVG, its shapes (up to 14) fade in one after another.
+     - play-once-trace: on the trend chart's box (#756), its line draws from the left with its
+       points, then the scores fade in.
      - play-once-grow: a bar grows from its left end. */
   @media (prefers-reduced-motion: no-preference) {
     .play-once-slide-up {
@@ -729,6 +731,17 @@
     .play-once-wave > :nth-child(12) { animation-delay: 0.55s; }
     .play-once-wave > :nth-child(13) { animation-delay: 0.6s; }
     .play-once-wave > :nth-child(14) { animation-delay: 0.65s; }
+
+    /* play-once-trace: Recharts draws every series' line in one of its layers and every point in
+       another (TrendChart.jsx), so each layer is wiped as one, left to right; the dashed line
+       for 有戴 keeps its dashes. The bands, their names and the dates stay. */
+    .play-once-trace :is(.recharts-zIndex-layer_400, .recharts-zIndex-layer_600) {
+      animation: play-once-trace 1s 0.3s ease-out both;
+    }
+
+    .play-once-trace .recharts-label-list {
+      animation: play-once-fade 0.4s 1.2s ease-out both;
+    }
   }
 
   @keyframes play-once-fade {
@@ -766,6 +779,12 @@
   @keyframes play-once-draw {
     from {
       stroke-dashoffset: 1;
+    }
+  }
+
+  @keyframes play-once-trace {
+    from {
+      clip-path: inset(0 100% 0 0);
     }
   }
 
@@ -3206,63 +3225,24 @@
     gap: 0.375rem;
   }
 
-  /* Level bands named under the trend chart, in the bands' top-to-bottom order. */
-  .trend-bands {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    margin: 0.5rem 0 0;
-    padding: 0;
-    list-style: none;
-    font-weight: 600;
+  /* #756 (ADR 0078, canvas TrendA): each level's short name inside its band of the trend chart,
+     top right, bold, in its level's text colour (ADR 0007): 7:1 on the pale bands, over 5:1 on
+     THI's deep ones. */
+  .trend-band-name {
+    font-size: 1rem;
+    font-weight: 700;
   }
 
-  .trend-bands li {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+  .trend-band-name-normal {
+    fill: var(--color-normal);
   }
 
-  .trend-band-swatch {
-    flex: none;
-    width: 1.5rem;
-    height: 1rem;
-    border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-small);
+  .trend-band-name-mild_to_moderate {
+    fill: var(--color-mild);
   }
 
-  /* Each level's name in its colour, its swatch in its band's fill (same pairs as the chart). */
-  .trend-band-normal {
-    color: var(--color-normal);
-  }
-
-  .trend-band-normal .trend-band-swatch {
-    background-color: var(--color-normal-bg);
-  }
-
-  .trend-band-mild_to_moderate {
-    color: var(--color-mild);
-  }
-
-  .trend-band-mild_to_moderate .trend-band-swatch {
-    background-color: var(--color-mild-bg);
-  }
-
-  .trend-band-severe {
-    color: var(--color-severe);
-  }
-
-  .trend-band-severe .trend-band-swatch {
-    background-color: var(--color-severe-bg);
-  }
-
-  /* The higher of two levels sharing a colour (THI's five in three), as the chart's bands. */
-  .trend-band-mild_to_moderate.trend-band-deep .trend-band-swatch {
-    background-color: var(--color-mild-bg-deep);
-  }
-
-  .trend-band-severe.trend-band-deep .trend-band-swatch {
-    background-color: var(--color-severe-bg-deep);
+  .trend-band-name-severe {
+    fill: var(--color-severe);
   }
 
   /* #650 (spec #644 R2, the #645 mockup's A): the fitting day on the trend chart, a neutral dark
@@ -3290,6 +3270,12 @@
   /* The sentence under the chart's frame that says the same day in words. */
   .trend-fitted {
     margin: 0.75rem 0 0;
+  }
+
+  /* #756 (canvas TrendA): how to read the scores, last under the chart. */
+  .trend-note {
+    margin: 0.5rem 0 0;
+    color: var(--color-muted);
   }
 
   /* #332 (spec #326 B3): the copy button says ✓ 已複製 in success green (ADR 0007) for 2
@@ -6791,7 +6777,7 @@
 
   /* #751 (the canvas's ProHome): the 現在這一步's row says 現在 in a blue pill, its card being
      the hero card on top. */
-  .journey-now {
+  .journey-now-label {
     padding: 0 0.6667rem;
     border-radius: var(--radius-pill);
     background-color: var(--color-primary);
@@ -6948,22 +6934,43 @@
     font-weight: 700;
   }
 
+  /* #745 (grill Q13): 接著往下一站 under the stamp, centred, its arrow after the words. */
   .journey-card-link {
     display: inline-flex;
+    flex-wrap: wrap;
     align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
     min-height: var(--spacing-touch);
     margin-top: 0.25rem;
     font-weight: 700;
   }
 
+  .journey-card-link svg {
+    flex: none;
+    width: 1.1111rem;
+    height: 1.1111rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
   /* Spec #741 (the canvas's 照顧旅程展開): a step's ways on are white entry cards, one under the
-     other and all the same size, under a small heading where there is one. */
+     other and all the same size (#745: one with a small line under its words too), under a
+     small heading where there is one. */
   .journey-entries {
     display: grid;
+    grid-auto-rows: 1fr;
     gap: 0.625rem;
     margin: 0.75rem 0 0;
     padding: 0;
     list-style: none;
+  }
+
+  .journey-entries > li {
+    display: grid;
   }
 
   .journey-entries-title {
@@ -7003,6 +7010,13 @@
     min-width: 0;
     font-size: var(--text-button);
     font-weight: 700;
+  }
+
+  .entry-card-note {
+    display: block;
+    color: var(--color-muted);
+    font-size: 1rem;
+    font-weight: 400;
   }
 
   .entry-card-arrow {
@@ -7175,6 +7189,188 @@
     font-weight: 700;
   }
 
+  /* #745 (spec #741, the canvas's 照顧旅程展開, grill Q4, Q21): step 5's answer card, white on
+     the blue card, its question beside an icon and its answers big boxes that wrap a row at a
+     time at large text. The answer kept is framed blue on pale blue, not filled: the blue card's
+     white button stays the page's one (ADR 0076), and the tick or mark tells it apart too. The
+     stamp of a stop just finished sits on the white, where its red reads. */
+  .answer-card {
+    display: flex;
+    flex-direction: column;
+    /* As the hero card's: narrower sides on a 320px phone at 200% text. */
+    padding: 1rem clamp(0.5rem, (100% - 9rem) * 100, 1rem);
+    border: 1.5px solid var(--color-brand-soft-deep);
+    border-radius: 1rem;
+    background-color: #fff;
+    box-shadow: 0 2px 8px rgba(31, 78, 140, 0.08);
+    color: var(--color-heading);
+  }
+
+  .answer-card fieldset {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .answer-card-question {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0 0 0.875rem;
+    padding: 0;
+    font-size: var(--text-button);
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  .answer-card-question .action-card-icon {
+    width: 2.6667rem;
+    height: 2.6667rem;
+    background-color: var(--color-brand-selected);
+  }
+
+  /* As an entry card's: where the icon leaves less than five characters, a line of their own. */
+  .answer-card-words {
+    flex: 1 1 5em;
+    min-width: 0;
+  }
+
+  .answer-choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .answer-choice {
+    flex: 1 1 4.5em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    min-height: 6.2222rem;
+    padding: 0.6667rem 0.25rem;
+    border: 2px solid var(--color-brand-soft-deep);
+    border-radius: 0.8889rem;
+    background-color: var(--color-brand-soft);
+    color: var(--color-heading);
+    font: inherit;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s;
+  }
+
+  .answer-choice-icon {
+    flex: none;
+    width: 1.7778rem;
+    height: 1.7778rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* 正在申請 kept on one line where it fits; at large text it still wraps (overflow-wrap). */
+  .answer-choice-text {
+    font-size: 1.3333rem;
+    font-weight: 700;
+    line-height: 1.3;
+    word-break: keep-all;
+  }
+
+  .answer-choice-note {
+    color: var(--color-muted);
+    font-size: 1rem;
+    line-height: 1.3;
+  }
+
+  .answer-choice.is-chosen {
+    border-color: var(--color-primary);
+    background-color: var(--color-brand-selected);
+  }
+
+  /* Pressing only changes colour (ADR 0028). */
+  .answer-choice:active {
+    background-color: var(--color-brand-soft-deep);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .answer-choice:hover {
+      border-color: var(--color-primary);
+    }
+  }
+
+  .answer-choice:focus-visible {
+    outline: 0.1875rem solid var(--color-primary);
+    outline-offset: 0.1875rem;
+  }
+
+  /* #745: a calendar date card, a calendar sheet beside what its day is from and the line
+     under it; at large text the words go under the sheet. */
+  .date-card {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1rem;
+    padding: 1rem clamp(0.5rem, (100% - 9rem) * 100, 1rem);
+    border: 1.5px solid var(--color-brand-soft-deep);
+    border-radius: 1rem;
+    background-color: #fff;
+    box-shadow: 0 2px 8px rgba(31, 78, 140, 0.08);
+    color: var(--color-heading);
+  }
+
+  .date-card-sheet {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    width: 5.1111rem;
+    overflow: hidden;
+    border: 2px solid var(--color-primary);
+    border-radius: var(--radius-medium);
+    text-align: center;
+  }
+
+  .date-card-month {
+    padding: 0.2222rem 0;
+    background-color: var(--color-primary);
+    color: #fff;
+    font-weight: 700;
+  }
+
+  .date-card-day {
+    font-size: 2.4444rem;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  .date-card-year {
+    padding-bottom: 0.3333rem;
+    color: var(--color-muted);
+  }
+
+  .date-card-body {
+    flex: 1 1 6em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+
+  .date-card-text {
+    font-size: 1.1667rem;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  .date-card-note {
+    color: var(--color-muted);
+    line-height: 1.5;
+  }
+
   /* Step 3 done (spec #741 acceptance 6): the audiogram's result, the whole card one link. */
   .journey-audiogram {
     display: flex;
@@ -7248,10 +7444,6 @@
 
     .journey-step:not(:last-child)::after {
       display: none;
-    }
-
-    .journey-step.is-current .journey-dot {
-      margin-top: 0;
     }
   }
 

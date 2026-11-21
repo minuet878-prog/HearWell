@@ -3870,19 +3870,19 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
         user = User.objects.get(username="guide_e2e")
         GuideChapterView.objects.create(user=user, chapter="guide")
 
-    # #261 acceptance 8: the home page's 建議您下一步 with its longest 「因為」 sentences, 390px
-    # wide at 200% text; since #459 the 現在這一步's card. The setUp user has answered nothing,
-    # so it is the assessment (ADR 0074) once my guide is opened (#744); 沒有, 去找聽力師之前
-    # (spec #291's reasons); within 25 and missing a frequency, nothing can tell.
+    # #261 acceptance 8: the home page's 建議您下一步, 390px wide at 200% text; since #459 the
+    # 現在這一步's card. The setUp user has answered nothing, so it is the assessment (ADR 0074)
+    # once my guide is opened (#744), its answer card since #745; 沒有, 去找聽力師之前; within 25
+    # and missing a frequency, nothing can tell.
     def test_home_next_step_fits_a_phone_at_double_text_size(self):
         self.open(390, 640)
         points = AudiogramPoint.objects.filter(audiogram__user__username="guide_e2e")
         self.my_guide_opened()
         with self.saving_artifacts():
-            for state, button in (
-                ("assessment", "找鑑定醫院"),
-                ("before you go", "去之前要準備什麼"),
-                ("too little data", "修改這張聽力圖"),
+            for state, role, name in (
+                ("assessment", "button", "正在申請"),
+                ("before you go", "link", "了解須知"),
+                ("too little data", "link", "修改這張聽力圖"),
             ):
                 with self.subTest(state=state):
                     if state == "before you go":
@@ -3893,7 +3893,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                         points.filter(ear="left", frequency=4000).delete()
                     self.page.goto(f"{self.live_server_url}/")
                     card = self.main().locator(".journey-card")
-                    expect(card.get_by_role("link", name=button)).to_be_visible()
+                    expect(card.get_by_role(role, name=name)).to_be_visible()
                     self.page.wait_for_load_state("load")
                     self.page.locator("html").evaluate(
                         "html => html.style.setProperty('font-size', '225%', 'important')"
@@ -3920,30 +3920,56 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     self.assertEqual(narrow, [], path)
 
     # #261 self-review: the 建議您下一步 box at the same size; a reason ending in 「（45%）。」
-    # once ran past its white box. This user is at the assessment (ADR 0074). #461:
-    # the result page's box has no reason any more (the #460 mockup R1); #459: the home page
-    # says it on the 現在這一步's card.
+    # once ran past its white box. This user is at the assessment (ADR 0074), since #745 its
+    # answer card (spec #741 acceptance 57): the question keeps four characters a line, and it
+    # and each box keep their words inside, the boxes wrapping a row at a time.
     def test_next_step_reason_keeps_four_characters_a_line_at_double_text_size(self):
         self.open(320, 640)
         self.my_guide_opened()
         with self.saving_artifacts():
-            for path in ("/",):
-                with self.subTest(path=path):
-                    self.page.goto(f"{self.live_server_url}{path}")
-                    # #749: the sentence under the title on the blue hero card.
-                    reason = (
-                        self.main()
-                        .locator(".journey-card .hero-card > p")
-                        .filter(has_text="先確認有沒有身障證明")
+            self.page.goto(f"{self.live_server_url}/")
+            card = self.main().locator(".journey-card .answer-card")
+            expect(card.locator("legend")).to_have_text("您有身心障礙證明嗎？")
+            self.assert_fits_a_phone_at_double_text_size("/ answer card")
+            question = card.locator(".answer-card-words")
+            parts = [(question, 4), *((box, 2) for box in card.locator(".answer-choice").all())]
+            for part, chars in parts:
+                room = part.evaluate(
+                    "e => ({chars: e.clientWidth / parseFloat(getComputedStyle(e).fontSize),"
+                    " overflow: e.scrollWidth - e.clientWidth, words: e.textContent})"
+                )
+                self.assertGreaterEqual(room["chars"], chars, room["words"])
+                self.assertLessEqual(room["overflow"], 0, room["words"])
+
+    # #745 (spec #741 acceptance 12, 14, 58): the certificate answered on the home page's card,
+    # with JavaScript and without: the stamp and 接著往下一站, which moves on only when pressed.
+    def test_answering_the_certificate_on_the_home_card(self):
+        user = User.objects.get(username="guide_e2e")
+        self.my_guide_opened()
+        answers = ((True, "有", "九號表"), (False, "沒有", "去找聽力師之前"))
+        for javascript, answer, next_stop in answers:
+            with self.subTest(javascript=javascript):
+                AidAndSubsidy.objects.filter(user=user).delete()
+                self.context = self.browser.new_context(
+                    viewport={"width": 390, "height": 900}, java_script_enabled=javascript
+                )
+                self.context.add_cookies([self.cookie])
+                self.context.tracing.start(screenshots=True, snapshots=True)
+                self.page = self.context.new_page()
+                self.addCleanup(self.context.close)
+                with self.saving_artifacts():
+                    self.page.goto(f"{self.live_server_url}/")
+                    card = self.main().locator(".journey-card")
+                    box = card.get_by_role("button", name=answer, exact=True)
+                    box.click()
+                    expect(self.page).to_have_url(
+                        f"{self.live_server_url}/?done=assessment#journey-now"
                     )
-                    expect(reason).to_contain_text("先確認有沒有身障證明，才知道能不能申請補助。")
-                    self.assert_fits_a_phone_at_double_text_size(f"{path} next step")
-                    room = reason.evaluate(
-                        "p => ({chars: p.clientWidth / parseFloat(getComputedStyle(p).fontSize),"
-                        " overflow: p.scrollWidth - p.clientWidth})"
-                    )
-                    self.assertGreaterEqual(room["chars"], 4, path)
-                    self.assertLessEqual(room["overflow"], 0, path)
+                    expect(card.locator(".done-stamp")).to_have_text("已完成")
+                    expect(box).to_have_attribute("aria-pressed", "true")
+                    card.get_by_role("link", name=f"接著往下一站：{next_stop}").click()
+                    expect(card.get_by_role("heading", level=3)).to_contain_text(next_stop)
+                    expect(card.locator(".done-stamp")).to_have_count(0)
 
     # #258: the 目前這一站's ring lights only when motion is welcome. This user has answered
     # nothing, so the stop is the assessment (ADR 0074). #341 (ADR 0029): it plays once the
@@ -4474,14 +4500,22 @@ class SiteHeaderTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
         for standalone in (False, True):
             with self.subTest(standalone=standalone):
                 self.open(standalone=standalone)
+                self.context.add_init_script(REVEAL_WATCH)
                 with self.saving_artifacts():
                     self.page.goto(f"{self.live_server_url}/learn")
                     nav = self.page.get_by_role("navigation", name="主要導覽")
                     nav.get_by_role("link", name="問卷").click()
                     expect(self.page).to_have_url(f"{self.live_server_url}/questionnaire_list")
-                    # The URL changes as the page starts: scrolled before it has loaded (and its
-                    # tab pill has slid), a slow machine scrolled a page not all there yet.
+                    # The URL changes as the page starts: scrolled before it has loaded, a slow
+                    # machine scrolled a page not all there yet.
                     self.page.wait_for_load_state("load")
+                    # load comes while the tab pill still slides (about 0.25s): over the page
+                    # the slide takes every press, so the click missed the back button, and
+                    # Playwright's retry scrolled it into view: back to the top, where it hides.
+                    wait_until(
+                        self.page,
+                        "window.revealed && (window.revealed !== 'transition' || window.settled)",
+                    )
                     self.scroll_to(400)
                     expect(self.header()).to_have_attribute("data-scrolled", "")
                     self.header().get_by_role("link", name="回上一頁").click()
@@ -5562,18 +5596,21 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.assertEqual(self.style(banner, "color"), colour)
                     self.assertEqual(self.style(banner, "backgroundColor"), background)
 
-    # The trend chart's level names, written by Django, keep their band colours.
+    # #756 (ADR 0078, canvas TrendA): the trend chart writes each level's short name in its
+    # band, in the level's text colour on the band's pale colour.
     def test_trend_level_names_keep_their_colours(self):
         self.submission(self.hhie_s, (2,) * 10)
         self.open()
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
-            for level, _, background, colour in self.BANNERS[:3]:
+            names = self.page.locator("#trend-plot .trend-band-name")
+            expect(names).to_have_text(["極輕微", "輕到中度", "顯著"])
+            bands = self.page.locator("#trend-plot .recharts-reference-area-rect")
+            for i, (level, _, background, colour) in enumerate(self.BANNERS[:3]):
                 with self.subTest(level=level):
-                    item = self.page.locator(f".trend-band-{level}")
-                    swatch = item.locator(".trend-band-swatch")
-                    self.assertEqual(self.style(item.locator("span").last, "color"), colour)
-                    self.assertEqual(self.style(swatch, "backgroundColor"), background)
+                    self.assertEqual(self.style(names.nth(i), "fill"), colour)
+                    self.assertEqual(self.style(bands.nth(i), "fill"), background)
+                    self.assertEqual(self.style(names.nth(i), "fontWeight"), "700")
 
     # Without JavaScript the score block (#465, its 最近一次 was the trend summary's) stays and
     # the chart's box, which would stay empty, hides.
@@ -5623,9 +5660,11 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     )
                     self.assertGreaterEqual(self.lowest_contrast(text, self.WHITE), 7)
             self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
-            bands = self.page.locator("#trend-chart .trend-bands li")
-            expect(bands).to_have_count(3)
-            for level, record in records.items():
+            names = self.page.locator("#trend-plot .trend-band-name")
+            expect(names).to_have_count(3)
+            bands = self.page.locator("#trend-plot .recharts-reference-area-rect")
+            # #756: the chart's level names sit in their bands, bottom band first, as records.
+            for i, level in enumerate(records):
                 badge = self.page.locator(f".level-badge-{level}").first
                 expect(badge).to_be_visible()
                 with self.subTest(page="my_hearing badge", level=level):
@@ -5634,13 +5673,10 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                         self.lowest_contrast(text, self.style(badge, "backgroundColor")), 7
                     )
                     self.assertGreaterEqual(self.lowest_contrast(text, self.WHITE), 7)
-                # The chart's level names sit on white beside a swatch of their band.
-                band = bands.filter(has_text=record.result.level["text"])
                 with self.subTest(page="my_hearing chart", level=level):
-                    text = self.style(band.locator("span").last, "color")
-                    swatch = self.style(band.locator(".trend-band-swatch"), "backgroundColor")
-                    self.assertGreaterEqual(self.lowest_contrast(text, swatch), 7)
-                    self.assertGreaterEqual(self.lowest_contrast(text, self.WHITE), 7)
+                    text = self.style(names.nth(i), "fill")
+                    band = self.style(bands.nth(i), "fill")
+                    self.assertGreaterEqual(self.lowest_contrast(text, band), 7)
 
     def assert_framed_in_its_text_colour(self, element):
         colour = self.style(element, "color")
@@ -6685,6 +6721,48 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                             self.assertEqual(self.style(arc, "animationName"), "none")
                         self.assertEqual(self.style(arc, "strokeDashoffset"), "0px")
 
+    # #756 (spec #741, ADR 0077, canvas TrendA): the trend chart's line and points draw from the
+    # left once, then the scores fade in; with reduced motion they are simply there. The dates
+    # under it are month/day.
+    def test_trend_line_draws_once_or_is_simply_there(self):
+        taipei = ZoneInfo("Asia/Taipei")
+        earlier = self.submission(self.hhie_s, [4] * 5 + [0] * 5)
+        moment = datetime(2026, 5, 22, 10, tzinfo=taipei)
+        Submission.objects.filter(pk=earlier.pk).update(created_at=moment)
+        self.submission(self.hhie_s, [4] * 3 + [0] * 7)
+        today = timezone.localdate()
+        for motion in (False, True):
+            self.open(motion=motion, width=390)
+            with self.saving_artifacts(), self.subTest(motion=motion):
+                self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
+                ticks = self.page.locator("#trend-plot .recharts-cartesian-axis-tick-value")
+                expect(ticks).to_have_text(["5/22", f"{today.month}/{today.day}"])
+                plot = self.page.locator("#trend-plot")
+                # Clear of the tab bar fixed over the foot of a phone's screen.
+                plot.evaluate("el => el.scrollIntoView({ block: 'center' })")
+                expect(plot).to_have_attribute("data-in-view", "")
+                parts = {
+                    "line": (plot.locator(".recharts-zIndex-layer_400"), "play-once-trace"),
+                    "points": (plot.locator(".recharts-zIndex-layer_600"), "play-once-trace"),
+                    "scores": (plot.locator(".recharts-label-list").first, "play-once-fade"),
+                }
+                for name, (part, animation) in parts.items():
+                    with self.subTest(part=name):
+                        self.assertEqual(
+                            self.style(part, "animationName"), animation if motion else "none"
+                        )
+                        if motion:
+                            self.assertEqual(self.style(part, "animationIterationCount"), "1")
+                            part.evaluate(
+                                "el => Promise.all(el.getAnimations().map(a => a.finished))"
+                            )
+                        # Whole at the end, or from the start.
+                        self.assertEqual(self.style(part, "clipPath"), "none")
+                        self.assertEqual(self.style(part, "opacity"), "1")
+                # The bands and their names never move.
+                for still in (".recharts-reference-area", ".trend-band-name"):
+                    self.assertEqual(self.style(plot.locator(still).first, "animationName"), "none")
+
     # Result pages tidy-up: THI's five levels in three colours draw five gauge arcs (#750; score
     # bar segments before), the higher of two in one colour deeper; every dropdown on the page is
     # a full touch target.
@@ -6700,7 +6778,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             ("rgb(143, 42, 18)", "0.4"),
             ("rgb(143, 42, 18)", "0.6"),
         ]
-        # The trend chart's legend: each level's pale colour, the higher of two deeper.
+        # The trend chart's bands: each level's pale colour, the higher of two deeper.
         fills = [
             "rgb(227, 244, 236)",
             "rgb(255, 244, 214)",
@@ -6723,11 +6801,10 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             for summary in summaries:
                 self.assertGreaterEqual(summary.bounding_box()["height"], 44)
             self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=thi")
-            swatches = self.page.locator(".trend-band-swatch").all()
-            # Top band first, as stacked in the chart.
-            self.assertEqual(
-                [self.style(s, "backgroundColor") for s in swatches], list(reversed(fills))
-            )
+            # #756: the chart's own bands, bottom first; their names are in them.
+            bands = self.page.locator("#trend-plot .recharts-reference-area-rect")
+            expect(bands).to_have_count(5)
+            self.assertEqual([self.style(b, "fill") for b in bands.all()], fills)
 
     def test_keyboard_focus_keeps_cards_still_with_a_ring(self):
         self.open(motion=True)
@@ -8990,7 +9067,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             expect(block).to_have_count(1)
             self.assertNotEqual(self.style(block, "backgroundColor"), self.WHITE)
             self.assertEqual(self.style(block, "boxShadow"), "none")
-            chart = self.page.get_by_role("region", name="HHIE-S 總分變化")
+            chart = self.page.get_by_role("region", name="分數趨勢")
             self.assertLess(block.bounding_box()["y"], chart.bounding_box()["y"])
 
     # #465 (the #464 mockup 1A): the score block reads as lines of text, the score largest, and

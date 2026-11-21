@@ -41,8 +41,10 @@
 {% with latest=score_block.latest result=score_block.latest.result %}
 <div class="result-banner result-banner-{{ result.level.color }} records-score">
     <p>最近一次（{{ latest.created_at|date:"Y/m/d" }}{% if latest.id in same_day %} {{ latest.created_at|date:"H:i" }}{% endif %}，{{ score_block.status }}）</p>
-    <p class="result-score"><span class="result-number">{{ result.total }}</span> 分</p>
-    <p class="result-block-level">{{ result.level.text }}</p>
+    {# #756 (spec #741, canvas ProRecords): the score counts up once in view (ADR 0077); the level's short name large, its full name for screen readers (page grill P11). #}
+    <p class="result-score"><span class="result-number" data-count-up>{{ result.total }}</span> 分</p>
+    <p class="result-level-short" aria-hidden="true">{{ result.level.short }}</p>
+    <p class="result-block-level visually-hidden">{{ result.level.text }}</p>
     {% if since_last or score_block.change %}
     <div class="result-since-last"{% if since_last %} id="since-last"{% endif %}>
         {% if since_last %}

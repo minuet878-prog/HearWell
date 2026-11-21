@@ -15,7 +15,7 @@ import {
   ZIndexLayer,
 } from "recharts";
 
-import { chartDays, fittingDays, selectPoints } from "./trend.js";
+import { chartDays, fittingDays, monthDay, selectPoints } from "./trend.js";
 
 const LOADING_TEXT = "趨勢圖載入中…"; // the same text is on the page before this script runs
 const ERROR_TEXT = "趨勢圖暫時無法顯示，下方的紀錄不受影響。";
@@ -30,8 +30,8 @@ const TEXT_COLOR = "#212529";
 const MUTED_COLOR = "#495057";
 const PRIMARY = "#1f4e8c";
 // Presentation only, by level colour (ADR 0007's three) and shade; the bands, each level's colour
-// and shade come from the API. The level names under the chart (trend_chart.html) use the same
-// fills. "deep": the higher of two levels sharing a colour, so THI's five bands stay apart.
+// and shade come from the API; the level names in them are site.css's .trend-band-name-*.
+// "deep": the higher of two levels sharing a colour, so THI's five bands stay apart.
 const BAND_FILLS = {
   normal: { pale: "#e3f4ec" },
   mild_to_moderate: { pale: "#fff4d6", deep: "#f9dd96" },
@@ -223,12 +223,24 @@ export default function TrendChart({ code, fittedOn }) {
               // A white line between bands, as between the score bar's segments.
               stroke="#fff"
               strokeWidth={2}
+              // #756 (ADR 0078, canvas TrendA): the level's short name inside its band, top
+              // right, in its colour (site.css .trend-band-name-*); on a layer of its own over
+              // every band (on theirs a later band covers it), under the lines and points.
+              label={{
+                value: level.short,
+                position: "insideTopRight",
+                offset: 8,
+                className: `trend-band-name trend-band-name-${level.color}`,
+                zIndex: DefaultZIndexes.area + 1,
+              }}
             />
           ))}
           {fitting && <FittingLine between={fitting} rem={rem} />}
           <XAxis
-            // One column per day (spec 4.1), so the date is unique and is the label itself.
+            // One column per day (spec 4.1), so the date is unique; #756 (page grill P18) writes it
+            // as month/day.
             dataKey="date"
+            tickFormatter={monthDay}
             interval="preserveStartEnd"
             // At least 1.5rem (27px at the 18px base) between dates (spec 4.3).
             minTickGap={27}

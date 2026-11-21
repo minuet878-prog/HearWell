@@ -15,7 +15,6 @@ from screening.models import (
     AidAndSubsidy,
     Answer,
     Category,
-    GuideChapterView,
     Question,
     Questionnaire,
     Submission,
@@ -129,7 +128,7 @@ class HomeJourneyTestCase(TestCase):
         """The 現在這一步's card on top (#751), without its place of seven (LoggedInHomeTests
         checks that)."""
         card = main[
-            main.index('<div class="journey-card">') : main.index('<div class="journey-tiles">')
+            main.index('<div class="journey-card"') : main.index('<div class="journey-tiles">')
         ]
         return re.sub(r'<div class="journey-progress">.*?</p>\s*</div>', "", card, flags=re.S)
 
@@ -451,35 +450,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
         )
         self.assertIn("配戴助聽器之後", self.card(self.main()))
 
-    def test_step_5_s_card_is_the_stop_its_reason_and_its_button(self):
-        # Spec #453 acceptance 6; the owner on #458: no 目前這一站 label, no 「因為：」 (D10).
-        self.answer()
-        self.make(PTA_55, PTA_55)
-        GuideChapterView.objects.create(user=self.user, chapter="guide")
-        AidAndSubsidy.objects.create(user=self.user, certificate="yes")
-        card = self.card(self.main())
-        self.assertEqual(
-            self.text(card),
-            "現在這一步 九號表：申請助聽器補助 您已經有身障證明，可以準備申請九號表的助聽器補助。 "
-            "看九號表的流程",
-        )
-        self.assertIn(
-            '<a class="btn btn-hero btn-lg" href="/guide/form-9">看九號表的流程</a>', card
-        )
-        self.assertNotIn("checkbox", card)
-
-    def test_a_stop_without_a_button_links_to_its_page_in_words(self):
-        # 等待核定公文 has nothing to do but wait (#455): a text link, no solid button.
-        self.answer()
-        self.make(PTA_55, PTA_55)
-        GuideChapterView.objects.create(user=self.user, chapter="guide")
-        AidAndSubsidy.objects.create(user=self.user, certificate="yes", form_9_done=True)
-        main = self.main()
-        self.assertEqual(SOLID.findall(main), [])
-        self.assertIn(
-            '<a class="journey-card-link" href="/guide/form-9#steps-title">看這一站的說明</a>',
-            self.card(main),
-        )
+    # Step 5's card by each stop (#745): test_answer_cards.
 
     def fitted(self, on):
         """Worn from `on`, the first IOI-HA done that day (steps 1 and 5 done, step 6 next)."""
@@ -691,15 +662,13 @@ class LoggedInHomeTests(HomeJourneyTestCase):
         )
 
     def test_the_bar_comes_between_the_card_s_words_and_what_to_press(self):
-        # The canvas: the title, why, the place of seven, then its button.
-        self.answer()
+        # The canvas: the title, why, the place of seven, then its button. Only an audiogram:
+        # step 1 is the 現在這一步.
         self.make(PTA_55, PTA_55)
-        GuideChapterView.objects.create(user=self.user, chapter="guide")
-        AidAndSubsidy.objects.create(user=self.user, certificate="yes")
         self.assertEqual(
             self.text(self.hero(self.main())),
-            "現在這一步 九號表：申請助聽器補助 您已經有身障證明，可以準備申請九號表的助聽器補助。 "
-            "第 5 步，共 7 步 看九號表的流程",
+            "現在這一步 填生活影響問卷 先做一份生活影響問卷，了解聽力對您生活的影響。 "
+            "第 1 步，共 7 步 去做問卷",
         )
 
     def test_one_thing_to_do_today_is_gone(self):
