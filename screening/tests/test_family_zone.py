@@ -106,11 +106,11 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
 
     def test_visitor_reaches_the_family_zone_by_its_door(self):
         # Spec #655 (#673, grill Q4): the door 我擔心家人的聽力 takes the place of the text link
-        # 我是家人, first on the page, before the login link.
+        # 我是家人; spec #741 (#752): 擔心家人的聽力, the first door under the blue hero card.
         main = self._home()
         self.assertNotIn("我是家人", main)
         door = main.index(f'href="{self.url}" data-door="door_family"')
-        self.assertLess(door, main.index("我已經有帳號，登入"))
+        self.assertLess(main.index('<section class="hero-card"'), door)
 
     def test_new_user_without_records_has_a_family_link(self):
         # #459: the 空狀態首頁 keeps the way in as a text link after the guide's (mockup #458 A).

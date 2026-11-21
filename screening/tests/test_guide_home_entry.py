@@ -46,11 +46,11 @@ class NewUserGuideEntryTests(TestCase):
     """The owner picked option B: one card between the steps and the result preview. #471
     (mockup #458 ⑪): the visitor's home is the 空狀態首頁 too, the way in a text link."""
 
-    def test_visitor_sees_the_guide_link_after_the_doors(self):
-        # Spec #655 (#673): the visitor's home is the two doors, the text links under them.
+    def test_visitor_reaches_the_guide_by_its_door(self):
+        # Spec #741 (#752, grill P15): the door 想了解助聽器 takes the place of the text link.
         content = self.client.get(reverse("index")).content.decode()
-        link = content.index(f'<li><a href="/guide">{CARD}</a></li>')
-        self.assertGreater(link, content.rindex("home-door"))
+        self.assertIn('href="/guide" data-door="door_aids"', content)
+        self.assertNotIn(f'<li><a href="/guide">{CARD}</a></li>', content)
 
     def test_signed_in_user_without_records_has_a_guide_link(self):
         # #459: the 空狀態首頁 keeps the way in as a text link (mockup #458 A).

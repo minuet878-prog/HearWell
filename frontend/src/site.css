@@ -681,7 +681,8 @@
      - play-once-slide-up: a block slides up a little as it fades in.
      - play-once-stamp: the 已完成 stamp presses down; its own tilt (transform) is left alone.
      - play-once-ring, play-once-gauge: an SVG stroke draws itself from its start. Give the path
-       pathLength="1" and draw only the arc of the value, so the stroke ends where the value is. */
+       pathLength="1" and draw only the arc of the value, so the stroke ends where the value is.
+     - play-once-wave: on an SVG, its shapes (up to 14) fade in one after another. */
   @media (prefers-reduced-motion: no-preference) {
     .play-once-slide-up {
       animation: play-once-slide-up 0.6s ease-out both;
@@ -699,6 +700,32 @@
 
     .play-once-gauge {
       animation-delay: 0.3s;
+    }
+
+    /* play-once-wave: an SVG sound wave's bars fade in one after another (the guest home's hero
+       card, #752), about 1.3 seconds in all. */
+    .play-once-wave > * {
+      animation: play-once-fade 0.6s ease-out both;
+    }
+
+    .play-once-wave > :nth-child(2) { animation-delay: 0.05s; }
+    .play-once-wave > :nth-child(3) { animation-delay: 0.1s; }
+    .play-once-wave > :nth-child(4) { animation-delay: 0.15s; }
+    .play-once-wave > :nth-child(5) { animation-delay: 0.2s; }
+    .play-once-wave > :nth-child(6) { animation-delay: 0.25s; }
+    .play-once-wave > :nth-child(7) { animation-delay: 0.3s; }
+    .play-once-wave > :nth-child(8) { animation-delay: 0.35s; }
+    .play-once-wave > :nth-child(9) { animation-delay: 0.4s; }
+    .play-once-wave > :nth-child(10) { animation-delay: 0.45s; }
+    .play-once-wave > :nth-child(11) { animation-delay: 0.5s; }
+    .play-once-wave > :nth-child(12) { animation-delay: 0.55s; }
+    .play-once-wave > :nth-child(13) { animation-delay: 0.6s; }
+    .play-once-wave > :nth-child(14) { animation-delay: 0.65s; }
+  }
+
+  @keyframes play-once-fade {
+    from {
+      opacity: 0;
     }
   }
 
@@ -1595,16 +1622,32 @@
     }
   }
 
-  /* Spec #655 (#673, the #669 mockup's A): the signed-out home's two doors, each a single link in
-     a pale blue block (as a single clickable thing sits in a colour block), one above the other,
-     the icon in a white circle. A mouse or a finger deepens the blue instead of turning it pale
-     blue; at large text sizes the words drop under the icon as every action card's do. */
+  /* Spec #741 (#752, the canvas's ProGuest): the signed-out home's two doors under the blue hero
+     card, side by side, each a single link in a pale blue block (as a single clickable thing sits
+     in a colour block): the icon in a white circle and the arrow on top, the words under them. A
+     mouse or a finger deepens the blue instead of turning it pale blue. Where two would be too
+     narrow (large text on a phone) they go one above the other. */
+  .home-doors {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+    gap: 0.6667rem;
+  }
+
   .home-doors > li > .link-card.home-door {
-    min-height: 5.5rem;
-    padding: 1rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    height: 100%;
+    padding: 0.7778rem;
     border: 0;
-    border-radius: var(--radius-medium);
+    border-radius: 1.1111rem;
     background-color: var(--color-brand-soft);
+  }
+
+  .home-door-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
 
   .home-door .action-card-icon {
@@ -1612,7 +1655,7 @@
   }
 
   .home-door .link-card-title {
-    font-size: 1.15rem;
+    line-height: 1.4;
   }
 
   @media (hover: hover) and (pointer: fine) {
@@ -1853,16 +1896,6 @@
   .more-group-title {
     margin: 1.25rem 0 0.5rem;
     color: var(--color-heading);
-    font-size: 1.125rem;
-    font-weight: 700;
-  }
-
-  /* The login link under the start button: a full touch target, still a plain link; #471: at
-     the left edge, under the start button, as the text links below it. */
-  .home-login {
-    display: inline-flex;
-    align-items: center;
-    min-height: var(--spacing-touch);
     font-size: 1.125rem;
     font-weight: 700;
   }
@@ -7522,6 +7555,55 @@
   .hero-card .btn {
     width: 100%;
     margin-top: 0.25rem;
+  }
+
+  /* The guest home's card (#752, the canvas's ProGuest): a white sound wave on top, and what
+     the start asks of you in pale chips under the title. */
+  .hero-wave {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin-bottom: 0.5rem;
+    fill: #fff;
+  }
+
+  .hero-wave > :nth-child(even) {
+    opacity: 0.5;
+  }
+
+  .hero-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4444rem;
+    margin: 0.25rem 0 0.5rem;
+  }
+
+  .hero-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3333rem;
+    min-height: 2rem;
+    padding: 0 0.6667rem;
+    border-radius: 1rem;
+    background-color: rgba(255, 255, 255, 0.18);
+    font-weight: 700;
+  }
+
+  .hero-chip svg,
+  .btn-hero svg {
+    flex: none;
+    width: 1.1111rem;
+    height: 1.1111rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .btn-hero svg {
+    margin-left: 0.3333rem;
+    stroke-width: 2.5;
   }
 
   /* A recommended questionnaire in the card (questionnaire page): its words white, its icon's

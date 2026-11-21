@@ -545,19 +545,19 @@ class RedesignLayoutTests(TestCase):
 class PageFlowTests(TestCase):
     """Spec docs/specs/phase-04/phase4_ui_flow.md, acceptance 1-14a."""
 
-    # Spec #148 (ticket #150): a login button replaced the small hint for people not signed in.
-    HINT = "我已經有帳號，登入"
     # As changed by phase9_ui_refresh_3_structure.md 4.4, phase9_ui_refresh_4a_home.md 4.1,
     # spec #148 (ticket #150, the account step) and #471 (mockup #458 ⑪: the visitor sees the
     # 空狀態首頁, the steps in its dashed box before the start button).
-    # Spec #655 (#673): a visitor's home is the two doors, then what stays below them.
+    # Spec #655 (#673): a visitor's home is the two doors, then what stays below them. Spec #741
+    # (#752, the canvas's ProGuest): the blue hero card starts, two doors under it, no login link.
     HOME_ORDER = (
-        "我想了解自己的聽力",
-        "大約 3 分鐘，不用註冊",
-        "我擔心家人的聽力",
-        "看看可以怎麼幫他",
-        HINT,
-        "了解助聽器選配與補助",
+        "聽力變化常常容易被忽略",
+        "想了解自己的聽力？",
+        "大約 3 分鐘",
+        "不用註冊",
+        "擔心家人的聽力",
+        "想了解助聽器",
+        "加到手機主畫面",
         "內容由台灣執業聽力師設計與審定。",
     )
 

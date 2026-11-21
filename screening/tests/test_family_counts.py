@@ -27,6 +27,7 @@ class DoorAndSendCountTests(TestCase):
                 "door_self",
                 "door_family",
                 "send_opened",
+                "door_aids",
             )
         )
 
@@ -36,13 +37,16 @@ class DoorAndSendCountTests(TestCase):
         self.assertEqual(self.send("door_family").status_code, 204)
         for _ in range(3):
             self.assertEqual(self.send("send_opened").status_code, 204)
+        # Spec #741 acceptance 42 (#752, grill P15): the third door, 想了解助聽器.
+        for _ in range(4):
+            self.assertEqual(self.send("door_aids").status_code, 204)
         self.assertEqual(
-            self.counts(), [(test_guest_counts.this_month(), 0, 0, 0, 0, 0, 0, 1, 2, 3)]
+            self.counts(), [(test_guest_counts.this_month(), 0, 0, 0, 0, 0, 0, 1, 2, 3, 4)]
         )
 
     def test_a_kind_it_does_not_know_is_refused_and_adds_nothing(self):
         # Spec #655 acceptance 27, with names close to the three kinds.
-        for kind in ("door", "send", "door_selves", "SEND_OPENED", "via=send"):
+        for kind in ("door", "send", "door_selves", "SEND_OPENED", "via=send", "door_aid"):
             with self.subTest(kind=kind):
                 self.assertEqual(self.send(kind).status_code, 400)
         self.assertFalse(GuestMonth.objects.exists())

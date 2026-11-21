@@ -4159,7 +4159,7 @@ class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
             # Spec #655 (#673): the visitor's home has a door to the zone, not a text link.
-            self.main().get_by_role("link", name=re.compile("^我擔心家人的聽力")).click()
+            self.main().get_by_role("link", name=re.compile("^擔心家人的聽力")).click()
             expect(self.page).to_have_url(f"{self.live_server_url}/family")
             expect(self.main().get_by_role("heading", level=1)).to_have_text("家人專區")
             current = self.page.get_by_role("navigation", name="主要導覽").locator(
@@ -5856,7 +5856,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     # four seconds. #471 (mockup #458 ⑪): the swaying illustration went with the old visitor
     # home. Reduced motion keeps it still (test_reduced_motion_keeps_the_header_still counts
     # every animation on "/"). Since spec #655 (#673) the button is only on a signed-in user's
-    # 空狀態首頁 (this user has no records); a visitor has the two doors, which do not move.
+    # 空狀態首頁 (this user has no records); a visitor has the two doors, which do not move, and
+    # since spec #741 (#752) the blue hero card's sound wave.
     def test_first_visit_home_start_button_rings_once(self):
         self.open(motion=True)
         with self.saving_artifacts():
@@ -5882,22 +5883,31 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.assertIn("data:image/svg+xml", self.mask(start, "::before"))
             self.assertGreaterEqual(self.text_contrast(start), 4.5)
 
-    def test_visitor_home_doors_stay_still_and_login_is_a_text_link(self):
+    def test_visitor_home_doors_stay_still_and_only_the_hero_wave_plays_once(self):
+        # Spec #741 (#752, the canvas's ProGuest, ADR 0077): the hero card's 14 sound wave bars
+        # fade in once, one after another, within 2 seconds; nothing else in the page moves.
         self.open(signed_in=False, motion=True)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
             main = self.page.get_by_role("main")
-            self.assertEqual(
-                self.page.evaluate(
-                    "() => document.getAnimations()"
-                    ".filter(a => a.effect.target.closest('main')).length"
-                ),
-                0,
+            animations = self.page.evaluate(
+                """() => document.getAnimations()
+                    .filter(a => a.effect.target.closest('main'))
+                    .map(a => ({ name: a.animationName,
+                                 wave: !!a.effect.target.closest('.hero-wave'),
+                                 iterations: a.effect.getComputedTiming().iterations,
+                                 end: a.effect.getComputedTiming().endTime }))"""
             )
-            login = main.get_by_role("link", name="我已經有帳號，登入")
-            self.assertEqual(self.style(login, "backgroundImage"), "none")
-            self.assertEqual(self.style(login, "textDecorationLine"), "underline")
-            self.assertGreaterEqual(login.bounding_box()["height"], 44)
+            self.assertEqual(len(animations), 14)
+            for animation in animations:
+                with self.subTest(animation=animation):
+                    self.assertEqual(
+                        (animation["name"], animation["wave"]), ("play-once-fade", True)
+                    )
+                    self.assertEqual(animation["iterations"], 1)
+                    self.assertLessEqual(animation["end"], 2000)
+            # Spec #741 acceptance 42 (grill P15): no login link in the page body.
+            expect(main.get_by_role("link", name="我已經有帳號，登入")).to_have_count(0)
 
     # Nothing anywhere on the page loops for ever (ADR 0006); this was checked beside the
     # header wave, which #748 took away.
@@ -12153,7 +12163,7 @@ class FamilyScenarioTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
         with self.saving_artifacts():
             self.open("/", signed_in=False)
             # Spec #655 (#673): the visitor's door to the zone.
-            self.main().get_by_role("link", name=re.compile("^我擔心家人的聽力")).click()
+            self.main().get_by_role("link", name=re.compile("^擔心家人的聽力")).click()
             expect(self.page).to_have_url(f"{self.live_server_url}/family")
             self.main().get_by_role("navigation", name="專區內容").get_by_role(
                 "link", name=re.compile("怎麼跟他說話")
@@ -15134,9 +15144,9 @@ class GuestAnswerAfterFiveSecondsTest(SavesFailureArtifacts, OnAPhone, StaticLiv
 
 
 class GuestHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
-    """#499 (#492 acceptance 1 and 21): the way to screening on the logged-out home (the door
-    我想了解自己的聽力 since spec #655, #673) opens the wizard's age step;
-    after answering, the home shows that result on top, the whole tile a link to its page."""
+    """#499 (#492 acceptance 1 and 21): the way to screening on the logged-out home (the blue hero
+    card's 開始 since spec #741, #752) opens the wizard's age step; after answering, the home
+    shows that result above the card, the whole tile a link to its page (#741 acceptance 43)."""
 
     fixtures = ("questions_fixture.json",)
 
@@ -15165,7 +15175,7 @@ class GuestHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
             expect(self.main().locator("#guest-home")).to_be_hidden()
-            self.main().get_by_role("link", name=re.compile("^我想了解自己的聽力")).click()
+            self.main().locator(".hero-card").get_by_role("link", name="開始").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/questionnaire_list")
             self.main().get_by_role("group", name="您目前的實際年齡？").get_by_label(
                 "65 歲以上", exact=True
@@ -15194,11 +15204,12 @@ class GuestHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             ):
                 with self.subTest(text=text):
                     expect(tile).to_contain_text(text)
-            # On top, above the two doors (spec #655 acceptance 13), and inside a phone's width.
-            first_door = self.main().locator(".home-door").first
+            # Above the blue hero card (spec #741 acceptance 43, grill P14), and inside a phone's
+            # width.
+            hero = self.main().locator(".hero-card")
             self.assertLess(
                 tile.bounding_box()["y"] + tile.bounding_box()["height"],
-                first_door.bounding_box()["y"],
+                hero.bounding_box()["y"],
             )
             self.assertLessEqual(self.page.evaluate("document.documentElement.scrollWidth"), 412)
             tile.click()
@@ -17163,16 +17174,18 @@ class FamilyDoorsAndSendTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
         self.assertEqual(self.count(column), value, column)
 
     def test_each_door_goes_to_its_page_and_its_press_counts(self):
-        # Acceptance 12 and 23.
+        # Acceptance 12 and 23. Spec #741 acceptance 42 (#752, grill P15): the hero card's 開始
+        # and two doors, 想了解助聽器 counted with the others.
         self.open_context()
         with self.saving_artifacts():
             for door, address, column in (
-                ("我想了解自己的聽力", "/questionnaire_list", "door_self"),
-                ("我擔心家人的聽力", "/family", "door_family"),
+                ("開始", "/questionnaire_list", "door_self"),
+                ("擔心家人的聽力", "/family", "door_family"),
+                ("想了解助聽器", "/guide", "door_aids"),
             ):
                 with self.subTest(door=door):
                     self.page.goto(f"{self.live_server_url}/")
-                    self.main().get_by_role("link", name=re.compile(f"^{door}")).click()
+                    self.main().get_by_role("link", name=door, exact=True).click()
                     expect(self.page).to_have_url(f"{self.live_server_url}{address}")
                     self.wait_for_count(column, 1)
 
