@@ -1771,7 +1771,8 @@
     background-color: var(--color-surface);
     text-align: center;
   }
-  .auth-alt p { margin-bottom: 0.5rem; color: var(--color-heading); }
+  /* 12px between the words and the wide button under them (#453). */
+  .auth-alt p { margin-bottom: 0.6667rem; color: var(--color-heading); }
 
   /* Answer choices: large horizontal buttons; the whole label is clickable. */
   div.choice-group {
@@ -4711,11 +4712,9 @@
     line-height: 1.3;
   }
 
-  /* A row's own button (補上, 新增, 重寄確認信): round-ended and a fingertip tall, so it sits on
-     the row's line instead of filling it. */
+  /* A row's own button (補上, 新增, 重寄確認信): round-ended as the canvas draws it, still the
+     site's 56px button height (#453 acceptance 32, ADR 0043 S1). */
   .btn-pill {
-    min-height: var(--spacing-touch);
-    padding-block: 0;
     border-radius: var(--radius-pill);
   }
 

@@ -2474,6 +2474,8 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                 # Not links, so hovering or pressing them changes nothing at all.
                 self.page.goto(f"{self.live_server_url}/account")
                 for row in self.page.locator(".settings-row").all():
+                    # #757: the account card pushed the rows down, past the first screen.
+                    row.scroll_into_view_if_needed()
                     before = (row.bounding_box(), row.evaluate(background))
                     row.hover()
                     self.assertEqual((row.bounding_box(), row.evaluate(background)), before)
@@ -8500,10 +8502,11 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     def test_account_details_are_flat_rows_and_link_rows_are_list_rows(self):
         with self.saving_artifacts():
             self.visit(True, "/account")
-            details = self.main().get_by_role("region", name="我的帳號").locator("dl")
+            # #757: the name is in the pale blue account card above the rows.
+            details = self.main().get_by_role("region", name="我的帳號").locator(".settings-group")
             self.assert_flat(details)
             rows = details.locator(":scope > div")
-            self.assertEqual(rows.count(), 3)
+            self.assertEqual(rows.count(), 2)
             self.assertEqual(self.style(rows.nth(0), "borderTopWidth"), "0px")
             for row in rows.all()[1:]:
                 with self.subTest(row=row.inner_text()):
