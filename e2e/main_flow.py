@@ -10723,16 +10723,15 @@ class ContentAndContact576Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
     def test_next_chapter_row_leads_on_and_fits(self):
         with self.saving_artifacts():
             self.open("/guide/assessment", self.PHONE, signed_in=False)
-            row = self.main().get_by_role("link", name="下一章 九號表：申請助聽器補助", exact=True)
+            # #760: signed out the 補助站 are folded, so 九號表 is passed by, as the route does.
+            row = self.main().get_by_role("link", name="下一章 去找聽力師之前", exact=True)
             self.assertGreaterEqual(row.bounding_box()["height"], 44)
             back = self.main().get_by_role("link", name="回到助聽器選配與補助").last
             self.assertLess(row.bounding_box()["y"], back.bounding_box()["y"])
             self.assert_fits_a_phone_at_double_text_size("/guide/assessment next chapter", 390)
             self.double_text(False)
             row.click()
-            expect(self.main().get_by_role("heading", level=1)).to_have_text(
-                "九號表：申請助聽器補助"
-            )
+            expect(self.main().get_by_role("heading", level=1)).to_have_text("去找聽力師之前")
             self.open("/guide/form-25", self.PHONE, signed_in=False)
             expect(self.main().get_by_role("link", name=re.compile("^下一章"))).to_have_count(0)
 

@@ -13,12 +13,14 @@ from screening.audiogram import FittingAdvice, over_mild
 from screening.fitting_route import (
     AUDIOGRAM,
     GUIDE_PAGE,
+    STOPS,
     SUBSIDY_STOPS,
     fitting_state,
     keep_view,
     not_applicable_stops,
     stops_on_route,
     subsidy_declined,
+    subsidy_stops_shown,
 )
 from screening.forms import STOP_QUESTIONS
 from screening.main_flow import get_user_state
@@ -95,7 +97,7 @@ class GuideChapter:
     description: str = field(kw_only=True)
 
 
-# The hearing-aid guide's chapters in reading order (spec #218).
+# The hearing-aid guide's chapters (spec #218); read in the fitting route's order (#760).
 GUIDE_CHAPTERS = (
     GuideChapter(
         "before-you-go",
@@ -501,20 +503,27 @@ def guide_chapter(request, chapter):
     return _chapter_page(request, found)
 
 
+def _next_chapter(chapter, aid):
+    """#760: the next stop on the fitting route with a chapter, the 補助站 skipped while folded
+    (ADR 0063), as the route goes; None after the last. #579 (spec #576): the route's progress
+    is not read, only whether the 補助站 are on it."""
+    chapters = {c.slug: c for c in GUIDE_CHAPTERS}
+    on_route = stops_on_route(subsidy_stops_shown(aid))
+    later = STOPS[STOPS.index(chapter.slug) + 1 :]
+    return next((chapters[slug] for slug in later if slug in chapters and slug in on_route), None)
+
+
 def _chapter_page(request, chapter, question=None):
     """A chapter, with its stop's question at the foot (#293) while a signed-in, consented
     user has not answered it, and 已記下 with the answer once they have (#294), but neither
     where the stop is 不適用 (#291 review) or a 補助站 after 沒有 (#596); question is a form sent
     back with its errors."""
-    # #579 (spec #576): the next chapter in reading order, the same for everyone; the route's
-    # progress is not read. None after the last.
-    following = GUIDE_CHAPTERS[GUIDE_CHAPTERS.index(chapter) + 1 :]
-    context = {"chapter": chapter, "next_chapter": following[0] if following else None}
+    user = request.user
+    aid = models.AidAndSubsidy.for_user(user) if user.is_authenticated else None
+    context = {"chapter": chapter, "next_chapter": _next_chapter(chapter, aid)}
     if chapter.extra_context:
         context.update(chapter.extra_context(request))
-    user = request.user
     asked = chapter.slug in STOP_QUESTIONS and user.is_authenticated and user.has_consented()
-    aid = models.AidAndSubsidy.for_user(user) if asked else None
     declined = subsidy_declined(aid) and chapter.slug in SUBSIDY_STOPS
     if asked and (chapter.slug in not_applicable_stops(aid) or declined):
         asked, question = False, None
