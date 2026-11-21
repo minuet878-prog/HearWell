@@ -1,50 +1,37 @@
 {% extends "screening/layout.html" %}
-{% load custom_filters %}
+{% load static custom_filters %}
 
+{% block extra_head %}<script type="module" src="{% static 'screening/frontend/card-stack.js' %}"></script>{% endblock %}
 
 {% block body %}
 {# #269 (spec #268): the 了解 tab's entry. #469 (the #468 mockup A): one list of rows (E), the same as the family zone's and the catalogue's, without group titles. #}
 {# #366: card titles wrap into even lines, never one character alone on the last. #}
 {% include "screening/bird_dialogue.html" with lead="learn"|page_lead title="了解" %}
+{# #754 (spec #741 acceptance 51, 56; P22, P23; the canvas's ProLearn): the stacked cards, one for each item with its own drawing, the one most about the 現在這一步 first (the view's stack). The cards behind are inert until card-stack.js brings each to the front, so their drawings wait to play (in-view.js). Without JavaScript the first card shows alone, the whole list below. #}
+<section class="card-stack" aria-roledescription="輪播" aria-label="了解卡片">
+    <div class="card-stack-cards">
+    {% for item in stack %}
+        <article class="hero-card card-stack-card" role="group" aria-roledescription="卡片" aria-label="第 {{ forloop.counter }} 張，共 {{ stack|length }} 張：{{ item.title }}"{% if not forloop.first %} inert{% endif %}>
+            {% include "screening/learn_drawing.html" with key=item.key %}
+            <h2 class="hero-card-title">{{ item.title }}</h2>
+            <p>{{ item.line }}</p>
+            <a class="btn btn-hero btn-lg" href="{% url item.url_name %}">{{ item.button }}<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 6l6 6-6 6"/></svg></a>
+        </article>
+    {% endfor %}
+    </div>
+    {% include "screening/card_stack_controls.html" with cards=stack %}
+</section>
 <ul class="list-unstyled text-balance">
-    <li><a class="link-card action-card" href="{% url 'guide' %}">
-        {% include "screening/action_icon.html" with icon="guide" %}
+    {% for item in items %}
+    {# Spec #633 (#640, the #634 mockup's A): 關於聽伴 last; #487: the simulator after the family zone. #}
+    <li><a class="link-card action-card" href="{% url item.url_name %}">
+        {% include "screening/action_icon.html" with icon=item.icon %}
         <span class="link-card-body">
-            <span class="link-card-title">了解助聽器選配與補助</span>
+            <span class="link-card-title">{{ item.title }}</span>
+            {% if item.row_line %}<span>{{ item.row_line }}</span>{% endif %}
         </span>
         <span class="link-card-arrow" aria-hidden="true">›</span>
     </a></li>
-    <li><a class="link-card action-card" href="{% url 'family_guide' %}">
-        {% include "screening/action_icon.html" with icon="family" %}
-        <span class="link-card-body">
-            <span class="link-card-title">家人專區：溝通與陪伴</span>
-        </span>
-        <span class="link-card-arrow" aria-hidden="true">›</span>
-    </a></li>
-    {# #487 (the #485 mockup ⑤): the hearing loss simulator, after the family zone. #}
-    <li><a class="link-card action-card" href="{% url 'hearing_loss_simulator' %}">
-        {% include "screening/action_icon.html" with icon="sound" %}
-        <span class="link-card-body">
-            <span class="link-card-title">聽損模擬：聽聽看他聽到的聲音</span>
-        </span>
-        <span class="link-card-arrow" aria-hidden="true">›</span>
-    </a></li>
-    {# #397 (spec #396): the Q&A assistant, #373's entry 1. #}
-    <li><a class="link-card action-card" href="{% url 'qa_home' %}">
-        {% include "screening/action_icon.html" with icon="question" %}
-        <span class="link-card-body">
-            <span class="link-card-title">問答小助手：常見問題一次查</span>
-        </span>
-        <span class="link-card-arrow" aria-hidden="true">›</span>
-    </a></li>
-    {# Spec #633 (#640, the #634 mockup's A): 關於聽伴 last, its line under the title as the family zone's cards have one. #}
-    <li><a class="link-card action-card" href="{% url 'about' %}">
-        {% include "screening/action_icon.html" with icon="info" %}
-        <span class="link-card-body">
-            <span class="link-card-title">關於聽伴</span>
-            <span>誰做的、內容怎麼查核</span>
-        </span>
-        <span class="link-card-arrow" aria-hidden="true">›</span>
-    </a></li>
+    {% endfor %}
 </ul>
 {% endblock %}

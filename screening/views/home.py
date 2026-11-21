@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import date
 
 from django.shortcuts import render
@@ -72,7 +73,70 @@ def about(request):
     return render(request, "screening/about.html", {"checked_on": ABOUT_CHECKED_ON})
 
 
+@dataclass(frozen=True)
+class LearnItem:
+    """One of the 了解 page's items: its card in the stack and its row in the list (#754)."""
+
+    key: str  # learn_drawing.html's drawing on its card
+    url_name: str
+    icon: str  # action_icon.html's, on its row
+    title: str
+    line: str  # under the card's title
+    button: str  # the card's white button
+    row_line: str = ""  # under the row's title
+
+
+# The list's order (#469, #487, #640), its rows' words the canvas's ProLearn. The cards' lines
+# and buttons past the simulator's are drafts for the owner's review.
+SIMULATOR = LearnItem(
+    "simulator",
+    "hearing_loss_simulator",
+    "sound",
+    "聽損模擬",
+    "了解聽損者的感覺",
+    "聽聽看",
+    "聽聽看他聽到的聲音",
+)
+GUIDE = LearnItem(
+    "guide", "guide", "guide", "了解助聽器選配與補助", "從聽力檢查到申請補助", "開始了解"
+)
+QA = LearnItem(
+    "qa", "qa_home", "question", "問答小助手", "常見問題一次查", "問問看", "常見問題一次查"
+)
+LEARN_ITEMS = (
+    GUIDE,
+    LearnItem("family", "family_guide", "family", "家人專區", "溝通與陪伴", "去看看", "溝通與陪伴"),
+    SIMULATOR,
+    QA,
+    LearnItem(
+        "about",
+        "about",
+        "info",
+        "關於聽伴",
+        "誰做的、內容怎麼查核",
+        "認識聽伴",
+        "誰做的、內容怎麼查核",
+    ),
+)
+# Spec #741 P23: the first card is the item most about the 現在這一步; about none, the
+# simulator. Step 2's 查詢醫療院所 is the assistant's answer; the guide is steps 4 to 6's, its
+# 配戴之後 chapter step 6's. Drafts for the owner's review.
+FIRST_FOR_STEP = {2: QA, 4: GUIDE, 5: GUIDE, 6: GUIDE}
+
+
 def learn(request):
     # #269 (spec #268): open without logging in, like the guide and the family page it leads to.
-    # It reads no records, so it is not a 健康資料頁面.
-    return render(request, "screening/learn.html")
+    # #754 (spec #741 P23): the stacked cards, the item most about the 現在這一步 first (the
+    # simulator when not logged in or without a record, as the home page has no 照顧旅程
+    # then), the rest in the list's order; the whole list under them.
+    user = request.user
+    first = SIMULATOR
+    if user.is_authenticated and (user.submissions.defined().exists() or user.audiograms.exists()):
+        first = FIRST_FOR_STEP.get(care_journey(user, timezone.localdate()).current, SIMULATOR)
+    stack = [first, *(item for item in LEARN_ITEMS if item != first)]
+    response = render(request, "screening/learn.html", {"stack": stack, "items": LEARN_ITEMS})
+    # Logged in, the first card follows this account's records: never cached (CODING_STANDARDS
+    # 24, as the home page).
+    if user.is_authenticated:
+        add_never_cache_headers(response)
+    return response

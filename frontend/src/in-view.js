@@ -47,7 +47,9 @@ function countUp(element, win) {
 //   play-once-gauge classes (see there for what each needs).
 // - data-count-up on an element whose whole text is a number (a score, a number of days): it
 //   counts up from 0 once in view. It needs no data-play-in-view of its own.
-// Starts each of them the first time it is in view, and stops watching it.
+// Starts each of them the first time it is in view, and stops watching it. One inside something
+// inert (a stacked card behind the front one, #754) is not seen yet: it waits until card-stack.js
+// says, with a card-stack-show event, that its card came to the front.
 export function setUpPlayInView(win = window) {
   const doc = win.document;
 
@@ -62,6 +64,7 @@ export function setUpPlayInView(win = window) {
   const check = () => {
     const inset = tabBarInset(win);
     waiting = waiting.filter((element) => {
+      if (element.closest("[inert]")) return true;
       if (!isInView(element.getBoundingClientRect(), win.innerHeight, inset)) return true;
       element.setAttribute("data-in-view", "");
       if (element.hasAttribute("data-count-up")) countUp(element, win);
@@ -70,11 +73,13 @@ export function setUpPlayInView(win = window) {
     if (waiting.length === 0) {
       win.removeEventListener("scroll", check);
       win.removeEventListener("resize", check);
+      doc.removeEventListener("card-stack-show", check);
       layout?.disconnect();
     }
   };
   win.addEventListener("scroll", check, { passive: true });
   win.addEventListener("resize", check);
+  doc.addEventListener("card-stack-show", check);
   check();
   // Taken over: layout.html's fallback, which would play them all at once, is called off.
   win.clearTimeout(win.playInViewFallback);

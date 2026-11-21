@@ -7,6 +7,9 @@
 // Without JavaScript only the first card shows (site.css), the page's list below it. Changing
 // card is the user's own doing, so it slides (not ADR 0077's play-once); under reduced motion
 // the card changes without sliding or following the finger.
+// A card's own play-once drawing (the learn page's, #754) plays when the card is at the front:
+// write the cards after the first inert, so in-view.js holds their drawings, and each card coming
+// to the front says so with a card-stack-show event.
 export const DRAG_THRESHOLD = 50; // px
 const MOVED = 4; // px: past this a press is a drag, not a tap on the card's link
 const PEEK = 2; // cards shown behind the front one on each side
@@ -44,6 +47,7 @@ export function setUpCardStack(root, win = window) {
     else if (cards.some((card) => card.inert && card.contains(focused))) {
       cards[index].querySelector("a, button")?.focus();
     }
+    cards[index].dispatchEvent(new Event("card-stack-show", { bubbles: true }));
   }
 
   prev.addEventListener("click", () => show(index - 1));
