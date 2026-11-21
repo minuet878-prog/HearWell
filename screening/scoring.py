@@ -57,12 +57,12 @@ UNKNOWN_ADVICE = (
     "若對聽力有疑慮，請直接諮詢聽力師或耳鼻喉科醫師。"
 )
 
-# Short column names for the norm chart on the history page.
 # An IOI-HA result page's 和上一次比較 (#746): each item's change, by the sign of this answer
 # less the last one, a higher one better as every item is best at 5.
 IOI_HA_ITEM_CHANGE = {1: "變好", -1: "變差", 0: "一樣"}
 
 
+# Short column names for the norm chart on the history page.
 IOI_HA_ITEM_NAMES = {
     1: "使用時間",
     2: "幫助程度",
