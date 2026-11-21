@@ -1,11 +1,12 @@
 {% extends "screening/layout.html" %}
+{% load custom_filters %}
 
 {% block title %}意見回饋｜聽伴{% endblock %}
 
 {% block body %}
 {# Spec #633 (#636), the #634 mockup's A: the reminder and the urgent box come before the form, so they are read before writing. #}
 <div class="narrow-form">
-    <h1 class="h3 mt-4">意見回饋</h1>
+    {% include "screening/bird_dialogue.html" with lead="feedback"|page_lead title="意見回饋" %}
     {% if page_words %}<p class="tip-box">您是從「{{ page_words }}」過來的。</p>{% endif %}
     {# #642: the owner's reminder, chosen in #635. #}
     <p class="tip-box">這裡不是諮詢，不會馬上回覆。您寫的內容會匿名保存 90 天，請不要輸入姓名、電話、身分證字號、病歷號碼。</p>

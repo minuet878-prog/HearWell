@@ -1,11 +1,12 @@
 {% extends "screening/layout.html" %}
+{% load custom_filters %}
 
 {% block title %}這個 email 已經有帳號｜聽伴{% endblock %}
 
 {% block body %}
 {# Spec #505 acceptance 12-14 (the #507 mockup 4, W11, ADR 0057): first time with Google, but the email is already an account's. Never that account's name (anyone could look an email up). #}
 <div class="narrow-form">
-    <h1 class="h3 mt-4">這個 email 已經有帳號</h1>
+    {% include "screening/bird_dialogue.html" with lead="google_same_email"|page_lead title="這個 email 已經有帳號" %}
     <div class="auth-form">
         <p class="wrap-anywhere">{{ email }} 已經用在一個聽伴帳號。</p>
         <p>如果那是您的帳號，請先用帳號密碼登入，再到帳號設定新增 Google 登入。這樣您的紀錄都會在同一個帳號裡。</p>

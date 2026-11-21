@@ -110,7 +110,7 @@ class CopyTests(TestCase):
     def test_login_title_in_chinese(self):
         self.client.logout()
         response = self.client.get(reverse("login"))
-        self.assertContains(response, '<h1 class="h3 mt-4">登入</h1>', html=True)
+        self.assertContains(response, '<h1 class="bird-title">登入</h1>', html=True)
         self.assertNotContains(response, "Welcome")
 
     def test_sign_in_status_in_chinese(self):
@@ -672,7 +672,10 @@ class PageFlowTests(TestCase):
     def _assert_progress(self, page):
         # Answer page tidy-up: the topic is the title, the code and count one line under it.
         title = r"<h1[^>]*>\s*聽力對生活的影響\s*</h1>"
-        self.assertRegex(page, title + r"\s*<p[^>]*>HHIE-S・共 10 題・大約 3 分鐘</p>")
+        # #749: the title in the bird's bubble, the line right under the bird.
+        self.assertRegex(
+            page, title + r"\s*</div>\s*</div>\s*<p[^>]*>HHIE-S・共 10 題・大約 3 分鐘</p>"
+        )
         for n in (1, 10):
             with self.subTest(question=n):
                 self.assertRegex(page, rf"<legend[^>]*>(\s*<[^>]+>)*\s*第 {n} 題／共 10 題")

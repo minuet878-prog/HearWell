@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block title %}分享報告給家人｜聽伴{% endblock %}
 
@@ -11,7 +11,7 @@
 
 {% block body %}
 {# #193 (spec #183 stories 43-54): three steps, what the family will see, make the link, send it. #}
-<h1 class="h3 mt-2">分享報告給家人</h1>
+{% include "screening/bird_dialogue.html" with lead="share_report"|page_lead title="分享報告給家人" %}
 {% if not has_records and not share %}
 {% include "screening/empty_state.html" with icon="share" title="還沒有可以分享的紀錄" text="做完第一份問卷或記錄聽力圖，就能傳給家人看。" button="做第一份問卷" href=first_questionnaire_href %}
 {% else %}

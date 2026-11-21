@@ -1,10 +1,11 @@
 {% extends "screening/layout.html" %}
+{% load custom_filters %}
 
 {% block title %}打字問的結果｜聽伴{% endblock %}
 
 {% block body %}
 {# #399 (spec #396, prototype #373 B): the questions a typed question matched, from the session; the question itself is not kept. #}
-<h1 class="h3 mt-2">打字問的結果</h1>
+{% include "screening/bird_dialogue.html" with lead="qa_results"|page_lead title="打字問的結果" %}
 {% if faqs %}
 <p>找到 {{ faqs|length }} 題可能相關，點題目看答案。</p>
 <ul class="list-unstyled mb-0">

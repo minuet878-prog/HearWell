@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 
 {% block extra_head %}
@@ -9,7 +9,7 @@
 {% block body %}
 {# #432 (spec #426): the words are in family_deadlines.py, drafts until the owner has reviewed them. An ordinary POST form, so it works without JavaScript; the results come back in the same response and nothing is kept. #}
 <article class="family-guide family-visits wrap-anywhere">
-<h1 class="h3 mt-4">期限試算</h1>
+{% include "screening/bird_dialogue.html" with lead="family_deadlines"|page_lead title="期限試算" %}
 <p class="no-print">{{ intro }}</p>
 
 {% if form.errors %}

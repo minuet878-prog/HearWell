@@ -1,4 +1,5 @@
 {% extends "screening/layout.html" %}
+{% load custom_filters %}
 
 {% block title %}取消 email 重測提醒｜聽伴{% endblock %}
 
@@ -7,7 +8,7 @@
 {% block body %}
 {# #662 (spec #656 acceptance 32), the #657 mockup's cancel page B: which account, then the one button. Opening it cancels nothing. #}
 <div class="narrow-form">
-    <h1 class="h3 mt-4">取消 email 重測提醒</h1>
+    {% include "screening/bird_dialogue.html" with lead="reminder_cancel"|page_lead title="取消 email 重測提醒" %}
     <dl class="settings-group rounded-(--radius-medium) bg-surface px-4">
         <div class="settings-row">
             <dt class="settings-row-note">帳號</dt>

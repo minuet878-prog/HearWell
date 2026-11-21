@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block extra_head %}
 <script defer src="{% static 'screening/share-button.js' %}"></script>
@@ -8,7 +8,7 @@
 {% block body %}
 {# Spec #655 (#675, the #669 mockup's 3-1 A, 3-2 and 3-3 A): one of the three pages for what families ask most, in the owner's words (family_zone.py). Only the zone's own pieces: each part a heading and a list (grill Q1: to read, nothing to tick), a 提示框, the Q&A assistant's urgent box, 傳給他, the closing words and the sources. #}
 <article class="family-guide wrap-anywhere">
-<h1 class="h3 mt-4">{{ page.title }}</h1>
+{% include "screening/bird_dialogue.html" with lead="family_question"|page_lead title=page.title %}
 <p>{{ page.intro }}</p>
 {% if page.tip_first %}<p class="tip-box">{{ page.tip }}</p>{% endif %}
 {% for heading, items in page.parts %}

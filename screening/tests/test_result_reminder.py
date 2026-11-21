@@ -69,9 +69,10 @@ class ResultReminderTests(TestCase):
                 self.assertIn(f'action="{reverse("retest_reminder")}"', block)
                 self.assertIn('name="enabled" value="1"', block)
                 self.assertIn(f'name="next" value="{url}"', block)
-                # An outline button: the page's one solid button stays 建議您下一步's (ADR 0043).
+                # An outline button: the page's main button stays 建議您下一步's, white on its
+                # hero card (ADR 0076), and the page has no solid one.
                 self.assertIn('class="btn btn-outline-primary', block)
-                self.assertEqual(page.count("btn-primary"), 1)
+                self.assertEqual(page.count("btn-primary"), 0)
 
                 response = self.client.post(
                     reverse("retest_reminder"), {"enabled": "1", "next": url}

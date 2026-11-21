@@ -29,7 +29,9 @@ QUESTIONNAIRES = {
 ALWAYS_AIDED = ("ioi-ha", "sadl")
 # The header: the title, the line under it (questionnaire, date, wearing), then the paragraph after
 # it, the header's last.
-HEADER = re.compile(r"<h1[^>]*>[^<]*</h1>\s*<p[^>]*>[^<]*</p>\s*<p[^>]*>([^<]*)</p>(?!\s*<p[\s>])")
+HEADER = re.compile(
+    r"<h1[^>]*>[^<]*</h1>\s*</div>\s*</div>\s*<p[^>]*>[^<]*</p>\s*<p[^>]*>([^<]*)</p>(?!\s*<p[\s>])"
+)
 FIRST = "這是您第 1 次做這份問卷。"
 
 

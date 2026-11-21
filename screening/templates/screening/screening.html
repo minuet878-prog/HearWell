@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block title %}{{ questionnaire.questionnaire_name }} 作答｜聽伴{% endblock %}
 
@@ -35,7 +35,7 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
 <div>
     {# Readability batch 1 (the owner's A): React folds this head away past the first screen (answer-main.jsx); the title and count stay for screen readers. #}
     <div id="answer-head">
-    <h1 class="h3 mt-4">{{ questionnaire.definition.topic }}</h1>
+    {% include "screening/bird_dialogue.html" with lead="screening"|page_lead title=questionnaire.definition.topic %}
     <p class="answer-meta">{{ questionnaire.questionnaire_name }}・共 {{ question_count }} 題・大約 {{ questionnaire.definition.minutes }} 分鐘</p>
     {# Spec #611 Q2: the second sentence only where answers are kept; React shows it once it takes over, so the form and a guest (no draft, ADR 0055) say the first only. #}
     <p class="answer-reassure">這不是考試，沒有對錯。{% if use_react and not guest %}<span data-draft-line hidden>答到一半離開，答案會留在這支手機，7 天內回來可以接著答。</span>{% endif %}</p>

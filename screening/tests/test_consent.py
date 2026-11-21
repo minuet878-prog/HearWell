@@ -289,8 +289,10 @@ class ConsentPageTests(TestCase):
     def test_title_and_step_on_top_and_the_rest_below(self):
         main = self.client.get(reverse("consent")).content.decode()
         main = main.split('id="main-content"', 1)[1].split("</main>", 1)[0]
-        top, below = main.split("</div>\n</div>", 1)  # the step bar, then its box
-        self.assertIn('<h1 class="h3 mt-4">開始使用之前</h1>', top)
+        # The bird and the step bar, then the rest.
+        cut = main.index("<p>聽伴會保存您的篩檢作答")
+        top, below = main[:cut], main[cut:]
+        self.assertIn('<h1 class="bird-title">開始使用之前</h1>', top)
         self.assertIn("第 2 步／共 2 步：同意隱私權", top)
         self.assertNotIn("auth-hero", main)
         self.assertIn("聽伴會保存您的篩檢作答", below)

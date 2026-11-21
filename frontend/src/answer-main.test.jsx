@@ -42,7 +42,7 @@ const secondSentence = () => reassure().querySelector("[data-draft-line]");
 function page() {
   document.body.innerHTML = `
     <div id="answer-head">
-      <h1>聽力對生活的影響</h1>
+      <div class="bird-dialogue"><div class="bird-bubble"><p class="bird-lead">慢慢來，不用急。</p><h1 class="bird-title">聽力對生活的影響</h1></div></div>
       <p class="answer-meta">HHIE-S・共 10 題・大約 3 分鐘</p>
       <p class="answer-reassure">${FIRST}<span data-draft-line hidden>${SECOND}</span></p>
       <p class="answer-guest-line">沒註冊時只計算、不儲存。<a href="/privacy">隱私權說明</a></p>
@@ -189,11 +189,12 @@ describe("React entry", () => {
     const screenReaderOnly = (selector) => part(selector).classList.contains("visually-hidden");
     const button = (name) => [...app().querySelectorAll("button")].find((b) => b.textContent.includes(name));
     await waitFor(() => expect(app().textContent).toContain("這次填答時，您有沒有戴助聽器？"));
-    expect([screenReaderOnly("h1"), screenReaderOnly(".answer-meta"), part(".answer-guest-line").hidden]).toEqual([false, false, false]);
+    // #749: the bird and its bubble, the title in it, go together.
+    expect([screenReaderOnly(".bird-dialogue"), screenReaderOnly(".answer-meta"), part(".answer-guest-line").hidden]).toEqual([false, false, false]);
     act(() => app().querySelector("input[type=radio]").click());
     act(() => button("下一題").click());
     await waitFor(() => expect(app().textContent).toContain("第1題的完整題目文字"));
-    expect([screenReaderOnly("h1"), screenReaderOnly(".answer-meta"), part(".answer-guest-line").hidden]).toEqual([true, true, true]);
+    expect([screenReaderOnly(".bird-dialogue"), screenReaderOnly(".answer-meta"), part(".answer-guest-line").hidden]).toEqual([true, true, true]);
   });
 
   it("says both sentences once React takes over and keeps a draft (#611 Q2, acceptance 61)", async () => {

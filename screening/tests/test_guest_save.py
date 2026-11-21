@@ -436,7 +436,7 @@ class GuestAskRedirectTests(GuestSaveTestCase):
 
 
 ASK_TITLE = (
-    '<h1 class="h3 mt-4" data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">'
+    '<h1 class="bird-title" data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">'
     "要把這次結果存到這個帳號嗎？</h1>"
 )
 YES = "要，存進這個帳號"
@@ -467,7 +467,7 @@ class GuestAskQuestionTests(GuestSaveTestCase):
         response = self.client.get(SAVE_FROM_CARD)
         self.assertContains(
             response,
-            '<h1 class="h3 mt-4" data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">'
+            '<h1 class="bird-title" data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">'
             "保存這次結果</h1>",
         )
         self.assertContains(

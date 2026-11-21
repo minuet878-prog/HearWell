@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 
 {% block extra_head %}
@@ -8,7 +8,7 @@
 
 {% block body %}
 {# #487 (spec #484, the #485 mockup E1 + V1, ADR 0053): the degrees, the dark player and the hint are React's; without JavaScript the sentences and the hint are here instead. #}
-<h1 class="h3 mt-4">聽損模擬</h1>
+{% include "screening/bird_dialogue.html" with lead="hearing_loss_simulator"|page_lead title="聽損模擬" %}
 <p>聽聽看他聽到的聲音：選一種程度，按播放，播放時可以切到「正常聽」比一比。</p>
 {{ data|json_script:"simulator-data" }}
 <div id="simulator"></div>

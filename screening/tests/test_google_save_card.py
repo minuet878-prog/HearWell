@@ -108,7 +108,7 @@ class NewAccountTests(GoogleSaveTestCase):
         page = self.client.get(SAVE_FROM_CARD)
         self.assertContains(
             page,
-            '<h1 class="h3 mt-4" data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">'
+            '<h1 class="bird-title" data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">'
             "保存這次結果</h1>",
         )
         self.assertNotContains(page, "data-asking")
