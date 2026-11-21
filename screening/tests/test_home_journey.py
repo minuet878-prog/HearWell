@@ -266,14 +266,27 @@ class JourneyHomeTests(HomeJourneyTestCase):
             tile[3],
         )
 
-    def test_the_next_screening_tile_is_its_ring_and_day(self):
-        # Spec #741 acceptance 41 (the canvas's ProHome): 離下次篩檢, the countdown ring
-        # (countdown_ring.html) of the days left and the day under it.
+    def test_the_next_screening_tile_is_its_semicircle_and_day(self):
+        # Spec #741 acceptance 41 (the canvas's ProHome; the owner's 2026-11-21 choice, ADR
+        # 0075): 離下次篩檢, a semicircle drawn as 上次結果's gauge beside it
+        # (countdown_gauge.html), its grey track from foot to foot and the blue arc of the wait
+        # gone; the days left under it, then the day. 2026/09/26 to 2027/03/26 is 181 days, 47
+        # of them gone.
         self.answer(on=date(2026, 9, 26))
         tiles = self.tiles(self.main())
         tile = tiles.split('<div class="journey-tile journey-tile-info">')[-1]
         self.assertEqual(self.text(tile), "離下次篩檢 還有 134 天 2027/03/26")
-        self.assertIn('<span class="countdown-ring-number" data-count-up>134</span>', tile)
+        self.assertIn('<svg class="gauge-arcs" viewBox="0 0 318 164" aria-hidden="true"', tile)
+        self.assertIn(
+            '<path class="countdown-gauge-track" d="M35.0 150.0A124 124 0 0 1 283.0 150.0"/>',
+            tile,
+        )
+        self.assertIn(
+            '<path class="countdown-gauge-arc play-once-ring" pathLength="1" '
+            'd="M35.0 150.0A124 124 0 0 1 74.0 59.7"/>',
+            tile,
+        )
+        self.assertIn('<span class="countdown-gauge-number" data-count-up>134</span>', tile)
         self.assertIn('<span class="journey-tile-small">2027/03/26</span>', tile)
 
     def test_without_a_day_to_count_to_the_tile_keeps_its_plain_label(self):
@@ -508,14 +521,15 @@ class JourneyHomeTests(HomeJourneyTestCase):
             "還有 45 天 2026/12/27 起可以再做一次",
         )
         self.assertEqual(self.buttons(card), [])
-        # The ring: 46 of the 91 days gone, drawn once in view (ADR 0077); the days count up
-        # while a screen reader hears the number itself.
+        # The semicircle (ADR 0075, 2026-11-21): 46 of the 91 days gone, its blue arc from the
+        # left foot just past the top, drawn once in view (ADR 0077); the days count up while a
+        # screen reader hears the number itself.
         self.assertIn(
-            '<path class="countdown-ring-arc play-once-ring" pathLength="1" '
-            'd="M52 8A44 44 0 1 1 50.5 96"/>',
+            '<path class="countdown-gauge-arc play-once-ring" pathLength="1" '
+            'd="M35.0 150.0A124 124 0 0 1 161.1 26.0"/>',
             card,
         )
-        self.assertIn('<span class="countdown-ring-number" data-count-up>45</span>', card)
+        self.assertIn('<span class="countdown-gauge-number" data-count-up>45</span>', card)
 
     def test_step_6_at_3_months_is_its_button_alone(self):
         # Spec #741 acceptance 25.
@@ -546,10 +560,22 @@ class JourneyHomeTests(HomeJourneyTestCase):
             self.answer(code=ioi_ha.CODE, on=date(2026, 5, 10))
             self.answer(code=ioi_ha.CODE, on=date(2026, 9, 1))
 
-        for name, records, words, buttons in (
-            ("counting", counting, "還有 180 天 下次篩檢 2027/05/11", []),
-            ("due", due, "時間到了！ 再做一次（大約 3 分鐘）", [(hhie, "再做一次（大約 3 分鐘）")]),  # noqa: RUF001
-            ("none", none, "還沒有完成第一次篩檢。 去做問卷", [(hhie, "去做問卷")]),
+        # Counting down, the semicircle (ADR 0075, 2026-11-21): 1 of 181 days gone, a sliver of
+        # blue at the left foot.
+        sliver = (
+            '<path class="countdown-gauge-arc play-once-ring" pathLength="1" '
+            'd="M35.0 150.0A124 124 0 0 1 35.0 147.8"/>'
+        )
+        for name, records, words, buttons, arc in (
+            ("counting", counting, "還有 180 天 下次篩檢 2027/05/11", [], sliver),
+            (
+                "due",
+                due,
+                "時間到了！ 再做一次（大約 3 分鐘）",  # noqa: RUF001
+                [(hhie, "再做一次（大約 3 分鐘）")],
+                None,
+            ),
+            ("none", none, "還沒有完成第一次篩檢。 去做問卷", [(hhie, "去做問卷")], None),
         ):
             with self.subTest(name):
                 self.fresh_user(name)
@@ -557,6 +583,10 @@ class JourneyHomeTests(HomeJourneyTestCase):
                 card = self.card(self.main())
                 self.assertEqual(self.text(card), f"現在這一步 半年後再篩檢 {words}")
                 self.assertEqual(self.buttons(card), buttons)
+                if arc:
+                    self.assertIn(arc, card)
+                else:
+                    self.assertNotIn("countdown-gauge", card)
 
     def test_done_steps_say_their_day(self):
         # #458 D7.
@@ -753,14 +783,14 @@ class StepInteractionTests(HomeJourneyTestCase):
         self.step_4_with_three_done()
         main = self.main()
         # Played once the 現在這一步's row is in view (ADR 0029; since #751 its card is the hero
-        # card on top, which plays on its own); each stamp, step 7's countdown ring, the hero card
-        # and the two tiles' drawings wait too.
+        # card on top, which plays on its own); each stamp, step 7's countdown semicircle, the hero
+        # card and the two tiles' drawings wait too.
         self.assertRegex(
             main,
             r'<li class="journey-step is-current" style="--journey-step: 3" aria-current="step" '
             r'data-play-in-view>\s*<span class="journey-dot">4</span>',
         )
-        rings = main.count('<div class="countdown-ring">')
+        rings = main.count('<div class="countdown-gauge">')
         self.assertEqual(rings, 2)
         gauges = main.count('<div class="gauge" data-play-in-view>')
         self.assertEqual(gauges, 1)
