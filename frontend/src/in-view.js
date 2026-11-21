@@ -50,17 +50,27 @@ function countUp(element, win) {
 //   of its own.
 // Starts each of them the first time it is in view, and stops watching it. One inside something
 // inert (a stacked card behind the front one, #754) is not seen yet: it waits until card-stack.js
-// says, with a card-stack-show event, that its card came to the front.
+// says, with a card-stack-show event, that its card came to the front. One put in later (the
+// guest result page's result, fetched first: Codex cross review of #741) is watched from then on;
+// one that played already stays played.
+const MARKED = "[data-play-in-view]:not([data-in-view]), [data-count-up]:not([data-count-done]):not([data-in-view])";
+
 export function setUpPlayInView(win = window) {
   const doc = win.document;
+  const reducedMotion = win.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  // Reduced motion: every number is simply its end value (site.css has no animation to hold).
-  if (win.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    for (const element of doc.querySelectorAll("[data-count-up]")) {
-      element.setAttribute("data-count-done", "");
+  // The marked elements in these nodes, the nodes included. Reduced motion: every number is
+  // simply its end value (site.css has no animation to hold).
+  const marked = (nodes) => {
+    const found = nodes.flatMap((node) => [node, ...node.querySelectorAll(MARKED)]);
+    if (reducedMotion) {
+      for (const element of found) {
+        if (element.matches("[data-count-up]")) element.setAttribute("data-count-done", "");
+      }
     }
-  }
-  let waiting = [...doc.querySelectorAll("[data-play-in-view], [data-count-up]:not([data-count-done])")];
+    return found.filter((element) => element.matches(MARKED));
+  };
+  let waiting = marked([doc.documentElement]);
   let layout;
   const check = () => {
     const inset = tabBarInset(win);
@@ -78,12 +88,27 @@ export function setUpPlayInView(win = window) {
       layout?.disconnect();
     }
   };
-  win.addEventListener("scroll", check, { passive: true });
-  win.addEventListener("resize", check);
-  doc.addEventListener("card-stack-show", check);
+  // Adding a listener it has already does nothing, so this starts watching again or goes on.
+  const watch = () => {
+    win.addEventListener("scroll", check, { passive: true });
+    win.addEventListener("resize", check);
+    doc.addEventListener("card-stack-show", check);
+    layout?.observe(doc.body);
+  };
+  watch();
   check();
   // Taken over: layout.html's fallback, which would play them all at once, is called off.
   win.clearTimeout(win.playInViewFallback);
+
+  new win.MutationObserver((records) => {
+    const added = records.flatMap((record) => [...record.addedNodes]);
+    const fresh = marked(added.filter((node) => node.nodeType === Node.ELEMENT_NODE));
+    const more = fresh.filter((element) => !waiting.includes(element));
+    if (more.length === 0) return;
+    waiting.push(...more);
+    watch();
+    check();
+  }).observe(doc.body, { childList: true, subtree: true });
 
   // The page changing height without a scroll (a fold opening, a late font, a chart growing, the
   // text size) can bring an element into view too. Last, as iPhones before iOS 13.4 have no

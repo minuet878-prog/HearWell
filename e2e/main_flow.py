@@ -16027,6 +16027,68 @@ class GuestClearTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             expect(self.main()).not_to_contain_text("總分")
 
 
+class GuestResultGaugeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """Codex cross review of #741, item 2: the guest result page puts its result in once the
+    score comes back, after in-view.js set up; the gauge's arc still draws itself to its end."""
+
+    fixtures = ("questions_fixture.json",)
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.context = self.browser.new_context(
+            **self.playwright.devices["Pixel 7"], reduced_motion="no-preference"
+        )
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def test_a_late_guest_result_s_arc_draws_to_its_end(self):
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
+            self.answer("沒戴")
+            self.next()
+            for number in range(1, QUESTION_COUNT + 1):
+                self.answer("有時", number)
+                if number < QUESTION_COUNT:
+                    self.next()
+            self.main().get_by_role("button", name="送出").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/guest/result/hhie-s")
+            expect(self.main().get_by_text("總分 20 分")).to_be_visible()
+
+            # Opened again with the score held back a second: the page set up long before.
+            held = []
+            self.page.route("**/api/guest-scores/", lambda route: held.append(route))
+            self.page.reload()
+            self.page.wait_for_load_state("load")
+            for _ in range(100):  # 5 seconds for the request to arrive
+                if held:
+                    break
+                self.page.wait_for_timeout(50)
+            self.page.wait_for_timeout(1000)
+            held[0].continue_()
+
+            gauge = self.main().locator(".gauge")
+            gauge.evaluate("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })")
+            expect(gauge).to_have_attribute("data-in-view", "")
+            arc = gauge.locator(".gauge-arc-current")
+            style = "(el, name) => getComputedStyle(el)[name]"
+            self.assertEqual(arc.evaluate(style, "animationName"), "play-once-draw")
+            arc.evaluate("el => Promise.all(el.getAnimations().map(a => a.finished))")
+            self.assertEqual(arc.evaluate(style, "strokeDashoffset"), "0px")
+
+
 class GuestAnswerAfterFiveSecondsTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """The owner's acceptance (#492): the 5-second fallback (I3) asked a guest to register even when
     React had loaded, the note and its button over working questions. Past 5 seconds, a loaded

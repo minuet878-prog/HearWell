@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { saveGuestResult, showGuestResult } from "./guest-results.js";
 import { isInView, setUpPlayInView } from "./in-view.js";
 
 // Spec #338 (ticket #341): an entrance animation plays once its element is in view: wholly
@@ -47,7 +48,13 @@ describe("isInView", () => {
 
 // Spec #741 (ticket #747, ADR 0077): the play-once mechanism. jsdom neither lays out nor paints,
 // so a stand-in window says where each marked element is on screen, says "the page scrolled"
-// with a scroll event, and runs animation frames only when the test steps its clock.
+// with a scroll event, and runs animation frames only when the test steps its clock. Each test's
+// page shares one document body, so what one test set up watching it stops after it.
+const observers = [];
+afterEach(() => {
+  for (const observer of observers.splice(0)) observer.disconnect();
+});
+
 function fakeWindow({ reducedMotion = false } = {}) {
   const win = new EventTarget();
   let frames = [];
@@ -59,6 +66,12 @@ function fakeWindow({ reducedMotion = false } = {}) {
       matches: query === "(prefers-reduced-motion: reduce)" && reducedMotion,
     }),
     clearTimeout() {},
+    MutationObserver: class extends window.MutationObserver {
+      constructor(callback) {
+        super(callback);
+        observers.push(this);
+      }
+    },
     ResizeObserver: class {
       observe() {}
       disconnect() {}
@@ -173,5 +186,81 @@ describe("setUpPlayInView: entrance animations", () => {
     behind.removeAttribute("inert");
     behind.dispatchEvent(new Event("card-stack-show", { bubbles: true }));
     expect(drawing(behind).hasAttribute("data-in-view")).toBe(true);
+  });
+});
+
+// Codex cross review of #741, item 2: the guest result page puts its result in after this set up
+// (guest-results.js fetches the score first), and layout.html's 3-second fallback was called off
+// then, so a gauge put in later has to be picked up, or it holds its first frame for ever.
+describe("setUpPlayInView: elements put in after it set up", () => {
+  afterEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  // MutationObserver says what was put in once the current task's microtasks run.
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+  const GAUGE = `<div class="gauge" data-play-in-view><svg><path class="play-once-gauge"/></svg></div>
+    <p>總分 <span data-count-up>16</span> 分</p>
+    <details data-guest-clear><summary>清除這次結果</summary><p data-guest-clear-question></p>
+      <button type="button" data-guest-clear-yes>清除</button>
+      <button type="button" data-guest-clear-no>不要</button></details>`;
+
+  async function guestResultPage(win) {
+    page(`<div id="guest-result" data-code="hhie-s" data-score-url="/api/guest-scores/" data-home-url="/">
+      <div data-guest-shown hidden><p class="bird-lead"></p><div data-guest-section></div></div>
+      <p role="alert" data-guest-error></p></div>`);
+    setUpPlayInView(win);
+    saveGuestResult({
+      code: "hhie-s", questionnaireId: 1, answers: [{ question: 11, score: 4 }], wearing: false,
+      key: "9b2f6a4e-1c3d-4e5f-8a9b-0c1d2e3f4a5b", finishedAt: Date.now(), total: 16,
+      level: { code: "mild_to_moderate", text: "輕度到中度影響", color: "mild_to_moderate" },
+    });
+    const body = { html: GAUGE };
+    const fetchScore = () => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
+    await showGuestResult({ root: document.getElementById("guest-result"), fetchScore, navigate: vi.fn() });
+    await settle();
+  }
+
+  it("plays the guest result's gauge and counts its number once they are put in", async () => {
+    const win = fakeWindow();
+    await guestResultPage(win);
+    expect(document.querySelector(".gauge").hasAttribute("data-in-view")).toBe(true);
+    win.frameAt(1000);
+    win.frameAt(1900);
+    expect(number().hasAttribute("data-count-done")).toBe(true);
+  });
+
+  it("waits for one put in below the screen, and plays nothing put in again a second time", async () => {
+    const win = fakeWindow();
+    page("");
+    setUpPlayInView(win);
+    const box = document.createElement("div");
+    box.setAttribute("data-play-in-view", "");
+    box.getBoundingClientRect = () => ({ top: 1200, bottom: 1260 });
+    document.querySelector("main").append(box);
+    await settle();
+    expect(box.hasAttribute("data-in-view")).toBe(false);
+    win.scrollElementTo(box, 300);
+    expect(box.hasAttribute("data-in-view")).toBe(true);
+
+    // Played already: put in again (moved), it stays played and counts nothing.
+    const played = document.createElement("span");
+    played.setAttribute("data-count-up", "");
+    played.setAttribute("data-count-done", "");
+    played.textContent = "20";
+    document.querySelector("main").append(played, box);
+    await settle();
+    win.frameAt(1000);
+    expect(played.hasAttribute("data-count-now")).toBe(false);
+    expect(played.hasAttribute("data-in-view")).toBe(false);
+  });
+
+  it("shows a number put in later at its end at once with reduced motion", async () => {
+    const win = fakeWindow({ reducedMotion: true });
+    await guestResultPage(win);
+    expect(number().hasAttribute("data-count-done")).toBe(true);
+    win.frameAt(1000);
+    expect(number().hasAttribute("data-count-now")).toBe(false);
   });
 });
