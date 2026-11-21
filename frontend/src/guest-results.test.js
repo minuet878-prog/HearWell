@@ -202,7 +202,7 @@ describe("showGuestResult (the guest result page)", () => {
   it("has the kept answers scored again, not as just finished, and shows the section", async () => {
     saveGuestResult(guestResult());
     const fetchScore = reply(200, SCORED);
-    await showGuestResult({ root, now: NOW, fetchScore, navigate });
+    await showGuestResult({ root, now: NOW, clock: () => NOW, fetchScore, navigate });
     expect(fetchScore).toHaveBeenCalledTimes(1);
     const [url, options] = fetchScore.mock.calls[0];
     expect(url).toBe("/api/guest-scores/");
@@ -227,7 +227,7 @@ describe("showGuestResult (the guest result page)", () => {
       if (finishedAt) saveGuestResult(guestResult({ finishedAt }));
       const fetchScore = reply(200, SCORED);
       navigate.mockClear();
-      await showGuestResult({ root, now: NOW, fetchScore, navigate });
+      await showGuestResult({ root, now: NOW, clock: () => NOW, fetchScore, navigate });
       expect(navigate).toHaveBeenCalledWith("/");
       expect(fetchScore).not.toHaveBeenCalled();
       expect(root.querySelector("[data-guest-shown]").hidden).toBe(true);
@@ -236,7 +236,7 @@ describe("showGuestResult (the guest result page)", () => {
 
   it("forgets one the server cannot score and goes home", async () => {
     saveGuestResult(guestResult());
-    await showGuestResult({ root, now: NOW, fetchScore: reply(400, { answers: ["有題目沒有作答"] }), navigate });
+    await showGuestResult({ root, now: NOW, clock: () => NOW, fetchScore: reply(400, { answers: ["有題目沒有作答"] }), navigate });
     expect(navigate).toHaveBeenCalledWith("/");
     expect(loadGuestResult("hhie-s", NOW)).toBeNull();
   });
@@ -244,7 +244,7 @@ describe("showGuestResult (the guest result page)", () => {
   it("says the server's words on 429, keeping the result", async () => {
     saveGuestResult(guestResult());
     const limit = "剛才做了很多次，請過一小時再試。您的作答沒有不見。";
-    await showGuestResult({ root, now: NOW, fetchScore: reply(429, { detail: limit }), navigate });
+    await showGuestResult({ root, now: NOW, clock: () => NOW, fetchScore: reply(429, { detail: limit }), navigate });
     expect(root.querySelector("[data-guest-error]").textContent).toBe(limit);
     expect(root.querySelector("[data-guest-shown]").hidden).toBe(true);
     expect(loadGuestResult("hhie-s", NOW)).toEqual(guestResult());
@@ -254,7 +254,7 @@ describe("showGuestResult (the guest result page)", () => {
   it("asks to reload after a network failure, keeping the result", async () => {
     saveGuestResult(guestResult());
     const fetchScore = vi.fn(() => Promise.reject(new TypeError("Failed to fetch")));
-    await showGuestResult({ root, now: NOW, fetchScore, navigate });
+    await showGuestResult({ root, now: NOW, clock: () => NOW, fetchScore, navigate });
     expect(root.querySelector("[data-guest-error]").textContent).toBe("結果載入失敗，請重新整理這一頁");
     expect(loadGuestResult("hhie-s", NOW)).toEqual(guestResult());
   });
@@ -286,7 +286,7 @@ describe("showGuestResult (the guest result page)", () => {
     for (const [finishedAt, left] of [[NOW - 2 * DAY, "5"], [NOW, "7"], [NOW - 6.5 * DAY, "1"]]) {
       localStorage.clear();
       saveGuestResult(guestResult({ finishedAt }));
-      await showGuestResult({ root, now: NOW, fetchScore: reply(200, withCard), navigate });
+      await showGuestResult({ root, now: NOW, clock: () => NOW, fetchScore: reply(200, withCard), navigate });
       expect(root.querySelector("[data-guest-days-left]").textContent).toBe(left);
     }
   });
@@ -485,7 +485,7 @@ describe("清除這次結果 (the guest result page)", () => {
     saveGuestResult(guestResult());
     saveGuestResult(guestResult({ code: "hhia-s", questionnaireId: 3, total: 0 }));
     const fetchScore = vi.fn(() => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(SCORED) }));
-    await showGuestResult({ root, now: NOW, fetchScore, navigate });
+    await showGuestResult({ root, now: NOW, clock: () => NOW, fetchScore, navigate });
   });
 
   afterEach(() => {
@@ -543,7 +543,7 @@ describe("清除這次結果 (the guest result page)", () => {
     navigate.mockClear();
     const fetchScore = vi.fn();
     // What guest-result-main.js does on a pageshow from the cache.
-    await showGuestResult({ root, now: NOW, fetchScore, navigate });
+    await showGuestResult({ root, now: NOW, clock: () => NOW, fetchScore, navigate });
     expect(fetchScore).not.toHaveBeenCalled();
     expect(navigate).toHaveBeenCalledWith("/");
     expect(root.querySelector("[data-guest-shown]").hidden).toBe(true);
@@ -562,7 +562,7 @@ describe("a guest result 7 days on (the guest result page)", () => {
     saveGuestResult(guestResult());
     const fetchScore = vi.fn();
     const navigate = vi.fn();
-    await showGuestResult({ root, now: NOW + 7 * DAY, fetchScore, navigate });
+    await showGuestResult({ root, now: NOW + 7 * DAY, clock: () => NOW + 7 * DAY, fetchScore, navigate });
     expect(fetchScore).not.toHaveBeenCalled();
     expect(navigate).toHaveBeenCalledWith("/");
     expect(root.querySelector("[data-guest-shown]").hidden).toBe(true);
@@ -638,7 +638,7 @@ describe("askToSaveGuestResults (the save page's question)", () => {
   it("asks about one result, shown by its day, topic, score and level, saving nothing yet", () => {
     saveGuestResult(guestResult());
     const fetchSave = created();
-    askToSaveGuestResults({ root, now: NOW, fetchSave, navigate });
+    askToSaveGuestResults({ root, now: NOW, clock: () => NOW, fetchSave, navigate });
     expect(root.querySelector("[data-guest-ask]").hidden).toBe(false);
     expect(root.querySelector("[data-guest-ask-lead]").textContent).toBe(
       "這支手機裡有一份還沒保存的結果。如果是幫家人做的，請選「不要」。",
@@ -655,7 +655,7 @@ describe("askToSaveGuestResults (the save page's question)", () => {
   it("asks about two at once, each named with its questionnaire", () => {
     saveGuestResult(guestResult());
     saveGuestResult(HHIA_S);
-    askToSaveGuestResults({ root, now: NOW + DAY, fetchSave: created(), navigate });
+    askToSaveGuestResults({ root, now: NOW + DAY, clock: () => NOW + DAY, fetchSave: created(), navigate });
     expect(root.querySelector("[data-guest-ask-lead]").textContent).toBe(
       "這支手機裡有 2 份還沒保存的結果。如果是幫家人做的，請選「不要」。",
     );
@@ -670,7 +670,7 @@ describe("askToSaveGuestResults (the save page's question)", () => {
     saveGuestResult(guestResult());
     saveGuestResult(HHIA_S);
     const fetchSave = created();
-    askToSaveGuestResults({ root, now: NOW + DAY, fetchSave, navigate });
+    askToSaveGuestResults({ root, now: NOW + DAY, clock: () => NOW + DAY, fetchSave, navigate });
     root.querySelector("[data-guest-ask-yes]").click();
     expect(root.querySelector("[data-guest-ask]").hidden).toBe(true);
     // Self-review B2: not left on the button just hidden.
@@ -719,7 +719,7 @@ describe("askToSaveGuestResults (the save page's question)", () => {
     expect(fromHome).toHaveBeenCalledWith("/guest/save");
     document.body.innerHTML = freshPage;
     const asked = document.getElementById("guest-save");
-    askToSaveGuestResults({ root: asked, now: NOW + DAY, fetchSave: created(), navigate: vi.fn() });
+    askToSaveGuestResults({ root: asked, now: NOW + DAY, clock: () => NOW + DAY, fetchSave: created(), navigate: vi.fn() });
     const shown = [...asked.querySelectorAll("[data-guest-ask-list] > *")];
     expect(shown).toHaveLength(1);
     expect(shown[0].textContent).toBe("2026/11/13・聽力對生活的影響30 分輕度到中度影響");
@@ -727,7 +727,7 @@ describe("askToSaveGuestResults (the save page's question)", () => {
 
   it("不要 clears only the results shown, keeping a newer one made in another tab since", () => {
     saveGuestResult(guestResult());
-    askToSaveGuestResults({ root, now: NOW, fetchSave: created(), navigate });
+    askToSaveGuestResults({ root, now: NOW, clock: () => NOW, fetchSave: created(), navigate });
     saveGuestResult(newerResult());
     root.querySelector("[data-guest-ask-no]").click();
     expect(loadGuestResult("hhie-s", NOW + 120_000)).toEqual(newerResult());
@@ -739,7 +739,7 @@ describe("askToSaveGuestResults (the save page's question)", () => {
     saveGuestResult(HHIA_S);
     saveDraft(draft());
     const fetchSave = created();
-    askToSaveGuestResults({ root, now: NOW + DAY, fetchSave, navigate });
+    askToSaveGuestResults({ root, now: NOW + DAY, clock: () => NOW + DAY, fetchSave, navigate });
     root.querySelector("[data-guest-ask-no]").click();
     expect(fetchSave).not.toHaveBeenCalled();
     expect(Object.keys(localStorage).filter((key) => key.startsWith(GUEST_PREFIX))).toEqual([]);
@@ -762,7 +762,7 @@ describe("askToSaveGuestResults (the save page's question)", () => {
 
   it("goes home when there is nothing to ask about", () => {
     const fetchSave = created();
-    askToSaveGuestResults({ root, now: NOW, fetchSave, navigate });
+    askToSaveGuestResults({ root, now: NOW, clock: () => NOW, fetchSave, navigate });
     expect(navigate).toHaveBeenCalledWith("/");
     expect(root.querySelector("[data-guest-ask]").hidden).toBe(true);
     expect(fetchSave).not.toHaveBeenCalled();
