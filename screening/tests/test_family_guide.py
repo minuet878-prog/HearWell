@@ -223,12 +223,11 @@ class FamilyGuideTests(TestCase):
     # The address takes the scheme the page was opened with: https on tingpal.tw, http on a
     # local preview (it used to say https:// whatever the request was).
     def test_address_scheme_follows_the_request(self):
+        # Spec #741 (the owner at acceptance): no address line any more, the copy button's.
         plain = self.client.get(self.url).content.decode()
         self.assertIn(f'data-url="http://testserver{self.url}"', plain)
-        self.assertIn(f">http://testserver{self.url}</span>", plain)
         secure = self.client.get(self.url, secure=True).content.decode()
         self.assertIn(f'data-url="https://testserver{self.url}"', secure)
-        self.assertIn(f">https://testserver{self.url}</span>", secure)
 
     # 7
     def test_no_user_data_on_the_page(self):
@@ -246,12 +245,13 @@ class CopyAddressT361Tests(TestCase):
 
     def setUp(self):
         content = self.client.get(reverse("family_guide")).content.decode()
-        # #469: the buttons under the zone's list, the address under the disclaimer.
-        self.share = content[content.index('id="share-button"') :]
-        self.share = self.share[: self.share.index("</p>", self.share.index("可以複製這個網址"))]
+        # #469: the buttons under the zone's list; spec #741 (the owner at acceptance): no
+        # address line under the disclaimer any more.
+        start = content.index('id="share-button"')
+        self.share = content[start : content.index('id="copy-status"', start) + 200]
         self.content = content
 
-    def test_copy_button_hidden_until_the_script_shows_it_the_address_below(self):
+    def test_copy_button_hidden_until_the_script_shows_it(self):
         address = "http://testserver" + reverse("family_guide")
         button = re.search(r'<button id="copy-link"([^>]*)>(.*?)</button>', self.share)
         self.assertIsNotNone(button)
@@ -259,8 +259,8 @@ class CopyAddressT361Tests(TestCase):
         self.assertEqual(words, "複製網址")
         self.assertIn(f'data-url="{address}"', attrs)
         self.assertIn("data-without-share-sheet", attrs)
-        # Without JavaScript the button never shows and the address is there to copy by hand.
+        # Without JavaScript the button never shows (the address bar is the way then).
         self.assertRegex(attrs, r"\shidden(\s|$)")
-        self.assertLess(self.share.index('id="copy-link"'), self.share.index(f">{address}<"))
+        self.assertNotIn("可以複製這個網址", self.content)
         self.assertIn('id="copy-status"', self.share)
         self.assertIn("screening/copy-link.js", self.content)

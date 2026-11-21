@@ -670,12 +670,14 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         self.assert_fits_a_phone_at_double_text_size("answer page without javascript")
 
     def test_family_guide_without_share_sheet(self):
-        """Spec phase8_c1_family_guide.md acceptance 5: no button, the address is the fallback."""
+        """Spec phase8_c1_family_guide.md acceptance 5: no share sheet, no 傳給家人; since spec
+        #741 (the owner at acceptance) 複製網址 is the way, no address line to copy by hand."""
         with self.saving_artifacts():
             self.page.add_init_script("delete Navigator.prototype.share;")
             self.page.goto(f"{self.live_server_url}/family")
             expect(self.page.get_by_role("button", name="傳給家人")).to_be_hidden()
-            expect(self.main().get_by_text("/family")).to_be_visible()
+            expect(self.page.get_by_role("button", name="複製網址")).to_be_visible()
+            expect(self.main().get_by_text("可以複製這個網址")).to_have_count(0)
 
     def test_family_guide_share_sheet(self):
         """Acceptance 6: the button hands this page's address and title to a stubbed share sheet."""
@@ -11813,20 +11815,16 @@ class FamilyAndAccountT361Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
         with self.saving_artifacts():
             self.open("/family", self.DESKTOP, script=self.NO_SHARE_SHEET)
             section = self.main()
-            address = section.get_by_text(re.compile(r"^http://.*/family$"))
             # Found by id: its name turns into 已複製 once pressed.
             button = section.locator("#copy-link")
-            expect(address).to_be_visible()
             expect(button).to_be_visible()
             expect(button).to_have_accessible_name("複製網址")
             expect(section.get_by_role("button", name="傳給家人")).to_be_hidden()
-            self.assertLess(button.bounding_box()["y"], address.bounding_box()["y"])
             button.click()
             expect(button).to_have_text("已複製")
             expect(self.page.locator("#copy-status")).to_have_text("已複製")
             copied = self.page.evaluate("navigator.clipboard.readText()")
-            self.assertEqual(copied, address.inner_text())
-            expect(address).to_be_visible()
+            self.assertRegex(copied, r"^http://.*/family$")
 
     # Acceptance 3: with the phone's share sheet, 傳給家人 is the only button.
     def test_no_copy_button_with_a_share_sheet(self):
