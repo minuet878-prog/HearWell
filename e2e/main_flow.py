@@ -5905,8 +5905,10 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.page.goto(f"{self.live_server_url}/")
                     expect(self.page.locator(".journey-step.is-walked")).to_have_count(1)
                     # #749: the bird and the taller hero card take the card past the first
-                    # screen; brought into view, it plays.
-                    self.page.locator(".journey-card").scroll_into_view_if_needed()
+                    # screen; brought into view (wholly, above the tab bar), it plays.
+                    self.page.locator(".journey-card .hero-card").evaluate(
+                        "el => el.scrollIntoView({ block: 'center', behavior: 'instant' })"
+                    )
                     animations = self.page.evaluate(self.JOURNEY_ANIMATIONS)
                     if not motion:
                         self.assertEqual(animations, [])
