@@ -18,6 +18,7 @@ from screening.models import (
     Audiogram,
     AudiogramSource,
     Certificate,
+    GuideChapterView,
     Submission,
     Subsidy,
 )
@@ -162,6 +163,13 @@ def latest_submission(user):
         .order_by("-created_at", "-id")
         .first()
     )
+
+
+def keep_view(user, chapter):
+    """看過 (spec #291 acceptance 4): the first time stays; signed out or before agreeing to the
+    privacy notice that covers it, nothing is kept."""
+    if user.is_authenticated and user.has_consented():
+        GuideChapterView.objects.get_or_create(user=user, chapter=chapter)
 
 
 def _ioi_ha_since(user, aid):
