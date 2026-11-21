@@ -66,7 +66,7 @@ class SharePageTests(TestCase):
         return response
 
     # Acceptance 12
-    def test_without_link_step_one_lists_what_family_will_and_wont_see(self):
+    def test_without_link_step_one_ticks_what_family_will_see(self):
         self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=1)
         response = self._page()
         self.assertIn("no-store", response["Cache-Control"])
