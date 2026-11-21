@@ -3223,15 +3223,14 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
         self.addCleanup(self.context.close)
 
     # #231: home -> my guide (an audiogram reaching the threshold) -> the assessment chapter
-    # with a county chosen -> the form 9 chapter. #459: the 照顧旅程's done step 2 opens (I1)
-    # to the way into my guide.
+    # with a county chosen -> the form 9 chapter. #744 (spec #741): my guide not opened yet,
+    # the 照顧旅程's 現在這一步 is step 4, its entry card the way in.
     def test_route_from_home_card_to_form_9(self):
         self.open(390)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
             journey = self.page.get_by_role("region", name="照顧旅程")
-            journey.locator(".journey-about summary").filter(has_text="記錄聽力圖").click()
-            journey.get_by_role("link", name="看助聽器選配與補助").click()
+            journey.locator(".journey-card").get_by_role("link", name="看助聽器選配與補助").click()
 
             expect(self.page).to_have_url(f"{self.live_server_url}/guide")
             expect(self.main().get_by_role("heading", level=1)).to_have_text("助聽器選配與補助")
@@ -3747,13 +3746,19 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                         self.assertGreaterEqual(line["y"] + line["height"], scale["y"])
                         self.assertAlmostEqual(line["x"], scale["x"], delta=0.5)
 
+    def my_guide_opened(self):
+        """The 照顧旅程's step 4 done (#744), so its 現在這一步 is the route's stop."""
+        user = User.objects.get(username="guide_e2e")
+        GuideChapterView.objects.create(user=user, chapter="guide")
+
     # #261 acceptance 8: the home page's 建議您下一步 with its longest 「因為」 sentences, 390px
     # wide at 200% text; since #459 the 現在這一步's card. The setUp user has answered nothing,
-    # so it is the assessment (ADR 0074); 沒有, 去找聽力師之前 (spec #291's reasons); within 25
-    # and missing a frequency, nothing can tell.
+    # so it is the assessment (ADR 0074) once my guide is opened (#744); 沒有, 去找聽力師之前
+    # (spec #291's reasons); within 25 and missing a frequency, nothing can tell.
     def test_home_next_step_fits_a_phone_at_double_text_size(self):
         self.open(390, 640)
         points = AudiogramPoint.objects.filter(audiogram__user__username="guide_e2e")
+        self.my_guide_opened()
         with self.saving_artifacts():
             for state, button in (
                 ("assessment", "找鑑定醫院"),
@@ -3801,6 +3806,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
     # says it on the 現在這一步's card.
     def test_next_step_reason_keeps_four_characters_a_line_at_double_text_size(self):
         self.open(320, 640)
+        self.my_guide_opened()
         with self.saving_artifacts():
             for path in ("/",):
                 with self.subTest(path=path):
@@ -5927,25 +5933,56 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.assertEqual(self.page.evaluate(self.JOURNEY_END), end)
 
     # #459 I1: a step opens in place, one at a time; the 現在這一步's card stays as it is.
+    # #744 (spec #741): seven steps, a done one opening to its stamp, step 3 to its sources.
     def test_care_journey_steps_open_one_at_a_time(self):
         self.submission(self.hhie_s, (2,) * 10)
         self.open(width=390)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
             rows = self.page.locator(".journey-about > summary")
-            expect(rows).to_have_count(4)
+            expect(rows).to_have_count(6)
             self.assertGreaterEqual(rows.first.bounding_box()["height"], 44)
             rows.nth(0).click()
-            expect(self.page.locator(".journey-about").nth(0)).to_contain_text("看上次結果")
-            expect(self.page.get_by_role("link", name="看上次結果")).to_be_visible()
-            rows.nth(2).click()
-            expect(self.page.get_by_role("link", name="看上次結果")).to_be_hidden()
+            stamp = self.page.locator(".journey-about").nth(0).locator(".done-stamp")
+            expect(stamp).to_have_text("已完成")
+            expect(stamp).to_be_visible()
+            rows.nth(1).click()
+            expect(stamp).to_be_hidden()
             expect(self.page.locator(".journey-about[open]")).to_have_count(1)
-            expect(self.page.locator(".journey-about").nth(2)).to_contain_text(
-                "買了助聽器、戴滿 3 個月後"
-            )
+            sources = self.page.locator(".journey-about").nth(1).locator(".entry-card")
+            expect(sources).to_have_text(["醫院檢查報告", "AirPods 自我檢測"])
             expect(self.page.locator(".journey-card")).to_be_visible()
-            expect(self.page.get_by_role("main").locator(".btn-primary")).to_have_count(1)
+            expect(self.page.locator(".journey-card .entry-card")).to_have_text("查詢醫療院所")
+            expect(self.page.get_by_role("main").locator(".btn-primary")).to_have_count(0)
+
+    # Spec #741 acceptance 27 (ADR 0075, 0077): the 已完成 stamp presses down when its step first
+    # opens, once; opening it again, and reduced motion, show it at rest.
+    STAMP_ANIMATIONS = """() => document.getAnimations()
+        .filter(a => a.effect.target.classList.contains('done-stamp'))
+        .map(a => a.animationName)"""
+
+    def test_the_done_stamp_presses_down_once(self):
+        self.submission(self.hhie_s, (2,) * 10)
+        for motion in (True, False):
+            with self.subTest(motion=motion):
+                self.open(motion=motion, width=390)
+                with self.saving_artifacts():
+                    self.page.goto(f"{self.live_server_url}/")
+                    row = self.page.locator(".journey-about > summary").first
+                    stamp = self.page.locator(".done-stamp")
+                    expect(stamp).to_be_hidden()
+                    self.assertEqual(self.page.evaluate(self.STAMP_ANIMATIONS), [])
+                    row.click()
+                    expect(stamp).to_be_visible()
+                    played = self.page.evaluate(self.STAMP_ANIMATIONS)
+                    self.assertEqual(played, ["play-once-stamp"] if motion else [])
+                    # Its tilt and colour at rest, the vermilion #b3261e.
+                    self.page.wait_for_timeout(900)
+                    self.assertEqual(self.style(stamp, "color"), "rgb(179, 38, 30)")
+                    row.click()
+                    row.click()
+                    expect(stamp).to_be_visible()
+                    self.assertEqual(self.page.evaluate(self.STAMP_ANIMATIONS), [])
 
     def test_reduced_motion_keeps_the_header_still(self):
         self.open()  # reduced motion
@@ -7517,24 +7554,23 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.assert_unlined(self.main().get_by_role("listitem").filter(has_text=text))
             self.assert_flat(self.main().locator("p").filter(has_text="設計與審定"))
 
-    # #459 (ADR 0044): the 現在這一步's card is pale blue, flat and not a link, its one button
-    # solid; 上次結果 is the tile to tap, in its level's pale colour with a blue arrow; what
-    # 您還可以 offered is a row of text links that look like links.
+    # #459 (ADR 0044): the 現在這一步's card is pale blue, flat and not a link; 上次結果 is the
+    # tile to tap, in its level's pale colour with a blue arrow; what 您還可以 offered is a row
+    # of text links that look like links. #744 (spec #741): step 2's one thing is a white entry
+    # card, its icon in a pale blue circle, a 44px target at least.
     def test_journey_home_card_tiles_and_links(self):
         with self.saving_artifacts():
             self.visit(True, lambda test: test.returning_home())
             card = self.main().locator(".journey-card")
             self.assertEqual(self.style(card, "backgroundColor"), self.BLUE_SOFT)
             self.assertEqual(self.style(card, "boxShadow"), "none")
-            # The 2026-11-14 walkthrough (mockup 2A): its solid button, then 還沒 in outline;
-            # spec #702 (#703 mockup 1C) put 從 iPhone 匯入 between them, outlined too.
-            self.assertEqual(
-                self.style(card.locator("a.btn-primary"), "backgroundColor"), self.PRIMARY
-            )
-            outlined = card.locator("a.btn-outline-primary")
-            expect(outlined).to_have_text(["從 iPhone 匯入", "還沒，看要去哪裡檢查"])
-            for button in outlined.all():
-                self.assertEqual(self.style(button, "backgroundColor"), "rgb(255, 255, 255)")
+            entry = card.locator("a.entry-card")
+            expect(entry).to_have_text("查詢醫療院所")
+            self.assertEqual(self.style(entry, "backgroundColor"), "rgb(255, 255, 255)")
+            self.assertGreaterEqual(entry.bounding_box()["height"], 44)
+            icon = entry.locator(".action-card-icon")
+            self.assertNotEqual(self.style(icon, "backgroundColor"), "rgb(255, 255, 255)")
+            expect(card.locator("a.btn")).to_have_count(0)
             tile = self.main().locator("a.journey-tile")
             self.assertEqual(self.style(tile, "boxShadow"), "none")
             arrow = tile.locator(".journey-tile-arrow")

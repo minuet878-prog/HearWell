@@ -264,16 +264,17 @@ class ImportEntryTests(TestCase):
         part = content[content.index('id="audiogram-title"') :]
         self._after_record(part, reverse("audiogram_new"))
 
-    def test_the_home_card_offers_it_under_recording_one(self):
-        """#703 mockup 1C: the 照顧旅程's 記錄聽力圖 card has it too, outlined."""
+    def test_the_home_journey_offers_it_beside_recording_one(self):
+        """Spec #741 (the canvas): the 照顧旅程's 記錄聽力圖 opens to its two sources, AirPods
+        自我檢測 the import, after 醫院檢查報告."""
         from screening.models import Submission
 
         Submission.objects.create(user=self.user, questionnaire=self.hhie_s)
         content = self.client.get(reverse("index")).content.decode()
-        card = content[content.index('class="journey-card"') :]
-        button = self._after_record(card, reverse("audiogram_new") + "?next=/")
-        self.assertIn("btn-outline-primary", button)
-        self.assertLess(card.index("從 iPhone 匯入"), card.index("還沒，看要去哪裡檢查"))
+        sources = content[content.index("聽力圖來源") :]
+        record = sources.index(f'href="{reverse("audiogram_new")}?next=/"')
+        self.assertLess(record, sources.index(self.IMPORT))
+        self.assertIn("AirPods 自我檢測", sources)
 
 
 UNREADABLE = (

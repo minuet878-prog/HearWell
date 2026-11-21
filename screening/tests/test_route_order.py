@@ -10,12 +10,13 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening.care_journey import care_journey
-from screening.fitting_route import fitting_state
+from screening.fitting_route import GUIDE_PAGE, fitting_state
 from screening.models import (
     AidAndSubsidy,
     AidLevel,
     ApprovedEars,
     Certificate,
+    GuideChapterView,
     Questionnaire,
     Submission,
     Subsidy,
@@ -113,6 +114,8 @@ class HomeSkipsTypesAndPricesTests(RouteOrderTestCase):
         super().setUp()
         self.submit(self.hhie_s, TODAY)
         self.make(PTA_55, PTA_55)
+        # My guide opened, so the 照顧旅程's step 4 is done and its card is the route's (#744).
+        GuideChapterView.objects.create(user=self.user, chapter=GUIDE_PAGE)
 
     # Acceptance 17
     def test_the_notice_done_both_are_at_before_you_go(self):

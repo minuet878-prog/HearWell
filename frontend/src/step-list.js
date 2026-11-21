@@ -31,3 +31,14 @@ export function openOneAtATime(doc, list, item) {
     );
   }
 }
+
+// Spec #741 (ADR 0075, 0077): a done step's 已完成 stamp presses down when the step first opens
+// (in-view.js and site.css's play-once-stamp); a closed step is not drawn, so opening it again
+// would play it again. Once it has played it keeps its place at rest.
+export function stampOnce(doc, list) {
+  for (const steps of doc.querySelectorAll(list)) {
+    steps.addEventListener("animationend", (event) => {
+      event.target.classList.remove("play-once-stamp");
+    });
+  }
+}
