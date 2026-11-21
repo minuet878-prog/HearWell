@@ -79,6 +79,8 @@
                     <p class="hero-card-label">現在這一步</p>
                     <h3 class="hero-card-title">{{ card.title }}</h3>
                     {% if card.because %}<p>{{ card.because }}</p>{% endif %}
+                    {# Steps 6 and 7 counting down (#746). #}
+                    {% if card.countdown %}{% include "screening/countdown_card.html" with countdown=card.countdown %}{% endif %}
                     {# Spec #741: steps 2 and 4 are white entry cards, nothing else. #}
                     {% if card.entries %}<ul class="journey-entries" role="list">{% for entry in card.entries %}<li>{% include "screening/entry_card.html" with icon=entry.icon text=entry.text href=entry.href come_back=entry.come_back %}</li>{% endfor %}</ul>{% endif %}
                     {% if card.button %}
@@ -105,10 +107,8 @@
                     </a>
                     {% endwith %}{% endif %}
                     {% else %}
-                    <p>{{ step.about }}</p>
-                    {% if forloop.counter == 7 and journey.next_screening and not journey.next_screening.due %}
-                    <p class="journey-when">下次篩檢 {{ journey.next_screening.on|date:"Y/m/d" }}・還有 {{ journey.next_screening.days_left }} 天</p>
-                    {% endif %}
+                    {# Step 7 counting down opens to its countdown card (the canvas's 5-a, #746). #}
+                    {% if step.countdown %}{% include "screening/countdown_card.html" with countdown=step.countdown %}{% else %}<p>{{ step.about }}</p>{% endif %}
                     {% endif %}
                     {% if step.entries %}
                     {% if step.entries_title %}<p class="journey-entries-title">{{ step.entries_title }}</p>{% endif %}
