@@ -3968,7 +3968,8 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     expect(card.locator(".done-stamp")).to_have_text("已完成")
                     expect(box).to_have_attribute("aria-pressed", "true")
                     card.get_by_role("link", name=f"接著往下一站：{next_stop}").click()
-                    expect(card.get_by_role("heading", level=3)).to_contain_text(next_stop)
+                    # #751: the card is the hero card on top, its title an h2.
+                    expect(card.get_by_role("heading", level=2)).to_contain_text(next_stop)
                     expect(card.locator(".done-stamp")).to_have_count(0)
 
     # #258: the 目前這一站's ring lights only when motion is welcome. This user has answered
@@ -6140,6 +6141,11 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.assertEqual(self.page.evaluate(self.STAMP_ANIMATIONS), [])
                     row.click()
                     expect(stamp).to_be_visible()
+                    # #751: the hero card and tiles on top leave the opened step low on the
+                    # screen; brought wholly into view, the stamp plays (ADR 0029).
+                    stamp.evaluate(
+                        "el => el.scrollIntoView({block: 'center', behavior: 'instant'})"
+                    )
                     played = self.page.evaluate(self.STAMP_ANIMATIONS)
                     self.assertEqual(played, ["play-once-stamp"] if motion else [])
                     # Its tilt and colour at rest, the vermilion #b3261e.
@@ -6153,8 +6159,10 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     # #746 (spec #741, ADR 0075, 0077): step 7's countdown ring draws when its step first opens,
     # once, the days counting up; reduced motion shows both at rest. A screen reader hears
     # 還有 N 天, the ring itself hidden.
+    # #751: the 離下次篩檢 tile's ring is another, outside the journey.
     RING_ANIMATIONS = """() => document.getAnimations()
-        .filter(a => a.effect.target.classList.contains('countdown-ring-arc'))
+        .filter(a => a.effect.target.classList.contains('countdown-ring-arc')
+                     && a.effect.target.closest('.journey-steps'))
         .map(a => a.animationName)"""
 
     def test_the_countdown_ring_draws_once_and_says_the_days(self):
@@ -6167,10 +6175,11 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 with self.saving_artifacts():
                     self.page.goto(f"{self.live_server_url}/")
                     row = self.page.locator(".journey-about > summary").last
-                    ring = self.page.locator(".countdown-ring")
+                    ring = self.page.locator(".journey-steps .countdown-ring")
                     expect(ring).to_be_hidden()
                     row.click()
                     expect(ring).to_be_visible()
+                    ring.evaluate("el => el.scrollIntoView({block: 'center', behavior: 'instant'})")
                     played = self.page.evaluate(self.RING_ANIMATIONS)
                     self.assertEqual(played, ["play-once-draw"] if motion else [])
                     expect(ring).to_match_aria_snapshot(f"- paragraph: 還有 {days} 天")
@@ -9721,9 +9730,9 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
     # #338 review: the layout changing without a scroll (here the text going back to its usual
     # size; a fold opening, a late font or a chart growing does the same) brings the journey's
     # 現在這一步 into view, and it plays. #749: taller for the bird and the blue hero card above
-    # the step's end.
+    # the step's end; #751: taller again for the two tiles, one under the other at 320px.
     def test_journey_plays_when_the_layout_brings_it_into_view(self):
-        self.open("/", width=320, height=1400, double=True)
+        self.open("/", width=320, height=1600, double=True)
         with self.saving_artifacts():
             expect(self.page.locator(self.JOURNEY)).to_be_attached()
             self.page.wait_for_timeout(300)

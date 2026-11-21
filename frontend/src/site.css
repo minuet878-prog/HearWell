@@ -6595,6 +6595,12 @@
     margin-top: 0.25rem;
   }
 
+  /* No wider than in a side-by-side tile when the tiles stack. */
+  .journey-tile-gauge:has(.gauge) {
+    align-self: center;
+    width: min(100%, 11rem);
+  }
+
   .journey-tile-gauge .gauge-ends {
     display: none;
   }
