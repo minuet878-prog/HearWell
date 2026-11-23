@@ -12,7 +12,7 @@ from django.core import mail, signing
 from django.core.cache import caches
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
-from django.test import TestCase, TransactionTestCase, override_settings
+from django.test import Client, TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -162,13 +162,29 @@ class ConfirmPageTests(TestCase):
         self.assertContains(response, "<strong>wang@example.com</strong>")
         self.assertContains(response, ">確認信箱</button>")
         self.assertFalse(User.objects.get(pk=self.user.pk).email_confirmed)
-        self.assertEqual(response["Referrer-Policy"], "no-referrer")
+        self.assertEqual(response["Referrer-Policy"], "same-origin")
         self.assertIn("no-store", response["Cache-Control"])
 
     def test_pressing_the_button_confirms_it(self):
         response = self.client.post(self.path)
         self.assertContains(response, "信箱確認好了")
         self.assertContains(response, "忘記密碼時，我們會把重設密碼信寄到 wang@example.com。")
+        self.assertTrue(User.objects.get(pk=self.user.pk).email_confirmed)
+
+    def test_the_button_passes_the_csrf_check_as_a_browser_sends_it(self):
+        # Production 2026-11-23: "CSRF 驗證未通過". A browser posts a form from a page with
+        # Referrer-Policy: no-referrer with Origin: null (Fetch standard, "append a request
+        # Origin header"), and Django's CSRF check refuses null; the test client sends no Origin.
+        browser = Client(enforce_csrf_checks=True)
+        page = browser.get(self.path, secure=True)
+        origin = "null" if page["Referrer-Policy"] == "no-referrer" else "https://testserver"
+        response = browser.post(
+            self.path,
+            {"csrfmiddlewaretoken": page.context["csrf_token"]},
+            secure=True,
+            headers={"Origin": origin},
+        )
+        self.assertContains(response, "信箱確認好了")
         self.assertTrue(User.objects.get(pk=self.user.pk).email_confirmed)
 
     def test_signed_in_before_agreeing_it_still_opens(self):

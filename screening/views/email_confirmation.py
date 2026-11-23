@@ -19,7 +19,11 @@ def email_confirm(request, token):
         user.confirmed_email = user.email
         user.save(update_fields=["confirmed_email"])
         return email_link_page(request, PAGE, {"user_to_confirm": user, "confirmed": True})
-    return email_link_page(request, PAGE, {"user_to_confirm": user})
+    response = email_link_page(request, PAGE, {"user_to_confirm": user})
+    # Its 確認信箱 button posts back here: under no-referrer a browser sends Origin: null and
+    # Django's CSRF check refuses it. same-origin still sends nothing to other sites.
+    response["Referrer-Policy"] = "same-origin"
+    return response
 
 
 @form_address
