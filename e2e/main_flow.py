@@ -1969,7 +1969,7 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             with self.subTest(width=width, large_text=large_text):
                 self.open(width)
                 # Hold the records' API answer, so the page is measured before the chart draws.
-                held = self.hold("**/api/submissions/")
+                held = self.hold("**/api/submissions/?*")
                 with self.saving_artifacts():
                     self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
                     if large_text:

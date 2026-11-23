@@ -645,8 +645,9 @@ class SummaryTemplateTests(ResultTestCase):
     def test_a_saved_comparison_takes_my_hearing_no_more_queries_than_before(self):
         # The report's pair reads its records' questionnaires with them: reading result.total
         # without them took two more queries than main (12 -> 14 on HHIE-S, spec #385 check).
-        # #650: HHIE-S's trend chart reads the fitting day, one query more than HHIA-S.
-        for code, count, queries in ((hhie_s.CODE, 10, 13), (hhia_s.CODE, 10, 12)):
+        # #650: trend charts read the fitting day (AidAndSubsidy), 13 queries for both HHIE-S
+        # and HHIA-S now that HHIA-S draws a trend chart too.
+        for code, count, queries in ((hhie_s.CODE, 10, 13), (hhia_s.CODE, 10, 13)):
             with self.subTest(code=code):
                 user = consented_user(username=f"saved_comparison_{code}")
                 self.client.force_login(user)

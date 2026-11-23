@@ -489,7 +489,7 @@ class HistoryTabsTests(TestCase):
             self.assertIn("ioi-dot", classes.split())
         self.assertIn('class="ioi-legend-previous"', chart)
 
-    def test_no_trend_chart_for_other_questionnaires(self):
+    def test_hhia_s_tab_shows_its_name_and_trend_chart(self):
         hhia_s = Questionnaire.objects.create(questionnaire_name="HHIA-S", code="hhia-s")
         question = Question.objects.create(
             questionnaire=hhia_s, question_text="HHIA題1", question_number=1
@@ -503,6 +503,20 @@ class HistoryTabsTests(TestCase):
         labels = self._tab_labels(self._tabs(main))
         self.assertEqual(labels, [self.HHIE_S_TAB, self.HHIA_S_TAB])
         self.assertEqual(self._current_tab(self._tabs(main)), self.HHIA_S_TAB)
+        self.assertIn(reverse("result", args=[submission.id]), main)
+        self.assertIn('id="trend-chart"', main)
+        self.assertContains(response, self.CHART_JS)
+
+    def test_no_trend_chart_for_other_questionnaires(self):
+        ssq12 = Questionnaire.objects.create(questionnaire_name="SSQ12-TW", code="ssq12-tw")
+        question = Question.objects.create(
+            questionnaire=ssq12, question_text="SSQ題1", question_number=1
+        )
+        self._hhie_s(10, False, days_ago=5)
+        submission = Submission.objects.create(user=self.user, questionnaire=ssq12)
+        Answer.objects.create(submission=submission, question=question, score=7)
+        response = self.client.get(self._tab_url("ssq12-tw"))
+        main = self._main_html(response)
         self.assertIn(reverse("result", args=[submission.id]), main)
         self.assertNotIn("trend-chart", main)
         self.assertNotContains(response, self.CHART_JS)
@@ -875,14 +889,15 @@ class HistoryRetestTests(TestCase):
                 for word in VERDICT_WORDS:
                     self.assertNotIn(word, main)
 
-    def test_hhia_s_tab_compares_too(self):
-        # HHIA-S is also a life-impact questionnaire, though it has no trend chart.
+    def test_hhia_s_tab_compares_and_shows_trend_chart(self):
+        # HHIA-S is also a life-impact questionnaire and draws the same trend chart as HHIE-S.
         self._submit("hhia-s", [4] * 5 + [0] * 5, days_ago=40)  # 20
         self._submit("hhia-s", [4, 4, 4, 2] + [0] * 6, days_ago=10)  # 14
         main = self._fetch_main_html()
-        self.assertNotIn('id="trend-chart"', main)
+        self.assertIn('id="trend-chart"', main)
+        self.assertIn('data-questionnaire="hhia-s"', main)
         self.assertEqual(self._since_last_lines(main)[1], "比上次少 6 分")
-        self.assertLess(main.index('id="since-last"'), main.index('class="link-card"'))
+        self.assertLess(main.index('id="since-last"'), main.index('id="trend-chart"'))
 
     def test_other_questionnaires_do_not_compare(self):
         self._submit("ioi-ha", [3] * 7, days_ago=40, norm_group="mild_moderate")
@@ -1164,11 +1179,11 @@ class FittingDayT650Tests(TestCase):
     def _plot(self, main):
         return re.search(r'<div id="trend-plot"([^>]*)>', main).group(1)
 
-    def test_hhie_s_and_thi_send_the_day_to_the_chart_and_say_it_under_it(self):
+    def test_hhie_s_hhia_s_and_thi_send_the_day_to_the_chart_and_say_it_under_it(self):
         # Acceptance 39-41: the chart gets the day; the sentence is outside the chart's frame,
         # which pages without JavaScript hide, and not hidden from screen readers.
         self._fitted(date(2026, 5, 1))
-        for code in ("hhie-s", "thi"):
+        for code in ("hhie-s", "hhia-s", "thi"):
             with self.subTest(code):
                 main = self._main(code)
                 self.assertIn('data-fitted-on="2026/05/01"', self._plot(main))
@@ -1196,7 +1211,7 @@ class FittingDayT650Tests(TestCase):
             if row:
                 AidAndSubsidy.objects.create(user=self.user, ear="both")
             with self.subTest(row=row):
-                for code in ("hhie-s", "thi"):
+                for code in ("hhie-s", "hhia-s", "thi"):
                     main = self._main(code)
                     self.assertIn('id="trend-plot"', main)
                     self.assertNotIn("data-fitted-on", main)
@@ -1219,9 +1234,9 @@ class FittingDayT650Tests(TestCase):
         self.assertEqual(sentence, self.SENTENCE)
 
     def test_other_tabs_have_neither(self):
-        # Acceptance 46: only HHIE-S and THI have a trend chart.
+        # Only HHIE-S, HHIA-S and THI have a trend chart.
         self._fitted(date(2026, 5, 1))
-        for code in ("hhia-s", "ssq12-tw", "sadl", "ioi-ha"):
+        for code in ("ssq12-tw", "sadl", "ioi-ha"):
             with self.subTest(code):
                 main = self._main(code)
                 self.assertNotIn("data-fitted-on", main)

@@ -237,18 +237,21 @@ class SadlScoringTests(SadlTestCase):
                 )
 
     def test_the_submission_list_reads_answers_the_same_number_of_times_for_two_or_five(self):
-        def list_queries():
+        def list_queries(params=None):
             with CaptureQueriesContext(connection) as ctx:
-                response = self.client.get("/api/submissions/")
+                response = self.client.get("/api/submissions/", params or {})
             self.assertEqual(response.status_code, 200)
+            self.assertTrue(all("satisfaction" in item for item in response.json()["results"]))
             return len(ctx.captured_queries)
 
         for _ in range(2):
             self.answer([4] * 15)
-        two = list_queries()
+        two_all = list_queries()
+        two_filtered = list_queries({"questionnaire": sadl.CODE})
         for _ in range(3):
             self.answer([4] * 15)
-        self.assertEqual(list_queries(), two)
+        self.assertEqual(list_queries(), two_all)
+        self.assertEqual(list_queries({"questionnaire": sadl.CODE}), two_filtered)
 
 
 @override_settings(DEBUG=True)

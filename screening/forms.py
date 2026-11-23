@@ -1,7 +1,6 @@
 import hashlib
 import time
 import unicodedata
-from datetime import date
 from urllib.parse import urlsplit
 
 from django import forms
@@ -64,7 +63,7 @@ PASSWORD_AGAIN_HELP = "請再輸入一次同樣的密碼。"
 
 def this_roc_year():
     """This year in 民國 years; less a 民國 birth year, it is User.age."""
-    return date.today().year - ROC_OFFSET
+    return timezone.localdate().year - ROC_OFFSET
 
 
 def latest_roc_birth_year():

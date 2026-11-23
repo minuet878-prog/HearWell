@@ -578,6 +578,18 @@ class RegisterFormTests(TestCase):
         self.assertEqual(User(birth_year=1955).age, date.today().year - 1955)
         self.assertIsNone(User().age)
 
+    def test_age_and_this_roc_year_use_taipei_date(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        from screening.forms import this_roc_year
+
+        # 2026-12-31 16:30 UTC is already 2027-01-01 00:30 in Asia/Taipei.
+        taipei_new_year = datetime(2026, 12, 31, 16, 30, tzinfo=ZoneInfo("UTC"))
+        with mock.patch("django.utils.timezone.now", return_value=taipei_new_year):
+            self.assertEqual(User(birth_year=1955).age, 2027 - 1955)
+            self.assertEqual(this_roc_year(), 2027 - 1911)
+
     def test_note_uses_readable_style(self):
         self.assertContains(
             self.client.get(self.url),

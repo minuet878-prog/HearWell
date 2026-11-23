@@ -3,7 +3,12 @@ import uuid
 from django.db import IntegrityError, transaction
 from django.db.models import Prefetch
 from django.template.loader import render_to_string
-from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+)
 from rest_framework import status
 from rest_framework.exceptions import Throttled
 from rest_framework.generics import GenericAPIView, ListAPIView, RetrieveAPIView
@@ -11,6 +16,7 @@ from rest_framework.pagination import CursorPagination
 from rest_framework.response import Response
 from rest_framework.throttling import SimpleRateThrottle
 
+from screening import questionnaires
 from screening.api.permissions import GUEST_OR_CONSENTED
 from screening.api.serializers import (
     AudiogramCreateSerializer,
@@ -34,6 +40,7 @@ from screening.models import (
     count_guest_saved,
 )
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
+from screening.questionnaires.results import SubscaleResult
 from screening.views.common import JUST_SAVED, works_here
 
 
@@ -98,13 +105,39 @@ def _parse_key(request):
         return None
 
 
+@extend_schema_view(
+    get=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "questionnaire",
+                str,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="Filter submissions by questionnaire code.",
+            )
+        ]
+    )
+)
 class SubmissionList(ListAPIView):
     serializer_class = SubmissionSerializer
     pagination_class = SubmissionPagination
 
     def get_queryset(self):
-        # With the answers: SADL's scores are worked out from them (submission.result.satisfaction).
-        return _own_submission_details(self.request)
+        code = self.request.query_params.get("questionnaire")
+        definition = questionnaires.get(code) if code else None
+        # Only SubscaleResult (SADL) reads individual answers on the list; other questionnaires
+        # take annotated sums from with_scores(), so filtered queries skip prefetching answers.
+        needs_answers = code is None or (
+            definition is not None and definition.result is SubscaleResult
+        )
+        submissions = (
+            _own_submission_details(self.request)
+            if needs_answers
+            else _own_submissions(self.request)
+        )
+        if code:
+            submissions = submissions.filter(questionnaire__code=code)
+        return submissions
 
     @extend_schema(
         request=SubmissionCreateSerializer,
@@ -167,9 +200,10 @@ class SubmissionList(ListAPIView):
 
 
 class GuestScoreThrottle(SimpleRateThrottle):
-    # Spec #492: 40 an hour from one connection source (DRF's get_ident), counted in the server's
-    # memory cache only, never in the database. 40, not the grill's 20 (implementation decision
-    # I1): one questionnaire scores twice, on the answer page and on the guest result page.
+    # Spec #492: 40 an hour from one connection source (DRF's get_ident), counted in each worker's
+    # memory cache only, never in the database (with 2 Gunicorn workers on the VPS, effective cap
+    # is up to ~2x). 40, not the grill's 20 (implementation decision I1): one questionnaire scores
+    # twice, on the answer page and on the guest result page.
     scope = "guest_score"
     rate = "40/hour"
 
@@ -179,8 +213,9 @@ class GuestScoreThrottle(SimpleRateThrottle):
 
 class GuestCountThrottle(SimpleRateThrottle):
     # Security check 2026-11-19 (the owner's pick, over the grill's Q15): a flood would only make
-    # the numbers wrong, but each one writes to the database. In the server's memory, like
-    # GuestScoreThrottle; a person opens a page far fewer times an hour.
+    # the numbers wrong, but each one writes to the database. In each worker's memory, like
+    # GuestScoreThrottle (with 2 workers on the VPS, up to ~2x); a person opens a page far fewer
+    # times an hour.
     scope = "guest_count"
     rate = "60/hour"
 
