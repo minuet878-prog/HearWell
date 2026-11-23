@@ -202,6 +202,8 @@
     outline: 3px solid var(--color-primary);
     outline-offset: 2px;
   }
+  /* Skip-link lands on <main tabindex="-1">; do not ring the whole main landmark. */
+  main[tabindex="-1"]:focus-visible { outline: 0; }
   [hidden] { display: none !important; }
 }
 

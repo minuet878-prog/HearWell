@@ -718,7 +718,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         self.assert_step_bar(2, 2)
         self.main().get_by_role("button", name="我同意，開始篩檢", exact=True).click()
         # The avatar: a menu button, or without JavaScript a link to account settings.
-        avatar = self.page.get_by_label("帳號設定：e2e_user").filter(visible=True)
+        avatar = self.page.get_by_label("帳號選單：e2e_user").filter(visible=True)
         expect(avatar).to_be_visible()
         expect(self.page).to_have_url(re.compile(r"/questionnaire_list\?from=consent$"))
 
@@ -4534,7 +4534,7 @@ class SiteHeaderTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
         return self.header().get_by_role("link", name="聽伴")
 
     def avatar(self):
-        return self.header().get_by_role("button", name="帳號設定：header_e2e")
+        return self.header().get_by_role("button", name="帳號選單：header_e2e")
 
     def scroll_to(self, y):
         self.page.evaluate("y => scrollTo({ top: y, behavior: 'instant' })", y)
@@ -4693,7 +4693,7 @@ class SiteHeaderTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
         self.open(javascript=False)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/learn")
-            expect(self.header().get_by_role("button", name="帳號設定：header_e2e")).to_be_hidden()
+            expect(self.header().get_by_role("button", name="帳號選單：header_e2e")).to_be_hidden()
             expect(self.menu()).to_be_hidden()
             self.header().get_by_role("link", name="帳號設定：header_e2e").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/account")
@@ -5378,8 +5378,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 {
                     **large,
                     "backgroundColor": clear,
-                    "color": "rgb(108, 117, 125)",
-                    "borderTopColor": "rgb(108, 117, 125)",
+                    "color": "rgb(74, 84, 96)",
+                    "borderTopColor": "rgb(74, 84, 96)",
                     "opacity": "0.65",
                     "pointerEvents": "none",
                 },
@@ -5458,16 +5458,15 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         # The login and register pages chose thicker, taller fields (2026-10-23), so the regular
         # field is measured on the delete-account page.
         primary_ring = "rgba(31, 78, 140, 0.25) 0px 0px 0px 4.5px"
-        field_focus_ring = "rgba(13, 110, 253, 0.25) 0px 0px 0px 4.5px"
-        # #272: every field edge is --color-input-border (4.7:1 on white); the old
-        # rgb(222, 226, 230) was 1.3:1, under WCAG 1.4.11's 3:1. Sizes stay as they were.
+        # #272: every field edge is --color-input-border (4.7:1 on white); min-height meets the
+        # 44px touch target (--spacing-touch = 2.75rem = 49.5px).
         border = "rgb(108, 117, 125)"
         self.audiogram(date(2026, 9, 28))
         with self.saving_artifacts():
             self.open()
             self.page.goto(f"{self.live_server_url}/account/delete")
             password = self.page.get_by_label("請輸入密碼確認")
-            self.assertEqual(self.size(password)[1], 42.5)
+            self.assertEqual(self.size(password)[1], 49.5)
             self.assertEqual(
                 self.styles(
                     password,
@@ -5560,7 +5559,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             audiogram_step(self.page, self.live_server_url, 2)
             self.page.get_by_text("用數值輸入").click()
             select = self.page.get_by_label("右耳氣導 500 Hz", exact=True)
-            self.assertEqual(self.size(select)[1], 42.5)
+            self.assertEqual(self.size(select)[1], 49.5)
             self.assertEqual(
                 self.styles(select, "borderTopWidth", "borderTopColor"),
                 {
@@ -5571,22 +5570,22 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.assertEqual(self.style(select, "padding"), "6.75px 40.5px 6.75px 13.5px")
             self.assertIn("svg", self.style(select, "backgroundImage"))
             select.focus()
-            self.assertEqual(self.style(select, "borderTopColor"), "rgb(134, 183, 254)")
-            self.assertEqual(self.style(select, "boxShadow"), field_focus_ring)
+            self.assertEqual(self.style(select, "borderTopColor"), self.PRIMARY)
+            self.assertEqual(self.style(select, "boxShadow"), primary_ring)
             mask = self.page.get_by_label("右耳氣導 500 Hz 遮蔽")
-            self.assertEqual(self.size(mask), (18, 18))
+            self.assertEqual(self.size(mask), (27, 27))
             self.assertEqual(self.style(mask, "opacity"), "0.5")
             self.assertEqual(self.style(mask, "borderTopColor"), border)
             self.assertEqual(
                 self.styles(mask.locator(".."), "minHeight", "paddingLeft"),
-                {"minHeight": "27px", "paddingLeft": "27px"},
+                {"minHeight": "49.5px", "paddingLeft": "0px"},
             )
             select.select_option("20")
             mask.focus()
-            self.assertEqual(self.style(mask, "borderTopColor"), "rgb(134, 183, 254)")
-            self.assertEqual(self.style(mask, "boxShadow"), field_focus_ring)
+            self.assertEqual(self.style(mask, "borderTopColor"), self.PRIMARY)
+            self.assertEqual(self.style(mask, "boxShadow"), primary_ring)
             mask.check()
-            self.assertEqual(self.style(mask, "backgroundColor"), "rgb(13, 110, 253)")
+            self.assertEqual(self.style(mask, "backgroundColor"), self.PRIMARY)
             # #199: the date is step 1.
             self.page.get_by_role("button", name="上一步").click()
             # The 2026-11-14 walkthrough (mockup 12A): the 民國 year box, inside 民國…年, so its
@@ -5658,11 +5657,11 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     "marginBottom",
                 ),
                 {
-                    "color": "rgb(102, 77, 3)",
-                    "backgroundColor": "rgb(255, 243, 205)",
-                    "borderTopColor": "rgb(255, 230, 156)",
-                    "padding": "18px",
-                    "borderTopLeftRadius": "6.75px",
+                    "color": "rgb(112, 72, 0)",
+                    "backgroundColor": "rgb(255, 244, 214)",
+                    "borderTopColor": "rgb(249, 221, 150)",
+                    "padding": "18px 18px 18px 49.5px",
+                    "borderTopLeftRadius": "13.5px",
                     "marginBottom": "18px",
                 },
             )
@@ -5673,9 +5672,9 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.assertEqual(
                 self.styles(danger, "color", "backgroundColor", "borderTopColor"),
                 {
-                    "color": "rgb(88, 21, 28)",
-                    "backgroundColor": "rgb(248, 215, 218)",
-                    "borderTopColor": "rgb(241, 174, 181)",
+                    "color": "rgb(143, 42, 18)",
+                    "backgroundColor": "rgb(254, 236, 231)",
+                    "borderTopColor": "rgb(246, 195, 179)",
                 },
             )
 
@@ -5745,7 +5744,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 self.styles(password, "borderTopColor", "backgroundColor"),
                 {"borderTopColor": self.ERROR, "backgroundColor": "rgb(254, 236, 231)"},
             )
-            self.assertEqual(self.size(password)[1], 42.5)
+            self.assertEqual(self.size(password)[1], 49.5)
             self.assertEqual(self.style(error, "fontWeight"), "700")
             self.assertIn(
                 "data:image/svg+xml",
@@ -6177,7 +6176,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     # Spec #741 (the owner at acceptance): no bird in the header, the
                     # dialogue's is the page's one.
                     expect(brand.locator(".site-logo")).to_have_count(0)
-                    avatar = header.get_by_role("button", name="帳號設定：style_e2e")
+                    avatar = header.get_by_role("button", name="帳號選單：style_e2e")
                     expect(avatar).to_have_text("S")
                     for text in (brand.locator(".site-wordmark-tint"), avatar):
                         colour = self.style(text, "color")
@@ -8917,7 +8916,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     ).to_be_hidden()
                     folds = self.report_folds()
                     titles = [
-                        fold.get_by_role("heading", level=2).inner_text() for fold in folds.all()
+                        fold.locator(".report-fold-title").inner_text() for fold in folds.all()
                     ]
                     self.assertEqual(
                         [re.sub(r"（\d{4}/\d\d/\d\d）$", "", title) for title in titles],
@@ -8926,7 +8925,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     for fold in folds.all():
                         expect(self.fold_body(fold)).to_be_hidden()
                     summary = folds.nth(1)
-                    title = summary.get_by_role("heading", level=2)
+                    title = summary.locator(".report-fold-title")
                     # The latest record (aided, all 0): its date, score, level and hearing aids.
                     expect(summary).to_have_text(
                         re.compile(
@@ -16456,7 +16455,7 @@ class GuestSavesFromTheCard(SavesFailureArtifacts, OnAPhone):
                 self.main().get_by_role("heading", name="要把這次結果存到這個帳號嗎？")
             ).to_be_visible()
             expect(
-                self.page.get_by_role("button", name=f"帳號設定：{self.username}_had")
+                self.page.get_by_role("button", name=f"帳號選單：{self.username}_had")
             ).to_be_visible()
             self.assertFalse(Submission.objects.exists())
             self.assertEqual(self.guest_results(), ["hearwell:guest-result:hhie-s"])
