@@ -245,7 +245,11 @@ describe("progress (#153)", () => {
 
   // ADR 0028: besides colour, only the fill of a segment just answered, never with reduced motion.
   it("styles the bar with colour only but for the fill: answered blue, nothing moves", () => {
-    const css = readFileSync(resolve(process.cwd(), "src/site.css"), "utf-8").replace(/\/\*[\s\S]*?\*\//g, "");
+    const entry = readFileSync(resolve(process.cwd(), "src/site.css"), "utf-8");
+    const imported = [...entry.matchAll(/@import\s+"(\.\/styles\/[^"]+)";/g)].map(([, rel]) =>
+      readFileSync(resolve(process.cwd(), "src", rel), "utf-8"),
+    );
+    const css = [entry, ...imported].join("\n").replace(/\/\*[\s\S]*?\*\//g, "");
     const rules = [...css.matchAll(/([^{}]*\.step-progress-(?:bar|segment)[^{}]*)\{([^}]*)\}/g)];
     // #471 took the register page's brand banner, and its white-on-blue bar, away.
     expect(rules.map(([, selector]) => selector.trim())).toEqual([

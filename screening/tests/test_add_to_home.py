@@ -5,13 +5,12 @@ fallback), it opens without JavaScript, and the bottom of the page lists the 4 t
 """
 
 import re
-from pathlib import Path
 
 from django.test import TestCase
 from django.urls import reverse
 
 from screening.models import Questionnaire, Submission
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, read_site_css
 
 DETAILS = re.compile(
     r"<details([^>]*)>\s*<summary([^>]*)>(.*?)</summary>(.*?)</details>", re.DOTALL
@@ -25,7 +24,6 @@ IPHONE_STEPS = (
 )
 # #471: each step beside its number dot (N3).
 STEP = re.compile(r'<span class="step-list-body">(.*?)</span></li>')
-SITE_CSS = Path(__file__).resolve().parents[2] / "frontend" / "src" / "site.css"
 ANDROID_STEPS = (
     "用 Chrome 打開聽伴網站。",
     "點右上角的「⋮」（三個點）。",
@@ -94,7 +92,7 @@ class AddToHomeTests(TestCase):
                 self.assertNotIn("<summary", body)
         # #471 (mockup #470): list rows that open (E), as on the privacy notice.
         self.assertIn('<details class="fold-row">', self.main)
-        css = SITE_CSS.read_text(encoding="utf-8")
+        css = read_site_css()
         rules = re.findall(r"\.fold-row[^{]*\{[^}]*\}", css)
         self.assertTrue(rules)
         # Tap target of at least 44px (2.75rem); hover and press change colour, never position

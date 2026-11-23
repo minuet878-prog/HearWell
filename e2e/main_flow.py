@@ -3161,9 +3161,9 @@ class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase)
         self.assertEqual(arrived, "transition", self.page.evaluate("window.skipReason"))
         self.assert_pill_slid()
 
-    def slow_down(self):
+    def slow_down(self, rate=6):
         cdp = self.context.new_cdp_session(self.page)
-        cdp.send("Emulation.setCPUThrottlingRate", {"rate": 6})
+        cdp.send("Emulation.setCPUThrottlingRate", {"rate": rate})
 
     # On a slow phone the next page used to paint before its switch was parsed, and then
     # switch-reveal.js skipped the slide (measured by hand at 4x slower CPU: 22 of 30 changes).
@@ -3186,9 +3186,11 @@ class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase)
 
     # #334: without render-blocking a slow page still paints before its switch is parsed; then
     # it changes page without the transition (switch-reveal.js) rather than fade the old pill out.
+    # ADR 0080 cut site.css almost in half, so 6x throttling finishes before first paint; 16x
+    # reproduces the slower phone where switch-reveal.js must still skip cleanly.
     def test_slow_page_without_render_blocking_never_fades_the_pill(self):
         self.open(render_blocking=False)
-        self.slow_down()
+        self.slow_down(rate=16)
         with self.saving_artifacts():
             for start, switch, sides in (
                 ("/my_hearing?view=questionnaires", "紀錄種類", ("聽力圖", "問卷")),
@@ -5145,7 +5147,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         return record
 
     LOAD_FONT_WEIGHTS = """async () => {
-        const loads = [400, 500, 600, 700].map(
+        const loads = [400, 700].map(
             (weight) => document.fonts.load(`${weight} 18px "Noto Sans TC"`, "聽力"),
         );
         // A missing weight would load the nearest one instead, so each face's weight is checked.
@@ -5154,7 +5156,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     }"""
 
     def test_body_font_comes_from_our_own_host(self):
-        # #181, ADR 0014: Noto Sans TC in all four weights, and no request leaves for Google
+        # #181, ADR 0014, ADR 0080: Noto Sans TC in 400 and 700, and no request leaves for Google
         # Fonts or cdnjs (the privacy notice lists neither).
         own_host = urlparse(self.live_server_url).netloc
         for signed_in, path in ((False, "/"), (False, "/register"), (True, "/my_hearing")):
@@ -5164,7 +5166,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 self.page.on("request", lambda request, seen=requests: seen.append(request))
                 self.page.goto(f"{self.live_server_url}{path}")
                 loaded = self.page.evaluate(self.LOAD_FONT_WEIGHTS)
-                for weight, faces in zip(("400", "500", "600", "700"), loaded, strict=True):
+                for weight, faces in zip(("400", "700"), loaded, strict=True):
                     self.assertTrue(faces)
                     self.assertEqual(set(faces), {weight})
                 self.assertTrue(
@@ -10106,13 +10108,13 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
             self.wait_until(self.JOURNEY, "finished")
             self.assertEqual(self.page.evaluate("window.scrollY"), 0)
 
-    # #338 review: when scroll-helpers.js never runs (here it fails to load), nothing waits for
-    # ever: about 3 seconds after the page starts, the animations play as without JavaScript,
+    # #338 review: when site-shell.js (in-view.js) never runs (here it fails to load), nothing waits
+    # for ever: about 3 seconds after the page starts, the animations play as without JavaScript,
     # the ring below the screen too.
     def test_animations_play_anyway_when_the_scroll_helpers_fail_to_load(self):
         self.open(
             "/guide",
-            prepare=lambda context: context.route("**/scroll-helpers.js", lambda r: r.abort()),
+            prepare=lambda context: context.route("**/site-shell.js", lambda r: r.abort()),
         )
         with self.saving_artifacts():
             here = self.main().locator(self.STOP)

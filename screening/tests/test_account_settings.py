@@ -1,6 +1,5 @@
 import re
 from datetime import datetime
-from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from django.test import TestCase
@@ -10,11 +9,10 @@ from django.utils import timezone
 from screening import models
 from screening.models import Consent, ReportShare
 from screening.tests import test_layout, test_report
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, read_site_css
 
 ACCOUNT_LINK = re.compile(r'<a[^>]*href="/account"[^>]*>')
 TAIPEI = ZoneInfo("Asia/Taipei")
-SITE_CSS = Path(__file__).resolve().parents[2] / "frontend" / "src" / "site.css"
 
 
 class AccountSettingsTests(TestCase):
@@ -250,7 +248,7 @@ class GroupedAccountSettingsTests(TestCase):
             self.assertIn(value, test_layout._text(group))
 
     def test_account_rows_do_not_change_on_hover_and_press(self):
-        css = SITE_CSS.read_text()
+        css = read_site_css()
         for state in ("hover", "active"):
             with self.subTest(state=state):
                 # The account rows are not links, so nothing changes on them (ADR 0006); the

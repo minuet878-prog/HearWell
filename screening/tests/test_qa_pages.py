@@ -12,10 +12,9 @@ from django.urls import reverse
 from screening.models import User
 from screening.qa_assistant import content
 from screening.tests import test_guide
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, read_site_css
 
 REFERRALS = ("my-results", "diagnosis-and-medication", "brands-and-shops", "sudden-hearing-loss")
-SITE_CSS = Path(__file__).resolve().parents[2] / "frontend" / "src" / "site.css"
 # The family page's 馬上就醫 box, which the assistant's home page pins its urgent answer in (since
 # #469 the box is the answer's link).
 URGENT_BOX_PAGES = ("qa_home", "family_guide")
@@ -106,7 +105,7 @@ class QaHomeTests(TestCase):
     def test_the_urgent_box_look_is_not_the_family_page_own(self):
         # The family page's rules nest under .family-guide; the box's own look must not, or the
         # assistant's box above would be a plain card.
-        css = re.sub(r"/\*.*?\*/", "", SITE_CSS.read_text(encoding="utf-8"), flags=re.S)
+        css = re.sub(r"/\*.*?\*/", "", read_site_css(), flags=re.S)
         selectors = [
             selector.strip()
             for selector, rule in re.findall(r"([^{}]*)\{([^{}]*)\}", css)
@@ -207,7 +206,7 @@ class QaLookTests(TestCase):
         )
 
     def test_the_thin_line_list_look_is_gone(self):
-        self.assertNotIn("qa-questions", SITE_CSS.read_text(encoding="utf-8"))
+        self.assertNotIn("qa-questions", read_site_css())
         for template in self.TEMPLATES.glob("*.html"):
             with self.subTest(template=template.name):
                 self.assertNotIn("qa-questions", template.read_text(encoding="utf-8"))

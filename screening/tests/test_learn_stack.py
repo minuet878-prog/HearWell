@@ -7,14 +7,13 @@ from io import StringIO
 from types import SimpleNamespace
 from unittest import mock
 
-from django.conf import settings
 from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
 from screening.models import Questionnaire, Submission
 from screening.questionnaires import thi
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, read_site_css
 
 CARD = re.compile(
     r'<article class="hero-card card-stack-card learn-card" role="group" '
@@ -86,7 +85,7 @@ class LearnStackTests(TestCase):
             rf'<a class="btn btn-hero btn-lg" href="{reverse("hearing_loss_simulator")}">聽聽看',
         )
         # The owner (2026-11-21, at acceptance): the words on these cards centred.
-        css = (settings.BASE_DIR / "frontend/src/site.css").read_text()
+        css = read_site_css()
         self.assertRegex(css, r"\.learn-card \{[^}]*text-align: center;")
         # Its line bigger than body text (owner, 2026-11-21): 22px at the 18px root.
         self.assertRegex(css, r"\.learn-card > p \{[^}]*font-size: 1\.2222rem;")
