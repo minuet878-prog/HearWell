@@ -50,7 +50,7 @@
 
 ## 樣式
 
-21. 樣式使用規則（[ADR 0008](docs/adr/0008-tailwind-css.md)）：重複元件與依資料拼接的 class 用有名字的 class，定義於 `frontend/src/site.css` 並引用主題值；只用一次的排版與間距直接寫 Tailwind，class 名稱寫完整以供建置掃描。
+21. 樣式使用規則（[ADR 0008](docs/adr/0008-tailwind-css.md)、[ADR 0080](docs/adr/0080-frontend-css-split-font-weights-and-shell-bundle.md)）：重複元件與依資料拼接的 class 用有名字的 class，定義於 `frontend/src/styles/`（由 `frontend/src/site.css` 依層疊順序匯入）並引用主題值；只用一次的排版與間距直接寫 Tailwind，class 名稱寫完整以供建置掃描。
 22. 動態效果照 [ADR 0006](docs/adr/0006-motion-rules.md)：自動播放的動畫只播一次、約 4 秒內停住；「減少動態效果」時不動、只變色；滑過效果只在有滑鼠的裝置出現；只有可點的卡片會浮起或下沉，按鈕、導覽項目、作答選項只變色，鍵盤焦點不位移（例外：手機底部分頁列往下捲隱藏、往上捲出現，「減少動態效果」時永遠顯示，見 [ADR 0045](docs/adr/0045-translucent-tab-bar-hides-on-scroll.md)；家人專區佩戴步驟的 12 張線條圖按「看動作」才播、只播一次、約 2.4 秒，「減少動態效果」時沒有按鈕；聽力圖「怎麼標記」的示範按「看示範」才播、只播一次、約 2 秒，「減少動態效果」時整塊不出現，見 [ADR 0060](docs/adr/0060-wearing-drawings-play-on-tap-once.md)）；平面區塊本身沒有滑過與按下效果（裡面的按鈕、連結照各自的規則）。進場動畫照 [ADR 0077](docs/adr/0077-play-once-entrance-animations.md)（蓋章、倒數半圓併入，[ADR 0075](docs/adr/0075-stamp-and-countdown-ring-animations.md)）：每個東西只播一次、總長約 2 秒內、不循環，捲到才播（`data-play-in-view`），捲走再捲回來不重播；「減少動態效果」時不動，直接是最後的樣子。分數直接顯示最後的值，不往上跑；只有天數（倒數的「還有 N 天」）從 0 往上跑，讀螢幕軟體直接讀到最後的值；儀表和折線畫一次。按鈕、作答選項的按下回饋仍然只變色（例外：分頁列選中的藍色膠囊滑到點的那格）。我的選配指引的儀表條捲到時從 0 填滿，旁邊的數字一直是最後的值，見 [ADR 0029](docs/adr/0029-scroll-aware-motion.md)。
 23. 顏色照 [ADR 0007](docs/adr/0007-level-colors-reserved.md)：綠、橘、紅只用在分級和成功／警告／錯誤文字，裝飾一律用藍色系；例外是會刪除資料或讓分享失效的按鈕（紅）、聽力圖右耳（紅）、助聽器的右耳記號（紅，[ADR 0058](docs/adr/0058-hearing-aid-left-right-marks-red-and-blue.md)）、遮蔽開關開啟時（橘）、剛完成的那一刻（綠，[ADR 0028](docs/adr/0028-button-feedback-motion.md)）、照顧旅程的「已完成」印章（朱紅 `--color-stamp` #b3261e，靠印章形狀和「已完成」三個字跟右耳的紅分開，[ADR 0075](docs/adr/0075-stamp-and-countdown-ring-animations.md)）。
 

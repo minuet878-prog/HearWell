@@ -2,6 +2,7 @@ import base64
 import json
 import re
 from datetime import datetime
+from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import parse_qsl, urlsplit
 
@@ -349,3 +350,23 @@ def without_nonce(content):
     if isinstance(content, bytes):
         content = content.decode()
     return re.sub(r' nonce="[^"]*"', "", content)
+
+
+FRONTEND_SRC_DIR = Path(__file__).resolve().parents[2] / "frontend" / "src"
+
+
+def site_css_files():
+    """site.css and every stylesheet it imports from frontend/src/styles/, in cascade order."""
+    entry = FRONTEND_SRC_DIR / "site.css"
+    imported = [
+        (entry.parent / match.group(1)).resolve()
+        for match in re.finditer(
+            r'@import\s+"(\./styles/[^"]+)";', entry.read_text(encoding="utf-8")
+        )
+    ]
+    return [entry, *imported]
+
+
+def read_site_css():
+    """Full source of the site's stylesheet across site.css and frontend/src/styles/*.css."""
+    return "\n".join(path.read_text(encoding="utf-8") for path in site_css_files())

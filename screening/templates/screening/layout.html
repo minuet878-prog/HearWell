@@ -26,20 +26,14 @@
     <link rel="apple-touch-icon" href="{% static 'screening/pwa/apple-touch-icon.png' %}">
     <meta name="apple-mobile-web-app-title" content="聽伴">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    {# Pull to refresh in the home-screen app (spec phase10_pwa_back_refresh.md); its back button is every page's ‹ since #748. #}
-    <script type="module" src="{% static 'screening/frontend/pwa-nav.js' %}"></script>
-    {# Bar and 載入中… while the next page loads; 送出中… on the pressed button (page-loading.js). #}
-    <script type="module" src="{% static 'screening/frontend/page-loading.js' %}"></script>
-    {# #334: the pill of 問卷｜聽力圖 and 右耳｜左耳 slides, and the tab bar's (#748); every other change of page skips the transition. #}
-    <script type="module" src="{% static 'screening/frontend/switch-slide.js' %}"></script>
+    {# Site-wide shell helpers (ADR 0080): pull-to-refresh (spec phase10_pwa_back_refresh.md), loading bar & 送出中… (ADR 0027), view-transition switch slide (#334, #748), and scroll/header helpers (spec #338, #457, #748). #}
+    <script type="module" src="{% static 'screening/frontend/site-shell.js' %}"></script>
     {# #748 (ADR 0028): a slow phone painted before the tab bar was parsed, and the tab bar's pill was just gone rather than slid. The first paint waits for <main>, which comes after the whole tab bar (Chrome 124+; elsewhere the pill is just gone, or just there, site.css). #}
     <link rel="expect" href="#main-content" blocking="render">
-    {# Scroll helpers (spec #338): the back-to-top button, entrance animations played in view, the box a jump lands on lit up, the line over a table that scrolls sideways, the phone's tab bar making way while scrolling down (#457), and the header's ‹ once scrolled (#748). #}
-    <script type="module" src="{% static 'screening/frontend/scroll-helpers.js' %}"></script>
     {# Copy buttons: every page's 複製信箱 in the footer (#580), the share and family pages' own. A plain static file, as it was on those two pages. #}
     <script defer src="{% static 'screening/copy-link.js' %}"></script>
-    {# Entrance animations wait until they are in view (#341, ADR 0029): marked before the page is drawn, so they hold their first frame until scroll-helpers.js starts them. Without JavaScript they play at once. #}
-    {# If in-view.js has not taken over 3 seconds after the page starts (scroll-helpers.js failed to load or stopped), they play at once too, rather than hold for ever: long enough for a slow phone to load that small file, short enough that a still first frame does not look broken. #}
+    {# Entrance animations wait until they are in view (#341, ADR 0029): marked before the page is drawn, so they hold their first frame until site-shell.js starts them. Without JavaScript they play at once. #}
+    {# If in-view.js has not taken over 3 seconds after the page starts (site-shell.js failed to load or stopped), they play at once too, rather than hold for ever: long enough for a slow phone to load that small file, short enough that a still first frame does not look broken. #}
     <script nonce="{{ request.csp_nonce }}">
         document.documentElement.classList.add("play-in-view");
         window.playInViewFallback = setTimeout(function () {

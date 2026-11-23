@@ -1,0 +1,916 @@
+@layer components {
+  /* Family guide (#240): each topic's tips a list with lines between them (.divided-rows) under
+     the topic's title (#312), each tip's point a .tint-subhead on its own line; the urgent topic
+     on the 緊急就醫 red (ADR 0043) with grey lines between its tips and 119 in large type; the
+     sources at the end. */
+  .family-guide section > h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+  }
+
+  .family-guide .topic-icon {
+    flex: none;
+    width: 1.75rem;
+    height: 1.75rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .family-guide .tips {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .family-guide .tip-point {
+    display: block;
+  }
+
+  /* The 馬上就醫 box (P3, ADR 0043): pale red with no frame, its title in the warning red. Not
+     under .family-guide: the Q&A assistant's home page pins its urgent answer in it too (#397). */
+  .card.family-urgent {
+    border: 0;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-severe-bg);
+  }
+
+  .family-urgent > h2,
+  .family-urgent > h2 .topic-icon {
+    color: var(--color-severe);
+    stroke: var(--color-severe);
+  }
+
+  .family-guide .family-urgent .tips {
+    padding: 0;
+  }
+
+  .family-guide .family-urgent .tips > li {
+    padding-block: 0.75rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .family-guide .family-urgent .tips > li:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .family-guide .family-urgent .tips > li:last-child {
+    padding-bottom: 0;
+  }
+
+  /* #316: white on the pale red, so the 119 line still stands out. */
+  .family-guide .urgent-call {
+    margin-bottom: 0;
+    padding: 0.875rem;
+    border-radius: var(--radius-medium);
+    background-color: #fff;
+    color: var(--color-heading);
+  }
+
+  .family-guide .urgent-number {
+    font-size: 1.75rem;
+    font-weight: 800;
+  }
+
+  .family-sources h3 {
+    margin-bottom: 0.25rem;
+    font-size: 1rem;
+  }
+
+  /* 陪診清單 (#430): native checkboxes, their words beside them, the whole row the touch target.
+     On paper only the page's own content: all items, the ticked ones ticked. */
+  .visit-check {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: var(--spacing-touch);
+    padding-block: 0.25rem;
+    cursor: pointer;
+  }
+
+  .visit-check input {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    accent-color: var(--color-primary);
+  }
+
+  .visit-check > span {
+    min-width: 0;
+  }
+
+  .visit-check:focus-within {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  .visit-category {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  @media print {
+    body:has(.family-visits) .site-header,
+    body:has(.family-visits) .site-nav,
+    body:has(.family-visits) footer,
+    .family-visits .no-print {
+      display: none !important;
+    }
+
+    body:has(.family-visits) {
+      padding-bottom: 0;
+    }
+
+    /* Nothing to touch on paper: tighter rows keep the list and its reminder on one sheet. */
+    .visit-check {
+      min-height: 0;
+      padding-block: 0.0625rem;
+    }
+
+    .family-visits fieldset fieldset,
+    .family-visits .family-sources {
+      break-inside: avoid;
+    }
+  }
+
+  /* 點選看說明's lists of things to say (#429). */
+  .pick-explain-list {
+    margin: 0;
+    padding-left: 1.25em;
+    list-style: disc;
+  }
+
+  .pick-explain-list > li + li {
+    margin-top: 0.5rem;
+  }
+
+  /* 點選看說明 (#428). At 200% text on a phone the radio, the tick's room and the block's padding
+     would leave an option's words one character a line: the block gives up its side padding and
+     the words take a row of their own under the radio and the tick. */
+  .pick-explain {
+    container-type: inline-size;
+  }
+
+  @container (max-width: 15rem) {
+    .pick-explain .link-card {
+      gap: 0.25rem;
+      padding: 0.5rem;
+    }
+
+    .pick-explain div.choice-group label {
+      grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .pick-explain div.choice-group label > span {
+      grid-row: 2;
+      grid-column: 1 / -1;
+    }
+
+    .pick-explain div.choice-group label::after {
+      grid-row: 1;
+      grid-column: 2;
+      justify-self: end;
+    }
+  }
+
+  /* 日常保養 (#435): each step a line drawing above its words and box. The list keeps its numbers
+     in the words, which take the whole row beside the box. */
+  .care-steps {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .care-steps .visit-check {
+    align-items: flex-start;
+  }
+
+  /* The reviewed drawings' strokes (batch-3-drawings.html), in the site's blue. They fill the row
+     up to a size that still reads, on a phone at any text size. */
+  /* A link inside a sentence, tall enough to tap (44px): #431, #432, #433. */
+  .tap-link {
+    display: inline-block;
+    padding-block: 0.6rem;
+  }
+
+  .care-drawing {
+    display: block;
+    width: 100%;
+    max-width: 15rem;
+    height: auto;
+    margin-bottom: 0.5rem;
+  }
+
+  .care-drawing * {
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  /* Readability batch 2 (the owner's A): 怎麼跟他說話's tips, each drawing 96px wide at the left
+     of its words, its lines a little lighter at that size. Where the list is under 15rem wide
+     (large text sizes) the drawing stays over the words, as the care steps' are. */
+  .talk-tips {
+    container-type: inline-size;
+  }
+
+  @container (min-width: 15rem) {
+    .talk-tips > li {
+      display: grid;
+      grid-template-columns: 5.3333rem 1fr;
+      column-gap: 0.75rem;
+      align-items: start;
+    }
+
+    .talk-tips .care-drawing {
+      grid-row: span 2;
+      margin-bottom: 0;
+    }
+
+    .talk-tips .care-drawing * { stroke-width: 1.8; }
+    .talk-tips .care-drawing .thin { stroke-width: 1.2; }
+    .talk-tips .care-drawing .thick { stroke-width: 3; }
+  }
+
+  .care-drawing .soft { fill: var(--color-pull); }
+  .care-drawing .thin { stroke-width: 1.6; }
+  .care-drawing .thick { stroke-width: 4; }
+  .care-drawing .dot { fill: var(--color-primary); stroke: none; }
+  .care-drawing .tube { stroke-width: 8; }
+  .care-drawing .tube-in { stroke: var(--color-pull); stroke-width: 3.6; }
+  .care-drawing .lens { fill: var(--color-pull); fill-opacity: 0.25; }
+  /* 怎麼戴上、拿下 (#504, the #503 drawings): the fingertips white under their lines, the aids'
+     parts deeper blue, and 分左右's marks and words. The fingertips reach past the frame on
+     purpose: keep the drawing's overflow hidden. */
+  .care-drawing .paper { fill: #fff; stroke: none; }
+  .care-drawing .part { fill: var(--color-aid-part); }
+  .care-drawing .mark-right { fill: var(--color-aid-right); stroke: none; }
+  .care-drawing .mark-left { fill: var(--color-primary); stroke: none; }
+  .care-drawing text { fill: var(--color-primary); stroke: none; font-weight: 700; }
+  /* 看動作 (#519, the #520 mockup's B): wear-motion.js puts it under a drawing that moves. */
+  .care-motion-play { margin-bottom: 0.5rem; }
+
+  /* #709 (the owner's mockup A, after Age UK East London's NHS App guide): each 從 iPhone 匯入
+     step's phone in the site's blue lines, the screen in pale blocks, the place to tap framed
+     thick with a fingertip under it. Its words are only a picture's: the step says them. */
+  .import-drawing {
+    display: block;
+    width: 100%;
+    max-width: 12rem;
+    height: auto;
+    margin-top: 0.5rem;
+  }
+
+  .import-drawing * {
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .import-drawing .frame,
+  .import-drawing .field { fill: #fff; }
+  .import-drawing .soft { fill: var(--color-pull); stroke: none; }
+  .import-drawing .dot { fill: #fff; stroke-width: 1.6; }
+  .import-drawing .sheet { fill: #fff; stroke-width: 1.6; }
+  .import-drawing .thin { stroke-width: 1.6; }
+  .import-drawing .tap { stroke-width: 4; }
+  .import-drawing .finger { fill: #fff; }
+  .import-drawing text { stroke: none; fill: var(--color-primary); font-family: inherit; }
+  .import-drawing .strong { font-weight: 700; }
+  .import-drawing .dim { fill: var(--color-muted); }
+
+  /* 怎麼戴上、拿下's 戴上 and 拿下 (the #503 mockup A): a title over each group of steps, the
+     squeal sentence in a grey box between them, and a link under a step lined up with its words
+     past the box. */
+  .care-steps-title {
+    margin: 1.1rem 0 0;
+    color: var(--color-heading);
+    font-size: var(--text-button);
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  .care-steps-note {
+    margin: 1rem 0 0;
+    padding: 0.75rem 1rem;
+    border-radius: 0.9rem;
+    background: var(--color-surface);
+  }
+
+  .care-step-link {
+    margin-left: 2.25rem;
+  }
+
+  /* The Q&A assistant's 依主題找 (the owner's pick 2026-10-27, B): a tile a topic, the
+     .link-card look with its icon above its name. Two a row on a phone; at large text sizes a
+     row holds fewer, down to one, and a tile never gets wider than its row. */
+  .qa-topics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(7.5rem, 100%), 1fr));
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* Tiles side by side: each keeps the line above it, as the first row of a list does. */
+  .qa-topics .qa-topic.link-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    height: 100%;
+    border-top: 1px solid var(--color-line);
+  }
+
+  /* A topic name's phrase stays on one line when it fits; the name breaks between phrases. */
+  .qa-topic-phrase {
+    display: inline-block;
+  }
+
+  /* Account settings (#195; #303, #298's pick, ADR 0022): the account details are flat rows with
+     a thin line between them; each link row is a clickable card (.link-card). */
+  .settings-group {
+    margin: 0;
+  }
+
+  /* At 200% text a date or an address wraps instead of widening the page. The account rows are a
+     list of terms: the value under its label. */
+  .settings-row {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 4.25rem;
+    padding: 0.75rem 0;
+    overflow-wrap: anywhere;
+  }
+
+  .settings-group > * + * {
+    border-top: 1px solid var(--color-line);
+  }
+
+  .settings-row dd {
+    margin: 0;
+  }
+
+  .settings-row-title {
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
+  .settings-row-note {
+    font-size: 1rem;
+    font-weight: 400;
+  }
+
+  /* Security check 2026-11-19 (docs/design/email-confirmation-mockup.html 4): an email whose
+     確認信 is not answered yet, a small tag in the mild level's amber. */
+  .email-unconfirmed {
+    display: inline-block;
+    margin-top: 0.15rem;
+    padding: 0 0.5rem;
+    border-radius: var(--radius-small);
+    background-color: var(--color-mild-bg);
+    color: var(--color-mild);
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  /* #659 (the #657 mockup's C): the email 重測提醒 once on, a green line with its tick (the
+     success green, ADR 0007). */
+  .reminder-on {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    margin: 0 0 0.75rem;
+    padding: 0.6rem 0.8rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-normal-bg);
+    color: var(--color-normal);
+    font-weight: 700;
+  }
+
+  .reminder-on svg {
+    flex: none;
+    width: 1.4rem;
+    height: 1.4rem;
+    margin-top: 0.1rem;
+    fill: none;
+    stroke: var(--color-normal);
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* Spec #505 (the #507 mockup 5): a way to sign in a row, its mark in a circle on the left,
+     name and state in the middle, the one thing to do with it on the right; at large text sizes
+     the action drops under the words. */
+  .sign-in-method {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 4.25rem;
+    padding: 0.75rem 0;
+  }
+
+  .sign-in-method-icon {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.6667rem;
+    height: 2.6667rem;
+    border-radius: 50%;
+    background-color: var(--color-brand-soft);
+  }
+
+  .sign-in-method-icon svg {
+    width: 1.5rem;
+    height: 1.5rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* Google's G and LINE's icon keep their own colours, on white with a thin frame (the #539
+     mockup 5). */
+  .sign-in-method-icon:has(.btn-google-logo, .btn-line-logo) {
+    border: 1px solid var(--color-line);
+    background-color: #fff;
+  }
+
+  .sign-in-method-icon :is(.btn-google-logo, .btn-line-logo) {
+    stroke: none;
+  }
+
+  .sign-in-method-body {
+    display: flex;
+    flex: 1 1 8rem;
+    flex-direction: column;
+    overflow-wrap: anywhere;
+  }
+
+  /* Deleting the account is set apart from everything above it, in red whatever its state. */
+  .settings-card-danger,
+  .settings-card-danger:is(:hover, :active, :focus-visible) {
+    border-color: var(--color-severe);
+  }
+
+  .settings-card-danger :is(.link-card-title, .link-card-arrow) {
+    color: var(--color-severe);
+  }
+
+  .settings-card-danger .action-card-icon {
+    background-color: var(--color-severe-bg);
+  }
+
+  .settings-card-danger .action-card-icon svg {
+    stroke: var(--color-severe);
+  }
+
+  /* #757 (spec #741 P19, the canvas's ProAccount): the account's name in a pale blue block
+     beside a larger copy of the header's avatar (.site-avatar), on the brand's deep gradient. */
+  .account-card {
+    display: flex;
+    align-items: center;
+    gap: 0.7778rem;
+    padding: 0.8889rem;
+    border-radius: var(--radius-large);
+    background-color: var(--color-brand-soft);
+  }
+
+  .account-avatar {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 3.5556rem;
+    height: 3.5556rem;
+    border-radius: 50%;
+    background-image: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+    color: #fff;
+    font-size: 1.6667rem;
+    font-weight: 700;
+  }
+
+  .account-card-name {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .account-card-name dt {
+    color: var(--color-muted);
+    font-size: 1rem;
+    font-weight: 400;
+  }
+
+  .account-card-name dd {
+    margin: 0;
+    color: var(--color-heading);
+    font-size: 1.3333rem;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  /* A row's own button (補上, 新增, 重寄確認信): round-ended as the canvas draws it, still the
+     site's 56px button height (#453 acceptance 32, ADR 0043 S1). */
+  .btn-pill {
+    border-radius: var(--radius-pill);
+  }
+
+  /* The email 重測提醒 in one grey block: the bell in a white circle beside the title and one
+     short line saying whether it is on (spec #741, compare-reminder.html C). */
+  .reminder-box {
+    padding: 0.8889rem;
+    border-radius: var(--radius-large);
+    background-color: var(--color-surface);
+  }
+
+  .reminder-head {
+    display: flex;
+    align-items: center;
+    gap: 0.7778rem;
+    margin-bottom: 0.7778rem;
+  }
+
+  .reminder-title {
+    margin: 0;
+    font-size: var(--text-section-title);
+  }
+
+  .reminder-state {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 1rem;
+  }
+
+  .reminder-state-on {
+    color: var(--color-primary);
+    font-weight: 700;
+  }
+
+  .reminder-bell {
+    position: relative;
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: var(--spacing-touch);
+    height: var(--spacing-touch);
+    border-radius: 50%;
+    background-color: #fff;
+  }
+
+  .reminder-bell svg {
+    width: 1.5rem;
+    height: 1.5rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* While on, a small blue round tick at the bell's bottom right. */
+  .reminder-tick {
+    position: absolute;
+    right: -0.2222rem;
+    bottom: -0.2222rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.3333rem;
+    height: 1.3333rem;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background-color: var(--color-primary);
+  }
+
+  .reminder-bell .reminder-tick svg {
+    width: 0.7778rem;
+    height: 0.7778rem;
+    stroke: #fff;
+    stroke-width: 3.5;
+  }
+
+  /* Questionnaire list (spec phase9_ui_refresh_4b_questionnaire_cards.md 4.1); the continue
+     notice on the home and screening pages (#337) is the same 提示框 (P3, ADR 0043). */
+  .questionnaire-guide, .continue-notice {
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-surface);
+    color: var(--color-heading);
+  }
+
+  .continue-notice {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+
+  .continue-notice-icon {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-top: 0.125rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .continue-notice a {
+    margin-left: 0.25rem;
+    font-weight: 700;
+  }
+
+  .questionnaire-icon {
+    position: relative;
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.6667rem;
+    height: 2.6667rem;
+    border-radius: 50%;
+    background-color: var(--color-brand-soft);
+  }
+
+  /* The ring a hovered card's icon sends out once (#141); invisible at rest. */
+  .questionnaire-icon::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    box-shadow: 0 0 0 0.25rem rgba(31, 78, 140, 0.4);
+    opacity: 0;
+  }
+
+  /* E (#454): the brand blue on the pale blue circle, as the action cards' icons. */
+  .questionnaire-icon svg {
+    width: 1.5rem;
+    height: 1.5rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* Audiogram list thumbnail (spec phase9_ui_refresh_4c_audiogram_thumbnails.md 4.1). */
+  .audiogram-thumbnail {
+    flex: none;
+    width: 6rem;
+    height: 4.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-small);
+    background-color: #fff;
+  }
+
+  /* Audiogram list card (owner's pick from the comparison, 2026-10-23): at normal sizes nothing
+     wraps, as in .action-card. When large text leaves the date and levels no room beside the
+     thumbnail, they drop under it; the thumbnail keeps growing with the text, beside the arrow.
+     13.5rem: the 6rem thumbnail, two 1rem gaps and the arrow leave the date about 5rem; a 320px
+     phone at normal text is about 14rem, so it never switches. */
+  .audiogram-card {
+    container-type: inline-size;
+    flex-wrap: wrap;
+  }
+
+  @container (max-width: 13.5rem) {
+    .audiogram-card .link-card-body {
+      flex: 1 0 100%;
+      order: 1;
+    }
+
+    .audiogram-card .audiogram-thumbnail {
+      flex: 1;
+      width: auto;
+      height: auto;
+      aspect-ratio: 4 / 3;
+    }
+  }
+
+  /* SSQ12 score input follows the reviewed range-and-buttons prototype. */
+  .ssq-scale input[type="range"] {
+    width: 100%;
+    min-height: var(--spacing-touch);
+    accent-color: var(--color-primary);
+  }
+
+  .ssq-scale > label:last-child {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: var(--spacing-touch);
+  }
+
+  .comparison-items,
+  .report-answers {
+    overflow-wrap: anywhere;
+  }
+
+  @media print {
+    .health-report .report-answers > ol {
+      display: block !important;
+    }
+
+    .health-report .report-answers::details-content {
+      content-visibility: visible;
+    }
+
+    /* On paper the answers read as before the pages tidy-up: no box, the browser's own marker. */
+    .health-report .report-answers.dropdown-box {
+      border: 0;
+      background: none;
+    }
+
+    .health-report .report-answers.dropdown-box > summary {
+      display: list-item;
+      padding: 0.5rem 0;
+      background: none;
+      list-style: revert;
+    }
+
+    .health-report .report-answers.dropdown-box > summary::after {
+      content: none;
+    }
+
+    .health-report .report-answers.dropdown-box > :not(summary) {
+      margin-inline: 0;
+    }
+  }
+
+  /* #314 (ADR 0024): on screen the report folds by part. #471 (mockup #470 B): each fold is a
+     list row (E), its icon, its title and the summary line under it in the muted grey, a blue
+     chevron at the end, a thin line under it; what opens below is flat. Its row already names
+     the part, so its own title waits for paper. On paper every fold opens and the row goes: the
+     report prints as it did before the folds. */
+  .report-fold {
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .report-fold > summary {
+    container-type: inline-size;
+    min-height: 4rem;
+    padding: 0.875rem 0.25rem;
+    color: var(--color-heading);
+    font-weight: 400;
+  }
+
+  .report-fold > summary::after {
+    width: 1.5rem;
+    height: 1.5rem;
+    background-color: var(--color-primary);
+  }
+
+  .report-fold-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .report-fold-title {
+    margin: 0;
+    color: var(--color-heading);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: inherit;
+  }
+
+  .report-fold-meta {
+    color: var(--color-muted);
+  }
+
+  /* At large text sizes the words drop under the icon, the chevron staying on the icon's row,
+     as on an action card. */
+  @container (max-width: 11rem) {
+    .report-fold-text {
+      flex: 1 0 100%;
+      order: 1;
+    }
+  }
+
+  .report-fold-body {
+    margin-top: 0.5rem;
+  }
+
+  @media screen {
+    .health-report .report-fold-body > section:first-child {
+      position: relative;
+      margin-top: 0;
+    }
+
+    /* Visually hidden on screen (summary shows the same title), kept in the accessibility tree
+       for heading navigation and shown on paper. */
+    .report-fold-body > section:first-child > :is(h2, h3):first-child {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+  }
+
+  @media print {
+    .health-report .report-fold,
+    .health-report .report-fold::details-content,
+    .health-report .report-fold-body {
+      display: contents;
+    }
+
+    .health-report .report-fold::details-content {
+      content-visibility: visible;
+    }
+
+    .health-report .report-fold > summary {
+      display: none;
+    }
+  }
+
+  /* #315: on screen a report table's columns take the room their text needs, and neither a date
+     nor a column's name breaks. Paper keeps its equal columns. */
+  @media screen {
+    .health-report .table {
+      table-layout: auto;
+    }
+
+    .health-report .table :is(th, time) {
+      white-space: nowrap;
+    }
+
+    /* Where a table does not fit (16rem, about what the four columns need: 200% text on a
+       phone, or a 320px phone), each record stacks into a block of its own: each value after its
+       column's name, a line between two records. The header row stays for screen readers only,
+       and the tables' role attributes keep them tables there (Safari drops a table's semantics
+       when its display changes); the names in front of the values are not read. */
+    .health-report .report-fold-body {
+      container-type: inline-size;
+    }
+
+    @container (width < 16rem) {
+      .health-report .table,
+      .health-report .table > :is(thead, tbody),
+      .health-report .table > :is(thead, tbody) > tr,
+      .health-report .table > :is(thead, tbody) > tr > * {
+        display: block;
+      }
+
+      .health-report .table > thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
+      .health-report .table > thead > tr > th {
+        padding: 0;
+      }
+
+      .health-report .table > tbody > tr + tr {
+        border-top: 1px solid var(--color-line);
+      }
+
+      /* The value goes beside its name, or whole onto the next line when it does not fit. */
+      .health-report .table > tbody > tr > td {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        column-gap: 0.5rem;
+        border-bottom-width: 0;
+        padding-block: 0.25rem;
+      }
+
+      .health-report .table > tbody > tr > td::before {
+        content: attr(data-label) / "";
+        color: var(--color-heading);
+        font-size: 1rem;
+        font-weight: 700;
+      }
+    }
+  }
+}

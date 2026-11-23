@@ -1,0 +1,707 @@
+@layer components {
+  /* While React loads, the Django form stays hidden (spec phase5_answer_flash.md); without JS the
+     class is never added and the empty note takes no space. */
+  .answer-loading :is(#answer-form, #answer-intro-fold) {
+    display: none;
+  }
+
+  #answer-loading:empty {
+    display: none;
+  }
+
+  /* Result page: level banner, L1 (#454, ADR 0043): the whole block in the level's pale colour,
+     the level written in its text colour, no frame (the same pairs as the trend chart bands). */
+  .result-banner {
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius-medium);
+  }
+
+  .result-banner > div {
+    color: var(--color-heading);
+  }
+
+  .result-banner-normal {
+    background-color: var(--color-normal-bg);
+    color: var(--color-normal);
+  }
+
+  .result-banner-mild_to_moderate {
+    background-color: var(--color-mild-bg);
+    color: var(--color-mild);
+  }
+
+  .result-banner-severe {
+    background-color: var(--color-severe-bg);
+    color: var(--color-severe);
+  }
+
+  .result-banner-unknown {
+    background-color: var(--color-surface);
+    color: var(--color-body);
+  }
+
+  details summary {
+    min-height: var(--spacing-touch);
+    padding: 0.5rem 0;
+    font-weight: 700;
+    color: var(--color-primary);
+  }
+
+  /* Dropdowns, one look site-wide (dropdowns tidy-up, owner's pick B): on the page a white box
+     with a chevron, first made for add_to_home's phones (#196); inside a card a line on top
+     instead, so a box never sits in a box. The summary is the tap target; hover and press change
+     colour only, never position (ADR 0006). */
+  .dropdown-box {
+    border: 0.125rem solid var(--color-border);
+    border-radius: var(--radius-button);
+    background-color: #fff;
+  }
+
+  .dropdown-line {
+    margin-top: 0.75rem;
+    border-top: 1px solid var(--color-line);
+  }
+
+  /* Wraps so a long word ("Android") at double text size on a 320px phone pushes the chevron to
+     a second line instead of widening the page. */
+  .dropdown-box > summary, .dropdown-line > summary, .report-fold > summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: var(--spacing-touch);
+    padding: 0.5rem 1rem;
+    border: 0;
+    border-radius: inherit;
+    background: none;
+    color: var(--color-primary);
+    font: inherit;
+    font-weight: 700;
+    text-align: left;
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .dropdown-line > summary {
+    padding-inline: 0;
+  }
+
+  .dropdown-box > summary::-webkit-details-marker,
+  .dropdown-line > summary::-webkit-details-marker,
+  .report-fold > summary::-webkit-details-marker { display: none; }
+
+  /* A chevron at the right edge, in the text colour: down when closed, swapped (not turned) for
+     an up one when open, so nothing moves (ADR 0006). */
+  .dropdown-box > summary::after, .dropdown-line > summary::after, .report-fold > summary::after {
+    content: "";
+    flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-left: auto;
+    background-color: currentColor;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+
+  .dropdown-box[open] > summary::after,
+  .dropdown-line[open] > summary::after,
+  .report-fold[open] > summary::after {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6-6 6 6'/%3E%3C/svg%3E");
+  }
+
+  /* #361: under each phone choice, the makers it covers, in body text, so an older reader who
+     does not know "Android" still finds their phone. */
+  .phone-choice-brands {
+    display: block;
+    color: var(--color-body);
+    font-weight: 400;
+  }
+
+  /* #328 (D1): open, a box dropdown or a report fold keeps its title bar light blue, and a box
+     dropdown gains a thick blue edge on its left, so a reader deep in its content still sees
+     which one they are in. Painted on the background, so nothing inside moves; a line dropdown
+     stays as it is. The report's folds are list rows since #471, with almost no inner space, so
+     the edge ran over their words and pictures: the owner had it taken off them (2026-11-12, no
+     side bars, ADR 0043). */
+  .dropdown-box[open], .dropdown-box[open] > summary {
+    background-image: linear-gradient(to right, var(--color-primary) 0.3rem, transparent 0.3rem);
+  }
+
+  .dropdown-box[open] > summary,
+  .report-fold[open] > summary {
+    background-color: var(--color-brand-soft);
+  }
+
+  /* What runs to the box's edges (tables, grouped fields; below) starts after the bar, which
+     would otherwise hide behind a white table on screen and show through it on paper. They show
+     only while the box is open, so nothing visible moves. */
+  .dropdown-box[open] > :is(table, div) {
+    margin-inline-start: 0.3rem;
+  }
+
+  /* Inside the box the bar runs on into the content, so only its top corners are round. */
+  .dropdown-box[open] > summary {
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .dropdown-box > summary:hover, .dropdown-line > summary:hover, .report-fold > summary:hover {
+      background-color: var(--color-brand-soft);
+      color: var(--color-primary-hover);
+    }
+  }
+
+  .dropdown-box > summary:active, .dropdown-line > summary:active, .report-fold > summary:active {
+    background-color: var(--color-brand-selected);
+    color: var(--color-primary-active);
+  }
+
+  /* What opens below the summary: inside the box's edges; a line's content needs none. */
+  .dropdown-box > :not(summary) {
+    margin-inline: 1rem;
+  }
+
+  .dropdown-box > :not(summary):last-child {
+    margin-bottom: 1rem;
+  }
+
+  /* Tables and grouped fields run to the box's edges: at double text size on a phone the side
+     margins would leave them too little room. */
+  .dropdown-box > :is(table, fieldset, div) {
+    margin-inline: 0;
+  }
+
+  /* my_hearing: one tab per questionnaire; each tab is a link to its own URL. */
+  /* A grid of two (or more, on wider screens) so five questionnaires take three rows on a phone
+     instead of five (text-heavy pages tidy-up); the topic on top, its code small underneath. At
+     double text size the columns drop to one rather than widen the page. #465 (the #464 mockup
+     D1 A): pale grey tiles, the current one the tab bar's pale blue pill in a 2px blue frame.
+     #668: never narrower than the row, as .records-switch: 9rem at 200% is wider than a 320px
+     phone. */
+  .history-tabs {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 9rem), 1fr));
+    gap: 0.5rem;
+    margin: 0.5rem 0 1.5rem;
+  }
+
+  .history-tabs a {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: var(--spacing-touch);
+    padding: 0.35rem 0.6rem;
+    border-radius: var(--radius-medium);
+    font-size: 1rem;
+    line-height: 1.3;
+    background-color: var(--color-surface);
+    color: var(--color-heading);
+    font-weight: 400;
+    text-decoration: none;
+  }
+
+  .history-tab-code {
+    font-size: 0.75rem;
+    font-weight: 400;
+  }
+
+  .history-tabs a[aria-current="page"] {
+    background-color: var(--color-brand-selected);
+    box-shadow: inset 0 0 0 2px var(--color-primary);
+    color: var(--color-primary);
+    font-weight: 700;
+  }
+
+  /* #328 (A2, ADR 0028): the other tabs turn the dropdowns' title bar light blue under a mouse
+     and a step deeper while pressed; colour only. */
+  @media (hover: hover) and (pointer: fine) {
+    .history-tabs a:not([aria-current]):hover {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .history-tabs a:not([aria-current]):active {
+    background-color: var(--color-brand-selected);
+  }
+
+  /* Questionnaires or audiograms on 我的紀錄 (#270, ADR 0019): two links in one pill. #465 (the
+     #464 mockup D1 A): a pale grey track, the current half the tab bar's pale blue pill with
+     bold blue words in a 2px blue frame, so it is not taken for a solid button. At 200% text the
+     two halves stack instead of running off a phone. */
+  .records-switch {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
+    gap: 0.25rem;
+    margin: 0.5rem 0 1.5rem;
+    padding: 0.25rem;
+    border-radius: var(--radius-tab);
+    background-color: var(--color-surface);
+  }
+
+  .records-switch a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--spacing-touch);
+    padding: 0.25rem 1rem;
+    border-radius: var(--radius-tab);
+    color: var(--color-muted);
+    font-weight: 400;
+    text-decoration: none;
+  }
+
+  .records-switch a[aria-current="page"] {
+    background-color: var(--color-brand-selected);
+    box-shadow: inset 0 0 0 2px var(--color-primary);
+    color: var(--color-primary);
+    font-weight: 700;
+  }
+
+  /* #328 (A2): the other half sits on the pale grey track, so it turns pale blue under a mouse
+     and deeper while pressed, either way apart from the track; colour only. */
+  @media (hover: hover) and (pointer: fine) {
+    .records-switch a:not([aria-current]):hover {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .records-switch a:not([aria-current]):active {
+    background-color: var(--color-brand-soft-deep);
+  }
+
+  /* #334 (spec #326 D3, ADR 0028): pressing the other half of this switch or 右耳｜左耳, the
+     blue pill slides from the old side to the new, by the browser's cross-document view
+     transition; browsers without it just change page. Only the pill takes part: the page itself
+     (the root) neither fades out nor in, and switch-slide.js skips every other change of page.
+     With reduced motion there is no transition at all. */
+  @media (prefers-reduced-motion: no-preference) {
+    @view-transition {
+      navigation: auto;
+    }
+  }
+
+  :root {
+    view-transition-name: none;
+  }
+
+  :is(.records-switch a[aria-current="page"], .ear-switch a[aria-current="true"]) {
+    view-transition-name: switch-pill;
+  }
+
+  /* #748: a tab pressed on a page with 問卷｜聽力圖 leaves that pill behind, and a page without a
+     current tab has no tab pill to slide from. A pill on one side only neither fades out over
+     the next page nor fades in: it is just gone, or just there. */
+  ::view-transition-old(*):only-child {
+    display: none;
+  }
+
+  ::view-transition-new(*):only-child {
+    animation: none;
+  }
+
+  /* Legend under both charts. */
+  .trend-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+    margin: 0.75rem 0 0;
+    padding: 0;
+    list-style: none;
+    color: var(--color-heading);
+  }
+
+  .trend-legend li {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  /* #756 (ADR 0078, canvas TrendA): each level's short name inside its band of the trend chart,
+     top right, bold, in its level's text colour (ADR 0007): 7:1 on the pale bands, over 5:1 on
+     THI's deep ones. */
+  .trend-band-name {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .trend-band-name-normal {
+    fill: var(--color-normal);
+  }
+
+  .trend-band-name-mild_to_moderate {
+    fill: var(--color-mild);
+  }
+
+  .trend-band-name-severe {
+    fill: var(--color-severe);
+  }
+
+  /* #650 (spec #644 R2, the #645 mockup's A): the fitting day on the trend chart, a neutral dark
+     grey dashed line and 開始戴 in a small white box with a thin frame and rounded corners; never
+     a level's colour. */
+  .trend-fitting-line {
+    stroke: var(--color-muted);
+    stroke-width: 2;
+    stroke-dasharray: 6 4;
+  }
+
+  .trend-fitting-box {
+    fill: #fff;
+    stroke: var(--color-muted);
+    stroke-width: 1;
+    rx: 4px;
+  }
+
+  .trend-fitting-text {
+    fill: var(--color-heading);
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  /* The sentence under the chart's frame that says the same day in words. */
+  .trend-fitted {
+    margin: 0.75rem 0 0;
+  }
+
+  /* #756 (canvas TrendA): how to read the scores, last under the chart. */
+  .trend-note {
+    margin: 0.5rem 0 0;
+    color: var(--color-muted);
+  }
+
+  /* #332 (spec #326 B3): the copy button says ✓ 已複製 in success green (ADR 0007) for 2
+     seconds, whether pressed, hovered or not.
+     #330 (B1): the same green for ✓ 已送出 and ✓ 已存檔, held 0.6 seconds while the button
+     stays disabled, so its disabled colours are the green too. */
+  .btn.is-copied, .btn.is-sent {
+    --btn-color: #fff;
+    --btn-bg: var(--color-normal);
+    --btn-border-color: var(--color-normal);
+    --btn-hover-color: #fff;
+    --btn-hover-bg: var(--color-normal);
+    --btn-hover-border-color: var(--color-normal);
+    --btn-active-color: #fff;
+    --btn-active-bg: var(--color-normal);
+    --btn-active-border-color: var(--color-normal);
+  }
+  .btn.is-sent {
+    --btn-disabled-color: #fff;
+    --btn-disabled-bg: var(--color-normal);
+    --btn-disabled-border-color: var(--color-normal);
+  }
+  /* .copy-address (#580, the owner's A in the #577 mockup): 複製信箱, an outline button with
+     its icon drawn like the tick that takes its place, in a thinner line. */
+  /* 傳給他's buttons (spec #655, #674) draw their share and copy icons the same way. */
+  .is-copied > svg, .is-sent > svg, .copy-address > svg, .send-to-him-button > svg {
+    width: 1.25em;
+    height: 1.25em;
+    margin-right: 0.35em;
+    vertical-align: -0.25em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .copy-address:not(.is-copied) > svg, .send-to-him-button:not(.is-copied) > svg {
+    stroke-width: 2;
+  }
+
+  /* A thin grey line between the parts of a group (the result page's advice, a family topic's
+     tips). */
+  .divided-rows > * + * {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-line);
+  }
+
+  /* A bold subhead in the heading colour, not link blue: a family guide tip's point, a guide
+     chapter's lead (ADR 0024). */
+  .tint-subhead {
+    margin: 0 0 0.25rem;
+    color: var(--color-heading);
+    font-size: var(--text-subhead);
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  /* A result page's step links (ticket #157), as text under the step's words (result page
+     tidy-up, option B); since #461 the steps are paragraphs, not a numbered list. */
+  .next-steps-links {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 1.5rem;
+    margin-top: 0.25rem;
+  }
+
+  /* A text link with a 44px tap height, lighter than the outlined buttons it replaced. */
+  .next-steps-link {
+    display: inline-block;
+    padding: 0.55rem 0;
+    color: var(--color-primary);
+    font-weight: 700;
+    text-decoration-line: underline;
+    text-underline-offset: 0.25em;
+  }
+
+  /* Inline-block so the link's underline skips the arrow; the empty alternative text keeps the
+     arrow out of the link name screen readers read. */
+  .next-steps-link::after {
+    content: "›" / "";
+    display: inline-block;
+    margin-left: 0.3rem;
+    font-size: 1.3em;
+    line-height: 1;
+  }
+
+  /* #750 (spec #741, canvas ProResult): the semicircle gauge (semicircle_gauge.html), shared by the
+     result page, the home page's last result and 紀錄's latest. Each level's arc thin and pale in
+     its colour, the score's level thick in its own, drawn once in view (play-once-gauge); a white
+     knob where the score is. Its width is the page's: it keeps its shape at any. */
+  .gauge {
+    position: relative;
+  }
+
+  .gauge-arcs {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  .gauge-arc {
+    fill: none;
+    stroke-width: 9;
+    opacity: 0.4;
+  }
+
+  .gauge-arc-normal {
+    stroke: var(--color-normal);
+  }
+
+  .gauge-arc-mild_to_moderate {
+    stroke: var(--color-mild);
+  }
+
+  .gauge-arc-severe {
+    stroke: var(--color-severe);
+  }
+
+  /* The higher of two levels sharing a colour (Definition.shade), as the trend chart's bands. */
+  .gauge-arc-deep {
+    opacity: 0.6;
+  }
+
+  .gauge-arc-current {
+    stroke-width: 20;
+    opacity: 1;
+  }
+
+  .gauge-knob {
+    fill: #fff;
+    stroke: var(--color-heading);
+    stroke-width: 3;
+  }
+
+  /* The scale's two ends inside the arc, beside its feet, at least the body size (#357). */
+  .gauge-ends {
+    position: absolute;
+    inset: auto 16% 0;
+    display: flex;
+    justify-content: space-between;
+    font-size: 1rem;
+    line-height: 1.2;
+  }
+
+  /* "Loading" or "cannot show" in the middle of the chart's empty box. */
+  .trend-plot-message {
+    display: flex;
+    height: 100%;
+    margin: 0;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--color-body);
+  }
+  .trend-plot-message.loading-message { flex-direction: column; }
+
+  /* IOI-HA norm chart: 7 columns x 5 rows, row 1 is a score of 5 (the book's scoring sheet). */
+  .ioi-columns {
+    display: grid;
+    grid-template-columns: 1.25rem repeat(7, minmax(0, 1fr));
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ioi-grid {
+    display: grid;
+    grid-template-rows: repeat(5, 2rem);
+    justify-items: center;
+    align-items: center;
+  }
+
+  /* One line through the middle of each score row: real elements, so a browser can measure them. */
+  .ioi-line {
+    justify-self: stretch;
+    height: 1px;
+    background-color: var(--color-border);
+  }
+
+  .ioi-axis .ioi-grid {
+    color: var(--color-heading);
+    font-size: 0.875rem;
+  }
+
+  /* The axis keeps its numbers on top of its lines, without lines of its own showing. */
+  .ioi-axis .ioi-line {
+    visibility: hidden;
+  }
+
+  .ioi-grid > * {
+    grid-column: 1;
+  }
+
+  .ioi-band,
+  .ioi-legend-band {
+    align-self: stretch;
+    justify-self: stretch;
+    border: 1px solid var(--color-input-border);
+    border-radius: var(--radius-small);
+    background-color: var(--color-border);
+  }
+
+  .ioi-legend-band {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .ioi-dot,
+  .ioi-legend-latest {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+  }
+
+  .ioi-dot-latest,
+  .ioi-legend-latest {
+    z-index: 1;
+    background-color: var(--color-primary);
+  }
+
+  /* The previous answer is a hollow diamond, so it differs from the latest by shape, not only fill. */
+  .ioi-diamond,
+  .ioi-legend-previous {
+    width: 0.875rem;
+    height: 0.875rem;
+    border: 0.1875rem solid var(--color-body);
+    background-color: #fff;
+    transform: rotate(45deg);
+  }
+
+  /* With a previous answer the two marks always sit apart, so equal scores stay visible. */
+  .ioi-dot-previous {
+    transform: translateX(-0.5rem) rotate(45deg);
+  }
+
+  .ioi-dot-previous + .ioi-dot-latest {
+    transform: translateX(0.5rem);
+  }
+
+  .ioi-name {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--color-heading);
+    font-size: 0.875rem;
+    text-align: center;
+    /* Four-character names wrap to two lines on narrow phones. */
+    overflow-wrap: anywhere;
+  }
+
+  /* IOI-HA result (#187): one titled block per item (#310); nothing here is a link, so no hover
+     (ADR 0006). */
+  .ioi-below,
+  .ioi-others {
+    margin-bottom: 1.5rem;
+  }
+
+  /* 「其他 n 項」 is the h2 its folded items sit under (rule 17), drawn as plain summary text. */
+  .ioi-others-title {
+    display: inline;
+    margin: 0;
+    font: inherit;
+    color: inherit;
+  }
+
+  .ioi-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* #746: 和上一次比較, each item and its change, a row each. */
+  .ioi-since-last {
+    margin: 1.25rem 0;
+  }
+
+  .ioi-since-last-items {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ioi-since-last-items li {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .ioi-versus {
+    margin-bottom: 0.25rem;
+    color: var(--color-primary);
+    font-weight: 700;
+  }
+
+  /* Scores 1-5 left to right: grey cells are the norm, the blue dot is the answer. The words
+     above say the same for screen readers. */
+  .ioi-scale {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.25rem;
+    max-width: 20rem;
+    margin-top: 0.75rem;
+  }
+
+  /* The scale's two ends, under its first and last cells (result pages tidy-up). */
+  .ioi-scale-ends {
+    display: flex;
+    justify-content: space-between;
+    max-width: 20rem;
+    margin-top: 0.25rem;
+    font-size: 1rem;
+    color: var(--color-body);
+  }
+
+  /* An empty cell is clear with a thin grey frame that shows on white (3.1:1, #310); the norm's
+     grey cells keep their own fill. */
+  .ioi-cell {
+    display: grid;
+    place-items: center;
+    height: 1.5rem;
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-small);
+  }
+
+  .ioi-cell-band {
+    border-color: var(--color-input-border);
+    background-color: var(--color-border);
+  }
+}

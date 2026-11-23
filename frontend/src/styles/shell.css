@@ -1,0 +1,1038 @@
+/* The site's own classes, moved from the old styles.css with the same names, selectors, order
+   and values (#126). Class names built from data (level codes, ears) are written out here, since
+   no source scan can find them. */
+@layer components {
+  /* Error text at WCAG AA on white. */
+  .text-danger {
+    color: var(--color-severe) !important;
+  }
+  /* #272: a field's error (field_messages.html), and the login and register error boxes (#471),
+     get a warning mark, so they do not rest on the red alone. */
+  .field-error, .error-box {
+    display: flex;
+    gap: 0.4rem;
+    font-weight: 700;
+  }
+  .field-error::before, .error-box::before {
+    --warning-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.25' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v6M12 16.5v.5'/%3E%3C/svg%3E");
+    content: "";
+    flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-top: 0.15rem;
+    background-color: currentColor;
+    /* Prefixed too: iPhones before iOS 15.4 only read -webkit-mask. */
+    -webkit-mask: var(--warning-mark) center / contain no-repeat;
+    mask: var(--warning-mark) center / contain no-repeat;
+  }
+
+  /* The first keyboard stop bypasses shared navigation. */
+  .skip-link {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 2000;
+    padding: 0.75rem 1rem;
+    background-color: #fff;
+    color: var(--color-primary);
+    border: 0.125rem solid currentColor;
+  }
+
+  /* Header: white since the brand refresh, the same as the app's status bar (theme-color, #138).
+     #748 (ADR 0079): it stays at the top; scrolled past it (site-header.js marks data-scrolled),
+     its white goes and only the frosted ‹ and avatar float over the page, which shows between
+     them and stays clickable there. Without JavaScript nothing floats, so it scrolls away with
+     the page: kept, its white would take a third of a small phone at 200% text. */
+  .site-header {
+    background-color: #fff;
+    color: var(--color-primary);
+    /* viewport-fit=cover (layout.html) lets the page run under the iPhone's status bar; the
+       header's white fills it and its contents start below. 0 everywhere else. */
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .site-header[data-scrolled] {
+    background-color: transparent;
+    pointer-events: none;
+  }
+
+  /* A jump into the page stops below the header rather than under it: about its height (the
+     56px 登入 and its padding). Only on the jump's target: as the page's scroll-padding it
+     would also count the header's own ‹ as under the header, and focusing or scrolling to it
+     would scroll the page back up and hide it. */
+  @media (scripting: enabled) {
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 1020;
+    }
+
+    :target {
+      scroll-margin-top: calc(env(safe-area-inset-top) + 4.25rem);
+    }
+
+    /* Keep keyboard-focused elements clear of the sticky header without affecting the header's
+       own buttons (WCAG 2.4.11 Focus Not Obscured). */
+    main :is(a, button, input, select, textarea, summary, [tabindex]) {
+      scroll-margin-top: calc(env(safe-area-inset-top) + 4.5rem);
+    }
+  }
+
+  .site-header[data-scrolled] :is(.site-back, .site-avatar, .site-login, .site-leave, .site-account-menu) {
+    pointer-events: auto;
+  }
+
+  /* An iPhone home-screen app softly blurs about 1.25rem more under its status bar (iOS 26 on),
+     which the page cannot turn off: the logo and avatar start below it. Only iOS reads
+     -webkit-touch-callout, so Android's home-screen app keeps the plain header. */
+  @media (display-mode: standalone) {
+    @supports (-webkit-touch-callout: none) {
+      .site-header {
+        padding-top: calc(env(safe-area-inset-top) + 1.5rem);
+      }
+    }
+  }
+
+  /* Entrance animations wait until they are in view (#341, ADR 0029). With JavaScript, layout.html
+     marks the page play-in-view before it is drawn, so whatever is marked data-play-in-view (an
+     element, or the box of a group that plays together) holds its first frame until in-view.js
+     adds data-in-view. Without JavaScript nothing waits; reduced motion has no animation to hold. */
+  :root.play-in-view [data-play-in-view]:not([data-in-view]),
+  :root.play-in-view [data-play-in-view]:not([data-in-view]) *,
+  :root.play-in-view [data-play-in-view]:not([data-in-view])::before,
+  :root.play-in-view [data-play-in-view]:not([data-in-view])::after,
+  :root.play-in-view [data-play-in-view]:not([data-in-view]) *::before,
+  :root.play-in-view [data-play-in-view]:not([data-in-view]) *::after {
+    animation-play-state: paused;
+  }
+
+  /* The play-once entrance animations (spec #741, ADR 0077), shared by every page: each element
+     carries one class and data-play-in-view on itself or a box around it (in-view.js says how),
+     so it plays once, when in view. Reduced motion: none of them moves.
+     - play-once-slide-up: a block slides up a little as it fades in.
+     - play-once-stamp: the 已完成 stamp presses down; its own tilt (transform) is left alone.
+     - play-once-ring, play-once-gauge: an SVG stroke draws itself from its start. Give the path
+       pathLength="1" and draw only the arc of the value, so the stroke ends where the value is.
+     - play-once-wave: on an SVG, its shapes (up to 14) fade in one after another.
+     - play-once-trace: on the trend chart's box (#756), its line draws from the left with its
+       points, then the scores fade in.
+     - play-once-grow: a bar grows from its left end. */
+  @media (prefers-reduced-motion: no-preference) {
+    .play-once-slide-up {
+      animation: play-once-slide-up 0.6s ease-out both;
+    }
+
+    .play-once-stamp {
+      animation: play-once-stamp 0.45s 0.25s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+    }
+
+    .play-once-ring,
+    .play-once-gauge {
+      stroke-dasharray: 1;
+      animation: play-once-draw 0.9s 0.2s ease-out both;
+    }
+
+    .play-once-gauge {
+      animation-delay: 0.3s;
+    }
+
+    .play-once-grow {
+      transform-origin: left center;
+      animation: play-once-grow 0.6s 0.3s ease-out both;
+    }
+
+    /* play-once-wave: an SVG sound wave's bars fade in one after another (the guest home's hero
+       card, #752), about 1.3 seconds in all. */
+    .play-once-wave > * {
+      animation: play-once-fade 0.6s ease-out both;
+    }
+
+    .play-once-wave > :nth-child(2) { animation-delay: 0.05s; }
+    .play-once-wave > :nth-child(3) { animation-delay: 0.1s; }
+    .play-once-wave > :nth-child(4) { animation-delay: 0.15s; }
+    .play-once-wave > :nth-child(5) { animation-delay: 0.2s; }
+    .play-once-wave > :nth-child(6) { animation-delay: 0.25s; }
+    .play-once-wave > :nth-child(7) { animation-delay: 0.3s; }
+    .play-once-wave > :nth-child(8) { animation-delay: 0.35s; }
+    .play-once-wave > :nth-child(9) { animation-delay: 0.4s; }
+    .play-once-wave > :nth-child(10) { animation-delay: 0.45s; }
+    .play-once-wave > :nth-child(11) { animation-delay: 0.5s; }
+    .play-once-wave > :nth-child(12) { animation-delay: 0.55s; }
+    .play-once-wave > :nth-child(13) { animation-delay: 0.6s; }
+    .play-once-wave > :nth-child(14) { animation-delay: 0.65s; }
+
+    /* play-once-trace: Recharts draws every series' line in one of its layers and every point in
+       another (TrendChart.jsx), so each layer is wiped as one, left to right; the dashed line
+       for 有戴 keeps its dashes. The bands, their names and the dates stay. Backwards, not both:
+       at the end the clip is gone (none), not left as inset(0). */
+    .play-once-trace :is(.recharts-zIndex-layer_400, .recharts-zIndex-layer_600) {
+      animation: play-once-trace 1s 0.3s ease-out backwards;
+    }
+
+    .play-once-trace .recharts-label-list {
+      animation: play-once-fade 0.4s 1.2s ease-out both;
+    }
+  }
+
+  @keyframes play-once-fade {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes play-once-slide-up {
+    from {
+      opacity: 0;
+      translate: 0 0.75rem;
+    }
+  }
+
+  @keyframes play-once-stamp {
+    0% {
+      opacity: 0;
+      scale: 2.4;
+    }
+    55% {
+      scale: 0.9;
+    }
+    75% {
+      scale: 1.04;
+    }
+  }
+
+  @keyframes play-once-grow {
+    from {
+      scale: 0 1;
+    }
+  }
+
+  @keyframes play-once-draw {
+    from {
+      stroke-dashoffset: 1;
+    }
+  }
+
+  /* Both ends are inset(): from inset() to none cannot be tweened, so the line and points popped
+     in all at once halfway instead of being wiped in. */
+  @keyframes play-once-trace {
+    from {
+      clip-path: inset(0 100% 0 0);
+    }
+    to {
+      clip-path: inset(0);
+    }
+  }
+
+  /* A number counting up (data-count-up, in-view.js): its text is the end value all along, for
+     screen readers, but hidden while the count (data-count-now, 0 until in-view.js starts it) is
+     drawn over it as text they skip (the "" after the slash). No JavaScript, reduced motion,
+     in-view.js not taking over within 3 seconds (layout.html), or a browser that cannot skip
+     drawn text: the number is simply there. */
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (content: "0" / "") {
+      :root.play-in-view [data-count-up]:not([data-count-done]) {
+        position: relative;
+        -webkit-text-fill-color: transparent;
+      }
+
+      :root.play-in-view [data-count-up]:not([data-count-done])::after {
+        content: "0" / "";
+        position: absolute;
+        inset: 0;
+        text-align: end;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+        -webkit-text-fill-color: currentColor;
+      }
+
+      :root.play-in-view [data-count-up][data-count-now]:not([data-count-done])::after {
+        content: attr(data-count-now) / "";
+      }
+    }
+  }
+
+  /* #748 (canvas ProHome, ProScrollDemo): the name on the left, the avatar or 登入 on the
+     right, one line at any text size. */
+  .site-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    padding-block: 0.5rem;
+    container-type: inline-size;
+  }
+
+  /* The ‹ before the name from the start (the owner, 2026-11-21; not on the home page).
+     Scrolled, the name goes and leaves its place empty, so the ‹ stays where it was. */
+  .site-header-start {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  /* Where ‹, 聽伴 and the avatar (or 登入) cannot share the line, as on a phone at double text
+     size, the name goes as it does scrolled: the ‹ and the avatar stay whole. In rem, so it
+     follows the text size: the three widths and the gaps between them. */
+  @container (width < 10.75rem) {
+    .site-back + .site-brand {
+      display: none;
+    }
+  }
+
+  @container (width < 13rem) {
+    .site-header-bar:has(.site-login) .site-back + .site-brand {
+      display: none;
+    }
+  }
+
+  .site-header[data-scrolled] .site-brand {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  /* Round, the size of a fingertip: the ‹ on the page's pale blue, as the avatar. */
+  :is(.site-back, .site-avatar) {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: var(--spacing-touch);
+    height: var(--spacing-touch);
+    border: 1px solid transparent;
+    border-radius: 50%;
+    background-color: var(--color-brand-soft);
+    color: var(--color-primary);
+    text-decoration: none;
+  }
+
+  .site-back svg {
+    width: 1.5556rem;
+    height: 1.5556rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .site-avatar {
+    font-size: 1.1111rem;
+    font-weight: 700;
+  }
+
+  /* Under a finger or a mouse colour only (ADR 0006); the hover colour only with a mouse. */
+  @media (hover: hover) {
+    :is(.site-back, .site-avatar):hover {
+      color: var(--color-primary-hover);
+    }
+  }
+
+  :is(.site-back, .site-avatar):active {
+    background-color: var(--color-brand-soft-deep);
+  }
+
+  /* Spec #741 at acceptance (compare-avatar-menu.html A): the avatar's menu, a card dropping
+     below it, the name in grey over 帳號設定 and 登出 (56px rows). site-header.js opens it. */
+  .site-account {
+    position: relative;
+    flex: none;
+  }
+
+  .site-avatar[aria-expanded="true"] {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  .site-account-menu {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    width: max-content;
+    min-width: 12.5rem;
+    max-width: calc(100vw - 2rem);
+    padding: 0.375rem;
+    border-radius: var(--radius-badge);
+    background-color: #fff;
+    box-shadow: 0 0.625rem 1.75rem rgba(23, 59, 106, 0.25);
+  }
+
+  .site-account-name {
+    margin: 0 0 0.25rem;
+    padding: 0.5rem 0.75rem 0.375rem;
+    border-bottom: 1px solid var(--color-line);
+    color: var(--color-muted);
+    overflow-wrap: anywhere;
+  }
+
+  .site-account-item {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    width: 100%;
+    min-height: var(--spacing-button);
+    padding: 0 0.75rem;
+    border: 0;
+    border-radius: var(--radius-medium);
+    background-color: transparent;
+    color: var(--color-heading);
+    font-size: 1.0556rem;
+    font-weight: 700;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .site-account-item svg {
+    flex: none;
+    width: 1.3333rem;
+    height: 1.3333rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* The owner's pick: 登出 in the dark red of the delete buttons. */
+  .site-account-logout {
+    color: var(--color-severe);
+  }
+
+  .site-account-logout svg {
+    stroke: currentColor;
+  }
+
+  @media (hover: hover) {
+    .site-account-item:hover {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .site-account-item:active {
+    background-color: var(--color-brand-soft-deep);
+  }
+
+  /* Opening fades in; with reduced motion it just shows. */
+  @media (prefers-reduced-motion: no-preference) {
+    .site-account-menu {
+      transition: opacity 0.15s;
+    }
+
+    @starting-style {
+      .site-account-menu {
+        opacity: 0;
+      }
+    }
+  }
+
+  /* A site button as any (#453 acceptance 32, ADR 0043 S1): 56px tall, a rounded square. */
+  .site-login {
+    flex: none;
+  }
+
+  /* #755 (canvas ProAnswer, spec #741 P21): the answer page's 離開, a white pill framed in blue
+     at the top left all the time; scrolled, it floats over the page with the shadow of the
+     frosted buttons. The topic on the right goes then, as 聽伴 does. */
+  .site-leave {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 0.125rem;
+    min-height: var(--spacing-touch);
+    padding: 0 0.875rem 0 0.5rem;
+    border: 2px solid var(--color-primary);
+    border-radius: var(--radius-pill);
+    background-color: #fff;
+    color: var(--color-primary);
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .site-leave svg {
+    flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  @media (hover: hover) {
+    .site-leave:hover {
+      color: var(--color-primary-hover);
+    }
+  }
+
+  .site-leave:active {
+    background-color: var(--color-brand-soft-deep);
+  }
+
+  .site-header[data-scrolled] .site-leave {
+    box-shadow: 0 0.375rem 1rem rgba(33, 37, 41, 0.18);
+  }
+
+  .site-header-title {
+    min-width: 0;
+    margin: 0;
+    color: var(--color-heading);
+    font-weight: 700;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+
+  .site-header[data-scrolled] .site-header-title {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  /* Scrolled: frosted glass as the tab bar (ADR 0045, 0079), 88% white, solid where the browser
+     cannot blur or with reduced transparency. */
+  .site-header[data-scrolled] :is(.site-back, .site-avatar) {
+    background-color: #fff;
+    border-color: var(--color-line);
+    box-shadow: 0 0.375rem 1rem rgba(33, 37, 41, 0.18);
+  }
+
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .site-header[data-scrolled] .site-back {
+      background-color: rgba(255, 255, 255, 0.88);
+    }
+
+    .site-header[data-scrolled] .site-avatar {
+      background-color: rgba(238, 243, 250, 0.88);
+    }
+
+    .site-header[data-scrolled] :is(.site-back, .site-avatar) {
+      border-color: rgba(255, 255, 255, 0.7);
+      -webkit-backdrop-filter: blur(14px) saturate(1.6);
+      backdrop-filter: blur(14px) saturate(1.6);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .site-header[data-scrolled] :is(.site-back, .site-avatar) {
+      background-color: #fff;
+      border-color: var(--color-line);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+
+  /* The swap fades; with reduced motion it just changes. */
+  @media (prefers-reduced-motion: no-preference) {
+    .site-header {
+      transition: background-color 0.25s;
+    }
+
+    .site-brand {
+      transition: opacity 0.2s, visibility 0.2s;
+    }
+
+    :is(.site-back, .site-avatar) {
+      transition: background-color 0.25s, box-shadow 0.25s, border-color 0.25s;
+    }
+  }
+
+  .site-brand {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+  }
+
+  /* At double text size on a phone the wordmark wraps under the logo instead of being cut off. */
+  .site-brand a {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--color-primary);
+    text-decoration: none;
+  }
+
+  /* Wordmark in two colours: "聽" in the primary blue, "伴" in the gradient's teal end. */
+  .site-wordmark-tint {
+    color: var(--color-gradient-end);
+  }
+
+  .pwa-pull {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1040;
+    padding: calc(0.5rem + env(safe-area-inset-top)) 1rem 0.5rem;
+    background-color: var(--color-pull);
+    color: var(--color-primary);
+    font-size: 1rem;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  /* Waiting for the next page (page-loading.js; A3 on the loading comparison page, ADR 0027): a bar
+     along the top and 載入中… under it, once the page has waited 0.3 s. Fixed, so a link pressed low
+     on a long page still shows them. */
+  .page-loading-bar {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    height: 6px;
+  }
+  .page-loading .page-loading-bar { display: block; }
+  .page-loading .page-loading-note {
+    position: fixed;
+    top: calc(6px + 0.5rem);
+    right: 1rem;
+    z-index: 1050;
+    margin: 0;
+    padding: 0.25rem 0.75rem;
+    background-color: #fff;
+    color: var(--color-primary);
+    font-weight: 700;
+    border: 2px solid var(--color-primary);
+    border-radius: var(--radius-button);
+  }
+  /* Otherwise out of sight but still read out: 送出中… is said the moment a form is sent. */
+  html:not(.page-loading) .page-loading-note {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  /* 題目載入中… and 趨勢圖載入中… (B1) get the same sliding piece under the text, after 0.3 s. */
+  .loading-message::after {
+    content: "";
+    display: block;
+    width: min(100%, 16rem);
+    height: 6px;
+    margin-top: 0.75rem;
+    border-radius: 3px;
+    visibility: hidden;
+  }
+
+  /* A3 and B1 share one look: a short blue piece sliding along a light track. Waiting may loop,
+     for at most about 10 seconds (ADR 0027, an exception to ADR 0006): 8 rounds of 1.3 s here,
+     12 of 0.8 s for the spinner, to match GIVE_BACK_AFTER in page-loading.js. The 0.3 s delays
+     match its SHOW_AFTER. */
+  .page-loading-bar, .loading-message::after {
+    background: linear-gradient(var(--color-primary), var(--color-primary)) no-repeat
+      var(--color-brand-soft-deep);
+    background-size: 35% 100%;
+  }
+  .page-loading-bar { animation: loading-slide 1.3s ease-in-out 8 both; }
+  .loading-message::after {
+    animation: loading-appear 0s 0.3s forwards, loading-slide 1.3s ease-in-out 0.3s 8 both;
+  }
+
+  /* C1: before 送出中… on the pressed button (page-loading.js and the React pages). */
+  .spinner {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    margin-right: 0.5rem;
+    vertical-align: -0.125em;
+    border: 0.15em solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    visibility: hidden;
+    animation: loading-appear 0s 0.3s forwards, loading-spin 0.8s linear 0.3s 12;
+  }
+
+  /* ADR 0006: nothing moves. The bar stays full and the spinner is left out; 載入中… and 送出中…
+     still say it. */
+  @media (prefers-reduced-motion: reduce) {
+    .page-loading-bar { animation: none; background-size: 100% 100%; }
+    .loading-message::after { animation: loading-appear 0s 0.3s forwards; background-size: 100% 100%; }
+    .spinner { display: none; }
+  }
+
+  /* Navigation: one list; top bar on wide screens, fixed bottom tab bar on phones. */
+  .site-nav {
+    background-color: #fff;
+  }
+
+  /* Its list is also the .container utility, which outranks this layer; layout.html adds px-0. */
+  .site-nav ul {
+    display: flex;
+    margin: 0 auto;
+    padding: 0;
+    list-style: none;
+  }
+
+  .site-nav a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: var(--spacing-touch);
+    min-width: var(--spacing-touch);
+    padding: 0.5rem 1rem;
+    color: var(--color-heading);
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  /* Hover and press change colour only, never position (ADR 0006, #140). */
+  .site-nav a:hover,
+  .site-nav a[aria-current="page"] {
+    color: var(--color-primary);
+  }
+
+  .site-nav svg {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* W1 (#454, ADR 0043, without the frosted glass of ADR 0045, which is #457): the others the
+     heading colour (grey on a phone, as W1). #748 (spec #741 P9): the current page is a solid
+     blue pill with bold white words; pressing another tab, it slides there as the pill of
+     問卷｜聽力圖 (#334, switch-slide.js), under its own name, as a page can have both. Under a
+     finger or a mouse colour only, never position (ADR 0006). */
+  .site-nav a[aria-current="page"] {
+    border-radius: var(--radius-tab);
+    background-color: var(--color-primary);
+    color: #fff;
+    font-weight: 700;
+    view-transition-name: tab-pill;
+  }
+
+  .site-nav a:active {
+    border-radius: var(--radius-tab);
+    background-color: var(--color-brand-soft);
+  }
+
+  .site-nav a[aria-current="page"]:active {
+    background-color: var(--color-primary-active);
+  }
+  @media (min-width: 48em) {
+    /* White like the header, a thin line under it; the padding keeps the current-page pill
+       inside the bar instead of filling it. */
+    .site-nav {
+      padding-block: 0.375rem;
+      border-bottom: 1px solid var(--color-line);
+    }
+
+    .site-nav ul {
+      gap: 0.5rem;
+    }
+  }
+
+  /* Phones: a floating white capsule over the foot of the screen. The nav itself is the fixed,
+     see-through strip around it, so its height (back-to-top.js, in-view.js) still counts the
+     gap under the capsule. The capsule's insets are in px, so at 200% text the tabs keep their
+     width for the words. */
+  @media (max-width: 47.99em) {
+    .site-nav {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 1030;
+      padding: 0 calc(12px + env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom))
+        calc(12px + env(safe-area-inset-left));
+      background-color: transparent;
+      pointer-events: none;
+    }
+
+    .site-nav ul {
+      padding: 3px;
+      border-radius: 1.75rem;
+      background-color: #fff;
+      box-shadow: 0 0.375rem 1.5rem rgba(33, 37, 41, 0.16);
+      pointer-events: auto;
+    }
+
+    .site-nav li {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .site-nav a {
+      min-width: 0;
+      flex-direction: column;
+      gap: 0;
+      padding: 0.25rem;
+      font-size: 1rem;
+      font-weight: 400;
+      line-height: 1.3;
+      color: var(--color-muted);
+    }
+  }
+
+  /* #457 translucent tab bar (ADR 0045, W1 of #454). On phones the capsule is frosted glass, 88%
+     white, where the browser can blur what scrolls behind it; solid white (above) where it
+     cannot, or with reduced transparency. Even over black the grey tabs keep 5.8:1; the current
+     tab's pale blue pill is solid. */
+  @media (max-width: 47.99em) {
+    @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+      /* The glass's light edge is drawn inside the shadow, not as a border, so the capsule is
+         no taller than the solid one (answers kept clear of it stay clear, #362). */
+      .site-nav ul {
+        background-color: rgba(255, 255, 255, 0.88);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7), 0 0.375rem 1.5rem rgba(33, 37, 41, 0.16);
+        -webkit-backdrop-filter: blur(18px) saturate(1.6);
+        backdrop-filter: blur(18px) saturate(1.6);
+      }
+    }
+
+    @media (prefers-reduced-transparency: reduce) {
+      .site-nav ul {
+        background-color: #fff;
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+      }
+    }
+  }
+
+  /* tab-bar.js marks the bar data-hidden while the page scrolls down: it slides below the screen,
+     its shadow too, and back. The one thing that moves without being a card (ADR 0045, an
+     exception to ADR 0006); with reduced motion it never goes. Wide screens keep it in the page. */
+  @media (max-width: 47.99em) and (prefers-reduced-motion: no-preference) {
+    .site-nav {
+      transition: transform 0.25s ease-out;
+    }
+
+    .site-nav[data-hidden] {
+      transform: translateY(calc(100% + 1.5rem));
+    }
+
+    /* Back to top follows the bar down while it is away, so no gap is left under it, and goes
+       back above it when it returns (the owner after #457). */
+    .site-nav[data-hidden] ~ .back-to-top {
+      transform: translateY(calc(var(--tab-bar-height) - 0.25rem));
+    }
+  }
+
+  /* Back to top (#340, spec #338): made by back-to-top.js, so absent without JavaScript. Shown
+     past two screens down; folded away it is out of the Tab order and unread (visibility). On
+     phones it sits above the tab bar (--tab-bar-height). */
+  .back-to-top {
+    position: fixed;
+    right: calc(1rem + env(safe-area-inset-right));
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+    z-index: 1020;
+    white-space: nowrap;
+    visibility: hidden;
+    opacity: 0;
+  }
+
+  .back-to-top[data-shown] {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  /* A short fade in and out (spec #338), and the slide after the tab bar (#457); with reduced
+     motion it simply appears and goes. */
+  @media (prefers-reduced-motion: no-preference) {
+    .back-to-top {
+      transition: opacity 0.2s, visibility 0.2s, box-shadow 0.15s ease-in-out,
+        transform 0.25s ease-out;
+    }
+  }
+
+  @media print {
+    .back-to-top { display: none; }
+  }
+
+  /* Site-wide footer: grey band, apart from the content without competing with it. The wider
+     top margin leaves room for the arch above it. */
+  .site-footer {
+    position: relative;
+    margin-top: 5.5rem;
+    padding: 1.5rem 0;
+    background-color: var(--color-surface);
+    color: var(--color-footer);
+    text-align: center;
+  }
+
+  /* #359: on screen a short page's footer sits at the window's foot, the page above it (layout.html)
+     grown to fill the window. Its last part is an empty block whose top margin joins the content's
+     bottom margins as the footer's own did, so the gap above the arch is unchanged. Paper as before. */
+  @media screen {
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+
+    .site-page {
+      flex: 1 0 auto;
+    }
+
+    .site-page::after {
+      content: "";
+      display: block;
+      margin-top: 5.5rem;
+    }
+
+    .site-footer {
+      margin-top: 0;
+    }
+  }
+
+  /* Footer shape picker, option 5: the top edge stays straight with one small arch of the
+     footer's colour rising in the middle, the logo's bird inside it. Decoration only: drawn
+     above the band, so it covers no link or text, and pseudo-elements are not read out. */
+  .site-footer::before {
+    content: "";
+    position: absolute;
+    top: -3.25rem;
+    left: 50%;
+    width: 6.5rem;
+    height: 3.3rem;
+    transform: translateX(-50%);
+    border-radius: 3.25rem 3.25rem 0 0;
+    background-color: var(--color-surface);
+  }
+
+  .site-footer::after {
+    content: "";
+    position: absolute;
+    top: -2.5rem;
+    left: 50%;
+    width: 2.6rem;
+    height: 2.6rem;
+    transform: translateX(-50%);
+    background-color: var(--color-primary);
+    -webkit-mask: var(--logo-glyph) center / contain no-repeat;
+    mask: var(--logo-glyph) center / contain no-repeat;
+  }
+
+  /* After the rule above: equal weight, so the later one wins and keeps this bottom padding. */
+  @media (max-width: 47.99em) {
+    /* Keep keyboard-focused elements clear of the fixed phone tab bar (WCAG 2.4.11). */
+    main :is(a, button, input, select, textarea, summary, [tabindex]) {
+      scroll-margin-bottom: calc(var(--tab-bar-height) + 1rem);
+    }
+
+    /* Keep the end of the page clear of the fixed tab bar; the footer's grey runs behind it. */
+    .site-footer {
+      padding-bottom: calc(1.5rem + var(--tab-bar-height));
+    }
+  }
+
+  /* With the back-to-top button (#340) the page's end also clears the button, so at the very
+     bottom its last line is not under it. */
+  .site-page:has(> .back-to-top) + .site-footer {
+    padding-bottom: calc(1.5rem + 1rem + var(--spacing-touch));
+  }
+
+  @media (max-width: 47.99em) {
+    .back-to-top {
+      bottom: calc(var(--tab-bar-height) + 0.75rem);
+    }
+
+    .site-page:has(> .back-to-top) + .site-footer {
+      padding-bottom: calc(1.5rem + var(--tab-bar-height) + 0.75rem + var(--spacing-touch));
+    }
+  }
+
+  .site-footer a {
+    overflow-wrap: anywhere;
+    color: var(--color-primary);
+    font-weight: 700;
+  }
+
+  .site-footer a[href^="mailto:"] {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--spacing-touch);
+  }
+
+  /* Centred like the rest of the footer (readability batch 1, the owner's A; at most three a
+     row since spec #633). Phones: equal columns, each icon over its words; a column is never
+     narrower than its words, so at large text sizes the row wraps rather than breaking a name.
+     From 48em each link is as wide as its words, its icon beside them, with even gaps between. */
+  .site-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.25rem;
+    margin: 0 0 1rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* Spec #633 (the #634 mockup's A): at most three a row on a phone, so five sit in two rows
+     of even links, centred. 30%, not a third: a link is never narrower than its words, and
+     隱私權說明 is wider than a third of a 320px phone; four never fit. At large text sizes
+     fewer fit and the row wraps sooner. */
+  .site-footer-links li {
+    flex: 0 1 30%;
+    min-width: max-content;
+  }
+
+  .site-footer-links a {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    align-items: center;
+    justify-content: center;
+    min-height: 3.25rem;
+    padding: 0.4rem 0.25rem;
+    border-radius: var(--radius-medium);
+    font-weight: 400;
+    white-space: nowrap;
+    text-decoration-line: none;
+  }
+
+  @media (min-width: 48em) {
+    .site-footer-links {
+      gap: 0.5rem 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .site-footer-links li {
+      flex: none;
+      min-width: 0;
+    }
+
+    .site-footer-links a {
+      display: inline-flex;
+      flex-direction: row;
+      gap: 0.6rem;
+      padding: 0.5rem 0.75rem;
+    }
+  }
+
+  .site-footer-links a:hover {
+    background-color: #fff;
+    text-decoration-line: underline;
+  }
+
+  .site-footer-links a:active {
+    background-color: var(--color-brand-selected);
+  }
+
+  .site-footer-icon {
+    flex: none;
+    width: 1.6rem;
+    height: 1.6rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .site-footer p {
+    margin: 0 0 0.25rem;
+    font-size: 1rem;
+  }
+}

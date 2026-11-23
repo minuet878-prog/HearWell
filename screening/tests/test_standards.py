@@ -19,6 +19,7 @@ from screening import public_pages, questionnaires
 from screening import urls as screening_urls
 from screening.models import Questionnaire
 from screening.tests import test_search_titles
+from screening.tests.helpers import site_css_files
 from screening.views.common import health_data_page
 
 BASE_DIR = Path(settings.BASE_DIR)
@@ -112,13 +113,20 @@ def is_small(value, variables):
     )
 
 
-def small_font_sizes(css):
-    """(line, selector) for each font-size under 1rem set outside SMALL_PRINT. A rule's selector
-    is its innermost style rule, inside whatever @layer, @media or @container wraps it."""
-    css = re.sub(r"/\*.*?\*/", lambda m: "\n" * m.group().count("\n"), css, flags=re.S)
+def css_variables(css):
+    """Custom properties defined across stylesheets so split CSS files resolve shared tokens."""
     variables = {}
     for name, value in re.findall(r"(--[\w-]+)\s*:\s*([^;{}]+)", css):
         variables.setdefault(name, []).append(value)
+    return variables
+
+
+def small_font_sizes(css, variables=None):
+    """(line, selector) for each font-size under 1rem set outside SMALL_PRINT. A rule's selector
+    is its innermost style rule, inside whatever @layer, @media or @container wraps it."""
+    css = re.sub(r"/\*.*?\*/", lambda m: "\n" * m.group().count("\n"), css, flags=re.S)
+    if variables is None:
+        variables = css_variables(css)
     found, preludes, text, line = [], [], "", 1
     for char in css:
         if char == "{":
@@ -153,9 +161,20 @@ class SmallPrintTests(SimpleTestCase):
     """#357: text a reader needs is at least 1rem; only small print may be smaller."""
 
     def test_only_small_print_is_under_1rem(self):
-        path = BASE_DIR / "frontend" / "src" / "site.css"
-        found = [f"{line} {selector}" for line, selector in small_font_sizes(path.read_text())]
+        paths = sorted((BASE_DIR / "frontend" / "src").rglob("*.css"))
+        variables = css_variables("\n".join(path.read_text(encoding="utf-8") for path in paths))
+        found = [
+            f"{path.relative_to(BASE_DIR)}:{line} {selector}"
+            for path in paths
+            for line, selector in small_font_sizes(
+                path.read_text(encoding="utf-8"), variables=variables
+            )
+        ]
         self.assertEqual(found, [], "use 1rem or more, or add a source-like class to SMALL_PRINT")
+
+    def test_every_split_stylesheet_is_imported_by_site_css(self):
+        on_disk = {path.resolve() for path in (BASE_DIR / "frontend" / "src").rglob("*.css")}
+        self.assertEqual(set(site_css_files()), on_disk)
 
     def test_no_small_tailwind_text_in_templates(self):
         sources = [
@@ -212,10 +231,10 @@ class CssDataUriTests(SimpleTestCase):
     rewrite ends the URI early. Only production runs it, so tests and the preview look fine."""
 
     def test_no_url_function_inside_a_data_uri(self):
-        css = (BASE_DIR / "frontend" / "src" / "site.css").read_text()
         found = [
-            lineno
-            for lineno, line in enumerate(css.splitlines(), start=1)
+            f"{path.relative_to(BASE_DIR)}:{lineno}"
+            for path in sorted((BASE_DIR / "frontend" / "src").rglob("*.css"))
+            for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1)
             if re.search(r'(?i)data:[^"]*\burl\(', line)
         ]
         self.assertEqual(found, [], "write the data URI's url( as url%28 and its ) as %29")

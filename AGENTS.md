@@ -88,7 +88,7 @@ Claude Code 與 Codex 共用這份指引（Claude Code 經 `CLAUDE.md` 匯入）
 - 名稱：產品叫「聽伴」，英文 tingpal，舊名 HearWell。repo、資料庫、服務、`hearwell-frontend`、作答草稿的鍵名 `hearwell:answer-draft:` 和聯絡信箱都沿用舊名，不要順手改（ADR 0039）。
 - 用途：聽力健康自我照護工具。註冊 → 登入 → 選問卷 → 作答 → 計分 → 結果（分級＋行動建議）→ 歷史紀錄。
 - 使用者：台灣聽損患者與家屬，多為 65 歲以上，繁體中文介面。**無障礙是必需品，不是加分項。**
-- 技術：Django 5.2、Python 3.13、PostgreSQL（正式環境跟網站在同一台 VPS，本機用 Docker）、Tailwind CSS v4（官方 Vite 外掛），樣式來源 `frontend/src/site.css`，建置輸出 `screening/static/screening/frontend/site.css`（主色 #1f4e8c、基礎字級 18px）；部署在 Vultr 東京的 VPS（Nginx＋Gunicorn＋systemd、whitenoise，ADR 0041），由我照 `build.sh` 的順序手動部署，每次會 `loaddata` 問卷 fixture；Render 關掉自動部署、只當退路。正式網址 `https://tingpal.tw`。專案名 `config`，app 名 `screening`。
+- 技術：Django 5.2、Python 3.13、PostgreSQL（正式環境跟網站在同一台 VPS，本機用 Docker）、Tailwind CSS v4（官方 Vite 外掛），樣式來源 `frontend/src/site.css` 與 `frontend/src/styles/`，建置輸出 `screening/static/screening/frontend/site.css`（主色 #1f4e8c、基礎字級 18px）；部署在 Vultr 東京的 VPS（Nginx＋Gunicorn＋systemd、whitenoise，ADR 0041），由我照 `build.sh` 的順序手動部署，每次會 `loaddata` 問卷 fixture；Render 關掉自動部署、只當退路。正式網址 `https://tingpal.tw`。專案名 `config`，app 名 `screening`。
 - 資料敏感度：有健康資料（篩檢作答與分數）和個資（帳號、生日），存在 PostgreSQL。適用個資法。
 
 ### 結構

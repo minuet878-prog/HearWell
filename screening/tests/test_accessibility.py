@@ -3,9 +3,7 @@
 import re
 from datetime import date, timedelta
 from io import StringIO
-from pathlib import Path
 
-from django.conf import settings
 from django.core.management import call_command
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
@@ -150,10 +148,8 @@ class AccessibilityPageTests(TestCase):
 
 
 class StylesheetAccessibilityTests(SimpleTestCase):
-    SITE_CSS = Path(settings.BASE_DIR) / "frontend" / "src" / "site.css"
-
     def _css(self):
-        return re.sub(r"/\*.*?\*/", "", self.SITE_CSS.read_text(encoding="utf-8"), flags=re.S)
+        return re.sub(r"/\*.*?\*/", "", read_site_css(), flags=re.S)
 
     def test_no_legacy_bootstrap_blues_remain_in_site_css(self):
         css = self._css()
