@@ -1,7 +1,6 @@
 """Health report groups adult results into three parts (#90)."""
 
 import re
-from collections import Counter
 from dataclasses import replace
 from datetime import datetime
 from html.parser import HTMLParser
@@ -62,6 +61,7 @@ class _Folds(HTMLParser):
         self.open_sections = []
         self.details_depth = 0
         self.in_summary = False
+        self.in_fold_title = False
         self.folds = []
 
     def handle_starttag(self, tag, attrs):
@@ -81,6 +81,12 @@ class _Folds(HTMLParser):
                 self.details_depth += 1
         elif tag == "summary" and self.details_depth == 1:
             self.in_summary = True
+        elif (
+            tag == "span"
+            and self.in_summary
+            and "report-fold-title" in dict(attrs).get("class", "").split()
+        ):
+            self.in_fold_title = True
         elif tag in ("h1", "h2", "h3", "h4", "h5", "h6") and self.in_summary:
             fold["headings"].append(int(tag[1]))
         elif tag == "section":
@@ -91,7 +97,8 @@ class _Folds(HTMLParser):
     def handle_endtag(self, tag):
         if tag == "details" and self.details_depth:
             self.details_depth -= 1
-        elif tag == "h2" and self.in_summary:
+        elif tag == "span" and self.in_fold_title:
+            self.in_fold_title = False
             self.folds[-1]["summary"] += " "  # #471: the row's title, then its summary line
         elif tag == "summary":
             self.in_summary = False
@@ -294,7 +301,9 @@ class ReportPartsTests(TestCase):
                     )
                     for fold in folds:
                         self.assertFalse(fold["open"], fold["summary"])
-                        self.assertEqual(fold["headings"], [2], fold["summary"])
+                        # <summary> has an implicit button role, so its row title is a <span> rather
+                        # than a nested heading; real headings live inside the fold body.
+                        self.assertEqual(fold["headings"], [], fold["summary"])
 
     # #314 (spec #308 acceptance 6): with no average, SSQ12-TW's summary row says why instead.
     # Owner and family alike.
@@ -323,17 +332,14 @@ class ReportPartsTests(TestCase):
                     sections[0] for _, sections in outline.headings if len(sections) == 1
                 }
                 self.assertLessEqual(set(PARTS), part_titles)
-                # #314: a part's own title is level 2 and the titles inside its folds level 3.
-                # #471 (mockup #470 B): on screen the part's title gives way to its rows, each
-                # row's title level 2 too; on paper the rows give way to the part's title.
-                rows = Counter(fold["part"] for fold in _folds(response))
+                # Each part's own title is level 2, and every title inside its folds is level 3.
                 for part in PARTS:
                     levels = [
                         level for level, sections in outline.headings if sections[:1] == (part,)
                     ]
-                    self.assertEqual(levels[: 1 + rows[part]], [2] * (1 + rows[part]), part)
-                    self.assertGreater(len(levels), 1 + rows[part], part)
-                    self.assertEqual(set(levels[1 + rows[part] :]), {3}, part)
+                    self.assertEqual(levels[:1], [2], part)
+                    self.assertGreater(len(levels), 1, part)
+                    self.assertEqual(set(levels[1:]), {3}, part)
 
     def test_parts_without_records_are_left_out(self):
         self.record(self.hhie, wearing=False)

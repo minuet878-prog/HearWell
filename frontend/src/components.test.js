@@ -6,7 +6,7 @@ import { expect, it } from "vitest";
 const COMPONENTS = [
   "btn", "btn-lg", "btn-primary", "btn-outline-primary",
   "btn-outline-secondary", "btn-outline-danger", "btn-danger", "btn-link",
-  "form-control", "form-control-lg", "form-select", "form-label",
+  "form-control", "form-control-lg", "form-select", "form-select-lg", "form-label",
   "form-check", "form-check-input", "input-group", "input-group-text",
   "card", "card-body", "table", "alert", "alert-warning", "alert-danger",
   "visually-hidden", "visually-hidden-focusable", "list-unstyled",

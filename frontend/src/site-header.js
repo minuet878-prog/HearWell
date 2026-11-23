@@ -72,4 +72,10 @@ export function setUpAccountMenu(doc = document) {
     setOpen(false);
     avatar.focus();
   });
+
+  // Tabbing out of the menu to another control closes it without pulling focus back.
+  account.addEventListener("focusout", (event) => {
+    if (menu.hidden || !event.relatedTarget || account.contains(event.relatedTarget)) return;
+    setOpen(false);
+  });
 }

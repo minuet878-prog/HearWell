@@ -43,7 +43,7 @@ class SignedInHeaderTests(TestCase):
         top = header(self.client.get(reverse("index")).content.decode())
         self.assertRegex(
             top,
-            r'<button class="site-avatar" type="button" aria-label="帳號設定：jason"'
+            r'<button class="site-avatar" type="button" aria-label="帳號選單：jason"'
             r' aria-expanded="false" aria-controls="site-account-menu" hidden'
             r" data-site-account-toggle>J</button>",
         )

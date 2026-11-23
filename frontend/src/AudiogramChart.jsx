@@ -215,7 +215,11 @@ export default function AudiogramChart({ points, oldPoints, symbol, masked = fal
           className="audiogram-magnifier"
           data-place={preview.level.db > MAGNIFIER_ABOVE_FROM ? "above" : "beside"}
           data-side={x(preview.frequency) > (CHART.left + CHART.right) / 2 ? "left" : "right"}
-          style={{ left: percent(x(preview.frequency), CHART.width), top: percent(y(preview.level.db), CHART.height) }}
+          data-edge={preview.frequency <= 500 ? "left" : preview.frequency >= 4000 ? "right" : "center"}
+          style={{
+            left: percent(x(preview.frequency), CHART.width),
+            top: percent(y(preview.level.db) + rise, CHART.height + rise),
+          }}
         >
           {`${preview.frequency} Hz ${preview.level.noResponse ? "無反應" : `${preview.level.db} dB`}${masked ? " 遮蔽" : ""}`}
         </div>

@@ -70,6 +70,12 @@
     :target {
       scroll-margin-top: calc(env(safe-area-inset-top) + 4.25rem);
     }
+
+    /* Keep keyboard-focused elements clear of the sticky header without affecting the header's
+       own buttons (WCAG 2.4.11 Focus Not Obscured). */
+    main :is(a, button, input, select, textarea, summary, [tabindex]) {
+      scroll-margin-top: calc(env(safe-area-inset-top) + 4.5rem);
+    }
   }
 
   .site-header[data-scrolled] :is(.site-back, .site-avatar, .site-login, .site-leave, .site-account-menu) {
@@ -557,7 +563,7 @@
     left: 0;
     right: 0;
     z-index: 1040;
-    padding: 0.5rem 1rem;
+    padding: calc(0.5rem + env(safe-area-inset-top)) 1rem 0.5rem;
     background-color: var(--color-pull);
     color: var(--color-primary);
     font-size: 1rem;
@@ -910,6 +916,11 @@
 
   /* After the rule above: equal weight, so the later one wins and keeps this bottom padding. */
   @media (max-width: 47.99em) {
+    /* Keep keyboard-focused elements clear of the fixed phone tab bar (WCAG 2.4.11). */
+    main :is(a, button, input, select, textarea, summary, [tabindex]) {
+      scroll-margin-bottom: calc(var(--tab-bar-height) + 1rem);
+    }
+
     /* Keep the end of the page clear of the fixed tab bar; the footer's grey runs behind it. */
     .site-footer {
       padding-bottom: calc(1.5rem + var(--tab-bar-height));
@@ -936,6 +947,12 @@
     overflow-wrap: anywhere;
     color: var(--color-primary);
     font-weight: 700;
+  }
+
+  .site-footer a[href^="mailto:"] {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--spacing-touch);
   }
 
   /* Centred like the rest of the footer (readability batch 1, the owner's A; at most three a

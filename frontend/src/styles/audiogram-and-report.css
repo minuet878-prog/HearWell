@@ -182,9 +182,18 @@
     pointer-events: none;
   }
 
-  /* Above the finger by default; beside it near the top, on the side with more room. */
+  /* Above the finger by default; beside it near the top, on the side with more room.
+     Edge frequencies anchor inward so the magnifier never clips off the chart at 250 or 8000 Hz. */
   .audiogram-magnifier[data-place="above"] {
     transform: translate(-50%, calc(-100% - 1.5rem));
+  }
+
+  .audiogram-magnifier[data-place="above"][data-edge="left"] {
+    transform: translate(0, calc(-100% - 1.5rem));
+  }
+
+  .audiogram-magnifier[data-place="above"][data-edge="right"] {
+    transform: translate(-100%, calc(-100% - 1.5rem));
   }
 
   .audiogram-magnifier[data-place="beside"][data-side="right"] {

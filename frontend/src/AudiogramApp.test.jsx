@@ -1252,3 +1252,32 @@ describe("Enter in the date (#616)", () => {
     expect(document.activeElement).toBe(part("月"));
   });
 });
+
+describe("leaving with unsaved marks", () => {
+  it("asks before following a header link once something was entered", () => {
+    const header = document.createElement("header");
+    const backLink = document.createElement("a");
+    backLink.href = "/";
+    header.appendChild(backLink);
+    document.body.appendChild(header);
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    try {
+      renderApp();
+      // Nothing entered yet: leaving is allowed without asking.
+      const beforeEdit = new MouseEvent("click", { bubbles: true, cancelable: true });
+      backLink.dispatchEvent(beforeEdit);
+      expect(confirmSpy).not.toHaveBeenCalled();
+      expect(beforeEdit.defaultPrevented).toBe(false);
+
+      // After picking a source, leaving asks first and cancels when declined.
+      fireEvent.click(screen.getAllByRole("radio")[0]);
+      const afterEdit = new MouseEvent("click", { bubbles: true, cancelable: true });
+      backLink.dispatchEvent(afterEdit);
+      expect(confirmSpy).toHaveBeenCalledOnce();
+      expect(afterEdit.defaultPrevented).toBe(true);
+    } finally {
+      confirmSpy.mockRestore();
+      header.remove();
+    }
+  });
+});

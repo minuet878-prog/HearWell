@@ -1,6 +1,6 @@
 {# #314: a graded questionnaire folded on screen; #471: its row (E) says its summary line. #}
 <details class="report-fold">
-<summary>{% include "screening/questionnaire_icon.html" with icon=section.questionnaire.definition.icon %}<span class="report-fold-text"><h2 class="report-fold-title">{{ section.questionnaire.questionnaire_name }}（{{ latest.created_at|date:"Y/m/d" }}）</h2><span class="report-fold-meta">{% include "screening/summaries/graded.html" with submission=latest %}</span></span></summary>
+<summary>{% include "screening/questionnaire_icon.html" with icon=section.questionnaire.definition.icon %}<span class="report-fold-text"><span class="report-fold-title">{{ section.questionnaire.questionnaire_name }}（{{ latest.created_at|date:"Y/m/d" }}）</span><span class="report-fold-meta">{% include "screening/summaries/graded.html" with submission=latest %}</span></span></summary>
 <div class="report-fold-body">
 {% include "screening/report_graded_section.html" %}{% if section.comparison %}{% include "screening/report_comparison.html" with comparison=section.comparison %}{% endif %}
 </div>

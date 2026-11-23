@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PULL_THRESHOLD, setUpPwaNav } from "./pwa-nav.js";
+import { PULL_SHOW_AFTER, PULL_THRESHOLD, setUpPwaNav } from "./pwa-nav.js";
 
 // Spec docs/specs/phase-10/phase10_pwa_back_refresh.md. A stand-in window so tests can see
 // reload() calls, which jsdom cannot perform.
@@ -184,6 +184,27 @@ describe("pull to refresh", () => {
     setUpPwaNav(win);
     pull(win, -50);
     expect(hint().hidden).toBe(true);
+  });
+
+  it("keeps the hint hidden for tiny downward jitter under the show threshold", () => {
+    const win = fakeWindow();
+    setUpPwaNav(win);
+    pull(win, PULL_SHOW_AFTER - 1);
+    expect(hint().hidden).toBe(true);
+  });
+
+  it("cancels the pull when the finger swipes sideways", () => {
+    const win = fakeWindow();
+    setUpPwaNav(win);
+    const start = new Event("touchstart");
+    start.touches = [{ clientX: 200, clientY: 100 }];
+    win.dispatchEvent(start);
+    const move = new Event("touchmove");
+    move.touches = [{ clientX: 80, clientY: 100 + PULL_THRESHOLD + 10 }];
+    win.dispatchEvent(move);
+    expect(hint().hidden).toBe(true);
+    touch(win, "touchend");
+    expect(win.location.reload).not.toHaveBeenCalled();
   });
 
   // 9: the questionnaire form, and the audiogram input's selects and checkboxes (no <form>).

@@ -115,3 +115,29 @@ it("grows up to -20 only for a point below -10, and draws 1 dB values where they
   expect(grid(usual)).not.toContain("-20");
   expect(Number(usual.querySelector(".audiogram-frame").getAttribute("y"))).toBe(CHART.top);
 });
+
+it("aligns the magnifier with the -20 dB rise and anchors edge frequencies inward", () => {
+  const air = (frequency, db) => ({ ear: "right", conduction: "air", frequency, db, no_response: false });
+  const row = y(-10) - y(-20);
+  const symbol = { ear: "right", conduction: "air" };
+  SVGElement.prototype.getBoundingClientRect = () => ({ left: 0, top: 0, width: CHART.width, height: CHART.height + row });
+  const { container } = render(
+    <AudiogramChart points={[air(1000, -14)]} symbol={symbol} onCommit={vi.fn()} />,
+  );
+  const svg = container.querySelector("svg");
+  const checkAt = (frequency, db) => {
+    const point = { clientX: x(frequency), clientY: y(db) + row, pointerId: 1 };
+    fireEvent.pointerDown(svg, point);
+    const box = container.querySelector(".audiogram-magnifier");
+    const result = { edge: box.getAttribute("data-edge"), top: box.style.top };
+    fireEvent.pointerUp(svg, point);
+    return result;
+  };
+
+  expect(checkAt(250, 40)).toEqual({
+    edge: "left",
+    top: `${((y(40) + row) / (CHART.height + row)) * 100}%`,
+  });
+  expect(checkAt(1000, 40).edge).toBe("center");
+  expect(checkAt(8000, 40).edge).toBe("right");
+});

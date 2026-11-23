@@ -484,8 +484,10 @@ describe("next and previous", () => {
     next();
     expect(legend()).toMatch(/有沒有戴助聽器/);
     expect(screen.getByRole("alert").textContent).toBe(CHOOSE_FIRST);
-    // Under the buttons, after the line saying what they need (#362).
-    expect(screen.getByRole("alert").previousElementSibling.previousElementSibling).toBe(button.parentElement);
+    // Inside the fieldset under the question so focusing <legend> keeps it in view on phones.
+    const fieldset = document.querySelector("fieldset");
+    expect(fieldset.contains(screen.getByRole("alert"))).toBe(true);
+    expect(fieldset.getAttribute("aria-describedby")).toContain(screen.getByRole("alert").id);
     // #462: a warning sign before the words, so the red is not the only sign (#272).
     expect(screen.getByRole("alert").classList.contains("field-error")).toBe(true);
     expect(document.activeElement.tagName).toBe("LEGEND");
@@ -831,7 +833,7 @@ describe("submitting", () => {
     expect(postCalls()).toHaveLength(0);
     expect(legend()).toMatch(/^第 10 題/);
     expect(screen.getByRole("alert").textContent).toBe(CHOOSE_FIRST);
-    expect(screen.getByRole("alert").previousElementSibling.previousElementSibling).toBe(button.parentElement);
+    expect(document.querySelector("fieldset").contains(screen.getByRole("alert"))).toBe(true);
     expect(document.activeElement.tagName).toBe("LEGEND");
     choose("從未");
     expect(screen.queryByRole("alert")).toBeNull();
@@ -1093,6 +1095,18 @@ describe("SSQ12-TW", () => {
     submit();
     await waitFor(() => expect(navigate).toHaveBeenCalledWith("/submission/99"));
     expect(postBody().answers.every((a) => a.score === null)).toBe(true);
+  });
+
+  it("lets keyboard confirm 5 on the slider and marks the scale when 不適用 is chosen", async () => {
+    mockApi(undefined, ssq);
+    await renderApp();
+    choose("有戴");
+    next();
+    const slider = screen.getByRole("slider");
+    fireEvent.keyDown(slider, { key: "Enter" });
+    expect(screen.getByText("5 分")).toBeTruthy();
+    choose("不適用");
+    expect(document.querySelector(".ssq-scale").getAttribute("data-na")).toBe("true");
   });
 });
 
@@ -1422,6 +1436,31 @@ describe("guest", () => {
     expect(legend()).toMatch(/這次填答時，您有沒有戴助聽器？/);
     expect(screen.queryByText(/這個瀏覽器不能暫存結果/)).toBeNull();
     expect(kept()).toEqual([]);
+  });
+
+  it("places 請先選一個答案 inside the fieldset and guards accidental 離開 clicks for guests", async () => {
+    const leave = document.createElement("a");
+    leave.className = "site-leave";
+    leave.href = "/questionnaire_list";
+    document.body.appendChild(leave);
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    try {
+      await renderGuest();
+      next();
+      const alert = screen.getByRole("alert");
+      const fieldset = document.querySelector("fieldset");
+      expect(fieldset.contains(alert)).toBe(true);
+      expect(fieldset.getAttribute("aria-describedby")).toContain(alert.id);
+
+      choose("沒戴");
+      const clickEvent = new MouseEvent("click", { bubbles: true, cancelable: true });
+      leave.dispatchEvent(clickEvent);
+      expect(confirmSpy).toHaveBeenCalledOnce();
+      expect(clickEvent.defaultPrevented).toBe(true);
+    } finally {
+      confirmSpy.mockRestore();
+      leave.remove();
+    }
   });
 });
 

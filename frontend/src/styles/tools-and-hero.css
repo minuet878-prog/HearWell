@@ -31,6 +31,27 @@
     content: "✓ ";
   }
 
+  /* While listening normally, soften the remembered degree pill so it does not compete with 正常聽. */
+  .simulator-chips[data-inactive] .simulator-chip[aria-pressed="true"] {
+    background-color: var(--color-surface);
+    box-shadow: inset 0 0 0 2px var(--color-line-strong);
+    color: var(--color-muted);
+  }
+
+  .simulator-status,
+  .simulator-error {
+    margin: 0.25rem 0 0.5rem;
+    text-align: center;
+    font-weight: 700;
+  }
+
+  .simulator-error {
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-severe-bg);
+    color: var(--color-severe);
+  }
+
   .simulator-chip:focus-visible {
     outline: 3px solid var(--color-primary);
     outline-offset: 2px;
@@ -593,6 +614,8 @@
   .hero-card > * { margin: 0; }
 
   .hero-card a:not(.btn) { color: #fff; }
+  .hero-card a:not(.btn):active { background-color: rgba(255, 255, 255, 0.22); }
+  .hero-card :focus-visible { outline-color: #fff; }
 
   /* The 照顧旅程's white entry cards (#744) keep their dark words on the blue card. */
   .hero-card a.entry-card { color: var(--color-heading); }

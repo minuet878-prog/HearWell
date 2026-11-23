@@ -129,7 +129,7 @@ describe("the avatar menu", () => {
       <header class="site-header">
         <div class="site-account" data-site-account>
           <a class="site-avatar" href="/account" aria-label="帳號設定：jason">J</a>
-          <button class="site-avatar" type="button" aria-label="帳號設定：jason"
+          <button class="site-avatar" type="button" aria-label="帳號選單：jason"
             aria-expanded="false" aria-controls="site-account-menu" hidden
             data-site-account-toggle>J</button>
           <div class="site-account-menu" id="site-account-menu" hidden>
@@ -188,6 +188,27 @@ describe("the avatar menu", () => {
     touch(document.querySelector("main p"));
     expect(isClosed()).toBe(true);
     expect(document.activeElement).toBe(avatar());
+  });
+
+  // Tabbed out of the menu, it closes on its own and leaves the focus where it landed.
+  it("closes when focus leaves the menu without pulling focus back", () => {
+    click(avatar());
+    const learn = document.querySelector("main a");
+    const firstItem = document.querySelector(".site-account-item");
+    learn.focus();
+    firstItem.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: learn }));
+    expect(isClosed()).toBe(true);
+    expect(document.activeElement).toBe(learn);
+  });
+
+  // Moving focus between items inside the menu, or clicking non-focusable text in it, keeps it open.
+  it("stays open when focus moves inside the menu or clears on inner text", () => {
+    click(avatar());
+    const [settings, logout] = document.querySelectorAll(".site-account-item");
+    settings.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: logout }));
+    expect(isOpen()).toBe(true);
+    logout.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: null }));
+    expect(isOpen()).toBe(true);
   });
 
   // Tabbed out of the menu, a tap outside leaves the focus where it was.

@@ -61,7 +61,10 @@ export function createEngine(frequencies, snr) {
   function load(url) {
     if (!buffers.has(url)) {
       const loading = fetch(url)
-        .then((response) => response.arrayBuffer())
+        .then((response) => {
+          if (response.ok === false) throw new Error(`HTTP ${response.status}`);
+          return response.arrayBuffer();
+        })
         .then((bytes) => context.decodeAudioData(bytes));
       // A failed download is tried again next time it is needed.
       loading.catch(() => buffers.delete(url));
@@ -125,7 +128,7 @@ export function createEngine(frequencies, snr) {
 
     stop,
 
-    play(url, onEnded) {
+    play(url, onEnded, { onReady, onError } = {}) {
       stop();
       const mine = ticket;
       // Built and resumed while still inside the tap. Safari: play through the silent switch, as
@@ -152,11 +155,14 @@ export function createEngine(frequencies, snr) {
             onEnded();
           };
           source.start();
+          onReady?.();
           if (background && backgroundUrl === wanted) startRestaurant(background);
           else if (backgroundUrl) joinRestaurant();
         })
         .catch(() => {
-          if (mine === ticket) onEnded();
+          if (mine !== ticket) return;
+          if (onError) onError();
+          else onEnded();
         });
     },
   };

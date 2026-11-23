@@ -815,11 +815,22 @@
 
   @media screen {
     .health-report .report-fold-body > section:first-child {
+      position: relative;
       margin-top: 0;
     }
 
+    /* Visually hidden on screen (summary shows the same title), kept in the accessibility tree
+       for heading navigation and shown on paper. */
     .report-fold-body > section:first-child > :is(h2, h3):first-child {
-      display: none;
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
     }
   }
 

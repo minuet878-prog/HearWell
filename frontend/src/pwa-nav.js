@@ -2,6 +2,7 @@
 // refresh on either phone (spec docs/specs/phase-10/phase10_pwa_back_refresh.md). Its back
 // button became every page's ‹ in the header (#748, site-header.js).
 export const PULL_THRESHOLD = 80;
+export const PULL_SHOW_AFTER = 16;
 
 const isStandalone = (win) =>
   win.navigator.standalone === true || win.matchMedia?.("(display-mode: standalone)").matches;
@@ -12,9 +13,11 @@ const hasInputs = (doc) => doc.querySelector("main :is(form, input, select, text
 function setUpPullToRefresh(win) {
   const hint = win.document.getElementById("pwa-pull");
   let startY = null;
+  let startX = null;
   let pulled = 0;
   const reset = () => {
     startY = null;
+    startX = null;
     hint.hidden = true;
   };
 
@@ -27,7 +30,13 @@ function setUpPullToRefresh(win) {
 
   win.addEventListener("touchstart", (event) => {
     pulled = 0;
-    startY = isPull(event) ? event.touches[0].clientY : null;
+    if (isPull(event)) {
+      startY = event.touches[0].clientY;
+      startX = event.touches[0].clientX;
+    } else {
+      startY = null;
+      startX = null;
+    }
   }, { passive: true });
   win.addEventListener("touchmove", (event) => {
     if (startY === null) return;
@@ -35,8 +44,16 @@ function setUpPullToRefresh(win) {
       reset();
       return;
     }
-    pulled = event.touches[0].clientY - startY;
-    hint.hidden = pulled <= 0;
+    const touch = event.touches[0];
+    pulled = touch.clientY - startY;
+    if (Number.isFinite(startX) && Number.isFinite(touch.clientX)) {
+      const dx = Math.abs(touch.clientX - startX);
+      if (dx > 10 && dx > Math.abs(pulled)) {
+        reset();
+        return;
+      }
+    }
+    hint.hidden = pulled < PULL_SHOW_AFTER;
     hint.textContent = pulled >= PULL_THRESHOLD ? "放開重新整理" : "往下拉重新整理";
   }, { passive: true });
   win.addEventListener("touchend", () => {

@@ -1,16 +1,17 @@
 """Public-page accessibility regressions for issues #70–#74."""
 
 import re
-from datetime import timedelta
+from datetime import date, timedelta
 from io import StringIO
 
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from screening.models import Answer, Questionnaire, Submission
-from screening.tests.helpers import consented_user
+from screening.models import Answer, Audiogram, AudiogramPoint, Questionnaire, Submission
+from screening.tests.helpers import consented_user, read_site_css
+from screening.views.common import SIGN_IN_ERROR
 
 
 class AccessibilityPageTests(TestCase):
@@ -110,3 +111,66 @@ class AccessibilityPageTests(TestCase):
                         '<span class="link-card-arrow" aria-hidden="true">\u203a</span>', ""
                     ),
                 )
+
+    def test_report_fold_summaries_do_not_nest_headings(self):
+        # <summary> carries an implicit button role; nesting <h2> inside it strips heading
+        # semantics in Safari/VoiceOver and duplicates the section's real heading outline.
+        call_command("seed_questionnaires", stdout=StringIO())
+        hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.record(hhie_s)
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 9, 28))
+        AudiogramPoint.objects.create(
+            audiogram=audiogram, ear="right", conduction="air", frequency=1000, db=40
+        )
+        content = self.client.get(reverse("health_report")).content.decode()
+        summaries = re.findall(
+            r'<details class="report-fold">\s*<summary>(.*?)</summary>', content, re.S
+        )
+        self.assertGreaterEqual(len(summaries), 2)
+        for summary in summaries:
+            with self.subTest(summary=summary[:60]):
+                self.assertNotRegex(summary, r"<h[1-6]\b")
+                self.assertIn('class="report-fold-title"', summary)
+
+    def test_sign_in_error_box_is_focusable_on_login_and_register(self):
+        self.client.logout()
+        for name in ("login", "register"):
+            with self.subTest(page=name):
+                session = self.client.session
+                session[SIGN_IN_ERROR] = "登入取消，請再試一次。"
+                session.save()
+                content = self.client.get(reverse(name)).content.decode()
+                self.assertRegex(
+                    content,
+                    r'class="error-box"[^>]*role="alert"[^>]*tabindex="-1"[^>]*autofocus'
+                    r"[^>]*>登入取消，請再試一次。",
+                )
+
+
+class StylesheetAccessibilityTests(SimpleTestCase):
+    def _css(self):
+        return re.sub(r"/\*.*?\*/", "", read_site_css(), flags=re.S)
+
+    def test_no_legacy_bootstrap_blues_remain_in_site_css(self):
+        css = self._css()
+        for legacy in ("#0d6efd", "#86b7fe", "rgba(13, 110, 253", "rgba(49, 132, 253"):
+            with self.subTest(legacy=legacy):
+                self.assertNotIn(legacy, css)
+
+    def test_global_focus_visible_and_focus_scroll_margins_exist(self):
+        css = self._css()
+        self.assertRegex(css, r":focus-visible\s*\{[^}]*outline\s*:\s*3px solid")
+        self.assertRegex(css, r"scroll-margin-top\s*:")
+        self.assertRegex(css, r"scroll-margin-bottom\s*:")
+
+    def test_form_controls_and_checks_meet_touch_height(self):
+        css = self._css()
+        self.assertRegex(
+            css,
+            r"\.form-control,\s*\.form-select\s*\{[^}]*min-height\s*:\s*var\(--spacing-touch\)",
+        )
+        self.assertRegex(
+            css,
+            r"\.form-check\s*\{[^}]*min-height\s*:\s*var\(--spacing-touch\)",
+        )
+        self.assertIn(".form-select-lg", css)

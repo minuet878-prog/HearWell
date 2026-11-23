@@ -1205,6 +1205,10 @@
     gap: 0.625rem;
   }
 
+  .ssq-scale[data-na="true"] input[type="range"] {
+    opacity: 0.45;
+  }
+
   /* #755 (canvas ProAnswer, spec #741 P10): the answer page's choices are large white buttons,
      the words bold, with no round radio button showing; the radio stays under the words for
      the keyboard and screen readers, its focus ringing the whole button. Chosen: the soft blue

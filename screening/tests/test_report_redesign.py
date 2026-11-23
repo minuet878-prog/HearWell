@@ -21,7 +21,11 @@ FOLD_ROW = re.compile(r'<details class="report-fold">\s*<summary>(.*?)</summary>
 
 def _text(html):
     """A row's words, its title and the line under it parted by a space."""
-    html = re.sub(r'</h2>|</span>(?=<span class="report-info-value">)', " ", html)
+    html = re.sub(
+        r'</span>(?=<span class="report-(?:fold-meta|info-value)">)',
+        " ",
+        html,
+    )
     return re.sub(r"\s+", " ", TAG.sub("", html)).strip()
 
 
