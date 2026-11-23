@@ -131,11 +131,12 @@ export default function TrendChart({ code, fittedOn }) {
   const [state, setState] = useState({ status: "loading" });
 
   useEffect(() => {
-    // Only the first page: the latest 20 submissions.
-    Promise.all([getJson("/api/submissions/"), getJson("/api/questionnaires/"), fontsReady()])
+    const query = new URLSearchParams({ questionnaire: code });
+    // Only the first page: the latest 20 submissions of this questionnaire.
+    Promise.all([getJson(`/api/submissions/?${query}`), getJson("/api/questionnaires/"), fontsReady()])
       .then(([page, questionnaires]) => setState({ status: "ready", page, questionnaires }))
       .catch(() => setState({ status: "error" }));
-  }, []);
+  }, [code]);
 
   // Rendered into the chart's box (#trend-plot), which keeps its height whatever is in it.
   // Screen readers skip the loading text and the chart, but hear when the chart cannot show.

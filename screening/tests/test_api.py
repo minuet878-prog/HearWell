@@ -269,19 +269,43 @@ class ApiSubmissionTests(TestCase):
             self.client.get(self.LIST).json(), {"next": None, "previous": None, "results": []}
         )
 
-    def _count_list_queries(self, expected_rows):
+    def _count_list_queries(self, expected_rows, params=None):
         with CaptureQueriesContext(connection) as ctx:
-            response = self.client.get(self.LIST)
+            response = self.client.get(self.LIST, params or {})
         self.assertEqual(len(response.json()["results"]), expected_rows)
-        return len(ctx.captured_queries)
+        return ctx.captured_queries
 
     def test_list_query_count_does_not_grow(self):
         self._make_submission(scores=[4] * 10)
-        one = self._count_list_queries(expected_rows=1)
+        one = len(self._count_list_queries(expected_rows=1))
         for _ in range(4):
             self._make_submission(scores=[2] * 10)
-        five = self._count_list_queries(expected_rows=5)
+        five = len(self._count_list_queries(expected_rows=5))
         self.assertEqual(one, five)
+
+    def test_list_filters_by_questionnaire_and_stays_scoped_to_user(self):
+        hhia = Questionnaire.objects.create(questionnaire_name="HHIA-S", code="hhia-s")
+        older_hhie = self._make_submission(scores=[2] * 10)
+        self._make_submission(user=self.other, scores=[4] * 10)
+        # More than one page of another questionnaire must not push the filtered one off page 1.
+        for _ in range(21):
+            Submission.objects.create(user=self.user, questionnaire=hhia)
+        results = self.client.get(self.LIST, {"questionnaire": "hhie-s"}).json()["results"]
+        self.assertEqual([item["id"] for item in results], [older_hhie.id])
+        self.assertEqual(
+            self.client.get(self.LIST, {"questionnaire": "unknown-code"}).json()["results"], []
+        )
+
+    def test_filtered_graded_list_skips_answer_prefetch_and_does_not_grow(self):
+        self._make_submission(scores=[4] * 10)
+        unfiltered = self._count_list_queries(expected_rows=1)
+        one = self._count_list_queries(expected_rows=1, params={"questionnaire": "hhie-s"})
+        self.assertLess(len(one), len(unfiltered))
+        self.assertFalse(any('FROM "screening_answer"' in q["sql"] for q in one))
+        for _ in range(4):
+            self._make_submission(scores=[2] * 10)
+        five = self._count_list_queries(expected_rows=5, params={"questionnaire": "hhie-s"})
+        self.assertEqual(len(one), len(five))
 
     def test_detail_matches_result_page(self):
         submission = self._make_submission(scores=[4, 2, 0, 0, 0, 0, 0, 0, 0, 0], wearing=True)

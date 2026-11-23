@@ -208,6 +208,11 @@ paths:
         description: The pagination cursor value.
         schema:
           type: string
+      - in: query
+        name: questionnaire
+        schema:
+          type: string
+        description: Filter submissions by questionnaire code.
       tags:
       - submissions
       security:

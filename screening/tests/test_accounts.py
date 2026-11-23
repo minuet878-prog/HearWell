@@ -578,6 +578,18 @@ class RegisterFormTests(TestCase):
         self.assertEqual(User(birth_year=1955).age, date.today().year - 1955)
         self.assertIsNone(User().age)
 
+    def test_age_and_this_roc_year_use_taipei_date(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        from screening.forms import this_roc_year
+
+        # 2026-12-31 16:30 UTC is already 2027-01-01 00:30 in Asia/Taipei.
+        taipei_new_year = datetime(2026, 12, 31, 16, 30, tzinfo=ZoneInfo("UTC"))
+        with mock.patch("django.utils.timezone.now", return_value=taipei_new_year):
+            self.assertEqual(User(birth_year=1955).age, 2027 - 1955)
+            self.assertEqual(this_roc_year(), 2027 - 1911)
+
     def test_note_uses_readable_style(self):
         self.assertContains(
             self.client.get(self.url),
@@ -601,29 +613,24 @@ class RegisterFormTests(TestCase):
                 with self.subTest(target=target):
                     self.assertIn(f'id="{target}"', content)
 
-    def test_focus_moves_to_first_invalid_field_after_register_error(self):
+    def test_focus_moves_to_first_error_field(self):
         def focused(response):
             content = response.content.decode()
             return [
-                re.search(r'\bname="(\w+)"', tag).group(1)
-                for tag in re.findall(r"<input\b[^>]*>", content)
-                if re.search(r"\bautofocus\b", tag)
+                re.search(r'name="(\w+)"', tag).group(1)
+                for tag in re.findall(r"<input\b[^>]*\bautofocus\b[^>]*>", content)
             ]
 
-        # Normal GET leaves the first Tab for the skip link.
+        # First visit keeps focus at the top for the skip link.
         self.assertEqual(focused(self.client.get(self.url)), [])
-        # Error on a later field focuses that field rather than jumping back to username.
-        self.assertEqual(focused(self._post(password2="Different#123")), ["password2"])
+        # When username is valid and later fields fail, focus moves to the first invalid field.
+        self.assertEqual(
+            focused(self._post(password2="Different#123", roc_birth_year="abc")),
+            ["password2"],
+        )
+        self.assertEqual(focused(self._post(email="not-an-email", roc_birth_year="abc")), ["email"])
         self.assertEqual(focused(self._post(roc_birth_year="abc")), ["roc_birth_year"])
-        # Multiple errors focus the first invalid field in visual order.
-        self.assertEqual(
-            focused(self._post(email="not-an-email", roc_birth_year="abc")),
-            ["email"],
-        )
-        self.assertEqual(
-            focused(self._post(username="", password2="Different#123")),
-            ["username"],
-        )
+        self.assertEqual(focused(self._post(username="")), ["username"])
 
 
 class RegisterPageGuidanceTests(TestCase):

@@ -69,7 +69,7 @@ TREND_LEGEND = (
 
 
 def _trend_chart(records, since_last, fitted_on):
-    # records: one tab's records (HHIE-S, THI), newest first; since_last: the page's
+    # records: one tab's records (HHIE-S, HHIA-S, THI), newest first; since_last: the page's
     # 「和上一次比」 or None; fitted_on: the current pair's fitting day or None (#650).
     # React draws only the chart itself, so the text around it is on the page from the start
     # and nothing below moves when it arrives. The wording is fixed by spec

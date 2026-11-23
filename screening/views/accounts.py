@@ -73,6 +73,8 @@ def register(request):
                 return redirect("consent")
     else:
         form = RegisterForm()
+    if form.errors:
+        form.focus_first_error()
     return render(
         request,
         "screening/register.html",

@@ -226,7 +226,8 @@ RETEST_REMINDER_DAILY_LIMIT = 60
 # The forgot-password page's attempt counts (#528) are shared by every Gunicorn process, so they
 # live in a database table (build.sh creates it); each lasts an hour from its first attempt.
 # The default cache stays in each process's memory: the guest scoring limit (spec #492) never
-# writes to the database.
+# writes to the database. Each Gunicorn worker counts on its own (2 workers on the VPS = up to
+# roughly 2x the per-worker rate per IP, and cleared on restart).
 CACHES = {
     "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
     "password_reset": {

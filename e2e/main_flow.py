@@ -1969,7 +1969,7 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             with self.subTest(width=width, large_text=large_text):
                 self.open(width)
                 # Hold the records' API answer, so the page is measured before the chart draws.
-                held = self.hold("**/api/submissions/")
+                held = self.hold("**/api/submissions/?*")
                 with self.saving_artifacts():
                     self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
                     if large_text:
@@ -2505,11 +2505,11 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
         share = ReportShare.objects.create(user=self.user)
         self.open(320, 640)
         with self.saving_artifacts():
-            for path in ("/share", "/account", "/privacy", "/add_to_home"):
+            for path in ("/report", "/share", "/account", "/privacy", "/add_to_home"):
                 with self.subTest(path=path):
                     self.page.goto(f"{self.live_server_url}{path}")
                     for block in self.main().locator("details").all():
-                        block.locator("summary").click()
+                        block.locator(":scope > summary").click()
                     self.assert_fits_a_phone_at_double_text_size(path)
             for path in (f"/shared/{share.token}", f"/shared/{share.token}/report"):
                 with self.subTest(path="family " + path.rsplit("/", 1)[-1]):
@@ -5452,9 +5452,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.page.mouse.up()
 
     def test_form_fields_keep_their_size_and_focus_ring(self):
-        # #125: form fields keep their pre-migration size (owner's decision, 2026-10-21):
-        # regular fields are 42.5px tall, above WCAG AA's 24px, and checkboxes sit in a
-        # clickable 27px-tall label. Buttons are the ones held to 44 x 44.
+        # Regular fields meet --spacing-touch (2.75rem = 49.5px at 18px root, Batch 2 a11y fix),
+        # so every input and select clears the 44px touch target on phones.
         # The login and register pages chose thicker, taller fields (2026-10-23), so the regular
         # field is measured on the delete-account page.
         primary_ring = "rgba(31, 78, 140, 0.25) 0px 0px 0px 4.5px"
@@ -11432,12 +11431,12 @@ class AudiogramPagesT365Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSe
     """#365 (spec #354): the delete page's title and preview on a phone, and the compare page's
     line samples in the chosen ear's colours."""
 
-    # The chart's colours (AudiogramChart.jsx): each ear's own, lighter for the older one.
+    # The chart's colours (AudiogramChart.jsx): each ear's own, lighter (>= 3:1) for the older one.
     LINE_COLOURS = (
         (("right", False), "rgb(192, 57, 43)"),
-        (("right", True), "rgb(232, 165, 157)"),
+        (("right", True), "rgb(204, 95, 86)"),
         (("left", False), "rgb(31, 78, 140)"),
-        (("left", True), "rgb(157, 181, 214)"),
+        (("left", True), "rgb(89, 128, 181)"),
     )
 
     def setUp(self):

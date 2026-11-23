@@ -1,7 +1,6 @@
 import hashlib
 import time
 import unicodedata
-from datetime import date
 from urllib.parse import urlsplit
 
 from django import forms
@@ -64,7 +63,7 @@ PASSWORD_AGAIN_HELP = "請再輸入一次同樣的密碼。"
 
 def this_roc_year():
     """This year in 民國 years; less a 民國 birth year, it is User.age."""
-    return date.today().year - ROC_OFFSET
+    return timezone.localdate().year - ROC_OFFSET
 
 
 def latest_roc_birth_year():
@@ -110,22 +109,21 @@ class RegisterForm(NoLabelSuffix, UserCreationForm):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs.setdefault("class", "form-control")
-        # UserCreationForm sets autofocus on username; drop it unconditionally so failed submits
-        # focus the first invalid field instead of pulling back to username.
+        # Never keep UserCreationForm's default autofocus on username: normal entry leaves Tab for
+        # the skip link, and errors move autofocus to the first invalid field (focus_first_error).
         self.fields["username"].widget.attrs.pop("autofocus", None)
         self.fields["username"].help_text = USERNAME_HELP
         self.fields["password1"].help_text = PASSWORD_HELP
         self.fields["password2"].help_text = PASSWORD_AGAIN_HELP
         give_birth_year_checks(self.fields["roc_birth_year"])
 
-    def add_error(self, field, error):
-        super().add_error(field, error)
-        first = next((name for name in self.fields if name in self.errors), None)
-        for name, form_field in self.fields.items():
-            if name == first:
-                form_field.widget.attrs["autofocus"] = True
-            else:
-                form_field.widget.attrs.pop("autofocus", None)
+    def focus_first_error(self):
+        # Match register.html's field order (roc_birth_year sits last).
+        order = [*(n for n in self.fields if n != "roc_birth_year"), "roc_birth_year"]
+        for name in order:
+            if name in self.errors:
+                self.fields[name].widget.attrs["autofocus"] = True
+                return
 
     def clean_roc_birth_year(self):
         value = self.cleaned_data["roc_birth_year"]

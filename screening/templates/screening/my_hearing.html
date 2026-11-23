@@ -68,7 +68,7 @@
 {% if ioi_ha_chart %}
 {% include "screening/ioi_ha_chart.html" with chart=ioi_ha_chart %}
 {% elif trend_chart %}
-{# Only HHIE-S and THI have a trend chart; other questionnaires list their records only. #}
+{# Only HHIE-S, HHIA-S and THI have a trend chart; other questionnaires list their records only. #}
 {% include "screening/trend_chart.html" with chart=trend_chart questionnaire=current %}
 {% endif %}
 {% if submissions %}
