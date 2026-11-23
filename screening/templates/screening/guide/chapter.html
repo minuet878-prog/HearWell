@@ -6,7 +6,7 @@
 {% endblock %}
 {% block body %}
 {# Every chapter's wording is finalised in #220; change it only after review (ADR 0013). #}
-<p class="mt-4 mb-0"><a href="{% url 'guide' %}">回到助聽器選配與補助</a></p>
+<p class="mt-4 mb-0"><a class="inline-link" href="{% url 'guide' %}">回到助聽器選配與補助</a></p>
 <article class="guide-chapter wrap-anywhere">
 {% include "screening/bird_dialogue.html" with lead="guide_chapter"|page_lead title=chapter.title %}
 {% block chapter %}{% endblock %}

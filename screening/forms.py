@@ -109,12 +109,21 @@ class RegisterForm(NoLabelSuffix, UserCreationForm):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs.setdefault("class", "form-control")
-        if not self.is_bound:
-            self.fields["username"].widget.attrs.pop("autofocus", None)
+        # Never keep UserCreationForm's default autofocus on username: normal entry leaves Tab for
+        # the skip link, and errors move autofocus to the first invalid field (focus_first_error).
+        self.fields["username"].widget.attrs.pop("autofocus", None)
         self.fields["username"].help_text = USERNAME_HELP
         self.fields["password1"].help_text = PASSWORD_HELP
         self.fields["password2"].help_text = PASSWORD_AGAIN_HELP
         give_birth_year_checks(self.fields["roc_birth_year"])
+
+    def focus_first_error(self):
+        # Match register.html's field order (roc_birth_year sits last).
+        order = [*(n for n in self.fields if n != "roc_birth_year"), "roc_birth_year"]
+        for name in order:
+            if name in self.errors:
+                self.fields[name].widget.attrs["autofocus"] = True
+                return
 
     def clean_roc_birth_year(self):
         value = self.cleaned_data["roc_birth_year"]
