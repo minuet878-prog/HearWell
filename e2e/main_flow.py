@@ -718,7 +718,9 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         self.assert_step_bar(2, 2)
         self.main().get_by_role("button", name="我同意，開始篩檢", exact=True).click()
         # The avatar: a menu button, or without JavaScript a link to account settings.
-        avatar = self.page.get_by_label("帳號選單：e2e_user").filter(visible=True)
+        avatar = self.page.get_by_label(re.compile(r"^帳號(?:選單|設定)：e2e_user$")).filter(
+            visible=True
+        )
         expect(avatar).to_be_visible()
         expect(self.page).to_have_url(re.compile(r"/questionnaire_list\?from=consent$"))
 
