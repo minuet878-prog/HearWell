@@ -10,7 +10,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening.models import Answer, Audiogram, AudiogramPoint, Questionnaire, Submission
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, read_site_css
 from screening.views.common import SIGN_IN_ERROR
 
 
