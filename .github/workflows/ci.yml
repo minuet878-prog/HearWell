@@ -126,10 +126,9 @@ jobs:
         run: npm run build --prefix frontend
 
   # A real browser walks the main flow against a live test server (spec phase6_e2e.md).
-  # Not a required check yet: it becomes one after a week or two without flaky failures.
   # Three machines share the test classes by their seconds (E2E_SHARD, see load_tests in
   # e2e/main_flow.py). Past three, each machine's minute of setup and the longest class leave
-  # little to gain.
+  # little to gain. Branch rulesets require e2e-gate below rather than the three shard names.
   e2e:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
@@ -185,3 +184,20 @@ jobs:
         with:
           name: e2e-failure-${{ strategy.job-index }}
           path: e2e-artifacts/
+
+  # Single required-check target for branch rulesets: the matrix job above reports three names
+  # when it runs and only "e2e" when skipped on docs-only PRs, which would leave required shard
+  # checks pending forever. Passes only when changes succeeded and e2e succeeded or was skipped.
+  e2e-gate:
+    needs: [changes, e2e]
+    if: ${{ always() && !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check e2e matrix result
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+        run: |
+          echo "changes=$CHANGES_RESULT e2e=$E2E_RESULT"
+          test "$CHANGES_RESULT" = "success"
+          test "$E2E_RESULT" = "success" -o "$E2E_RESULT" = "skipped"
