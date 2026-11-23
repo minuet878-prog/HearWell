@@ -11,6 +11,8 @@ export default function SimulatorApp({ data, engine }) {
   const [normal, setNormal] = useState(false);
   const [sentenceIndex, setSentenceIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [revealed, setRevealed] = useState(false);
   const [restaurant, setRestaurant] = useState(false);
   const saidId = useId();
@@ -34,7 +36,23 @@ export default function SimulatorApp({ data, engine }) {
 
   function play(index) {
     setPlaying(true);
-    engine.play(data.sentences[index].audio, () => setPlaying(false));
+    setLoading(true);
+    setError("");
+    engine.play(
+      data.sentences[index].audio,
+      () => {
+        setPlaying(false);
+        setLoading(false);
+      },
+      {
+        onReady: () => setLoading(false),
+        onError: () => {
+          setPlaying(false);
+          setLoading(false);
+          setError("聲音載入失敗，請檢查網路後再試一次。");
+        },
+      },
+    );
   }
 
   function pickLevel(index) {
@@ -47,6 +65,7 @@ export default function SimulatorApp({ data, engine }) {
     const next = (sentenceIndex + by + count) % count;
     setSentenceIndex(next);
     setRevealed(false);
+    setError("");
     if (playing) {
       engine.stop();
       play(next);
@@ -57,6 +76,7 @@ export default function SimulatorApp({ data, engine }) {
     if (playing) {
       engine.stop();
       setPlaying(false);
+      setLoading(false);
     } else {
       play(sentenceIndex);
     }
@@ -64,7 +84,7 @@ export default function SimulatorApp({ data, engine }) {
 
   return (
     <>
-      <div className="simulator-chips" role="group" aria-label="程度">
+      <div className="simulator-chips" role="group" aria-label="程度" data-inactive={normal || undefined}>
         {data.levels.map((item, i) => (
           <button key={item.code} type="button" className="simulator-chip" aria-pressed={i === levelIndex} onClick={() => pickLevel(i)}>
             {item.name}
@@ -106,6 +126,8 @@ export default function SimulatorApp({ data, engine }) {
         <p className="simulator-caption">
           第 {sentenceIndex + 1} 句・{sentence.voice}聲<span>（共 {data.sentences.length} 句）</span>
         </p>
+        {loading && <p className="simulator-status" role="status">聲音載入中…</p>}
+        {error && <p className="simulator-error" role="alert">{error}</p>}
         <div className="simulator-switch" role="group" aria-label="怎麼聽">
           <button type="button" aria-pressed={!normal} onClick={() => setNormal(false)}>
             模擬

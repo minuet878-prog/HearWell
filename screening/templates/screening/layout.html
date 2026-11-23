@@ -89,7 +89,7 @@
             {% if user.is_authenticated %}
             <div class="site-account" data-site-account>
                 <a class="site-avatar" href="{% url 'account_settings' %}" aria-label="帳號設定：{{ user.username }}">{{ user.username|first|upper }}</a>
-                <button class="site-avatar" type="button" aria-label="帳號設定：{{ user.username }}" aria-expanded="false" aria-controls="site-account-menu" hidden data-site-account-toggle>{{ user.username|first|upper }}</button>
+                <button class="site-avatar" type="button" aria-label="帳號選單：{{ user.username }}" aria-expanded="false" aria-controls="site-account-menu" hidden data-site-account-toggle>{{ user.username|first|upper }}</button>
                 <div class="site-account-menu" id="site-account-menu" hidden>
                     <p class="site-account-name">{{ user.username }}</p>
                     <a class="site-account-item" href="{% url 'account_settings' %}"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>帳號設定</a>

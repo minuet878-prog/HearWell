@@ -171,6 +171,27 @@ export default function AnswerApp({
 
   useEffect(() => () => clearTimeout(savedTimer.current), []);
 
+  // Guest answers are not saved as a draft (ADR 0055): guard accidental taps on 離開 or reload.
+  const warnGuestLeave = Boolean(guest && form && hasAnything(form) && !finished.current && status.type !== "sent");
+  useEffect(() => {
+    if (!warnGuestLeave) return;
+    const onBeforeUnload = (event) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    const onLeaveClick = (event) => {
+      const link = event.target?.closest?.("a.site-leave");
+      if (!link) return;
+      if (!window.confirm("訪客作答不會保留進度，確定要離開嗎？")) event.preventDefault();
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("click", onLeaveClick, true);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("click", onLeaveClick, true);
+    };
+  }, [warnGuestLeave]);
+
   useEffect(() => {
     if (moved.current) legend.current?.focus();
     moved.current = false;
@@ -361,7 +382,7 @@ export default function AnswerApp({
       <fieldset
         className="mb-4"
         disabled={isSending}
-        aria-describedby={showHint ? "answer-hearing-aid-hint" : undefined}
+        aria-describedby={[showHint && "answer-hearing-aid-hint", chooseFirst && "answer-choose-error"].filter(Boolean).join(" ") || undefined}
       >
         <legend ref={legend} tabIndex={-1} className="font-bold text-[calc(1.275rem+0.3vw)] min-[1200px]:text-[1.5rem]">
           {!isHearingAid && (
@@ -394,8 +415,10 @@ export default function AnswerApp({
         </legend>
         {/* Its own id: the hidden Django form keeps #hearing-aid-hint. */}
         {showHint && <p id="answer-hearing-aid-hint">{unaidedHint}</p>}
+        {/* Placed right under the question so focusing <legend> keeps it in view on phones. */}
+        {chooseFirst && <p id="answer-choose-error" className="field-error mt-2 mb-3 text-xl/normal text-danger" role="alert">請先選一個答案</p>}
         {!isHearingAid && question.scale ? (
-          <div className="ssq-scale">
+          <div className="ssq-scale" data-na={current === null ? "true" : undefined}>
             <p className="text-[calc(1.3rem+0.6vw)] min-[1200px]:text-[1.75rem] font-bold" role="status">{current === undefined ? "未作答" : current === null ? "不適用" : `${current} 分`}</p>
             <label className="form-label" htmlFor={`ssq-score-${step}`}>選擇分數（0–10）</label>
             <input
@@ -404,6 +427,12 @@ export default function AnswerApp({
               aria-valuetext={current === undefined ? "未作答" : current === null ? "不適用" : `${current} 分`}
               onChange={(event) => choose(Number(event.target.value))}
               onPointerUp={(event) => choose(Number(event.currentTarget.value))}
+              onKeyDown={(event) => {
+                if ((event.key === "Enter" || event.key === " ") && (current === undefined || current === null)) {
+                  event.preventDefault();
+                  choose(5);
+                }
+              }}
             />
             <div className="flex justify-between gap-2 mb-4"><span>0：{question.scale.min_label}</span><span>10：{question.scale.max_label}</span></div>
             <div className="flex flex-wrap gap-2 mb-4">
@@ -481,8 +510,6 @@ export default function AnswerApp({
       </div>
       {/* #362: why the button does nothing yet; its look stays as it is (#136 C). */}
       {!answered && <p className="mt-4">先選一個答案，才能按「{isLast ? "送出" : "下一題"}」。</p>}
-      {/* #462: with the fields' warning mark (#272), so the red is not the only sign. */}
-      {chooseFirst && <p className="field-error mt-4 text-xl/normal text-danger" role="alert">請先選一個答案</p>}
       {/* Always here, so a screen reader says 已送出 when it is written in (#330). */}
       <p className="visually-hidden" role="status">{isSent ? "已送出" : ""}</p>
       {/* #462: the page's own intro (the definition's intro_template) folded on every page, the first

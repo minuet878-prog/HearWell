@@ -31,9 +31,13 @@ function fakeEngine() {
   return {
     calls: [],
     ended: null,
-    play(url, onEnded) {
+    ready: null,
+    failed: null,
+    play(url, onEnded, callbacks = {}) {
       this.calls.push(["play", url]);
       this.ended = onEnded;
+      this.ready = callbacks.onReady ?? null;
+      this.failed = callbacks.onError ?? null;
     },
     stop() {
       this.calls.push(["stop"]);
@@ -235,4 +239,29 @@ it("keeps 餐廳 picked when a sentence ends, for the next one", () => {
   act(() => engine.ended());
   expect(pressed("在哪裡")).toEqual(["餐廳"]);
   expect(screen.getByRole("button", { name: "播放" })).toBeTruthy();
+});
+
+it("shows loading until audio starts and alerts when audio fails to load", () => {
+  const { engine } = open();
+  press("播放");
+  expect(screen.getByRole("status").textContent).toBe("聲音載入中…");
+  act(() => engine.ready());
+  expect(screen.queryByText("聲音載入中…")).toBeNull();
+  press("暫停");
+
+  press("播放");
+  act(() => engine.failed());
+  expect(screen.queryByText("聲音載入中…")).toBeNull();
+  expect(screen.getByRole("alert").textContent).toContain("聲音載入失敗");
+  expect(screen.getByRole("button", { name: "播放" })).toBeTruthy();
+});
+
+it("marks degree chips inactive while 正常聽 is active", () => {
+  open();
+  const group = screen.getByRole("group", { name: "程度" });
+  expect(group.hasAttribute("data-inactive")).toBe(false);
+  press("正常聽");
+  expect(group.hasAttribute("data-inactive")).toBe(true);
+  press("模擬");
+  expect(group.hasAttribute("data-inactive")).toBe(false);
 });

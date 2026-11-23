@@ -14,8 +14,10 @@ function opensPage(event, link, win) {
   if (event.defaultPrevented || event.button !== 0) return false;
   if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
   if (link.hasAttribute("download") || (link.target && link.target !== "_self")) return false;
+  const rawHref = link.getAttribute("href");
+  if (rawHref === "#") return false;
   const here = new URL(win.location.href);
-  const url = new URL(link.getAttribute("href"), here);
+  const url = new URL(rawHref, here);
   if (url.origin !== here.origin) return false;
   return !(url.hash && url.pathname === here.pathname && url.search === here.search);
 }
@@ -27,14 +29,17 @@ export function setUpPageLoading(win) {
   let giveBackTimer;
   let sending = null; // { form, button, label }
 
-  function reset() {
+  function reset(restoreFocus = false) {
     win.clearTimeout(showTimer);
     win.clearTimeout(giveBackTimer);
     doc.documentElement.classList.remove("page-loading");
     status.textContent = "";
     if (sending) {
-      sending.button.disabled = false;
-      sending.button.replaceChildren(...sending.label);
+      const { button, label } = sending;
+      button.disabled = false;
+      button.classList.remove("is-sending");
+      button.replaceChildren(...label);
+      if (restoreFocus && doc.activeElement === doc.body) button.focus();
       sending = null;
     }
   }
@@ -45,7 +50,7 @@ export function setUpPageLoading(win) {
       doc.documentElement.classList.add("page-loading");
       status.textContent ||= LOADING;
     }, SHOW_AFTER);
-    giveBackTimer = win.setTimeout(reset, GIVE_BACK_AFTER);
+    giveBackTimer = win.setTimeout(() => reset(true), GIVE_BACK_AFTER);
   }
 
   doc.addEventListener("click", (event) => {
@@ -64,7 +69,9 @@ export function setUpPageLoading(win) {
     // Only forms that save something; the header's 登出 just gets the bar.
     if (form.method !== "post" || !form.closest("main")) return;
     const button = event.submitter;
+    if (!button || button.tagName !== "BUTTON") return;
     sending = { form, button, label: [...button.childNodes] };
+    button.classList.add("is-sending");
     const spinner = doc.createElement("span");
     spinner.className = "spinner";
     spinner.setAttribute("aria-hidden", "true");
@@ -78,5 +85,5 @@ export function setUpPageLoading(win) {
   });
 
   // The back button can bring this page back from cache still waiting.
-  win.addEventListener("pageshow", reset);
+  win.addEventListener("pageshow", () => reset());
 }

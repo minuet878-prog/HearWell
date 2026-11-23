@@ -110,12 +110,22 @@ class RegisterForm(NoLabelSuffix, UserCreationForm):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs.setdefault("class", "form-control")
-        if not self.is_bound:
-            self.fields["username"].widget.attrs.pop("autofocus", None)
+        # UserCreationForm sets autofocus on username; drop it unconditionally so failed submits
+        # focus the first invalid field instead of pulling back to username.
+        self.fields["username"].widget.attrs.pop("autofocus", None)
         self.fields["username"].help_text = USERNAME_HELP
         self.fields["password1"].help_text = PASSWORD_HELP
         self.fields["password2"].help_text = PASSWORD_AGAIN_HELP
         give_birth_year_checks(self.fields["roc_birth_year"])
+
+    def add_error(self, field, error):
+        super().add_error(field, error)
+        first = next((name for name in self.fields if name in self.errors), None)
+        for name, form_field in self.fields.items():
+            if name == first:
+                form_field.widget.attrs["autofocus"] = True
+            else:
+                form_field.widget.attrs.pop("autofocus", None)
 
     def clean_roc_birth_year(self):
         value = self.cleaned_data["roc_birth_year"]

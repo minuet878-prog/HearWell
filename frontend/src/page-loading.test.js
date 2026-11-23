@@ -77,6 +77,7 @@ describe("going to another page", () => {
     ["another site", '<a href="https://www.mohw.gov.tw/">衛福部</a>', {}],
     ["a new tab", '<a href="/guide" target="_blank">選配指引</a>', {}],
     ["a section of this page", '<a href="#steps">步驟</a>', {}],
+    ["a bare hash link", '<a href="#">回到上方</a>', {}],
     ["a section of this page by its full path", '<a href="/learn#steps">步驟</a>', {}],
     ["a phone number", '<a href="tel:0800000000">撥打</a>', {}],
     ["a click with ctrl held", '<a href="/guide">選配指引</a>', { ctrlKey: true }],
@@ -186,5 +187,18 @@ describe("sending a form", () => {
     vi.advanceTimersByTime(SHOW_AFTER);
     expect(loading()).toBe(true);
     expect(status()).toBe("載入中…");
+  });
+
+  it("marks the button is-sending while submitting and handles submit without a button", () => {
+    page(FORM);
+    submit("main button");
+    expect(button().classList.contains("is-sending")).toBe(true);
+    vi.advanceTimersByTime(GIVE_BACK_AFTER);
+    expect(button().classList.contains("is-sending")).toBe(false);
+
+    const noSubmitter = new SubmitEvent("submit", { bubbles: true, cancelable: true });
+    expect(() => doc.querySelector("main form").dispatchEvent(noSubmitter)).not.toThrow();
+    vi.advanceTimersByTime(SHOW_AFTER);
+    expect(loading()).toBe(true);
   });
 });

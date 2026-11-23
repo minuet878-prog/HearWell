@@ -200,7 +200,9 @@ class HealthReportTests(TestCase):
             with self.subTest(name):
                 summary = _section(content, "report-summary")
                 self.assertRegex(summary, rf"<li>聽力圖（2026/09/28）\s*{tag}：")
-                self.assertRegex(content, rf'report-fold-title">聽力圖（2026/09/28）\s*{tag}</h2>')
+                self.assertRegex(
+                    content, rf'report-fold-title">聽力圖（2026/09/28）\s*{tag}</span>'
+                )
                 section = _section(content, "report-audiogram")
                 self.assertRegex(section, rf"聽力圖（測試日期 2026/09/28）\s*{tag}</h2>")
         # The family's copy opens on 先看重點: the audiogram's line there carries the tag too.

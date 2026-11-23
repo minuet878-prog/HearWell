@@ -156,6 +156,35 @@ export default function AudiogramApp({
   // none: putting the same audiogram again changes nothing.
   const key = useRef(newReceiptKey());
   const busy = useRef(false);
+  const initialSnapshot = useRef(
+    JSON.stringify({
+      points: Object.fromEntries(initialPoints.map((p) => [pointKey(p.ear, p.conduction, p.frequency), p])),
+      testedOn: isoDate(dateParts(initialTestedOn)),
+      source: initialSource,
+    }),
+  );
+
+  // Guard against accidental navigation or reload while unsaved marks are in progress.
+  const hasUnsavedChanges =
+    !saved && JSON.stringify({ points, testedOn, source }) !== initialSnapshot.current;
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const onBeforeUnload = (event) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    const onLeaveClick = (event) => {
+      const link = event.target?.closest?.("header a[href], .quiet-links a[href]");
+      if (!link) return;
+      if (!window.confirm("聽力圖還沒存檔，確定要離開嗎？")) event.preventDefault();
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("click", onLeaveClick, true);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("click", onLeaveClick, true);
+    };
+  }, [hasUnsavedChanges]);
 
   const symbol = SYMBOLS.find((s) => s.key === symbolKey);
   const ear = STEP_EAR[step];

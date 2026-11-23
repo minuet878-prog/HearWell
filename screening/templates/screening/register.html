@@ -19,7 +19,7 @@
     {% include "screening/step_progress.html" with step=1 total=2 label="建立帳號" %}
     <div class="auth-form">
         {# Spec #505, #506 (the #507 mockup D1 甲, W2; the #539 mockup 3): LINE, then Google, above the form, under the step bar: they take the same two steps. #}
-        {% if sign_in_error %}<p class="error-box" role="alert">{{ sign_in_error }}</p>{% endif %}
+        {% if sign_in_error %}<p class="error-box" role="alert" tabindex="-1" autofocus>{{ sign_in_error }}</p>{% endif %}
         {% if line_sign_in or google_sign_in %}
         <div class="flex flex-col gap-3">
             {% if line_sign_in %}{% include "screening/line_button.html" with label="註冊" %}{% endif %}
