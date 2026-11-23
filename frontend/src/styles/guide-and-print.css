@@ -1,0 +1,649 @@
+/* #465 records and audiograms (the #464 mockup): 我的紀錄's score block, the folds drawn as list
+   rows (as #461's 看完整說明) and the audiogram page's two ear blocks. The audiogram input drops the
+   tab bar with #463's site-nav-tucked. */
+@layer components {
+  /* 1A: 最近一次 in the words' weight, the score largest, then the level and the line against
+     last time (.result-since-last), all in the latest level's colours (L1, .result-banner). */
+  .records-score > p {
+    margin: 0;
+  }
+
+  .records-score > p:first-child {
+    overflow-wrap: anywhere;
+    font-weight: 400;
+  }
+
+  /* A fold's title with a muted line under it, as a list row's (E). */
+  .result-details > summary .link-card-body > :not(.link-card-title) {
+    font-weight: 400;
+  }
+
+  @container (max-width: 11rem) {
+    .result-details > summary > .link-card-body {
+      flex: 1 0 100%;
+      order: 1;
+    }
+  }
+
+  /* Folds among list rows share the rows' lines: one line between two, never two. */
+  .link-card + .result-details,
+  .result-details + .result-details,
+  #speech-banana:not(:empty) + .speech-banana-read {
+    border-top: 0;
+  }
+
+  .result-details + .link-card {
+    border-top: 0;
+  }
+
+  /* 看以前的 N 筆／張: the folded records are list rows to the fold's edges. */
+  .result-details-body.records-fold-rows {
+    padding: 0;
+  }
+
+  /* The audiogram's value table runs to the fold's edges, as it ran to its box's (#204): at
+     200% text on a phone a frequency's select takes the whole row. */
+  .audiogram-table > fieldset.result-details-body {
+    padding-inline: 0;
+  }
+
+  /* The comparison's number tables keep their words whole and scroll in their own box (#204,
+     #344), as they did in a box dropdown: breaking anywhere would squeeze the dates instead. */
+  .result-details-body .scroll-box {
+    overflow-wrap: normal;
+  }
+
+  .result-details-body .tip-box {
+    margin-top: 1rem;
+  }
+
+  /* 3A: each ear a block in its degree's colours (L1), side by side; at 200% text one under the
+     other instead of widening a phone page. */
+  .audiogram-ear-blocks {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .audiogram-ear-block > p {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .audiogram-ear-block-label {
+    font-weight: 700;
+  }
+
+  /* The owner's pick after #463: a choice's edge is the fields' darker grey (4.7:1), on the
+     wearing comparison's two lists and the audiogram comparison's 換一張 lists too. */
+  .comparison-form, .compare-picker {
+    --choice-border: var(--color-input-border);
+  }
+
+  /* 6: the comparison's first line larger and bold, on the page above the chart's frame. */
+  .compare-summary > p {
+    margin: 0 0 0.25rem;
+    overflow-wrap: anywhere;
+  }
+
+  .compare-summary-lead {
+    color: var(--color-heading);
+    font-size: var(--text-button);
+    font-weight: 700;
+  }
+
+  .compare-summary + .audiogram-chart {
+    margin-top: 0.75rem;
+  }
+
+  .audiogram-ear-block-degree {
+    font-size: var(--text-page-title);
+    font-weight: 700;
+    line-height: 1.2;
+  }
+}
+
+/* #467 hearing aid guide (the #466 mockup A, the owner's picks H1 + H2 and I1 + I2): the
+   route's rows that open in place and its 您在這裡 card, the route's entrance, the audiogram's
+   subheads, the chapters' key cards and folds, and source links tall enough to tap. */
+@layer components {
+  /* I1: every stop but the 目前這一站 is a row that opens in place to say what it is (the whole
+     row, a blue arrow at its end, down while folded and up when open, swapped not turned so
+     nothing moves); pressing it only changes colour (ADR 0028). */
+  .route-about > summary {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    min-height: var(--spacing-touch);
+    padding: 0.35rem 0.25rem;
+    border-radius: var(--radius-small);
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .route-about > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .route-row {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .route-about .result-details-arrow {
+    margin-top: 0.2rem;
+  }
+
+  .route-about[open] .result-details-arrow {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6-6 6 6'/%3E%3C/svg%3E");
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .route-about > summary:hover {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .route-about > summary:active {
+    background-color: var(--color-brand-selected);
+  }
+
+  /* What follows a row lines up with its title. */
+  .route-box:not(.route-card) > :is(.route-note, .route-answer) {
+    padding-inline-start: 0.25rem;
+  }
+
+  .route-about-body {
+    padding: 0.25rem 0.25rem 0.25rem;
+  }
+
+  .route-about-body p {
+    margin: 0;
+  }
+
+  .route-about-body a {
+    font-weight: 700;
+  }
+
+  /* 不適用: the title in the body grey, the circle pale (above); the words keep their contrast. */
+  .route-stop.is-na .route-title {
+    color: var(--color-body);
+    font-weight: 400;
+  }
+
+  /* #596 (ADR 0063, the #595 mockup's 甲): the folded 補助站, a line under the route, no stop:
+     a thin rule, then a sentence and a link level with the stops' titles (a number's width and
+     the gap beside it, plus the rows' own inset). At large text sizes, where the stops drop
+     under their numbers, it is not indented either. */
+  .route-fold {
+    container-type: inline-size;
+    margin-top: 0.25rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-line);
+  }
+
+  .route-fold p {
+    margin: 0;
+    padding-inline-start: calc(var(--route-size) + 1rem);
+  }
+
+  @container (max-width: 15rem) {
+    .route-fold p {
+      padding-inline-start: 0;
+    }
+  }
+
+  .route-fold .tap-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: var(--spacing-touch);
+    font-weight: 700;
+  }
+
+  .route-fold .route-chevron {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  /* The 目前這一站: a pale blue card beside the line, as the home page's 現在這一步 (ADR 0043),
+     its circle level with the card's first line and the line above reaching down to it. */
+  .route-card {
+    padding: 0.875rem 1rem 1rem;
+    border-radius: var(--radius-large);
+    background-color: var(--color-brand-soft);
+  }
+
+  .route-stop.is-here .route-number {
+    margin-top: 0.875rem;
+  }
+
+  .route-stop.is-here:not(:last-child)::after {
+    top: calc(var(--route-size) + 1.25rem);
+  }
+
+  .route-stop:has(+ .is-here)::after {
+    bottom: -0.75rem;
+  }
+
+  .route-here-label {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .route-card .route-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: var(--spacing-touch);
+    font-size: var(--text-section-title);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+  }
+
+  .route-card .route-title > span:first-child {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .route-chevron {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    background-color: var(--color-primary);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .route-card .route-title:hover > span:first-child {
+      text-decoration: underline;
+    }
+  }
+
+  /* A stop question's choices in the fields' edge, 4.7:1 on white (the owner's decision of
+     2026-11-12, #463's --choice-border), on the route and at a chapter's foot. */
+  .stop-question {
+    --choice-border: var(--color-input-border);
+  }
+
+  /* The current answer while changing it: a blue frame and tick on pale blue, as a chosen row
+     (E), so the page keeps its one solid button. */
+  .stop-answers .btn.is-current {
+    --btn-bg: var(--color-brand-selected);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+  }
+
+  .stop-answer-tick {
+    flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* I2 (ADR 0028's 2026-11-12 exception): on a tab's first visit (guide.js), the done ticks draw
+     one by one, the blue line grows down to the 目前這一站 and its circle's ring lights once,
+     about 2 seconds wherever that stop is (--route-here is how far it is); held until that stop
+     is in view (ADR 0029). Otherwise, and with reduced motion, the end at once. Longhands, not
+     the animation shorthand: that would set the play state back to running and so outrank the
+     hold until in view. */
+  @media (prefers-reduced-motion: no-preference) {
+    /* #480: the 目前這一站's mark is on its card's top, not the whole stop, which the to-dos and
+       the question under it made too tall to be in view on arrival; so the ring on its number,
+       outside the mark now, is held here too. */
+    :root.play-in-view .route:has([data-play-in-view]:not([data-in-view])) .route-number,
+    :root.play-in-view .route:has([data-play-in-view]:not([data-in-view])) .route-check path,
+    :root.play-in-view .route:has([data-play-in-view]:not([data-in-view])) .route-stop::after {
+      animation-play-state: paused;
+    }
+
+    .route-plays .route-stop.is-walked .route-check path {
+      stroke-dasharray: 1;
+      animation-name: gauge-draw;
+      animation-duration: 0.35s;
+      animation-timing-function: ease-out;
+      animation-delay: calc(var(--route-step) * 1.5s / var(--route-here));
+      animation-fill-mode: both;
+    }
+
+    .route-plays .route-stop.is-walked::after {
+      animation-name: route-line;
+      animation-duration: calc(1.2s / var(--route-here));
+      animation-timing-function: linear;
+      animation-delay: calc((var(--route-step) + 0.2) * 1.5s / var(--route-here));
+      animation-fill-mode: both;
+    }
+
+    .route-plays .route-stop.is-here .route-number {
+      animation-name: route-ring;
+      animation-duration: 0.7s;
+      animation-timing-function: ease-in-out;
+      animation-delay: calc(var(--route-step) * 1.5s / var(--route-here));
+      animation-fill-mode: both;
+    }
+  }
+
+  /* What the latest audiogram says: one title, the old boxes' titles as bold subheads (the #466
+     mockup A). */
+  .guide-hearing > section {
+    margin-top: 1.5rem;
+  }
+
+  .guide-hearing-subhead {
+    margin: 0 0 0.5rem;
+    color: var(--color-heading);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.5;
+  }
+
+  .guide-hearing .result-details {
+    margin-top: 1rem;
+  }
+
+  .guide-hearing .result-details-body .guide-hearing-subhead {
+    margin-top: 1rem;
+  }
+
+  /* H1: three key cards at a chapter's start, a large line then the chapter's own words, on the
+     提示框's pale grey (P3): not clickable, so no arrow and no blue. */
+  .key-cards {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .key-card {
+    padding: 0.75rem 1rem 0.875rem;
+    border-radius: var(--radius-large);
+    background-color: var(--color-surface);
+    color: var(--color-heading);
+    overflow-wrap: anywhere;
+  }
+
+  .key-card-big {
+    display: block;
+    margin-bottom: 0.125rem;
+    font-size: var(--text-page-title);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .key-card p {
+    margin: 0;
+  }
+
+  /* H2: a part's question title, one sentence in sight, the rest behind a 看更多 row (a line
+     dropdown). The folds come open in the page; guide.js folds them, but the one a jump lands
+     on, and till then their contents wait unseen (chapter.html), so nothing shows and shrinks. */
+  :root.guide-folds-pending [data-guide-fold] > :not(summary) {
+    display: none;
+  }
+
+  .guide-chapter section > .dropdown-line,
+  .guide-chapter section > .dropdown-box {
+    margin-top: 0.5rem;
+  }
+
+  /* Source links in small print, yet 44px tall to tap: padding the line box does not grow by. */
+  .guide-source a,
+  .guide-sources li > a {
+    display: inline-block;
+    padding-block: 0.6rem;
+    margin-block: -0.6rem;
+  }
+
+  .guide-sources li {
+    padding-block: 0.6rem;
+  }
+
+  /* #578 (spec #576, the owner's A in the #577 mockup): the county centres. A county's name in
+     bold over its centres, a line between counties; under a centre's name each number on a row
+     of its own, 44px tall to tap, its phone icon in the link's blue. */
+  .centre-list,
+  .centre-list ul {
+    margin-block: 0;
+    padding-left: 0;
+    list-style: none;
+  }
+
+  .centre-list > li {
+    padding-block: 0.6rem 0.2rem;
+    border-top: 1px solid var(--color-line);
+  }
+
+  .centre-county {
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
+  .centre-list ul > li {
+    padding-top: 0.35rem;
+  }
+
+  .centre-phone {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 0.6rem;
+    min-height: var(--spacing-touch);
+  }
+
+  .centre-phone > a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: var(--spacing-touch);
+    font-weight: 700;
+  }
+
+  .centre-phone svg {
+    flex: none;
+    width: 1.15rem;
+    height: 1.15rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linejoin: round;
+  }
+}
+
+/* #469 learn, family zone and Q&A assistant (the #468 mockup): list rows (E), long content and
+   sources folded into rows like a result page's 看完整說明, the red 馬上就醫 box never folded. */
+@layer components {
+  /* A fold among a list's rows: the row above already draws the line between them. */
+  li + li > .result-details {
+    border-top: 0;
+  }
+
+  /* The family zone's choices (點選看說明, 補助檢核) take the fields' edge, 4.7:1 on white, as
+     the answer pages' do (#463, the owner's call 2026-11-12). */
+  .family-guide {
+    --choice-border: var(--color-input-border);
+  }
+
+  /* A fold row's line under its title, as a list row's (T1). */
+  .result-details-note {
+    display: block;
+    color: var(--color-muted);
+    font-weight: 400;
+  }
+
+  /* 點選看說明's 可以試的說法, 下一步 and the like: bold labels in the heading colour, not section
+     titles, so a page keeps one big title. */
+  .part-label {
+    margin: 1rem 0 0.25rem;
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
+  /* 陪診清單 (the #468 mockup A): each item a row with a thin line under it and a 26px box. */
+  .family-visits fieldset .visit-check {
+    min-height: 3.25rem;
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .family-visits fieldset .visit-check input {
+    width: 1.625rem;
+    height: 1.625rem;
+  }
+
+  /* The Q&A assistant's urgent answer: the whole red 馬上就醫 box is its one link, its title in
+     the warning red with the family page's icon, a red arrow at its end. Colour changes only. */
+  .family-urgent-link {
+    container-type: inline-size;
+    display: flex;
+    flex-flow: row wrap;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--color-body);
+    text-decoration: none;
+  }
+
+  .family-urgent-link .link-card-body > h2 {
+    margin-bottom: 0.25rem;
+    color: var(--color-severe);
+  }
+
+  /* The icon sits in the title's first line, so at large text sizes the title wraps under it. */
+  .family-urgent-link h2 .topic-icon {
+    display: inline-block;
+    margin-right: 0.375rem;
+    vertical-align: -0.25em;
+  }
+
+  /* As an action card: at large text sizes the words take the whole width and the arrow drops
+     to the end of a row of its own. */
+  @container (max-width: 15rem) {
+    .family-urgent-link .link-card-body {
+      flex: 1 0 100%;
+    }
+
+    .family-urgent-link .link-card-arrow {
+      margin-left: auto;
+    }
+  }
+
+  .family-urgent-link .link-card-body > span {
+    color: var(--color-body);
+  }
+
+  .family-urgent-link .topic-icon {
+    flex: none;
+    width: 1.75rem;
+    height: 1.75rem;
+    fill: none;
+    stroke: var(--color-severe);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .family-urgent-link .link-card-arrow {
+    color: var(--color-severe);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .family-urgent-link:hover {
+      background-color: var(--color-severe-bg-deep);
+      color: var(--color-body);
+    }
+  }
+
+  .family-urgent-link:active {
+    background-color: var(--color-severe-bg-deep);
+  }
+
+  .family-urgent-link:focus-visible {
+    outline: 0.25rem solid var(--color-primary);
+    outline-offset: 0.125rem;
+  }
+
+  /* 依主題找 (the #468 mockup A): each topic tile framed (G), so a tile reads as one thing to
+     tap; the frame is 3.1:1 on white. */
+  .qa-topics .qa-topic.link-card {
+    border: 1.5px solid var(--color-line-strong);
+    border-radius: 1.125rem;
+    padding: 0.875rem;
+  }
+}
+
+/* Every printed page keeps the same margins; element margins vanish where a page breaks. Outside
+   the layer, since @page is a page rule, not an element style. */
+@media print {
+  @page {
+    margin: 1.5cm;
+  }
+}
+
+/* Questionnaire icon ripple (#141). */
+@keyframes icon-ripple {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(1.6); }
+}
+
+/* Answer page (#326 C3): a segment just answered fills from the left; its size never changes. */
+@keyframes progress-fill {
+  from { background-size: 0% 100%; }
+  to { background-size: 100% 100%; }
+}
+
+/* Answer page (#326 C4): another question's text fades in. */
+@keyframes question-fade {
+  from { opacity: 0; }
+}
+
+/* Answer page (#326 B4): ✓ 已儲存 stays, then fades in its last 0.3 s. */
+@keyframes saved-fade {
+  80% { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* A jump's box (#343): held for the first half, then faded out. The start is written out, not
+   taken from the box's own look, so the glow is there from the first frame. */
+@keyframes jump-highlight {
+  0%, 50% { outline-color: var(--color-primary); box-shadow: var(--shadow-jump-highlight); }
+  to { outline-color: rgba(31, 78, 140, 0); box-shadow: 0 0 0.5rem 0.5rem rgba(31, 78, 140, 0); }
+}
+
+/* My guide's meters (#342): a bar grows from 0 to its number. */
+@keyframes meter-fill {
+  from { transform: scaleX(0); }
+}
+
+@keyframes start-ring {
+  from { box-shadow: 0 0 0 0 rgba(29, 111, 153, 0.55); }
+  to { box-shadow: 0 0 0 1rem rgba(29, 111, 153, 0); }
+}
+
+/* A line drawing itself, as the 選配路線's tick. */
+@keyframes gauge-draw {
+  from { stroke-dashoffset: 1; }
+}
+
+/* Waiting (ADR 0027): a piece slides across its track; spinner; shown only after 0.3 s. With a 35%
+   wide piece, -54% and 154% put it just outside each end. */
+@keyframes loading-slide {
+  from { background-position: -54% 0; }
+  to { background-position: 154% 0; }
+}
+
+@keyframes loading-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes loading-appear {
+  to { visibility: visible; }
+}

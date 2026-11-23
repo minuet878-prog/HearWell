@@ -1,0 +1,567 @@
+/* Existing design values, unchanged (#124, ADR 0008). Keep these available for #125–#130. */
+@theme static {
+  --font-sans: "Noto Sans TC", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC",
+    "Microsoft JhengHei", Roboto, Helvetica, Arial, sans-serif;
+  --color-primary: #1f4e8c;
+  --color-primary-hover: #173b6a;
+  --color-primary-active: #122f55;
+  --color-body: #343a40;
+  --color-heading: #212529;
+  --color-footer: #343a40;
+  --color-normal: #14573c;
+  --color-normal-bg: #e3f4ec;
+  --color-mild: #704800;
+  --color-mild-bg: #fff4d6;
+  --color-mild-bg-deep: #f9dd96;
+  --color-severe: #8f2a12;
+  --color-severe-bg: #feece7;
+  --color-severe-bg-deep: #f6c3b3;
+  --color-surface: #f4f6f8;
+  --color-brand-soft: #eef3fa;
+  --color-brand-soft-deep: #d6e2f2;
+  --color-brand-selected: #e8eef7;
+  --color-pull: #e7eef8;
+  --color-border: #ced4da;
+  --color-border-subtle: #dee2e6;
+  --color-border-strong: #adb5bd;
+  --color-input-border: #6c757d;
+  --container-content: 40rem;
+  --container-form: 30rem;
+  --root-font-size: 112.5%;
+  --spacing-touch: 2.75rem;
+  /* The phone's fixed bottom tab bar: about this tall, until back-to-top.js (#340) keeps its
+     measured height here. */
+  --tab-bar-height: 5rem;
+  --radius-button: 0.7778rem;
+  --radius-badge: 1rem;
+  --radius-tab: 1.5rem;
+  --shadow-input-focus: 0 0 0 0.25rem rgba(31, 78, 140, 0.25);
+  --color-focus-ring: rgba(31, 78, 140, 0.5);
+  /* The pale blue glow around the box a jump lands on (#343). */
+  --shadow-jump-highlight: 0 0 0.5rem 0.5rem rgba(31, 78, 140, 0.25);
+  /* Pre-migration framework defaults the site never overrode, shared by form fields and alerts (#125). */
+  --radius-field: 0.375rem;
+  --color-field-focus: #86b7fe;
+  --shadow-field-focus: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+  /* The site's own classes (#126). Ear colours follow the audiogram convention, not the brand;
+     the charts' SVG writes the same four in AudiogramChart.jsx and audiogram_thumbnail.html. */
+  --color-ear-right: #c0392b;
+  --color-ear-left: #1f4e8c;
+  --color-ear-right-old: #cc5f56;
+  --color-ear-left-old: #5980b5;
+  --color-masking: #b35900;
+  /* A hearing aid's right-ear mark in the 分左右 drawing (ADR 0058, 5.6:1 on white); its left mark
+     is the site blue. */
+  --color-aid-right: #c62828;
+  /* The aids' parts in the 怎麼戴上、拿下 drawings (#503): a deeper blue than the ear, the
+     lines on it 4.9:1. */
+  --color-aid-part: #b5c9e6;
+  /* The 已完成 stamp's vermilion (ADR 0075, 6.5:1 on white). */
+  --color-stamp: #b3261e;
+  --radius-small: 0.25rem;
+  /* The site-wide redesign (ADR 0043, #454's picks T1, E, S1, P3): a white page, thin grey
+     lines in place of boxes, and sizes for the title levels and buttons. The muted grey is for
+     secondary lines (7.5:1 on white), the strong line for edges that must show (3.1:1). */
+  --color-muted: #4a5460;
+  --color-line: #e3e7ec;
+  --color-line-strong: #8a94a3;
+  --text-page-title: 1.5556rem;
+  --text-section-title: 1.2222rem;
+  --text-button: 1.1111rem;
+  --text-subhead: 1.2rem;
+  --spacing-button: 3.1111rem;
+  /* A clickable card under a mouse (ADR 0006): lifted on a soft neutral shadow. */
+  --shadow-lifted: 0 0.5rem 1.25rem rgba(33, 37, 41, 0.14);
+  --radius-large: 1.5rem;
+  --radius-medium: 0.75rem;
+  --radius-pill: 999px;
+  /* The logo's pebble and the wordmark's 伴 (ADR 0039): a blue teal, still blue under
+     ADR 0007; white text keeps 5.5:1 on it. Nothing else uses the gradient (ADR 0043). */
+  --color-gradient-start: #1f4e8c;
+  --color-gradient-end: #1d6f99;
+  /* The logo: a bird with an ear for a wing, used as a mask so it takes the colour around it. */
+  /* Its url%28 stays encoded: collectstatic would take a plain url( here for a file and break it. */
+  --logo-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cmask id='bird'%3E%3Cpath fill='white' fill-rule='evenodd' d='M12 50c1-3 3-6 5-9 0-14 9-24 21-24a11 11 0 0 1 11 9l7 4-7 3c-2 11-10 17-21 17zM40 25a2.8 2.8 0 1 0 .01 0z'/%3E%3Cpath fill='none' stroke='black' stroke-width='3.9' stroke-linecap='round' stroke-linejoin='round' transform='translate(28 33.5) scale(.9) translate(-28.5 -35)' d='M22 33a6.5 6.5 0 0 1 13 0c0 4-4 5-4 8.5a3.3 3.3 0 0 1-6 2'/%3E%3C/mask%3E%3Crect width='64' height='64' mask='url%28%23bird%29'/%3E%3C/svg%3E");
+}
+
+/* Restore the element defaults the site used before Preflight. Named components follow as
+   named classes (#125), then the site's own classes (#126). */
+@layer base {
+  html {
+    font-size: var(--root-font-size);
+    line-height: 1.5;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--color-body);
+    background-color: #fff;
+    -webkit-text-size-adjust: 100%;
+  }
+  @media print {
+    body { background-color: #fff; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    /* Only once the page and fonts have loaded (layout.html): a smooth jump into a page stops
+       where the target was, and a font arriving mid-scroll moves it. */
+    :root.smooth-scroll { scroll-behavior: smooth; }
+  }
+  hr { margin: 1rem 0; color: inherit; border: 0; border-top: 1px solid; opacity: 0.25; }
+  h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
+    margin: 0 0 0.5rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: inherit;
+  }
+  h1, .h1 { font-size: calc(1.375rem + 1.5vw); }
+  h2, .h2 { font-size: calc(1.325rem + 0.9vw); }
+  h3, .h3 { font-size: calc(1.3rem + 0.6vw); }
+  h4, .h4 { font-size: calc(1.275rem + 0.3vw); }
+  h5, .h5 { font-size: 1.25rem; }
+  h6, .h6 { font-size: 1rem; }
+  @media (min-width: 1200px) {
+    h1, .h1 { font-size: 2.5rem; }
+    h2, .h2 { font-size: 2rem; }
+    h3, .h3 { font-size: 1.75rem; }
+    h4, .h4 { font-size: 1.5rem; }
+  }
+  /* T1 (#454, ADR 0043): a section title (.h4) 22px, bold in the heading colour, at every
+     width; no bar beside it, the size alone sets it apart. The page title is the bird's bubble's
+     since #749 (.bird-title, ADR 0076). */
+  .h4 {
+    color: var(--color-heading);
+    font-size: var(--text-section-title);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+  p { margin: 0 0 1rem; }
+  ol, ul { padding-left: 2rem; }
+  ol { list-style-type: decimal; }
+  ul { list-style-type: disc; }
+  ol, ul, dl { margin: 0 0 1rem; }
+  ol ol, ul ul, ol ul, ul ol { margin-bottom: 0; }
+  dt { font-weight: 700; }
+  dd { margin: 0 0 0.5rem; }
+  b, strong { font-weight: bolder; }
+  a { color: var(--color-primary); text-decoration: underline; }
+  a:hover { color: var(--color-primary-hover); }
+  /* #328 (A4, ADR 0028): a text link in the page or the footer gets a thicker underline under a
+     mouse and a light blue behind its words while pressed; colour only. Button links and the
+     tabs and switches set their own, which win over this layer. */
+  @media (hover: hover) and (pointer: fine) {
+    :is(main, .site-footer) a:hover { text-decoration-thickness: 3px; }
+  }
+  :is(main, .site-footer) a:active { background-color: var(--color-brand-selected); }
+  a:not([href]):not([class]) { color: inherit; text-decoration: none; }
+  img, svg, video, canvas, audio, iframe, embed, object { display: inline; vertical-align: middle; }
+  img, video { max-width: none; }
+  figure { margin: 0 0 1rem; }
+  table { caption-side: bottom; border-collapse: collapse; text-indent: initial; border-color: inherit; }
+  caption { padding-block: 0.5rem; color: var(--color-body); text-align: left; }
+  th { text-align: inherit; }
+  thead, tbody, tfoot, tr, td, th { border-color: inherit; border-style: solid; border-width: 0; }
+  label { display: inline-block; }
+  input, button, select, optgroup, textarea {
+    margin: 0; font: inherit; letter-spacing: normal;
+  }
+  /* Preflight clears the native background and border; restore native controls. */
+  input, select, textarea { background-color: revert; border: revert; padding: revert; }
+  button { border-radius: 0; }
+  button, select { text-transform: none; }
+  button, [type="button"], [type="reset"], [type="submit"] { appearance: button; }
+  button:not(:disabled), [role="button"], [type="submit"]:not(:disabled) { cursor: pointer; }
+  button:focus:not(:focus-visible) { outline: 0; }
+  select { overflow-wrap: normal; }
+  select:disabled { opacity: 1; }
+  textarea { resize: vertical; }
+  ::placeholder { color: revert; opacity: revert; }
+  fieldset { min-width: 0; padding: 0; margin: 0; border: 0; }
+  /* #357: a form's question is the darkest text on its page, in the heading colour. */
+  legend { float: left; width: 100%; padding: 0; margin-bottom: 0.5rem; font-size: calc(1.275rem + 0.3vw); line-height: inherit; color: var(--color-heading); }
+  legend + * { clear: left; }
+  @media (min-width: 1200px) { legend { font-size: 1.5rem; } }
+  /* Date fields (only the audiogram's so far); Chromium pads each part of the date (#129). */
+  ::-webkit-datetime-edit-fields-wrapper, ::-webkit-datetime-edit-text,
+  ::-webkit-datetime-edit-minute, ::-webkit-datetime-edit-hour-field,
+  ::-webkit-datetime-edit-day-field, ::-webkit-datetime-edit-month-field,
+  ::-webkit-datetime-edit-year-field { padding: 0; }
+  summary { display: list-item; cursor: pointer; }
+  [hidden] { display: none !important; }
+}
+
+@utility container {
+  width: 100%;
+  max-width: var(--container-content);
+  margin-inline: auto;
+  /* An iPhone turned sideways keeps the words clear of its camera notch (viewport-fit=cover). */
+  padding-left: max(0.75rem, env(safe-area-inset-left));
+  padding-right: max(0.75rem, env(safe-area-inset-right));
+}
+
+
+/* Named components the pages use, same names and values, with the site's old overrides
+   folded in (#125). Only the parts in use are carried over. A variant sets the --btn-* values;
+   as before the migration, a plain .btn leaves its hover, active and disabled values unset. */
+@layer components {
+  /* S1 (#454, ADR 0043): a rounded square at least 56px tall, its words bold and centred however
+     many lines they take; a solid primary button, the second most important one framed in a 2px
+     blue line. A text link (.btn-link) only needs the 44px touch height. */
+  .btn {
+    --btn-padding-x: 1rem;
+    --btn-padding-y: 0.375rem;
+    --btn-font-size: 1rem;
+    --btn-color: var(--color-body);
+    --btn-bg: transparent;
+    --btn-border-color: transparent;
+    --btn-hover-border-color: transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--spacing-button);
+    min-width: var(--spacing-touch);
+    padding: var(--btn-padding-y) var(--btn-padding-x);
+    font-size: var(--btn-font-size);
+    font-weight: 700;
+    line-height: 1.5;
+    color: var(--btn-color);
+    text-align: center;
+    text-decoration: none;
+    vertical-align: middle;
+    cursor: pointer;
+    user-select: none;
+    border: 2px solid var(--btn-border-color);
+    border-radius: var(--radius-button);
+    background-color: var(--btn-bg);
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,
+      border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  }
+  .btn-lg {
+    --btn-padding-x: 1.25rem;
+    --btn-padding-y: 0.5rem;
+    --btn-font-size: var(--text-button);
+  }
+  .btn-primary {
+    --btn-color: #fff;
+    --btn-bg: var(--color-primary);
+    --btn-border-color: transparent;
+    --btn-hover-color: #fff;
+    --btn-hover-bg: var(--color-primary-hover);
+    --btn-hover-border-color: transparent;
+    --btn-focus-ring: var(--color-focus-ring);
+    --btn-active-color: #fff;
+    --btn-active-bg: var(--color-primary-active);
+    --btn-active-border-color: transparent;
+    --btn-disabled-color: #4d5f78;
+    --btn-disabled-bg: #fff;
+    --btn-disabled-border-color: #8da2bf;
+  }
+  /* #471 (mockup #470 D4): the level red, white words at 8.4:1; darker under a mouse and when
+     pressed, colour only. */
+  .btn-danger {
+    --btn-color: #fff;
+    --btn-bg: var(--color-severe);
+    --btn-border-color: var(--color-severe);
+    --btn-hover-color: #fff;
+    --btn-hover-bg: #74220f;
+    --btn-hover-border-color: #74220f;
+    --btn-focus-ring: rgba(143, 42, 18, 0.5);
+    --btn-active-color: #fff;
+    --btn-active-bg: #5c1b0c;
+    --btn-active-border-color: #5c1b0c;
+    --btn-disabled-color: #fff;
+    --btn-disabled-bg: var(--color-severe);
+    --btn-disabled-border-color: var(--color-severe);
+  }
+  /* Spec #505 (the #507 mockup D4): Google's light button, its own colours (words #1f1f1f at
+     16.5:1, the 1px frame #747775 at 4.5:1 on white), scaled up to our buttons' height and corner;
+     under a mouse and when pressed only the fill greys, as Google's own button does. Named for no
+     provider: LINE's button (#506) and the 確認本人 buttons are this same button. */
+  .btn-provider {
+    --btn-color: #1f1f1f;
+    --btn-bg: #fff;
+    --btn-border-color: #747775;
+    --btn-hover-color: #1f1f1f;
+    --btn-hover-bg: #f2f2f2;
+    --btn-hover-border-color: #747775;
+    --btn-focus-ring: var(--color-focus-ring);
+    --btn-active-color: #1f1f1f;
+    --btn-active-bg: #e6e6e6;
+    --btn-active-border-color: #747775;
+    width: 100%;
+    gap: 0.75rem;
+    border-width: 1px;
+    font-weight: 700;
+  }
+  /* Spec #506 (the #539 mockup D1 B): LINE's button is this same button, with LINE's icon. */
+  .btn-google-logo, .btn-line-logo { flex: none; width: 1.5rem; height: 1.5rem; }
+  /* 或用帳號密碼 between the Google button and the password form: a line on each side. */
+  .auth-or {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1.5rem 0 1rem;
+    color: var(--color-muted);
+  }
+  .auth-or::before, .auth-or::after { content: ""; flex: 1; border-top: 1px solid var(--color-line); }
+  /* #512 (the #507 mockup W3): the compass before 用 Safari／Chrome 打開, in the text's colour. */
+  .btn-open-outside-icon {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-right: 0.5rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  /* The site only recoloured the rest and active states; disabled kept the pre-migration framework blue, #0d6efd. */
+  .btn-outline-primary {
+    --btn-color: var(--color-primary);
+    --btn-bg: #fff;
+    --btn-border-color: var(--color-primary);
+    --btn-hover-color: #fff;
+    --btn-hover-bg: var(--color-primary);
+    --btn-hover-border-color: var(--color-primary);
+    --btn-focus-ring: var(--color-focus-ring);
+    --btn-active-color: #fff;
+    --btn-active-bg: var(--color-primary-hover);
+    --btn-active-border-color: var(--color-primary-hover);
+    --btn-disabled-color: #0d6efd;
+    --btn-disabled-bg: transparent;
+    --btn-disabled-border-color: #0d6efd;
+  }
+  .btn-outline-secondary {
+    --btn-color: #6c757d;
+    --btn-border-color: #6c757d;
+    --btn-hover-color: #fff;
+    --btn-hover-bg: #6c757d;
+    --btn-hover-border-color: #6c757d;
+    --btn-focus-ring: rgba(108, 117, 125, 0.5);
+    --btn-active-color: #fff;
+    --btn-active-bg: #6c757d;
+    --btn-active-border-color: #6c757d;
+    --btn-disabled-color: #6c757d;
+    --btn-disabled-bg: transparent;
+    --btn-disabled-border-color: #6c757d;
+  }
+  /* Its focus ring kept the pre-migration framework blue, rgba(49, 132, 253, 0.5); the site
+     never overrode it. */
+  .btn-link {
+    --btn-color: var(--color-primary);
+    --btn-hover-color: var(--color-primary-hover);
+    --btn-focus-ring: rgba(49, 132, 253, 0.5);
+    --btn-active-color: var(--color-primary-hover);
+    --btn-active-border-color: transparent;
+    --btn-disabled-color: #6c757d;
+    --btn-disabled-border-color: transparent;
+    min-height: var(--spacing-touch);
+    text-decoration: underline;
+  }
+  .btn:hover, .btn:focus-visible {
+    color: var(--btn-hover-color);
+    background-color: var(--btn-hover-bg);
+    border-color: var(--btn-hover-border-color);
+  }
+  .btn:focus-visible { outline: 0; box-shadow: 0 0 0 0.25rem var(--btn-focus-ring); }
+  .btn-link:focus-visible { color: var(--btn-color); }
+  .btn-link:hover { color: var(--btn-hover-color); }
+  .btn:active {
+    color: var(--btn-active-color);
+    background-color: var(--btn-active-bg);
+    border-color: var(--btn-active-border-color);
+  }
+  .btn:disabled, fieldset:disabled .btn {
+    color: var(--btn-disabled-color);
+    pointer-events: none;
+    background-color: var(--btn-disabled-bg);
+    border-color: var(--btn-disabled-border-color);
+    opacity: 0.65;
+  }
+
+  /* The solid primary button: darker under a mouse and darker still when pressed, colour only
+     (ADR 0006); disabled it is white with a blue-grey edge. */
+  .btn-primary:disabled, fieldset:disabled .btn-primary {
+    opacity: 1;
+  }
+
+  .form-label { margin-bottom: 0.5rem; }
+  .form-control, .form-select {
+    display: block;
+    width: 100%;
+    min-height: var(--spacing-touch);
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--color-body);
+    appearance: none;
+    background-color: #fff;
+    /* #272: 4.7:1 on white, so the edge shows (WCAG 1.4.11 asks 3:1; --color-border-subtle was 1.3:1). */
+    border: 1px solid var(--color-input-border);
+    border-radius: var(--radius-medium);
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  }
+  .form-control { background-clip: padding-box; }
+  .form-control:focus {
+    color: var(--color-body);
+    background-color: #fff;
+    border-color: var(--color-primary);
+    outline: 0;
+    box-shadow: var(--shadow-input-focus);
+  }
+  .form-control::-webkit-date-and-time-value { min-width: 85px; height: 1.5em; margin: 0; }
+  .form-control::-webkit-datetime-edit { display: block; padding: 0; }
+  .form-control-lg {
+    min-height: calc(1.5em + 1rem + 2px);
+    padding: 0.5rem 1rem;
+    font-size: 1.25rem;
+    border-radius: var(--radius-medium);
+  }
+  .form-select {
+    padding-right: 2.25rem;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 16px 12px;
+  }
+  .form-select:focus {
+    border-color: var(--color-field-focus);
+    outline: 0;
+    box-shadow: var(--shadow-field-focus);
+  }
+  .form-select:-moz-focusring { color: transparent; text-shadow: 0 0 0 var(--color-body); }
+  /* #272: a wrong entry (Django sets aria-invalid) shows on the field too, and stays while the
+     person types, so it comes after :focus. */
+  .form-control[aria-invalid="true"] {
+    border-color: var(--color-severe);
+    background-color: var(--color-severe-bg);
+  }
+  .form-check {
+    display: block;
+    min-height: 1.5rem;
+    padding-left: 1.5em;
+    margin-bottom: 0.125rem;
+  }
+  .form-check .form-check-input { float: left; margin-left: -1.5em; }
+  .form-check-input {
+    flex-shrink: 0;
+    width: 1em;
+    height: 1em;
+    margin-top: 0.25em;
+    vertical-align: top;
+    appearance: none;
+    background-color: #fff;
+    background-image: var(--form-check-bg-image);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    border: 1px solid var(--color-input-border);  /* #272: the same visible edge as the fields */
+    print-color-adjust: exact;
+  }
+  .form-check-input[type="checkbox"] { border-radius: 0.25em; }
+  .form-check-input:active { filter: brightness(90%); }
+  .form-check-input:focus {
+    border-color: var(--color-field-focus);
+    outline: 0;
+    box-shadow: var(--shadow-field-focus);
+  }
+  .form-check-input:checked { background-color: #0d6efd; border-color: #0d6efd; }
+  .form-check-input:checked[type="checkbox"] {
+    --form-check-bg-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
+  }
+  .form-check-input:disabled { pointer-events: none; filter: none; opacity: 0.5; }
+  .input-group {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    width: 100%;
+  }
+  .input-group > .form-control { position: relative; flex: 1 1 auto; width: 1%; min-width: 0; }
+  .input-group > .form-control:focus { z-index: 5; }
+  .input-group > :not(:last-child) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  .input-group > :not(:first-child) {
+    margin-left: -1px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+  .input-group-text {
+    display: flex;
+    align-items: center;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--color-body);
+    text-align: center;
+    white-space: nowrap;
+    background-color: #f8f9fa;
+    border: 1px solid var(--color-input-border);  /* #272: the field's own edge */
+    border-radius: var(--radius-medium);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .btn, .form-control, .form-select { transition: none; }
+  }
+
+  .card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    color: var(--color-body);
+    overflow-wrap: break-word;
+    background-color: #fff;
+    background-clip: border-box;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-large);
+  }
+  .card-body { flex: 1 1 auto; padding: 1rem; }
+  .table {
+    width: 100%;
+    margin-bottom: 1rem;
+    vertical-align: top;
+    border-color: var(--color-border-subtle);
+  }
+  .table > :not(caption) > * > * {
+    padding: 0.5rem;
+    color: #000;
+    background-color: #fff;
+    border-bottom-width: 1px;
+    box-shadow: inset 0 0 0 9999px transparent;
+  }
+  .table > tbody { vertical-align: inherit; }
+  .table > thead { vertical-align: bottom; }
+  .alert {
+    position: relative;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-field);
+  }
+  .alert-warning { color: #664d03; background-color: #fff3cd; border-color: #ffe69c; }
+  .alert-danger { color: #58151c; background-color: #f8d7da; border-color: #f1aeb5; }
+  .list-unstyled { padding-left: 0; list-style: none; }
+
+  .visually-hidden, .visually-hidden-focusable:not(:focus):not(:focus-within) {
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+  }
+  .visually-hidden:not(caption),
+  .visually-hidden-focusable:not(:focus):not(:focus-within):not(caption) {
+    position: absolute !important;
+  }
+  .visually-hidden *, .visually-hidden-focusable:not(:focus):not(:focus-within) * {
+    overflow: hidden !important;
+  }
+}

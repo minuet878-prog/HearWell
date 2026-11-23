@@ -1,0 +1,685 @@
+@layer components {
+  /* Audiogram input and view (spec phase5_audiogram.md). */
+  /* A chart's drawing area (ADR 0022): white like a sheet of paper, a thin border, no shadow and
+     a small radius, so it never looks like a card to tap. The trend chart, and the audiogram and
+     IOI-HA frames below. */
+  .chart-canvas,
+  .audiogram-chart,
+  .ioi-chart {
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-small);
+    background-color: #fff;
+  }
+
+  .chart-canvas {
+    padding: 1rem;
+  }
+
+  /* The audiogram and IOI-HA frames (#137): their side padding and border are pushed out by an
+     equal negative margin, so the chart keeps its width and its crop stays pixel-identical (#143);
+     on a phone the frame reaches the screen edge, never past it (the container pads 0.75rem). The
+     top is 1rem, whole pixels at the 18px base: a half-pixel shift would redraw every line. */
+  .audiogram-chart,
+  .ioi-chart {
+    --chart-frame: 0.75rem;
+    padding: calc(1rem - 1px) calc(var(--chart-frame) - 1px);
+  }
+
+  .audiogram-chart {
+    max-width: calc(32rem + 2 * var(--chart-frame));
+    margin: 0 max(-1 * var(--chart-frame), (100% - 32rem) / 2 - var(--chart-frame)) 0.75rem;
+  }
+
+  .ioi-chart {
+    margin-inline: calc(-1 * var(--chart-frame));
+  }
+
+  /* iPhone Safari takes only the -webkit- names: without them a long press on the chart selects
+     its numbers and opens the callout. */
+  .audiogram-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* The speech banana page (#436). The words in its chart scale with the chart (ADR 0040); these
+     follow the user's text size. */
+  .speech-banana-result {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-surface);
+    color: var(--color-heading);
+  }
+
+  .speech-banana-result p {
+    margin: 0 0 0.25rem;
+  }
+
+  .speech-banana-result p:last-child {
+    margin-bottom: 0;
+  }
+
+  .speech-banana-result-title {
+    font-weight: 700;
+  }
+
+  .speech-banana-picks {
+    display: grid;
+    gap: 0.5rem;
+    padding-inline: 1rem;
+  }
+
+  /* #759 (the owner's mockup, A): the group picked looks like a chosen option, the soft blue
+     with a double blue edge and a solid blue round tick on the right, hovered, pressed or
+     focused too. Every button keeps the tick's room, so picking one moves nothing. */
+  .speech-banana-pick {
+    justify-content: space-between;
+    gap: 0.375rem;
+    text-align: left;
+  }
+
+  .speech-banana-pick::after {
+    content: "" / "";
+    flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+  }
+
+  .speech-banana-pick[aria-pressed="true"] {
+    --btn-color: var(--color-heading);
+    --btn-bg: var(--color-brand-selected);
+    --btn-hover-color: var(--color-heading);
+    --btn-hover-bg: var(--color-brand-selected);
+    --btn-active-color: var(--color-heading);
+    --btn-active-bg: var(--color-brand-selected);
+    --btn-active-border-color: var(--color-primary);
+    box-shadow: inset 0 0 0 2px var(--color-primary);
+  }
+
+  .speech-banana-pick[aria-pressed="true"]:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--color-primary), 0 0 0 0.25rem var(--btn-focus-ring);
+  }
+
+  .speech-banana-pick[aria-pressed="true"]::after {
+    background: var(--color-primary) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 0.75rem no-repeat;
+  }
+
+  .audiogram-symbols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .audiogram-symbol {
+    min-height: var(--spacing-touch);
+    border-radius: var(--radius-medium);
+    border: 0.125rem solid var(--color-input-border);
+    background-color: #fff;
+    font-size: 1.125rem;
+    font-weight: 700;
+  }
+
+  .audiogram-symbol.ear-right {
+    color: var(--color-ear-right);
+  }
+
+  .audiogram-symbol.ear-left {
+    color: var(--color-ear-left);
+  }
+
+  .audiogram-symbol[aria-pressed="true"] {
+    border-color: var(--color-primary);
+    background-color: var(--color-brand-selected);
+    box-shadow: inset 0 0 0 0.125rem var(--color-primary);
+  }
+
+  .audiogram-table-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+    gap: 0.5rem;
+  }
+
+  /* Edit and delete under the result: quiet, centred text links, still a full touch target. */
+  .quiet-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0 1.5rem;
+  }
+
+  .quiet-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--spacing-touch);
+    padding: 0 0.5rem;
+    font-weight: 700;
+  }
+
+  .quiet-links .quiet-link-danger {
+    color: var(--color-severe);
+  }
+
+  /* Drag readout over the chart; rem so it grows with the user's font size. */
+  .audiogram-plot {
+    position: relative;
+  }
+
+  .audiogram-magnifier {
+    position: absolute;
+    padding: 0.25rem 0.5rem;
+    border: 0.125rem solid var(--color-heading);
+    border-radius: var(--radius-field);
+    background-color: #fff;
+    font-size: 1.25rem;
+    font-weight: 700;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  /* Above the finger by default; beside it near the top, on the side with more room. */
+  .audiogram-magnifier[data-place="above"] {
+    transform: translate(-50%, calc(-100% - 1.5rem));
+  }
+
+  .audiogram-magnifier[data-place="beside"][data-side="right"] {
+    transform: translate(1.5rem, -50%);
+  }
+
+  .audiogram-magnifier[data-place="beside"][data-side="left"] {
+    transform: translate(calc(-100% - 1.5rem), -50%);
+  }
+
+  /* #617 (spec #611 K1, the #613 mockup's B): the reading over the chart, the symbol's name small
+     and grey over the frequency and level. The finger is on the chart, so the box never changes
+     height: under the value row sit, unseen, the two longest values (無反應 or 120 dB, at 8000 Hz,
+     masked), and the row is as tall as they wrap at this width and text size. The hint fills both
+     rows. Breaks only at the full-width spaces, so a number never parts from its unit. */
+  .audiogram-reading {
+    display: grid;
+    grid-template-rows: minmax(1.4rem, auto) auto;
+    align-items: center;
+    justify-items: center;
+    max-width: 32rem;
+    margin: 0 auto 0.5rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-brand-soft);
+    color: var(--color-heading);
+    text-align: center;
+    font-weight: 700;
+    line-height: 1.4;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+
+  .audiogram-reading::before,
+  .audiogram-reading::after {
+    grid-area: 2 / 1;
+    visibility: hidden;
+    font-size: 1.5rem;
+  }
+
+  .audiogram-reading::before {
+    content: "8000 Hz\3000無反應\3000遮蔽";
+  }
+
+  .audiogram-reading::after {
+    content: "8000 Hz\3000 120 dB\3000遮蔽";
+  }
+
+  .audiogram-reading-name {
+    grid-area: 1 / 1;
+    color: var(--color-muted);
+    font-size: 1rem;
+  }
+
+  .audiogram-reading-value {
+    grid-area: 2 / 1;
+    font-size: 1.5rem;
+  }
+
+  .audiogram-reading-hint {
+    grid-area: 1 / 1 / 3 / 2;
+    color: var(--color-muted);
+    font-size: 1.25rem;
+    font-weight: 400;
+  }
+
+  /* #618 (spec #611 K2, the #613 mockup's part five): 看示範's small chart under 怎麼標記, the top of
+     an audiogram in a thin frame with its own reading over it, a size down from the one over the
+     user's chart. In rem, so at 200% text it takes the width it is given and no more. */
+  .audiogram-demo {
+    max-width: 16rem;
+    margin: 0.75rem 0 0.5rem;
+  }
+
+  .audiogram-demo .audiogram-reading {
+    margin: 0 0 0.35rem;
+  }
+
+  .audiogram-demo .audiogram-reading::before,
+  .audiogram-demo .audiogram-reading::after,
+  .audiogram-demo .audiogram-reading-value {
+    font-size: 1.2rem;
+  }
+
+  .audiogram-demo .audiogram-reading-hint {
+    font-size: 1rem;
+  }
+
+  .audiogram-demo-chart {
+    padding: 0.4rem 0.3rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-small);
+    background-color: #fff;
+    overflow: hidden;
+  }
+
+  .audiogram-demo-chart svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .audiogram-demo-mark {
+    fill: #fff;
+    stroke-width: 2;
+  }
+
+  .audiogram-demo-mark.ear-right { stroke: var(--color-ear-right); }
+  .audiogram-demo-mark.ear-left { stroke: var(--color-ear-left); stroke-width: 2.2; }
+
+  .audiogram-demo-ring {
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 1.6;
+    stroke-dasharray: 3 3;
+  }
+
+  .audiogram-demo-finger {
+    fill: var(--color-pull);
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .audiogram-demo-nail { fill: #fff; stroke-width: 1.4; }
+  .audiogram-demo-knuckle { fill: none; stroke-width: 1.4; }
+
+  /* Masking switch (#333): 遮蔽, a track and knob, then 開／關. The track is grey off and orange on
+     (the white knob is 4.69:1 and 4.83:1 on them), with a matching chart frame; rem, so it grows
+     with the user's font size. Hover, press and focus only change colours (ADR 0028). */
+  .audiogram-mask-switch {
+    --btn-color: var(--color-heading);
+    --btn-bg: #fff;
+    --btn-border-color: var(--color-input-border);
+    --btn-hover-color: var(--color-heading);
+    --btn-hover-bg: var(--color-brand-soft);
+    --btn-hover-border-color: var(--color-input-border);
+    --btn-active-color: var(--color-heading);
+    --btn-active-bg: var(--color-brand-soft-deep);
+    --btn-active-border-color: var(--color-input-border);
+    --btn-focus-ring: var(--color-focus-ring);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem 0.75rem;
+    border-width: 0.125rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .audiogram-mask-value {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .audiogram-mask-track {
+    position: relative;
+    flex: none;
+    width: 3rem;
+    height: 1.75rem;
+    border-radius: var(--radius-pill);
+    background-color: var(--color-input-border);
+  }
+
+  .audiogram-mask-knob {
+    position: absolute;
+    top: 0.25rem;
+    left: 0.25rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    background-color: #fff;
+  }
+
+  .audiogram-mask-switch[aria-checked="true"] .audiogram-mask-track {
+    background-color: var(--color-masking);
+  }
+
+  .audiogram-mask-switch[aria-checked="true"] .audiogram-mask-knob {
+    transform: translateX(1.25rem);
+  }
+
+  /* ADR 0028: the knob slides once, as the user's own tap; with reduced motion it jumps. */
+  @media (prefers-reduced-motion: no-preference) {
+    .audiogram-mask-knob {
+      transition: transform 0.2s ease-in-out;
+    }
+  }
+
+  /* Which of this ear's marks mean masked, under the 遮蔽 switch. */
+  /* Full width at the usual size; the cells' padding stays small so three columns fit 320px at
+     200% text. */
+  .audiogram-mask-table {
+    width: 100%;
+    margin-bottom: 0.5rem;
+    text-align: center;
+  }
+
+  .audiogram-mask-table :is(th, td) {
+    padding: 0.25rem;
+    border: 1px solid var(--color-border);
+  }
+
+  /* Bold, not orange: orange is for the switch while it is on (ADR 0007). */
+  .audiogram-mask-mark {
+    font-weight: 700;
+  }
+
+  .audiogram-chart.masking {
+    outline: 0.25rem dashed var(--color-masking);
+    outline-offset: 0.25rem;
+  }
+
+  /* Audiogram comparison (#202): 舊 and 新 rows that fold their radio cards; the row is the tap
+     target and only changes colour (ADR 0006). */
+  .compare-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .compare-pick {
+    border: 0.125rem solid var(--color-border);
+    border-radius: var(--radius-button);
+    background-color: #fff;
+  }
+
+  .compare-pick > summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 0.75rem;
+    min-height: var(--spacing-touch);
+    padding: 0.5rem 1rem;
+    border-radius: inherit;
+  }
+
+  /* #365: the chart's two lines (AudiogramChart.jsx), at 2.5rem so the dashes show. */
+  .compare-line {
+    flex: none;
+    width: 2.5rem;
+    height: 0.75rem;
+    stroke-width: 3;
+  }
+
+  .compare-line.ear-right {
+    stroke: var(--color-ear-right);
+  }
+
+  .compare-line.ear-left {
+    stroke: var(--color-ear-left);
+  }
+
+  .compare-line.ear-right.is-old {
+    stroke: var(--color-ear-right-old);
+  }
+
+  .compare-line.ear-left.is-old {
+    stroke: var(--color-ear-left-old);
+  }
+
+  .compare-pick-change {
+    margin-left: auto;
+    color: var(--color-primary);
+    font-weight: 700;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .compare-pick > summary:hover {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .compare-pick > summary:active {
+    background-color: var(--color-brand-selected);
+  }
+
+  .compare-pick > fieldset,
+  .compare-pick > p,
+  .compare-pick > button {
+    margin-inline: 1rem;
+  }
+
+  .compare-pick > button {
+    margin-bottom: 1rem;
+  }
+
+  /* #204: at 200% text the four-column number tables scroll in their own box, not the page.
+     Ticket #344 (spec #338): a shadow on each side not yet scrolled to, in CSS alone, so it is
+     there without JavaScript too. The shadows stay at the box's edges (scroll); a white cover
+     at each end of the content (local) slides over a shadow once that end is in view, and over
+     both when the table fits. The cells let the box's background through, or their white would
+     hide the shadows; the table's space below moves outside the box, so no shadow runs past it. */
+  .scroll-box {
+    overflow-x: auto;
+    margin-bottom: 1rem;
+    background:
+      linear-gradient(to right, #fff 50%, rgba(255, 255, 255, 0)) left / 2rem 100% no-repeat local,
+      linear-gradient(to left, #fff 50%, rgba(255, 255, 255, 0)) right / 2rem 100% no-repeat local,
+      linear-gradient(to right, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0)) left / 1rem 100% no-repeat scroll,
+      linear-gradient(to left, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0)) right / 1rem 100% no-repeat scroll,
+      #fff;
+  }
+
+  .scroll-box > .table {
+    margin-bottom: 0;
+  }
+
+  .scroll-box > .table > :not(caption) > * > * {
+    background-color: transparent;
+  }
+
+  .scroll-box:focus-visible {
+    outline: 0.25rem solid var(--color-primary);
+    outline-offset: 0.125rem;
+  }
+
+  /* Made by scroll-hint.js above each box, and shown only while its table does not fit. */
+  .scroll-hint {
+    margin-bottom: 0.25rem;
+    color: var(--color-primary);
+    font-weight: 700;
+  }
+
+  @media print {
+    .scroll-box { background: none; }
+    .scroll-hint { display: none; }
+  }
+
+  /* Right and left ear: two links in one pill (#202), the same as 我的紀錄's switch (#465).
+     The speech banana page has buttons instead, since it stays on the page (#441). */
+  .ear-switch {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 1rem;
+    padding: 0.25rem;
+    border-radius: var(--radius-tab);
+    background-color: var(--color-surface);
+  }
+
+  .ear-switch :is(a, button) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--spacing-touch);
+    border-radius: var(--radius-tab);
+    color: var(--color-muted);
+    font-weight: 400;
+    text-decoration: none;
+  }
+
+  .ear-switch :is(a[aria-current="true"], button[aria-pressed="true"]) {
+    background-color: var(--color-brand-selected);
+    box-shadow: inset 0 0 0 2px var(--color-primary);
+    color: var(--color-primary);
+    font-weight: 700;
+  }
+
+  .ear-switch button:focus-visible {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  /* #328 (A2): as 我的紀錄's switch. */
+  @media (hover: hover) and (pointer: fine) {
+    .ear-switch :is(a:not([aria-current]), button[aria-pressed="false"]):hover {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .ear-switch :is(a:not([aria-current]), button[aria-pressed="false"]):active {
+    background-color: var(--color-brand-soft-deep);
+  }
+
+  /* Health report (spec phase8_c3_report.md): readable on screen, and on paper in black and white. */
+  .health-report section {
+    margin-top: 1.5rem;
+  }
+
+  /* #198: at 200% text on a phone a date like 2026/09/28 cannot break, so headings and list
+     lines run off the screen. Screen only: the printed report stays as it was. Tables keep
+     their column widths. */
+  @media screen {
+    .health-report :is(h1, h2, h3, li) {
+      overflow-wrap: anywhere;
+    }
+  }
+
+  .report-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 2rem;
+  }
+
+  .report-handwrite span {
+    display: inline-block;
+    min-width: 12rem;
+    border-bottom: 1px solid currentColor;
+  }
+
+  .report-summary {
+    border: 2px solid var(--color-heading);
+    border-radius: var(--radius-button);
+    padding: 0.75rem 1rem;
+  }
+
+  .report-score {
+    font-size: 2rem;
+    font-weight: 700;
+  }
+
+  /* Fit report columns to the available width, including larger fallback fonts. */
+  .health-report .table {
+    table-layout: fixed;
+    overflow-wrap: anywhere;
+  }
+
+  .report-disclaimer {
+    border-top: 1px solid var(--color-input-border);
+    padding-top: 0.5rem;
+    margin-top: 1.5rem;
+  }
+
+  /* The report on screen (pages tidy-up): scores as tags, the answers in the dropdown box, the
+     handwriting line on paper only. #471 (mockup #470 B): each part's row says its summary line,
+     so the summary itself is for paper; levels are the site's level badges (L1 colours). */
+  @media screen {
+    .health-report .report-summary {
+      display: none;
+    }
+
+    .report-handwrite {
+      display: none;
+    }
+
+    .report-score {
+      display: inline-block;
+      padding: 0 0.6rem;
+      border-radius: var(--radius-pill);
+      background-color: var(--color-brand-soft);
+      color: var(--color-primary);
+      font-size: 1.5rem;
+    }
+  }
+
+  @media print {
+    /* No new shadows on paper, whichever shared class ends up inside the report. */
+    .health-report * {
+      box-shadow: none !important;
+    }
+
+    body:has(.health-report) .site-header,
+    body:has(.health-report) .site-nav,
+    body:has(.health-report) footer,
+    .health-report .no-print {
+      display: none !important;
+    }
+
+    body:has(.health-report) {
+      padding-bottom: 0;
+    }
+
+    .health-report section {
+      margin-top: 1rem;
+      break-inside: avoid;
+    }
+
+    /* A part holds several sections; only the sections inside it stay whole. */
+    .health-report .report-part {
+      break-inside: auto;
+    }
+
+    .health-report .report-part > h2 {
+      break-after: avoid;
+    }
+
+    .report-disclaimer {
+      margin-top: 0.75rem;
+    }
+
+    /* Tighter rows on paper, so the disclaimer does not end up alone on a last page. */
+    .health-report .table > :not(caption) > * > * {
+      padding: 0.2rem 0.5rem;
+    }
+
+    /* Small enough to share the first page with the summary. */
+    .health-report .audiogram-chart {
+      max-width: 10cm;
+      margin-inline: auto;
+      padding: 0;
+      border: 0;
+    }
+  }
+}

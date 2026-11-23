@@ -30,7 +30,15 @@ const used = new Set(
   ].flatMap((text) => text.split(/[^\w-]+/)),
 );
 
-const css = readFileSync(new URL("./site.css", import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+function readSiteCss() {
+  const entry = readFileSync(new URL("./site.css", import.meta.url), "utf8");
+  const imported = [...entry.matchAll(/@import\s+"(\.\/styles\/[^"]+)";/g)].map(([, rel]) =>
+    readFileSync(new URL(rel, import.meta.url), "utf8"),
+  );
+  return [entry, ...imported].join("\n");
+}
+
+const css = readSiteCss().replace(/\/\*[\s\S]*?\*\//g, "");
 const defined = new Set(
   [...css.matchAll(/([^{};]+)\{/g)]
     .map(([, prelude]) => prelude.trim())

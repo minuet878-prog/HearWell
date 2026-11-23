@@ -1,11 +1,9 @@
 import re
 from html import unescape
-from pathlib import Path
 
-from django.conf import settings
 from django.test import TestCase
 
-from screening.tests.helpers import consented_user, submission_with_answers
+from screening.tests.helpers import consented_user, read_site_css, submission_with_answers
 
 DOOR_SCRIPT = "screening/frontend/door-count.js"
 
@@ -57,7 +55,7 @@ class SignedOutHomeTests(TestCase):
             '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM8.5 12l2.5 2.5 4.5-5"/></svg>'
             "內容由台灣執業聽力師設計與審定。",
         )
-        css = (Path(settings.BASE_DIR) / "frontend/src/site.css").read_text()
+        css = read_site_css()
         rule = re.search(r"\.empty-credit svg \{(.*?)\}", css, re.S)
         self.assertIsNotNone(rule)
         self.assertIn("color: var(--color-primary);", rule.group(1))

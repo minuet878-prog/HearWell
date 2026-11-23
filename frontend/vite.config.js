@@ -6,8 +6,7 @@ import { defineConfig } from "vite";
 // (collectstatic adds the content hash). Shared code such as React is split into its own file.
 // The site's stylesheet is built here too, by Tailwind (ADR 0008).
 export default defineConfig({
-  // Keep token alpha values exact through both Tailwind and Vite.
-  plugins: [tailwindcss({ optimize: false }), react()],
+  plugins: [tailwindcss(), react()],
   // Asset URLs in site.css (the font files, #181) point next to it, under Django's static URL.
   base: "./",
   build: {
@@ -15,18 +14,13 @@ export default defineConfig({
     assetsInlineLimit: 0,
     outDir: "../screening/static/screening/frontend",
     emptyOutDir: true,
-    // Preserve exact alpha values in design tokens (hex alpha rounds 0.5 to 128/255).
-    cssMinify: false,
     rolldownOptions: {
       input: {
         "site": "src/site.css",
         "trend-chart": "src/main.jsx",
         "answer": "src/answer-main.jsx",
         "logout": "src/logout.js",
-        "pwa-nav": "src/pwa-nav-main.js",
-        "page-loading": "src/page-loading-main.js",
-        "switch-slide": "src/switch-slide-main.js",
-        "scroll-helpers": "src/scroll-helpers-main.js",
+        "site-shell": "src/site-shell-main.js",
         "audiogram-input": "src/audiogram-main.jsx",
         "audiogram-view": "src/audiogram-view-main.jsx",
         "speech-banana": "src/speech-banana-main.jsx",

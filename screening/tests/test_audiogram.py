@@ -2,7 +2,6 @@ import json
 import re
 import uuid
 from datetime import date, timedelta
-from pathlib import Path
 from unittest import mock
 
 from django.db import DatabaseError, connection
@@ -13,9 +12,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening.tests import test_answering, test_layout, test_pages
-from screening.tests.helpers import action_cards, consented_user
-
-SITE_CSS = Path(__file__).resolve().parents[2] / "frontend" / "src" / "site.css"
+from screening.tests.helpers import action_cards, consented_user, read_site_css
 
 
 def _point(conduction, ear, frequency, db, no_response):
@@ -723,7 +720,7 @@ class AudiogramResultPageTests(TestCase):
         self.assertTrue(self.user.audiograms.filter(pk=audiogram.pk).exists())
 
     def test_quiet_links_are_tall_enough_to_tap_and_delete_is_red(self):
-        css = SITE_CSS.read_text(encoding="utf-8")
+        css = read_site_css()
         rule = re.search(r"\.quiet-links a \{([^}]*)\}", css).group(1)
         self.assertIn("min-height: var(--spacing-touch)", rule)
         danger = re.search(r"\.quiet-links \.quiet-link-danger \{([^}]*)\}", css).group(1)

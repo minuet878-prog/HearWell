@@ -25,7 +25,7 @@ from screening.models import (
 from screening.questionnaires import hhie_s
 from screening.scoring import get_advice
 from screening.tests import test_answering, test_continue_notice, test_history
-from screening.tests.helpers import consented_user, fake_definition, register
+from screening.tests.helpers import consented_user, fake_definition, read_site_css, register
 
 # Spec #693: HHIE-S's advice ends with what the score cannot tell, as HHIA-S's.
 LIMITS = "這份問卷反映您感受到的生活影響，不能判定聽損程度，也不能單憑分數決定是否需要助聽器。"
@@ -438,17 +438,9 @@ class RedesignLayoutTests(TestCase):
             test_answering.ReactAnswerPageTests.LOGOUT_JS,
             test_answering.ReactAnswerPageTests.ANSWER_JS,
         )
-        # Every page: pull to refresh in the home-screen app (spec
-        # phase10_pwa_back_refresh.md), and the inline switch that turns on smooth scrolling once
-        # the page and fonts have loaded. The header wave's inline check (#138) went with the
-        # wave (#748).
-        pwa_js = PwaNavTests.SCRIPT.removeprefix("/static/")
-        # And the bar with 載入中… while the next page loads (ADR 0027).
-        loading_js = PageLoadingTests.SCRIPT.removeprefix("/static/")
-        # Every page: the scroll helpers, such as the back-to-top button (spec #338).
-        scroll_js = "screening/frontend/scroll-helpers.js"
-        # And the script that lets only the switches' pill slide to the next page (#334).
-        slide_js = "screening/frontend/switch-slide.js"
+        # Every page: site-wide shell bundle (ADR 0080: pull-to-refresh, loading bar, view
+        # transition switch slide, and scroll/header helpers) plus the copy buttons' script (#580).
+        shell_js = PwaNavTests.SCRIPT.removeprefix("/static/")
         # On the pages with a switch, the one that skips the slide when the switch is not parsed
         # by the first paint (#334).
         reveal_js = "screening/switch-reveal.js"
@@ -457,7 +449,7 @@ class RedesignLayoutTests(TestCase):
         smooth = "<inline>"
         # And the copy buttons' script, for 複製信箱 in every page's footer (#580).
         copy_js = "screening/copy-link.js"
-        every = [pwa_js, loading_js, slide_js, scroll_js, copy_js]
+        every = [shell_js, copy_js]
         # Signed in, after logout.js: guest results kept here go to the save page's question
         # (#497).
         signed_in = [logout_js, "screening/frontend/guest-ask.js"]
@@ -950,13 +942,18 @@ class PwaTests(TestCase):
             "M22 33a6.5 6.5 0 0 1 13 0c0 4-4 5-4 8.5a3.3 3.3 0 0 1-6 2",
             "translate(28 33.5) scale(.9) translate(-28.5 -35)",
         )
-        css = Path(__file__).resolve().parents[2] / "frontend" / "src" / "site.css"
-        for path in (self.PWA_DIR / "favicon.svg", self.PWA_DIR / "icon.svg", css):
-            with self.subTest(path=path.name):
-                text = path.read_text(encoding="utf-8")
+        sources = [
+            (self.PWA_DIR / "favicon.svg", True),
+            (self.PWA_DIR / "icon.svg", True),
+            ("site.css", False),
+        ]
+        for source, is_svg in sources:
+            name = source.name if is_svg else source
+            text = source.read_text(encoding="utf-8") if is_svg else read_site_css()
+            with self.subTest(path=name):
                 for part in drawn:
                     self.assertIn(part, text)
-                if path.suffix == ".svg":
+                if is_svg:
                     self.assertIn('<stop offset="0" stop-color="#1f4e8c"/>', text)
                     self.assertIn('<stop offset="1" stop-color="#1d6f99"/>', text)
 
@@ -1031,7 +1028,7 @@ class PwaNavTests(TestCase):
     Acceptance 10 (rest: Vitest, e2e); its back button is the header's since #748
     (test_site_header)."""
 
-    SCRIPT = "/static/screening/frontend/pwa-nav.js"
+    SCRIPT = "/static/screening/frontend/site-shell.js"
 
     @classmethod
     def setUpTestData(cls):
@@ -1216,7 +1213,7 @@ class PageLoadingTests(TestCase):
     """The bar with 載入中… and 送出中… on the pressed button (ADR 0027; A3 and C1 chosen by the
     site owner on the loading comparison page). How they behave: page-loading.test.js."""
 
-    SCRIPT = "/static/screening/frontend/page-loading.js"
+    SCRIPT = "/static/screening/frontend/site-shell.js"
     TEMPLATES = Path(__file__).resolve().parent.parent / "templates"
 
     def test_every_page_has_the_bar_and_its_status(self):
@@ -1233,8 +1230,9 @@ class PageLoadingTests(TestCase):
 
     def test_every_page_skips_view_transitions_its_switch_did_not_start(self):
         # #334 (spec #326 D3): site.css opts every page in, so every page needs the script that
-        # skips the rest. How it behaves: switch-slide.test.js; in a browser: SlidingPillTest.
-        script = '<script type="module" src="/static/screening/frontend/switch-slide.js"></script>'
+        # skips the rest (bundled in site-shell.js since ADR 0080). How it behaves:
+        # switch-slide.test.js; in a browser: SlidingPillTest.
+        script = '<script type="module" src="/static/screening/frontend/site-shell.js"></script>'
         self.assertIn(script, self.client.get(reverse("privacy")).content.decode())
         self.client.force_login(consented_user(username="switchslider"))
         for url in (reverse("index"), reverse("audiogram_list")):

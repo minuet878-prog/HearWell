@@ -1,14 +1,11 @@
 """#748 (spec #741 acceptance 35-39, story 51; ADR 0079): the site header and the tab bar."""
 
 import re
-from pathlib import Path
 
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
-from screening.tests.helpers import consented_user
-
-SITE_CSS = Path(__file__).resolve().parents[2] / "frontend" / "src" / "site.css"
+from screening.tests.helpers import consented_user, read_site_css
 
 
 def header(content):
@@ -206,7 +203,7 @@ class HeaderButtonHoverTests(SimpleTestCase):
     # CODING_STANDARDS 22 (ADR 0006): a hover effect shows only where there is a mouse, so a
     # finger tapping 返回, the avatar or 離開 does not leave it stuck in the hover colour.
     def test_back_avatar_and_leave_hover_only_under_a_hover_media_query(self):
-        unwrapped = hover_rules_outside_hover_media(SITE_CSS.read_text(encoding="utf-8"))
+        unwrapped = hover_rules_outside_hover_media(read_site_css())
         for button in (".site-back", ".site-avatar", ".site-leave"):
             with self.subTest(button=button):
                 self.assertEqual([s for s in unwrapped if button in s], [])
