@@ -118,7 +118,9 @@ class ResultPagesTests(TestCase):
         )
         cards = action_cards_titles(self._main("hhia-s"))
         # The optional SSQ12-TW row (unaided HHIA-S) comes last.
-        self.assertEqual(cards[:4], ["印聽力報告", "分享給家人", "看紀錄", "比較戴與不戴助聽器"])
+        self.assertEqual(
+            cards[:4], ["印聽力報告", "分享給家人", "看紀錄與趨勢", "比較戴與不戴助聽器"]
+        )
 
 
 def action_cards_titles(html):

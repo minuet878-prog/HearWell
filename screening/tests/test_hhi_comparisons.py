@@ -189,7 +189,8 @@ class HhiComparisonTests(TestCase):
             (f"{self.url}?unaided={unaided.pk}&aided={aided.pk}&action=preview", 13),
             (reverse("health_report"), 24),
             (reverse("shared_report", args=[share.token]), 25),
-            (reverse("my_hearing") + f"?questionnaire={self.questionnaire.code}", 12),
+            # HHIA-S's trend chart reads the fitting day (AidAndSubsidy), matching HHIE-S's 13.
+            (reverse("my_hearing") + f"?questionnaire={self.questionnaire.code}", 13),
         ):
             with self.subTest(url=url), self.assertNumQueries(queries):
                 self.assertEqual(self.client.get(url).status_code, 200)

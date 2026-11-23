@@ -36,10 +36,10 @@ function submission(
   };
 }
 
-function mockApi({ results, next = null, levels = LEVELS, questionnaires = null }) {
+function mockApi({ results, next = null, levels = LEVELS, questionnaires = null, code = "hhie-s" }) {
   const responses = {
-    "/api/submissions/": { next, previous: null, results },
-    "/api/questionnaires/": questionnaires ?? [{ id: 1, code: "hhie-s", name: "HHIE-S", levels }],
+    [`/api/submissions/?questionnaire=${encodeURIComponent(code)}`]: { next, previous: null, results },
+    "/api/questionnaires/": questionnaires ?? [{ id: 1, code, name: code.toUpperCase(), levels }],
   };
   globalThis.fetch = vi.fn((url) =>
     Promise.resolve({ ok: true, json: () => Promise.resolve(responses[url]) }),
@@ -165,6 +165,7 @@ describe("TrendChart", () => {
   it("draws the questionnaire it is given, even if another is newer", async () => {
     const hhiaS = { code: "hhia-s", name: "HHIA-S" };
     mockApi({
+      code: "hhia-s",
       results: [
         submission(3, "2026-10-14", 10, "輕度到中度影響", hhiaS),
         submission(2, "2026-09-01", 20),
@@ -177,6 +178,10 @@ describe("TrendChart", () => {
     });
     const { container } = render(<TrendChart code="hhia-s" />);
     await chartDrawn(container);
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/submissions/?questionnaire=hhia-s",
+      expect.objectContaining({ headers: { Accept: "application/json" } }),
+    );
     expect(dotHeights(container)).toHaveLength(2);
     expect(container.querySelector(".recharts-reference-area")).toBeNull();
   });

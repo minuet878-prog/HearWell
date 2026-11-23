@@ -3,6 +3,7 @@ from datetime import date
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models, transaction
+from django.utils import timezone
 
 from screening.models.hearing_aids import AidAndSubsidy
 from screening.models.reminders import RetestReminder, RetestReminderSent
@@ -60,7 +61,7 @@ class User(AbstractUser):
     def age(self):
         if self.birth_year is None:
             return None
-        return date.today().year - self.birth_year
+        return timezone.localdate().year - self.birth_year
 
     def has_consented(self):
         return self.consents.filter(version__gte=CONSENT_VERSION).exists()

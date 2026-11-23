@@ -117,5 +117,6 @@ DEFINITION = Definition(
     # Under the next steps: the full advice, the only other place it is said, is not on the
     # result page.
     result_note=LIFE_IMPACT_LIMITS,
+    trend_chart=True,
     comparison=TotalComparison(anchor=f"report-comparison-{CODE}"),
 )
