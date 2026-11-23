@@ -5452,22 +5452,21 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.page.mouse.up()
 
     def test_form_fields_keep_their_size_and_focus_ring(self):
-        # #125: form fields keep their pre-migration size (owner's decision, 2026-10-21):
-        # regular fields are 42.5px tall, above WCAG AA's 24px, and checkboxes sit in a
-        # clickable 27px-tall label. Buttons are the ones held to 44 x 44.
+        # Regular fields meet --spacing-touch (2.75rem = 49.5px at 18px root, Batch 2 a11y fix),
+        # so every input and select clears the 44px touch target on phones.
         # The login and register pages chose thicker, taller fields (2026-10-23), so the regular
         # field is measured on the delete-account page.
         primary_ring = "rgba(31, 78, 140, 0.25) 0px 0px 0px 4.5px"
         field_focus_ring = "rgba(13, 110, 253, 0.25) 0px 0px 0px 4.5px"
         # #272: every field edge is --color-input-border (4.7:1 on white); the old
-        # rgb(222, 226, 230) was 1.3:1, under WCAG 1.4.11's 3:1. Sizes stay as they were.
+        # rgb(222, 226, 230) was 1.3:1, under WCAG 1.4.11's 3:1.
         border = "rgb(108, 117, 125)"
         self.audiogram(date(2026, 9, 28))
         with self.saving_artifacts():
             self.open()
             self.page.goto(f"{self.live_server_url}/account/delete")
             password = self.page.get_by_label("請輸入密碼確認")
-            self.assertEqual(self.size(password)[1], 42.5)
+            self.assertEqual(self.size(password)[1], 49.5)
             self.assertEqual(
                 self.styles(
                     password,
@@ -5560,7 +5559,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             audiogram_step(self.page, self.live_server_url, 2)
             self.page.get_by_text("用數值輸入").click()
             select = self.page.get_by_label("右耳氣導 500 Hz", exact=True)
-            self.assertEqual(self.size(select)[1], 42.5)
+            self.assertEqual(self.size(select)[1], 49.5)
             self.assertEqual(
                 self.styles(select, "borderTopWidth", "borderTopColor"),
                 {
@@ -5745,7 +5744,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 self.styles(password, "borderTopColor", "backgroundColor"),
                 {"borderTopColor": self.ERROR, "backgroundColor": "rgb(254, 236, 231)"},
             )
-            self.assertEqual(self.size(password)[1], 42.5)
+            self.assertEqual(self.size(password)[1], 49.5)
             self.assertEqual(self.style(error, "fontWeight"), "700")
             self.assertIn(
                 "data:image/svg+xml",
@@ -11433,12 +11432,12 @@ class AudiogramPagesT365Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSe
     """#365 (spec #354): the delete page's title and preview on a phone, and the compare page's
     line samples in the chosen ear's colours."""
 
-    # The chart's colours (AudiogramChart.jsx): each ear's own, lighter for the older one.
+    # The chart's colours (AudiogramChart.jsx): each ear's own, lighter (>= 3:1) for the older one.
     LINE_COLOURS = (
         (("right", False), "rgb(192, 57, 43)"),
-        (("right", True), "rgb(232, 165, 157)"),
+        (("right", True), "rgb(204, 95, 86)"),
         (("left", False), "rgb(31, 78, 140)"),
-        (("left", True), "rgb(157, 181, 214)"),
+        (("left", True), "rgb(89, 128, 181)"),
     )
 
     def setUp(self):
