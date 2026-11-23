@@ -333,7 +333,9 @@ class NextChapterTests(TestCase):
     # Spec #576 acceptance 16: what a chapter's end had is still there, after the row.
     def test_signed_out_the_row_is_before_the_way_back_and_the_sources(self):
         main = self.main("assessment")
-        self.assertIn(f'<p class="mt-4 mb-0"><a href="/guide">{BACK}</a></p>', main)
+        self.assertIn(
+            f'<p class="mt-4 mb-0"><a class="inline-link" href="/guide">{BACK}</a></p>', main
+        )
         self.assertLess(main.index("</article>"), self.row_at(main))
         self.assertLess(self.row_at(main), main.index(self.BACK_BUTTON))
         self.assertLess(main.index(self.BACK_BUTTON), main.index("<summary>資料來源</summary>"))

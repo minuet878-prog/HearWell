@@ -43,10 +43,10 @@ it("draws an older audiogram light and dashed under the newer one", () => {
   const older = container.querySelector(".audiogram-old");
   expect(newer.querySelector("polyline").getAttribute("stroke")).toBe("#c0392b");
   expect(newer.querySelector("polyline").getAttribute("stroke-dasharray")).toBeNull();
-  expect(older.querySelector("polyline").getAttribute("stroke")).toBe("#e8a59d");
+  expect(older.querySelector("polyline").getAttribute("stroke")).toBe("#cc5f56");
   expect(older.querySelector("polyline").getAttribute("stroke-dasharray")).not.toBeNull();
-  expect(older.querySelector('[data-point="right-air-500"] circle').getAttribute("stroke")).toBe("#e8a59d");
-  expect(older.querySelector('[data-point="right-bone-1000"] text').getAttribute("fill")).toBe("#e8a59d");
+  expect(older.querySelector('[data-point="right-air-500"] circle').getAttribute("stroke")).toBe("#cc5f56");
+  expect(older.querySelector('[data-point="right-bone-1000"] text').getAttribute("fill")).toBe("#cc5f56");
   expect(newer.querySelector('[data-point="right-bone-1000"] text').getAttribute("fill")).toBe("#c0392b");
   // The newer one is drawn last, so it sits on top.
   expect(older.compareDocumentPosition(newer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -55,7 +55,7 @@ it("draws an older audiogram light and dashed under the newer one", () => {
 it("the left ear's older audiogram is light blue", () => {
   const point = { ear: "left", conduction: "air", frequency: 500, db: 30, no_response: false, masked: false };
   const { container } = render(<AudiogramChart points={[point]} oldPoints={[point]} />);
-  expect(container.querySelector('.audiogram-old [data-point="left-air-500"] path').getAttribute("stroke")).toBe("#9db5d6");
+  expect(container.querySelector('.audiogram-old [data-point="left-air-500"] path').getAttribute("stroke")).toBe("#5980b5");
 });
 
 it("draws the green normal range down to 25 dB, under everything else", () => {

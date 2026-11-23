@@ -601,6 +601,25 @@ class RegisterFormTests(TestCase):
                 with self.subTest(target=target):
                     self.assertIn(f'id="{target}"', content)
 
+    def test_focus_moves_to_first_error_field(self):
+        def focused(response):
+            content = response.content.decode()
+            return [
+                re.search(r'name="(\w+)"', tag).group(1)
+                for tag in re.findall(r"<input\b[^>]*\bautofocus\b[^>]*>", content)
+            ]
+
+        # First visit keeps focus at the top for the skip link.
+        self.assertEqual(focused(self.client.get(self.url)), [])
+        # When username is valid and later fields fail, focus moves to the first invalid field.
+        self.assertEqual(
+            focused(self._post(password2="Different#123", roc_birth_year="abc")),
+            ["password2"],
+        )
+        self.assertEqual(focused(self._post(email="not-an-email", roc_birth_year="abc")), ["email"])
+        self.assertEqual(focused(self._post(roc_birth_year="abc")), ["roc_birth_year"])
+        self.assertEqual(focused(self._post(username="")), ["username"])
+
 
 class RegisterPageGuidanceTests(TestCase):
     """Issue #151: the register page tells new users where they are and how to set a password."""

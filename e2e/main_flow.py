@@ -2505,11 +2505,11 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
         share = ReportShare.objects.create(user=self.user)
         self.open(320, 640)
         with self.saving_artifacts():
-            for path in ("/share", "/account", "/privacy", "/add_to_home"):
+            for path in ("/report", "/share", "/account", "/privacy", "/add_to_home"):
                 with self.subTest(path=path):
                     self.page.goto(f"{self.live_server_url}{path}")
                     for block in self.main().locator("details").all():
-                        block.locator("summary").click()
+                        block.locator(":scope > summary").click()
                     self.assert_fits_a_phone_at_double_text_size(path)
             for path in (f"/shared/{share.token}", f"/shared/{share.token}/report"):
                 with self.subTest(path="family " + path.rsplit("/", 1)[-1]):

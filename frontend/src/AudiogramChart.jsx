@@ -4,8 +4,9 @@ import { AIR_FREQUENCIES, CHART, DB_MIN, chartTop, levelAt, nearestFrequency, po
 import AudiogramGrid from "./AudiogramGrid.jsx";
 
 const COLORS = { right: "#c0392b", left: "#1f4e8c" };
-// The older audiogram on the compare page: the same ear's colour, lighter (spec phase5_audiogram_2.md 4.2).
-const OLD_COLORS = { right: "#e8a59d", left: "#9db5d6" };
+// The older audiogram on the compare page: the same ear's colour, softer yet >= 3:1 on #e9f5ec
+// (spec phase5_audiogram_2.md 4.2; owner's pick A, 2026-11-23).
+const OLD_COLORS = { right: "#cc5f56", left: "#5980b5" };
 // Above this level there is no room over the point, so the magnifier goes beside it.
 const MAGNIFIER_ABOVE_FROM = 10;
 const percent = (value, total) => `${(value / total) * 100}%`;
