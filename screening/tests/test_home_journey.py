@@ -154,7 +154,7 @@ class HomeJourneyTestCase(TestCase):
         """Each step's (state, its row's words)."""
         found = []
         for classes, body in self.items(main):
-            summary = re.search(r"<summary>(.*?)</summary>", body, re.S)
+            summary = re.search(r"<summary[^>]*>(.*?)</summary>", body, re.S)
             words = self.text(summary.group(1) if summary else body)
             found.append((classes.split()[0].removeprefix("is-"), words))
         return found
@@ -782,19 +782,21 @@ class StepInteractionTests(HomeJourneyTestCase):
         # card saying how far (spec #741's 實作中本人補充).
         self.step_4_with_three_done()
         main = self.main()
-        # Played once the 現在這一步's row is in view (ADR 0029; since #751 its card is the hero
-        # card on top, which plays on its own); each stamp, step 7's countdown semicircle, the hero
+        # The 現在這一步's ring waits for its row, while the walked ticks and blue line start once
+        # the first step's summary (or that row) is in view (ADR 0029; since #751 the card is the
+        # hero card on top, playing on its own); each stamp, step 7's countdown semicircle, the hero
         # card and the two tiles' drawings wait too.
         self.assertRegex(
             main,
             r'<li class="journey-step is-current" style="--journey-step: 3" aria-current="step" '
             r'data-play-in-view>\s*<span class="journey-dot">4</span>',
         )
+        self.assertEqual(main.count("<summary data-play-in-view>"), 1)
         rings = main.count('<div class="countdown-gauge">')
         self.assertEqual(rings, 2)
         gauges = main.count('<div class="gauge" data-play-in-view>')
         self.assertEqual(gauges, 1)
-        self.assertEqual(main.count("data-play-in-view"), 2 + main.count(STAMP) + rings + gauges)
+        self.assertEqual(main.count("data-play-in-view"), 3 + main.count(STAMP) + rings + gauges)
         steps = re.findall(r'<li class="journey-step ([^"]*)" style="--journey-step: (\d)"', main)
         self.assertEqual(
             steps,

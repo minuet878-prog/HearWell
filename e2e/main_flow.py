@@ -10045,6 +10045,42 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
             self.page.wait_for_timeout(300)
             self.assertEqual(self.animations(self.STOP), ended)
 
+    def test_walked_route_ticks_and_line_play_before_current_stop_is_in_view(self):
+        self.open("/guide")
+        with self.saving_artifacts():
+            expect(self.main().locator(self.STOP_MARK)).not_to_be_in_viewport()
+            self.assertEqual(
+                self.animations(self.STOP), [{"name": "route-ring", "state": "paused", "time": 0}]
+            )
+            self.assert_plays_without_waiting(".route-stop.is-walked")
+            self.wait_until(".route-stop.is-walked", "finished")
+            expect(self.main().locator(".route-stop.is-done .route-check path").first).to_have_css(
+                "stroke-dashoffset", "0px"
+            )
+            self.assertEqual(self.states(self.STOP), {"paused"})
+
+    def test_walked_journey_ticks_and_line_play_before_current_step_is_in_view(self):
+        self.open("/", width=390, height=560)
+        with self.saving_artifacts():
+            first_step = self.page.locator(".journey-step:first-child summary")
+            here = self.page.locator(self.JOURNEY_HERE)
+            tab_bar = self.page.get_by_role("navigation", name="主要導覽").bounding_box()
+            # Scroll so step 1 is wholly above the tab bar while the current step (step 3) is still
+            # below it.
+            first_box = first_step.bounding_box()
+            self.scroll_by(first_box["y"] + first_box["height"] - tab_bar["y"] + 20)
+            self.assertGreaterEqual(first_step.bounding_box()["y"], 0)
+            self.assertLessEqual(
+                first_step.bounding_box()["y"] + first_step.bounding_box()["height"], tab_bar["y"]
+            )
+            self.assertGreater(
+                here.bounding_box()["y"] + here.bounding_box()["height"], tab_bar["y"]
+            )
+            self.assert_plays_without_waiting(".journey-step.is-walked")
+            self.wait_until(".journey-step.is-walked", "finished")
+            expect(self.page.locator(self.TICK).first).to_have_css("stroke-dashoffset", "0px")
+            self.assertEqual(self.states(self.JOURNEY_HERE), {"paused"})
+
     # #338 acceptance 10 (this ticket's part): with reduced motion the route's ring and the
     # home's journey are their end look from the start, nothing playing or waiting to play.
     def test_reduced_motion_shows_the_end_at_once(self):

@@ -46,7 +46,7 @@
                 {% include "screening/guide/route_answer.html" %}
             </div>
             {% else %}
-            <div class="route-box">
+            <div class="route-box"{% if forloop.first and route_here %} data-play-in-view{% endif %}>
                 <details class="route-about">
                     <summary><span class="route-row"><span class="route-title">{{ stop.title }}</span>{% if stop.marks %}<span class="route-marks">{% for mark in stop.marks %}{% if not forloop.first %}・{% endif %}<span class="route-mark">{{ mark }}</span>{% endfor %}{% if stop.tested_on %}・{{ stop.tested_on|date:"Y/m/d" }} 的聽力圖{% endif %}</span>{% endif %}</span><span class="result-details-arrow" aria-hidden="true"></span></summary>
                     <div class="route-about-body">

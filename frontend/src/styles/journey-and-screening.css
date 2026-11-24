@@ -342,16 +342,21 @@
      with reduced motion, the end at once. Longhands, not the animation shorthand: that would
      set the play state back to running and so outrank the hold until in view. */
   @media (prefers-reduced-motion: no-preference) {
-    /* Held, as in-view.js holds any, until the 現在這一步's row (data-play-in-view) is in
-       view: the whole list is taller than half a phone's screen and would wait for a scroll, yet
-       the way walked ends at that row. Since #751 its card is the hero card on top, playing on
-       its own. Only the row's mark: a done step's stamp (#744) waits for its step to open, not
-       the way walked. */
-    :root.play-in-view .journey-steps:has(.is-current[data-play-in-view]:not([data-in-view]))
-      .journey-dot,
-    :root.play-in-view .journey-steps:has(.is-current[data-play-in-view]:not([data-in-view]))
+    /* Held, as in-view.js holds any: the 現在這一步's ring waits for its row, while the walked
+       ticks and blue line wait only while both the first step and the 現在這一步 are out of view,
+       so visible done steps draw right away instead of sitting as empty circles when the 現在這一步
+       is below the fold. Since #751 its card is the hero card on top, playing on its own. A done
+       step's stamp (#744) still waits for its step to open. */
+    :root.play-in-view .journey-step.is-current[data-play-in-view]:not([data-in-view]) .journey-dot,
+    :root.play-in-view
+      .journey-steps:has(.journey-step:first-child summary[data-play-in-view]:not([data-in-view])):has(
+        .is-current[data-play-in-view]:not([data-in-view])
+      )
       .journey-dot path,
-    :root.play-in-view .journey-steps:has(.is-current[data-play-in-view]:not([data-in-view]))
+    :root.play-in-view
+      .journey-steps:has(.journey-step:first-child summary[data-play-in-view]:not([data-in-view])):has(
+        .is-current[data-play-in-view]:not([data-in-view])
+      )
       .journey-step::after {
       animation-play-state: paused;
     }
