@@ -88,6 +88,8 @@ class PublicPageTests(TestCase):
             "/family/loud-tv",
             "/family/huh",
             "/guide",
+            # Spec #774 acceptance 19 (#775): 補助引導與試算.
+            "/guide/subsidy",
             "/qa",
         }
         chapters = {f"/guide/{chapter.slug}" for chapter in guide.GUIDE_CHAPTERS}

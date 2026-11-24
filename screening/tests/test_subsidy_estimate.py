@@ -1,0 +1,494 @@
+"""#775 (spec #774): 補助引導與試算. The rules on their own, then the page at /guide/subsidy.
+Walking it in a real browser is in e2e.main_flow.SubsidyEstimateTest."""
+
+import inspect
+import re
+from itertools import pairwise
+
+from django.test import Client, SimpleTestCase, TestCase
+from django.urls import reverse
+
+from screening import subsidy_estimate as rules
+from screening.models import AidAndSubsidy, Certificate, Consent, GuideChapterView, User
+from screening.subsidy_estimate import Question, Result, estimate
+from screening.tests import test_family_zone, test_pages
+from screening.tests.helpers import consented_user
+from screening.views import guide
+
+# Written out, not read from the module, so a slip in the definition shows.
+NOTICE_FIRST = "先拿核定公文再買，先買不補助。"
+FORM_25 = "中階型以上要在配戴 1 到 3 個月內做二十五號表，核銷時要附上。"
+HOSPITALS = ("看各縣市的鑑定醫院", "/guide/assessment#hospitals-title")
+
+
+def _answers(**changes):
+    """Spec #774 acceptance 12's case: a certificate, the notice in hand, both ears, 中階型,
+    一般戶."""
+    return {
+        "certificate": rules.HAS,
+        "progress": rules.NOTICE,
+        "grade": rules.MID,
+        "ears": rules.BOTH,
+        "household": rules.GENERAL,
+        **changes,
+    }
+
+
+def _asked(answers):
+    """The names of the questions asked one by one, answering each with answers' value."""
+    given, asked = {}, []
+    while isinstance(step := estimate(given), Question):
+        asked.append(step.name)
+        given[step.name] = answers[step.name]
+    return asked
+
+
+class EstimateQuestionsTests(SimpleTestCase):
+    def test_one_question_at_a_time_in_the_specs_order(self):
+        self.assertEqual(
+            _asked(_answers()), ["certificate", "progress", "grade", "ears", "household"]
+        )
+
+    # Spec #774 acceptance 13: a set of 雙對側傳聲型 is never asked one ear or both.
+    def test_cros_is_not_asked_one_ear_or_both(self):
+        self.assertEqual(
+            _asked(_answers(grade=rules.CROS)), ["certificate", "progress", "grade", "household"]
+        )
+
+    def test_planning_to_apply_goes_on_through_the_same_questions(self):
+        self.assertEqual(
+            _asked(_answers(certificate=rules.PLANNING)),
+            ["certificate", "progress", "grade", "ears", "household"],
+        )
+
+    # #775: the first question has only these two answers until #776 adds 沒有.
+    def test_the_first_question_has_a_certificate_or_planning_to_apply(self):
+        first = estimate({})
+        self.assertEqual([value for value, _ in first.choices], [rules.HAS, rules.PLANNING])
+
+    def test_every_answer_given_gives_the_result(self):
+        self.assertIsInstance(estimate(_answers()), Result)
+
+
+class EstimateRulesTests(SimpleTestCase):
+    def test_the_notice_both_ears_mid_general_estimates_10000_and_buying_in_6_months(self):
+        result = estimate(_answers())
+        self.assertIsInstance(result, Result)
+        self.assertEqual(result.amount, 10000)
+        self.assertEqual(result.amount_words, "10,000 元")
+        self.assertEqual(result.next_step.title, "6 個月內購買")
+
+    # Spec #774 acceptance 13 and the testing decisions: four grades times three households,
+    # one ear and both. Written out from research.md's table, not worked out the module's way.
+    def test_every_grade_and_household_for_one_ear_and_both(self):
+        one_ear = {
+            (rules.BASIC, rules.LOW): 2000,
+            (rules.BASIC, rules.NEAR_LOW): 1500,
+            (rules.BASIC, rules.GENERAL): 1000,
+            (rules.MID, rules.LOW): 10000,
+            (rules.MID, rules.NEAR_LOW): 7500,
+            (rules.MID, rules.GENERAL): 5000,
+            (rules.ADVANCED, rules.LOW): 20000,
+            (rules.ADVANCED, rules.NEAR_LOW): 15000,
+            (rules.ADVANCED, rules.GENERAL): 10000,
+        }
+        for (grade, household), amount in one_ear.items():
+            for ears, times in ((rules.ONE, 1), (rules.BOTH, 2)):
+                with self.subTest(grade=grade, household=household, ears=ears):
+                    answers = _answers(grade=grade, household=household, ears=ears)
+                    self.assertEqual(estimate(answers).amount, amount * times)
+
+    def test_cros_counts_as_one_set_whatever_the_household(self):
+        for household, amount in (
+            (rules.LOW, 30000),
+            (rules.NEAR_LOW, 22500),
+            (rules.GENERAL, 15000),
+        ):
+            with self.subTest(household=household):
+                answers = _answers(grade=rules.CROS, household=household)
+                del answers["ears"]
+                self.assertEqual(estimate(answers).amount, amount)
+
+    def test_one_ear_basic_low_income_is_2000(self):
+        result = estimate(_answers(grade=rules.BASIC, ears=rules.ONE, household=rules.LOW))
+        self.assertEqual(result.amount_words, "2,000 元")
+
+    def test_cros_near_low_income_is_22500(self):
+        answers = _answers(grade=rules.CROS, household=rules.NEAR_LOW)
+        del answers["ears"]
+        self.assertEqual(estimate(answers).amount_words, "22,500 元")
+
+
+class EstimateNextStepTests(SimpleTestCase):
+    """Spec #774 acceptance 12 and 15: one thing to do now, by how far the application has got."""
+
+    def _step(self, **changes):
+        return estimate(_answers(**changes)).next_step
+
+    def _reminders(self, **changes):
+        return [item.words for item in estimate(_answers(**changes)).reminders]
+
+    def test_each_progress_has_its_own_next_step(self):
+        for progress, title in (
+            (rules.NO_FORM, "找聽力師做九號表"),
+            (rules.HAS_FORM, "3 個月內送件"),
+            (rules.APPLIED, "等核定公文"),
+            (rules.NOTICE, "6 個月內購買"),
+        ):
+            with self.subTest(progress=progress):
+                self.assertEqual(self._step(progress=progress).title, title)
+
+    def test_planning_to_apply_leads_to_the_assessment_hospitals_whatever_the_progress(self):
+        for progress in (rules.NO_FORM, rules.HAS_FORM, rules.APPLIED, rules.NOTICE):
+            with self.subTest(progress=progress):
+                step = self._step(certificate=rules.PLANNING, progress=progress)
+                self.assertEqual(step.title, "先找醫院做身障鑑定")
+                self.assertEqual((step.link.words, step.link.url), HOSPITALS)
+
+    def test_before_the_notice_every_result_says_to_get_it_before_buying(self):
+        for changes in (
+            {"progress": rules.NO_FORM},
+            {"progress": rules.HAS_FORM},
+            {"progress": rules.APPLIED},
+            {"certificate": rules.PLANNING, "progress": rules.NOTICE},
+        ):
+            with self.subTest(**changes):
+                self.assertIn(NOTICE_FIRST, self._reminders(**changes))
+
+    def test_with_the_notice_it_no_longer_says_to_wait_for_it(self):
+        self.assertNotIn(NOTICE_FIRST, self._reminders())
+
+    def test_with_the_notice_mid_and_up_are_reminded_of_form_25(self):
+        for grade in (rules.MID, rules.ADVANCED, rules.CROS):
+            with self.subTest(grade=grade):
+                self.assertIn(FORM_25, self._reminders(grade=grade))
+
+    def test_the_basic_type_has_no_form_25_reminder(self):
+        self.assertNotIn(FORM_25, self._reminders(grade=rules.BASIC, ears=rules.ONE))
+
+    def test_form_25_waits_for_the_notice(self):
+        for progress in (rules.NO_FORM, rules.HAS_FORM, rules.APPLIED):
+            with self.subTest(progress=progress):
+                self.assertNotIn(FORM_25, self._reminders(progress=progress))
+
+
+def _text(html):
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html))
+
+
+class SubsidyEstimatePageTests(TestCase):
+    def setUp(self):
+        self.url = reverse("guide_subsidy")
+
+    def _main(self, response):
+        self.assertEqual(response.status_code, 200)
+        return test_family_zone._main(response.content.decode())
+
+    def _post(self, shown, **answers):
+        """Sends the page as if the question shown was answered with answers: those before it as
+        the page carries them, its own as its radio."""
+        return self.client.post(self.url, {"shown": shown, **answers})
+
+    def _result(self, **changes):
+        answers = _answers(**changes)
+        if answers["grade"] == rules.CROS:
+            del answers["ears"]
+        return self._main(self._post("household", **answers))
+
+    def _legend(self, main):
+        return _text(re.search(r"<legend[^>]*>(.*?)</legend>", main, re.S).group(1)).strip()
+
+    def _checked(self, main):
+        return [
+            re.search(r'value="([^"]+)"', tag).group(1)
+            for tag in re.findall(r"<input [^>]*>", main)
+            if 'type="radio"' in tag and " checked" in tag
+        ]
+
+    def _hidden(self, main):
+        """The answers the page carries along, by name."""
+        found = re.findall(r'<input type="hidden" name="([^"]+)" value="([^"]*)"', main)
+        return {
+            name: value for name, value in found if name not in ("csrfmiddlewaretoken", "shown")
+        }
+
+    def _card(self, main):
+        start = main.index('class="hero-card"')
+        return main[start : main.index("</section>", start)]
+
+    def test_address_is_under_the_guide(self):
+        self.assertEqual(self.url, "/guide/subsidy")
+
+    def test_page_has_one_heading_its_title_and_the_learn_tab(self):
+        content = self.client.get(self.url).content.decode()
+        self.assertEqual(re.findall(r"<h1[^>]*>([^<]*)</h1>", content), ["補助引導與試算"])
+        nav = test_pages.RedesignLayoutTests.NAV.search(content).group()
+        self.assertEqual(
+            re.findall(r'aria-current="page"[^>]*>.*?<span>([^<]+)</span>', nav, re.S),
+            ["了解"],
+        )
+
+    # Spec #774 acceptance 11, 20: one question, a group of radios its title names.
+    def test_opening_it_shows_the_first_question_alone_without_a_way_back(self):
+        main = self._main(self.client.get(self.url))
+        self.assertIn(rules.INTRO, main)
+        self.assertEqual(main.count("<fieldset"), 1)
+        self.assertEqual(self._legend(main), "第 1 題 有聽覺機能的身心障礙證明嗎？")
+        self.assertEqual(
+            re.findall(r'<input type="radio" name="([^"]+)" value="([^"]+)"', main),
+            [("certificate", rules.HAS), ("certificate", rules.PLANNING)],
+        )
+        for words in ("有", "打算申請或正在申請鑑定"):
+            self.assertRegex(main, rf"<label[^>]*>\s*<input[^>]*>\s*{words}\s*</label>")
+        self.assertNotIn("上一題", main)
+        self.assertNotIn("autofocus", main)
+
+    def test_the_answers_go_by_post_with_a_csrf_token_and_nothing_required(self):
+        main = self._main(self.client.get(self.url))
+        self.assertRegex(
+            main, rf'<form [^>]*method="post" action="{self.url}" autocomplete="off"[^>]*>'
+        )
+        self.assertIn("csrfmiddlewaretoken", main)
+        self.assertNotIn(" required", main)
+
+    # Spec #774 acceptance 11, 20: each answer brings the next question alone, focus on its title,
+    # the answers so far carried along in the page.
+    def test_each_answer_brings_the_next_question_with_focus_on_its_title(self):
+        main = self._main(self._post("certificate", certificate=rules.HAS))
+        self.assertEqual(main.count("<fieldset"), 1)
+        self.assertEqual(self._legend(main), "第 2 題 補助申請辦到哪一步了？")
+        self.assertRegex(
+            main, r'<legend[^>]*>.*<h2 id="question-title"[^>]*tabindex="-1"[^>]*autofocus'
+        )
+        self.assertEqual(self._hidden(main), {"certificate": rules.HAS})
+        self.assertIn("上一題", main)
+
+    def test_the_questions_follow_one_another_to_the_result(self):
+        steps = (
+            ("certificate", "第 2 題 補助申請辦到哪一步了？"),
+            ("progress", "第 3 題 預計買哪一級的助聽器？"),
+            ("grade", "第 4 題 預計配單耳還是雙耳？"),
+            ("ears", "第 5 題 戶籍的福利身分是哪一種？"),
+        )
+        answers = _answers()
+        given = {}
+        for shown, legend in steps:
+            given[shown] = answers[shown]
+            with self.subTest(shown=shown):
+                self.assertEqual(self._legend(self._main(self._post(shown, **given))), legend)
+        main = self._main(self._post("household", **answers))
+        self.assertNotIn("<fieldset", main)
+        self.assertIn("10,000 元", main)
+
+    # Spec #774 acceptance 11: 上一題 goes back one question with its answer still chosen.
+    def test_back_shows_the_question_before_with_its_answer(self):
+        given = {"certificate": rules.HAS, "progress": rules.APPLIED}
+        main = self._main(self._post("grade", **given, back="grade"))
+        self.assertEqual(self._legend(main), "第 2 題 補助申請辦到哪一步了？")
+        self.assertEqual(self._checked(main), [rules.APPLIED])
+        self.assertEqual(self._hidden(main), {"certificate": rules.HAS})
+        self.assertIn("autofocus", main)
+
+    def test_back_ignores_an_answer_chosen_on_the_question_shown(self):
+        given = {"certificate": rules.HAS, "progress": rules.APPLIED, "grade": rules.MID}
+        main = self._main(self._post("grade", **given, back="grade"))
+        self.assertEqual(self._legend(main), "第 2 題 補助申請辦到哪一步了？")
+
+    def test_back_from_the_result_shows_the_last_question(self):
+        main = self._main(self._post("household", **_answers(), back="result"))
+        self.assertEqual(self._legend(main), "第 5 題 戶籍的福利身分是哪一種？")
+        self.assertEqual(self._checked(main), [rules.GENERAL])
+
+    def test_back_to_the_first_question_has_no_way_further_back(self):
+        main = self._main(self._post("progress", certificate=rules.HAS, back="progress"))
+        self.assertEqual(self._legend(main), "第 1 題 有聽覺機能的身心障礙證明嗎？")
+        self.assertEqual(self._checked(main), [rules.HAS])
+        self.assertNotIn("上一題", main)
+
+    def test_sending_without_an_answer_asks_again_and_says_so(self):
+        main = self._main(self._post("progress", certificate=rules.HAS))
+        self.assertEqual(self._legend(main), "第 2 題 補助申請辦到哪一步了？")
+        self.assertIn("請選一個答案", main)
+        self.assertRegex(main, r'<fieldset [^>]*aria-describedby="id_progress_error"')
+
+    def test_an_answer_not_on_the_list_is_asked_again(self):
+        main = self._main(self._post("certificate", certificate="maybe"))
+        self.assertEqual(self._legend(main), "第 1 題 有聽覺機能的身心障礙證明嗎？")
+        self.assertIn("請選一個答案", main)
+
+    # The answer just given brings the next question unmarked, not an error.
+    def test_the_next_question_comes_without_an_error(self):
+        main = self._main(self._post("certificate", certificate=rules.HAS))
+        self.assertNotIn("請選一個答案", main)
+        self.assertNotIn("aria-describedby", main)
+
+    # Spec #774 acceptance 12.
+    def test_the_notice_both_ears_mid_general_result(self):
+        main = self._result()
+        text = _text(self._card(main))
+        self.assertIn("預估最高補助 10,000 元", text)
+        self.assertIn("以實際購買金額為上限，是否補助以主管機關核定為準。", text)
+        self.assertIn("現在要做的事 6 個月內購買", text)
+        self.assertIn(FORM_25, text)
+        self.assertNotIn(NOTICE_FIRST, text)
+        self.assertRegex(main, r'<h2 id="result-title"[^>]*tabindex="-1"[^>]*autofocus')
+
+    # Spec #774 acceptance 13.
+    def test_one_ear_basic_low_income_has_no_form_25_reminder(self):
+        text = _text(self._result(grade=rules.BASIC, ears=rules.ONE, household=rules.LOW))
+        self.assertIn("預估最高補助 2,000 元", text)
+        self.assertNotIn("二十五號表", text)
+
+    def test_cros_skips_one_ear_or_both_and_counts_a_set(self):
+        given = {"certificate": rules.HAS, "progress": rules.NOTICE, "grade": rules.CROS}
+        main = self._main(self._post("grade", **given))
+        self.assertEqual(self._legend(main), "第 4 題 戶籍的福利身分是哪一種？")
+        self.assertNotIn("單耳", main)
+        text = _text(self._result(grade=rules.CROS, household=rules.NEAR_LOW))
+        self.assertIn("預估最高補助 22,500 元", text)
+
+    # Spec #774 acceptance 15.
+    def test_before_the_notice_each_step_says_to_get_it_before_buying(self):
+        for progress, title in (
+            (rules.NO_FORM, "找聽力師做九號表"),
+            (rules.HAS_FORM, "3 個月內送件"),
+            (rules.APPLIED, "等核定公文"),
+        ):
+            with self.subTest(progress=progress):
+                text = _text(self._card(self._result(progress=progress)))
+                self.assertIn(f"現在要做的事 {title}", text)
+                self.assertIn(NOTICE_FIRST, text)
+
+    def test_planning_to_apply_links_to_the_assessment_hospitals(self):
+        card = self._card(self._result(certificate=rules.PLANNING))
+        self.assertIn("現在要做的事 先找醫院做身障鑑定", _text(card))
+        self.assertRegex(card, rf'<a class="btn btn-hero btn-lg[^"]*" href="{HOSPITALS[1]}"')
+        self.assertIn(HOSPITALS[0], card)
+
+    def test_links_in_the_results_lead_somewhere_real(self):
+        mains = [
+            self._result(certificate=rules.PLANNING),
+            *(self._result(progress=progress) for progress in (rules.NO_FORM, rules.NOTICE)),
+        ]
+        links = {link for main in mains for link in re.findall(r'href="(/guide/[^"]+)"', main)}
+        self.assertLessEqual({HOSPITALS[1], "/guide/form-9#issuer-title", "/guide/form-25"}, links)
+        for link in links:
+            path, _, anchor = link.partition("#")
+            with self.subTest(link=link):
+                page = self.client.get(path)
+                self.assertEqual(page.status_code, 200)
+                if anchor:
+                    self.assertIn(f'id="{anchor}"', page.content.decode())
+
+    # Spec #774 acceptance 17.
+    def test_every_result_says_the_young_have_rules_of_their_own(self):
+        for changes in ({}, {"certificate": rules.PLANNING}, {"grade": rules.CROS}):
+            with self.subTest(**changes):
+                card = self._card(self._result(**changes))
+                self.assertIn("18 歲以下或 25 歲以下在學的人另有規定", card)
+
+    def test_the_foot_has_sources_and_the_checked_date_before_and_after(self):
+        for main in (self._main(self.client.get(self.url)), self._result()):
+            foot = main[main.index('class="mt-6 wrap-anywhere guide-sources"') :]
+            self.assertIn("資料來源", foot)
+            self.assertIn("身心障礙者輔具費用補助辦法", foot)
+            self.assertIn("身心障礙者輔具費用補助基準表", foot)
+            self.assertIn("本頁資料查核於 2026/10/23。", foot)
+
+    def test_the_result_has_one_hero_card_and_no_solid_button(self):
+        main = self._result()
+        self.assertEqual(main.count('class="hero-card"'), 1)
+        self.assertNotIn("btn-primary", main)
+        self.assertIn("上一題", main)
+        self.assertRegex(main, rf'<a class="btn btn-outline-primary[^"]*" href="{self.url}">')
+
+    def test_headings_never_skip_a_level(self):
+        for main in (self._main(self.client.get(self.url)), self._result()):
+            levels = [int(level) for level in re.findall(r"<h([1-6])\b", main)]
+            for before, after in pairwise(levels):
+                self.assertLessEqual(after, before + 1, levels)
+
+    # Spec #774 acceptance 11: never stored, never in the address, nothing kept.
+    def test_every_response_is_marked_never_to_be_stored(self):
+        for response in (
+            self.client.get(self.url),
+            self._post("certificate", certificate=rules.HAS),
+            self._post("household", **_answers()),
+        ):
+            self.assertIn("no-store", response.get("Cache-Control", ""))
+
+    def test_sending_keeps_nothing(self):
+        with self.assertNumQueries(0):
+            response = self._post("household", **_answers())
+        self.assertEqual(response.request["QUERY_STRING"], "")
+        self.assertEqual(response.request["PATH_INFO"], self.url)
+        self.assertNotIn("sessionid", response.cookies)
+        self.assertEqual(dict(self.client.session), {})
+
+    def test_a_visitor_can_send_it_through_the_csrf_check(self):
+        client = Client(enforce_csrf_checks=True)
+        self.assertEqual(client.post(self.url, {"certificate": rules.HAS}).status_code, 403)
+        page = client.get(self.url).content.decode()
+        token = re.search(r'name="csrfmiddlewaretoken" value="([^"]+)"', page).group(1)
+        sent = {"shown": "certificate", "certificate": rules.HAS, "csrfmiddlewaretoken": token}
+        self.assertIn("補助申請辦到哪一步了？", client.post(self.url, sent).content.decode())
+
+    # Spec #774 acceptance 19.
+    def test_it_is_a_public_page_in_the_sitemap_with_its_own_title(self):
+        response = self.client.get(self.url)
+        content = response.content.decode()
+        self.assertNotIn("X-Robots-Tag", response)
+        title = "助聽器補助可以拿多少？回答幾題算算看｜聽伴"  # noqa: RUF001
+        self.assertRegex(content, rf"<title>\s*{title}\s*</title>")
+        description = (
+            "回答有沒有身障證明、辦到哪一步、助聽器等級和福利身分，"
+            "算算看補助最多有多少，以及現在要做什麼。不用登入，回答不會留下來。"
+        )
+        self.assertIn(f'<meta name="description" content="{description}">', content)
+        sitemap = self.client.get("/sitemap.xml").content.decode()
+        self.assertIn("<loc>https://testserver/guide/subsidy</loc>", sitemap)
+
+    # Reads no one's data, so it can stay public: nothing in the view touches request.user.
+    def test_view_never_reads_the_user(self):
+        source = inspect.getsource(guide.guide_subsidy)
+        self.assertNotIn("request.user", source)
+        self.assertNotIn("login_required", source)
+
+
+class SubsidyEstimateSignedInTests(TestCase):
+    """Spec #774 acceptance 18: an estimate signed in changes none of the user's records."""
+
+    def setUp(self):
+        self.user = consented_user(username="estimate_private")
+        AidAndSubsidy.objects.create(user=self.user, certificate=Certificate.YES, form_9_done=False)
+        GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
+        self.client.force_login(self.user)
+
+    def _records(self):
+        return (
+            list(AidAndSubsidy.objects.filter(user=self.user).values()),
+            list(GuideChapterView.objects.filter(user=self.user).values()),
+            list(Consent.objects.filter(user=self.user).values()),
+        )
+
+    def _home(self):
+        token = re.compile(r'name="csrfmiddlewaretoken" value="[^"]+"')
+        main = test_family_zone._main(self.client.get(reverse("index")).content.decode())
+        return token.sub("", main)
+
+    def test_walking_it_through_changes_no_record_and_not_the_home_page(self):
+        before, home = self._records(), self._home()
+        url = reverse("guide_subsidy")
+        self.assertEqual(self.client.get(url).status_code, 200)
+        answers = _answers(certificate=rules.PLANNING, grade=rules.ADVANCED, household=rules.LOW)
+        given = {}
+        for name, value in answers.items():
+            given[name] = value
+            self.assertEqual(self.client.post(url, {"shown": name, **given}).status_code, 200)
+        self.assertEqual(self.client.post(url, {**answers, "back": "result"}).status_code, 200)
+        self.assertEqual(self._records(), before)
+        self.assertEqual(self._home(), home)
+
+    def test_a_user_who_has_not_agreed_yet_can_use_it(self):
+        self.client.force_login(User.objects.create_user(username="estimate_old"))
+        self.assertEqual(self.client.get(reverse("guide_subsidy")).status_code, 200)

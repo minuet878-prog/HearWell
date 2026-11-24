@@ -13883,6 +13883,110 @@ class FamilySubsidyCheckTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSe
             assert_sizes()
 
 
+class SubsidyEstimateTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#775 (spec #774): 補助引導與試算 in a real browser, one question a page by plain POST."""
+
+    PATH = "/guide/subsidy"
+    # Spec #774 acceptance 12's case, question by question.
+    ANSWERS = (
+        ("有聽覺機能的身心障礙證明嗎？", "有"),
+        ("補助申請辦到哪一步了？", "已經收到核定公文"),
+        ("預計買哪一級的助聽器？", "中階型"),
+        ("預計配單耳還是雙耳？", "雙耳"),
+        ("戶籍的福利身分是哪一種？", "一般戶"),
+    )
+
+    def group(self):
+        """The one question in the form (the sources' fold below is a group too)."""
+        group = self.main().locator("form").get_by_role("group")
+        expect(group).to_have_count(1)
+        return group
+
+    def answer(self, title, words):
+        expect(self.group()).to_have_accessible_name(re.compile(re.escape(title)))
+        self.group().get_by_role("radio", name=words, exact=True).check()
+        self.main().get_by_role("button", name="下一題").click()
+        self.page.wait_for_load_state("load")
+
+    def assert_every_target_is_big_enough(self):
+        for target in (
+            *self.main().locator("label").all(),
+            *self.main().locator("a:not(.guide-sources a)").all(),
+            *self.main().get_by_role("button").all(),
+        ):
+            self.assertGreaterEqual(target.bounding_box()["height"], 44)
+
+    # Spec #774 acceptance 11, 12, 20: no script, each question alone with focus on its title,
+    # 上一題 once, the address the page's own all along, and the result focused at the end.
+    def test_walks_to_the_result_without_javascript(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False, java_script_enabled=False)
+            expect(self.main().get_by_role("heading", level=1)).to_have_text("補助引導與試算")
+            expect(self.main().get_by_role("button", name="上一題")).to_have_count(0)
+            sent = []
+            self.page.on("request", lambda request: sent.append(request))
+
+            for number, (title, words) in enumerate(self.ANSWERS[:2], start=1):
+                self.answer(title, words)
+                expect(self.group()).to_contain_text(f"第 {number + 1} 題")
+                expect(self.page.locator("#question-title")).to_be_focused()
+
+            # 上一題 goes back with the answer still chosen.
+            self.main().get_by_role("button", name="上一題").click()
+            self.page.wait_for_load_state("load")
+            expect(self.page.locator("#question-title")).to_have_text(self.ANSWERS[1][0])
+            expect(self.page.locator("#question-title")).to_be_focused()
+            expect(self.group().get_by_role("radio", name="已經收到核定公文")).to_be_checked()
+
+            for title, words in self.ANSWERS[1:]:
+                self.answer(title, words)
+
+            result = self.page.locator("#result-title")
+            expect(result).to_be_focused()
+            card = self.main().locator(".hero-card")
+            expect(card).to_contain_text("10,000 元")
+            expect(card).to_contain_text("以實際購買金額為上限，是否補助以主管機關核定為準。")
+            expect(card).to_contain_text("6 個月內購買")
+            expect(card).to_contain_text("二十五號表")
+            expect(card).to_contain_text("18 歲以下或 25 歲以下在學的人另有規定")
+            self.assertTrue(sent)
+            for request in sent:
+                if request.resource_type == "document":
+                    self.assertEqual(request.method, "POST")
+                    self.assertEqual(request.url, f"{self.live_server_url}{self.PATH}")
+            expect(self.page).to_have_url(f"{self.live_server_url}{self.PATH}")
+
+            self.main().get_by_role("link", name="重新試算").click()
+            expect(self.group()).to_contain_text("第 1 題")
+            expect(self.main().get_by_role("radio", checked=True)).to_have_count(0)
+
+    def test_planning_to_apply_leads_to_the_hospital_list(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.answer(self.ANSWERS[0][0], "打算申請或正在申請鑑定")
+            for title, words in self.ANSWERS[1:]:
+                self.answer(title, words)
+            self.main().get_by_role("link", name="看各縣市的鑑定醫院").click()
+            expect(self.page).to_have_url(
+                f"{self.live_server_url}/guide/assessment#hospitals-title"
+            )
+
+    # #775: readable at 320px and 200% text, a question and the result.
+    def test_phone_at_double_text_fits_with_big_targets(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, (320, 640), signed_in=False)
+            self.answer(*self.ANSWERS[0])
+            self.assert_every_target_is_big_enough()
+            self.assert_fits_a_phone_at_double_text_size(f"{self.PATH} with a question")
+            self.assert_every_target_is_big_enough()
+            self.double_text(on=False)
+            for title, words in self.ANSWERS[1:]:
+                self.answer(title, words)
+            self.assert_every_target_is_big_enough()
+            self.assert_fits_a_phone_at_double_text_size(f"{self.PATH} with a result")
+            self.assert_every_target_is_big_enough()
+
+
 class FamilyAdjustingTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """#434 (spec #426): 陪長輩適應 in a real browser: pick a stage, change it, and the survey's
     link under them stays whichever is picked."""

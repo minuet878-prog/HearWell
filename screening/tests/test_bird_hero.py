@@ -118,6 +118,7 @@ class EveryPageTests(TestCase):
             reverse("learn"),
             reverse("guide"),
             *(reverse("guide_chapter", args=[chapter.slug]) for chapter in GUIDE_CHAPTERS),
+            reverse("guide_subsidy"),
             reverse("family_guide"),
             reverse("family_talk"),
             reverse("family_reluctant"),

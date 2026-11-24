@@ -788,6 +788,23 @@ class SubsidyCheckForm(NoLabelSuffix, forms.Form):
             )
 
 
+class SubsidyEstimateForm(NoLabelSuffix, forms.Form):
+    # #775 (spec #774): the one subsidy_estimate.py question on screen. Not marked required for
+    # the browser, as 補助檢核: 上一題 is sent without an answer, and one left out is said on the
+    # page itself.
+    use_required_attribute = False
+
+    def __init__(self, question, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        unanswered = "請選一個答案。"
+        self.fields[question.name] = forms.ChoiceField(
+            label=question.label,
+            choices=question.choices,
+            widget=forms.RadioSelect(attrs={"class": "choice-group choice-stack"}),
+            error_messages={"required": unanswered, "invalid_choice": unanswered},
+        )
+
+
 # Spec #633 (#637): one address may send 5 意見回饋 an hour, counted as the forgot-password page
 # counts (attempts, add_attempt); the whole site keeps at most 100 a day, Taipei time.
 FEEDBACKS_PER_ADDRESS = 5

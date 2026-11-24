@@ -7,8 +7,9 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
+from django.views.decorators.cache import never_cache
 
-from screening import assessment_hospitals, device_centres, models
+from screening import assessment_hospitals, device_centres, models, subsidy_estimate
 from screening.audiogram import FittingAdvice, over_mild
 from screening.fitting_route import (
     AUDIOGRAM,
@@ -22,7 +23,7 @@ from screening.fitting_route import (
     subsidy_declined,
     subsidy_stops_shown,
 )
-from screening.forms import STOP_QUESTIONS
+from screening.forms import STOP_QUESTIONS, SubsidyEstimateForm
 from screening.main_flow import get_user_state
 from screening.models import Ear, Questionnaire
 from screening.questionnaires.ssq12_tw import CODE as SSQ12
@@ -573,3 +574,53 @@ def route_answer(request):
         chapter = next(c for c in GUIDE_CHAPTERS if c.slug == stop)
         return _chapter_page(request, chapter, form)
     return _guide_page(request, edit=stop, question=form)
+
+
+@never_cache
+def guide_subsidy(request):
+    # #775 (spec #774, ADR 0083): 補助引導與試算, open without logging in (CODING_STANDARDS.md
+    # 2): it reads and keeps no one's data, signed in or not. The answers so far come in this
+    # POST and go back in this response as hidden fields, with no redirect, session or database;
+    # never_cache keeps 上一頁 on a shared phone from showing them.
+    sent = request.POST
+    answers, step = {}, subsidy_estimate.estimate({})
+    while isinstance(step, subsidy_estimate.Question) and step.name in sent:
+        form = SubsidyEstimateForm(step, sent)
+        if not form.is_valid():
+            break
+        answers |= form.cleaned_data
+        step = subsidy_estimate.estimate(answers)
+    if "back" in sent:
+        # 上一題: the question before the one shown (or before the result), its answer chosen.
+        names = list(answers)
+        if sent["back"] in names:
+            names = names[: names.index(sent["back"])]
+        initial = {names[-1]: answers[names[-1]]} if names else {}
+        answers = {name: answers[name] for name in names[:-1]}
+        step = subsidy_estimate.estimate(answers)
+        form = SubsidyEstimateForm(step, initial=initial)
+    elif isinstance(step, subsidy_estimate.Question):
+        # The question sent without an answer (or a made-up one) says so; the next comes fresh.
+        asked = step.name in sent or sent.get("shown") == step.name
+        form = SubsidyEstimateForm(step, sent if asked else None)
+    is_result = isinstance(step, subsidy_estimate.Result)
+    return render(
+        request,
+        "screening/guide/subsidy.html",
+        {
+            "question": None if is_result else step,
+            "form": None if is_result else form,
+            "result": step if is_result else None,
+            "answers": answers,
+            "number": len(answers) + 1,
+            # After a press, focus goes to what is new: the question's title or the result's.
+            "moved": request.method == "POST",
+            "intro": subsidy_estimate.INTRO,
+            "amount_label": subsidy_estimate.AMOUNT_LABEL,
+            "amount_note": subsidy_estimate.AMOUNT_NOTE,
+            "next_step_label": subsidy_estimate.NEXT_STEP_LABEL,
+            "young_note": subsidy_estimate.YOUNG_NOTE,
+            "sources": subsidy_estimate.SOURCES,
+            "checked_on": subsidy_estimate.CHECKED_ON,
+        },
+    )
