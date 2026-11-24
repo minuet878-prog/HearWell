@@ -298,12 +298,24 @@
      the animation shorthand: that would set the play state back to running and so outrank the
      hold until in view. */
   @media (prefers-reduced-motion: no-preference) {
-    /* #480: the 目前這一站's mark is on its card's top, not the whole stop, which the to-dos and
-       the question under it made too tall to be in view on arrival; so the ring on its number,
-       outside the mark now, is held here too. */
-    :root.play-in-view .route:has([data-play-in-view]:not([data-in-view])) .route-number,
-    :root.play-in-view .route:has([data-play-in-view]:not([data-in-view])) .route-check path,
-    :root.play-in-view .route:has([data-play-in-view]:not([data-in-view])) .route-stop::after {
+    /* #480: the 目前這一站's ring waits for its card's top, not the whole stop, which the to-dos
+       and the question under it made too tall to be in view on arrival. The walked ticks and blue
+       line wait only while both the first stop and the 目前這一站 are out of view, so visible done
+       stops draw right away instead of sitting as empty circles while the 目前這一站 is below the
+       fold. */
+    :root.play-in-view
+      .route-stop.is-here:has(.route-card-main[data-play-in-view]:not([data-in-view]))
+      .route-number,
+    :root.play-in-view
+      .route:has(.route-stop:first-child .route-box[data-play-in-view]:not([data-in-view])):has(
+        .route-card-main[data-play-in-view]:not([data-in-view])
+      )
+      .route-check path,
+    :root.play-in-view
+      .route:has(.route-stop:first-child .route-box[data-play-in-view]:not([data-in-view])):has(
+        .route-card-main[data-play-in-view]:not([data-in-view])
+      )
+      .route-stop::after {
       animation-play-state: paused;
     }
 

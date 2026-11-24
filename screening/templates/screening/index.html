@@ -101,7 +101,7 @@
             <span class="journey-dot">{{ forloop.counter }}</span>
             {% endif %}
             <details class="journey-about">
-                <summary><span class="journey-step-body"><span>{{ step.title }}</span>{% if step.state == "current" %} <span class="journey-now-label">現在</span>{% elif step.state == "done" %}<span class="visually-hidden">已完成</span> <span class="journey-when">{{ step.done_on|date:"Y/m/d" }}</span>{% elif step.ineligible %} <span class="journey-when">不符資格</span>{% elif step.state == "not-needed" %} <span class="journey-when">目前不需要</span>{% endif %}</span><span class="journey-about-arrow" aria-hidden="true">›</span></summary>
+                <summary{% if forloop.first and journey.current > 1 %} data-play-in-view{% endif %}><span class="journey-step-body"><span>{{ step.title }}</span>{% if step.state == "current" %} <span class="journey-now-label">現在</span>{% elif step.state == "done" %}<span class="visually-hidden">已完成</span> <span class="journey-when">{{ step.done_on|date:"Y/m/d" }}</span>{% elif step.ineligible %} <span class="journey-when">不符資格</span>{% elif step.state == "not-needed" %} <span class="journey-when">目前不需要</span>{% endif %}</span><span class="journey-about-arrow" aria-hidden="true">›</span></summary>
                 {# Spec #741 (the canvas): a done step opens to its stamp, step 3 also to its audiogram's result; any other to what it is. Then its entry cards, if any. #}
                 <div class="journey-about-body">
                     {% if step.state == "done" %}
