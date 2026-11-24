@@ -3530,8 +3530,20 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             # #294: the card says what was kept, and its button goes back to the route.
             kept = self.main().get_by_role("region", name="已記下：打算申請或正在申請鑑定")
             expect(kept).to_be_in_viewport()
-            expect(kept.get_by_role("link", name="修改身障鑑定與鑑定醫院的回答")).to_be_visible()
             self.assert_fits_a_phone_at_double_text_size("/guide/assessment answered card")
+            # #777 (spec #774 acceptance 21): 修改 opens the question on the chapter itself,
+            # the current answer ticked, and 不用改了 closes it again.
+            kept.get_by_role("link", name="修改身障鑑定與鑑定醫院的回答").click()
+            expect(self.page).to_have_url(
+                f"{self.live_server_url}/guide/assessment?edit=1#stop-question"
+            )
+            kept = self.main().get_by_role("region", name="已記下：打算申請或正在申請鑑定")
+            group = kept.get_by_role("group", name=question)
+            expect(group.get_by_role("button", name="正在申請", pressed=True)).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/guide/assessment editing in place")
+            kept.get_by_role("link", name="不用改了").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide/assessment#stop-question")
+            expect(kept.get_by_role("group", name=question)).to_have_count(0)
             kept.get_by_role("link", name="回選配路線看下一站").click()
 
             expect(self.page).to_have_url(f"{self.live_server_url}/guide#contents-title")
@@ -3621,6 +3633,22 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             here = self.main().locator('[aria-current="step"]')
             expect(here).to_contain_text("助聽器的種類與價格")
             expect(here).to_contain_text("收到核定通知後 6 個月內要買。")
+
+            # #777 (spec #774 acceptance 22): form 9's chapter goes on to the notice, and its
+            # 修改 opens the three questions there; answering comes back to it.
+            self.page.goto(f"{self.live_server_url}/guide/form-9")
+            card = self.main().get_by_role("region", name="已記下：九號表完成了")
+            expect(card.get_by_role("heading", name="核定公文：雙耳、中階型")).to_be_visible()
+            card.get_by_role("link", name="修改核定公文的回答").click()
+            expect(self.page).to_have_url(
+                f"{self.live_server_url}/guide/form-9?edit=notice#stop-notice"
+            )
+            for group in ("收到核定公文了嗎？", "核定的是單耳還是雙耳？", "補助的等級是？"):
+                expect(card.get_by_role("group", name=group)).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/guide/form-9 editing the notice")
+            card.get_by_role("button", name="單耳").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide/form-9#stop-notice")
+            expect(card.get_by_role("heading", name="核定公文：單耳、中階型")).to_be_visible()
 
     # #295 (spec #291 e2e, acceptance 11, 12, 18, 27): the latest questionnaire answered
     # wearing hearing aids, so 您在這裡 is 配戴之後 and it asks the ear and the subsidy too; the

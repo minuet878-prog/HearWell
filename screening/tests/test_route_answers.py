@@ -341,7 +341,8 @@ class AnsweredCardTests(TestCase):
                 card = self.card(slug)
                 self.assertIn(f"{CARD_TITLE}已記下：{answer}</h2>", card)
                 self.assertNotIn("<fieldset", card)
-                edit = reverse("guide") + f"?edit={slug}#stop-{slug}"
+                # #777: 修改 opens it again on the chapter itself.
+                edit = reverse("guide_chapter", args=[slug]) + "?edit=1#stop-question"
                 self.assertIn(f'<a href="{edit}" aria-label="修改{title}的回答">修改</a>', card)
                 self.assertIn(
                     f'<a class="btn btn-primary btn-lg w-full mt-2" '
@@ -704,11 +705,12 @@ class Form9AndNoticeRouteTests(TestCase):
         self.assertContains(response, 'class="text-danger field-error')
         self.assertEqual(self.aid().approved_ears, "")
 
-    def test_the_notice_has_no_chapter_question(self):
+    def test_the_notice_is_asked_at_form_9_s_chapter_once_form_9_is_done(self):
+        # #777 (spec #774 acceptance 22), in place of #294's none: test_chapter_in_place_edit.
+        form_9 = reverse("guide_chapter", args=["form-9"])
+        self.assertNotContains(self.client.get(form_9), self.NOTICE)
         self.at_the_notice()
-        self.assertNotContains(
-            self.client.get(reverse("guide_chapter", args=["form-9"])), self.NOTICE
-        )
+        self.assertContains(self.client.get(form_9), self.NOTICE)
 
     def test_an_answer_not_offered_shows_form_9_again_with_its_error(self):
         response = self.answer("form-9", "form_9_done", "maybe")
@@ -1085,7 +1087,8 @@ class Form25RouteTests(TestCase):
         self.assertRedirects(response, self.CHAPTER, fetch_redirect_response=False)
         card = self.chapter_card()
         self.assertIn(f"{CARD_TITLE}已記下：二十五號表完成了</h2>", card)
-        edit = reverse("guide") + "?edit=form-25#stop-form-25"
+        # #777: 修改 opens it again on the chapter itself.
+        edit = reverse("guide_chapter", args=["form-25"]) + "?edit=1#stop-question"
         label = "修改二十五號表：使用效益驗證的回答"
         self.assertIn(f'<a href="{edit}" aria-label="{label}">修改</a>', card)
 
