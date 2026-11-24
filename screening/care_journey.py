@@ -52,6 +52,7 @@ from screening.scoring import (
     NEXT_SCREENING,
     NEXT_STEP_REASONS,
     NEXT_STOP_NAMES,
+    NOTICE_SO_FAR,
     RECORD_FITTING_DATE,
     RECORD_THE_NOTICE,
     RETEST_BUTTON_TEXT,
@@ -133,6 +134,7 @@ class AnswerCard:
     question: str
     icon: str  # an action_icon.html icon
     choices: tuple[Choice, ...]
+    so_far: str = ""  # the notice's answers before this question (#778)
 
 
 @dataclass(frozen=True)
@@ -507,8 +509,12 @@ def _stop_card(route, questionnaires):
     stop = here_stop(replace(route, stop=route.home_stop))
     slug, aid = stop.slug, route.aid
     if slug in ANSWER_CARDS:
-        question = _answer_card(slug, aid)
-        return JourneyCard(stop.title, "", _way_on(slug, aid), question=question, away=stop.action)
+        question = _answer_card(stop, aid)
+        away = stop.action
+        if question.so_far:
+            # #778: the notice's ears and level are this card's, where a result page leads.
+            away = RECORD_THE_NOTICE, f"{reverse('index')}#journey-question"
+        return JourneyCard(stop.title, "", _way_on(slug, aid), question=question, away=away)
     if slug == "before-you-go":
         return JourneyCard(stop.title, "", (BEFORE_YOU_GO_BUTTON, stop.url))
     if slug == "after-fitting":
@@ -527,17 +533,30 @@ def _stop_card(route, questionnaires):
     return JourneyCard(stop.title, "", (FORM_25_BUTTON, stop.url), date=day)
 
 
-def _answer_card(slug, aid):
-    """The stop's answer card: its question form's field and choices, the kept one chosen."""
-    question, icon, words = ANSWER_CARDS[slug]
-    form_class = STOP_QUESTIONS[slug][0]
-    name = next(iter(form_class.base_fields))
+def _answer_card(stop, aid):
+    """The stop's answer card: the question the route asks there now (stop.questions, the
+    notice's three one at a time, #294), its field and choices, the kept one chosen."""
+    question, icon, words = ANSWER_CARDS[stop.slug]
+    form = stop.questions[0]
+    name = next(iter(form.fields))
+    field = form.fields[name]
     kept = "" if aid is None else str(getattr(aid, name))
+    if type(form) is STOP_QUESTIONS[stop.slug][0]:
+        choices = tuple(
+            Choice(str(value), *words[str(value)], chosen=str(value) == kept)
+            for value, _ in field.choices
+        )
+        return AnswerCard(stop.slug, name, question, icon, choices)
+    # #778 (spec #774 acceptance 23): the notice's ears, then its level, in the form's own
+    # words, the kept one ticked; above them what is answered so far.
     choices = tuple(
-        Choice(str(value), *words[str(value)], chosen=str(value) == kept)
-        for value, _ in form_class.base_fields[name].choices
+        Choice(value, text, "", "yes" if value == kept else "", chosen=value == kept)
+        for value, text in field.choices
     )
-    return AnswerCard(slug, name, question, icon, choices)
+    so_far = [NOTICE_SO_FAR]
+    if name == "level":
+        so_far.append(aid.get_approved_ears_display())
+    return AnswerCard(stop.slug, name, field.label, icon, choices, "、".join(so_far))
 
 
 def _way_on(slug, aid):
@@ -549,9 +568,6 @@ def _way_on(slug, aid):
         return FIND_AN_ASSESSMENT_HOSPITAL, hospitals
     if slug == "form-9" and aid.form_9_done is False:
         return FORM_9_STEPS, reverse("guide_chapter", args=["form-9"])
-    if slug == "notice" and aid.notice_received is True:
-        # The ears and the level, asked on my guide where the notice is the 目前這一站.
-        return RECORD_THE_NOTICE, f"{reverse('guide')}#stop-notice"
     if slug == "notice" and aid.notice_received is False:
         return TYPES_AND_PRICES_FIRST, reverse("guide_chapter", args=[TYPES_AND_PRICES])
     return None
@@ -560,10 +576,11 @@ def _way_on(slug, aid):
 def _done_card(slug, route, card):
     """Grill Q13: the answer card of the stop just finished, stamped, and 接著往下一站 the stop
     card is at now, pressed to move on."""
-    title = here_stop(replace(route, stop=slug)).title
-    question = _answer_card(slug, route.aid)
+    stop = here_stop(replace(route, stop=slug))
+    # The question last answered, without what was answered before it (#778's mockup).
+    question = replace(_answer_card(stop, route.aid), so_far="")
     moved_on = NEXT_STOP_NAMES.get(route.home_stop, card.title)
-    return JourneyCard(title, "", question=question, moved_on=moved_on)
+    return JourneyCard(stop.title, "", question=question, moved_on=moved_on)
 
 
 def next_step(user, today):

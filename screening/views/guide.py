@@ -514,11 +514,17 @@ def _next_chapter(chapter, aid):
     return next((chapters[slug] for slug in later if slug in chapters and slug in on_route), None)
 
 
-def _chapter_page(request, chapter, question=None):
+# #777 (spec #774 acceptance 22): the notice, which has no chapter, is asked at form 9's foot
+# once form 9 is done.
+NOTICE_CHAPTER = "form-9"
+
+
+def _chapter_page(request, chapter, sent=None):
     """A chapter, with its stop's question at the foot (#293) while a signed-in, consented
     user has not answered it, and 已記下 with the answer once they have (#294), but neither
-    where the stop is 不適用 (#291 review) or a 補助站 after 沒有 (#596); question is a form sent
-    back with its errors."""
+    where the stop is 不適用 (#291 review) or a 補助站 after 沒有 (#596). ?edit=1 opens the
+    answered question again in place, ?edit=notice the notice's (#777); sent is (stop, form),
+    a form sent back with its errors."""
     user = request.user
     aid = models.AidAndSubsidy.for_user(user) if user.is_authenticated else None
     context = {"chapter": chapter, "next_chapter": _next_chapter(chapter, aid)}
@@ -526,18 +532,42 @@ def _chapter_page(request, chapter, question=None):
         context.update(chapter.extra_context(request))
     asked = chapter.slug in STOP_QUESTIONS and user.is_authenticated and user.has_consented()
     declined = subsidy_declined(aid) and chapter.slug in SUBSIDY_STOPS
-    if asked and (chapter.slug in not_applicable_stops(aid) or declined):
-        asked, question = False, None
-    if question is None and asked:
-        context["answered"] = _answer(chapter.slug, aid)
-        if not context["answered"]:
-            question = STOP_QUESTIONS[chapter.slug][0](instance=aid)
-    context["question"] = question
+    if asked and not (chapter.slug in not_applicable_stops(aid) or declined):
+        edit = request.GET.get("edit")
+        stop, form = sent or (None, None)
+        own = form if stop == chapter.slug else None
+        context["foot"] = _foot(chapter.slug, aid, edit == "1", own)
+        form_9_done = aid is not None and aid.form_9_done
+        if chapter.slug == NOTICE_CHAPTER and form_9_done and subsidy_stops_shown(aid):
+            sent_here = form if stop == "notice" else None
+            context["notice"] = notice = _foot("notice", aid, edit == "notice", sent_here)
+            if aid.notice_received and not notice["halfway"]:
+                notice["answer"] = f"核定公文：{notice['answer']}"  # 核定公文：雙耳、中階型
     response = render(request, chapter.template, context)
     if user.is_authenticated:
         # Whether the question shows depends on this account's answers.
         add_never_cache_headers(response)
     return response
+
+
+def _foot(slug, aid, editing, sent):
+    """A stop at a chapter's foot: its answer in short, and the questions shown open: sent, a
+    form sent back with its errors; editing, every one asked so far (#777); else the next one
+    while unanswered or halfway, the notice received without its ears or level (#294). An
+    answered stop with its questions open, not halfway, is being edited."""
+    answer = _answer(slug, aid)
+    reached = _reached(slug, aid)
+    halfway = slug == "notice" and aid.notice_received and not (aid.approved_ears and aid.level)
+    if sent is not None:
+        questions = (sent,)
+    elif editing and answer:
+        questions = tuple(form_class(instance=aid) for form_class in reached)
+    elif not answer or halfway:
+        questions = (reached[-1](instance=aid),)
+    else:
+        questions = ()
+    editing = bool(answer and questions) and not halfway
+    return {"answer": answer, "questions": questions, "halfway": halfway, "editing": editing}
 
 
 @form_address
@@ -570,9 +600,12 @@ def route_answer(request):
             if done_now:
                 request.session[DONE_NOW] = stop
         return HttpResponseRedirect(next_url or f"{reverse('guide')}#stop-{stop}")
-    if urlsplit(next_url).path == reverse("guide_chapter", args=[stop]):
-        chapter = next(c for c in GUIDE_CHAPTERS if c.slug == stop)
-        return _chapter_page(request, chapter, form)
+    # Sent from a chapter's foot, its own stop's or (#777) the notice at form 9's.
+    path = urlsplit(next_url).path
+    for chapter in GUIDE_CHAPTERS:
+        if path == reverse("guide_chapter", args=[chapter.slug]):
+            if stop == chapter.slug or (stop, chapter.slug) == ("notice", NOTICE_CHAPTER):
+                return _chapter_page(request, chapter, (stop, form))
     return _guide_page(request, edit=stop, question=form)
 
 

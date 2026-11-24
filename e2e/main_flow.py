@@ -3530,8 +3530,20 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             # #294: the card says what was kept, and its button goes back to the route.
             kept = self.main().get_by_role("region", name="已記下：打算申請或正在申請鑑定")
             expect(kept).to_be_in_viewport()
-            expect(kept.get_by_role("link", name="修改身障鑑定與鑑定醫院的回答")).to_be_visible()
             self.assert_fits_a_phone_at_double_text_size("/guide/assessment answered card")
+            # #777 (spec #774 acceptance 21): 修改 opens the question on the chapter itself,
+            # the current answer ticked, and 不用改了 closes it again.
+            kept.get_by_role("link", name="修改身障鑑定與鑑定醫院的回答").click()
+            expect(self.page).to_have_url(
+                f"{self.live_server_url}/guide/assessment?edit=1#stop-question"
+            )
+            kept = self.main().get_by_role("region", name="已記下：打算申請或正在申請鑑定")
+            group = kept.get_by_role("group", name=question)
+            expect(group.get_by_role("button", name="正在申請", pressed=True)).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/guide/assessment editing in place")
+            kept.get_by_role("link", name="不用改了").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide/assessment#stop-question")
+            expect(kept.get_by_role("group", name=question)).to_have_count(0)
             kept.get_by_role("link", name="回選配路線看下一站").click()
 
             expect(self.page).to_have_url(f"{self.live_server_url}/guide#contents-title")
@@ -3621,6 +3633,22 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             here = self.main().locator('[aria-current="step"]')
             expect(here).to_contain_text("助聽器的種類與價格")
             expect(here).to_contain_text("收到核定通知後 6 個月內要買。")
+
+            # #777 (spec #774 acceptance 22): form 9's chapter goes on to the notice, and its
+            # 修改 opens the three questions there; answering comes back to it.
+            self.page.goto(f"{self.live_server_url}/guide/form-9")
+            card = self.main().get_by_role("region", name="已記下：九號表完成了")
+            expect(card.get_by_role("heading", name="核定公文：雙耳、中階型")).to_be_visible()
+            card.get_by_role("link", name="修改核定公文的回答").click()
+            expect(self.page).to_have_url(
+                f"{self.live_server_url}/guide/form-9?edit=notice#stop-notice"
+            )
+            for group in ("收到核定公文了嗎？", "核定的是單耳還是雙耳？", "補助的等級是？"):
+                expect(card.get_by_role("group", name=group)).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/guide/form-9 editing the notice")
+            card.get_by_role("button", name="單耳").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide/form-9#stop-notice")
+            expect(card.get_by_role("heading", name="核定公文：單耳、中階型")).to_be_visible()
 
     # #295 (spec #291 e2e, acceptance 11, 12, 18, 27): the latest questionnaire answered
     # wearing hearing aids, so 您在這裡 is 配戴之後 and it asks the ear and the subsidy too; the
@@ -4046,6 +4074,47 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     # #751: the card is the hero card on top, its title an h2.
                     expect(card.get_by_role("heading", level=2)).to_contain_text(next_stop)
                     expect(card.locator(".done-stamp")).to_have_count(0)
+
+    # #778 (spec #774 acceptance 23): the notice's three on the home page's card, one at a time
+    # without JavaScript on a 320px phone, the focus on each new question, never via my guide.
+    def test_answering_the_notice_s_three_on_the_home_card(self):
+        user = User.objects.get(username="guide_e2e")
+        self.my_guide_opened()
+        AidAndSubsidy.objects.create(user=user, certificate="yes", form_9_done=True)
+        self.context = self.browser.new_context(
+            java_script_enabled=False, viewport={"width": 320, "height": 640}
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.addCleanup(self.context.close)
+        self.page = self.context.new_page()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            card = self.main().locator(".journey-card")
+            expect(card.get_by_role("heading", level=2)).to_have_text("等待核定公文")
+            card.get_by_role("button", name="是 已經收到").click()
+
+            expect(self.page).to_have_url(f"{self.live_server_url}/#journey-question")
+            ears = card.get_by_role("group", name="核定的是單耳還是雙耳？")
+            expect(ears).to_be_focused()
+            expect(card.locator(".answer-card-so-far")).to_have_text("✓ 已經收到核定公文")
+            self.assert_fits_a_phone_at_double_text_size("/ the notice's ears")
+            ears.get_by_role("button", name="雙耳", exact=True).click()
+
+            level = card.get_by_role("group", name="補助的等級是？")
+            expect(level).to_be_focused()
+            expect(card.locator(".answer-card-so-far")).to_have_text("✓ 已經收到核定公文、雙耳")
+            self.assert_fits_a_phone_at_double_text_size("/ the notice's level")
+            level.get_by_role("button", name="中階型", exact=True).click()
+
+            expect(self.page).to_have_url(f"{self.live_server_url}/?done=notice#journey-now")
+            expect(card.locator(".done-stamp")).to_have_text("已完成")
+            chosen = card.get_by_role("button", name="中階型", exact=True)
+            expect(chosen).to_have_attribute("aria-pressed", "true")
+            card.get_by_role("link", name="接著往下一站：去找聽力師之前").click()
+            expect(card.get_by_role("heading", level=2)).to_have_text("去找聽力師之前")
+        aid = AidAndSubsidy.objects.get(user=user)
+        self.assertEqual((aid.notice_received, aid.approved_ears, aid.level), (True, "both", "mid"))
 
     # #258: the 目前這一站's ring lights only when motion is welcome. This user has answered
     # nothing, so the stop is the assessment (ADR 0074). #341 (ADR 0029): it plays once the

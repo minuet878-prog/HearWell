@@ -19,6 +19,7 @@ from screening.care_journey import (
     JourneyCard,
     NextScreening,
     care_journey,
+    next_step,
 )
 from screening.fitting_route import GUIDE_PAGE, HOSPITAL_SEARCH, fitting_state
 from screening.models import (
@@ -508,6 +509,20 @@ class RouteStepTests(CareJourneyTestCase):
         self.assertEqual(card.title, "等待核定公文")
         self.assertIsNone(card.button)
         self.assertEqual(card.question.question, "您收到核定公文了嗎？")
+
+    def test_the_notice_received_the_result_pages_go_to_the_card_asking_the_rest(self):
+        # #778: the ears and the level are asked on the home page's card, so a result page's
+        # 建議下一步 keeps its words and leads there, not to my guide.
+        self.aid(certificate=Certificate.YES, form_9_done=True, notice_received=True)
+        card = self.journey().card
+        self.assertEqual(card.question.question, "核定的是單耳還是雙耳？")
+        self.assertIsNone(card.button)
+        self.assertEqual(card.away, ("記下核定的耳朵與等級", "/#journey-question"))
+        step = next_step(self.user, TODAY)
+        self.assertEqual(
+            (step.card.title, step.card.href, step.button),
+            ("等待核定公文", "/#journey-question", "記下核定的耳朵與等級"),
+        )
 
 
 class WearingTests(CareJourneyTestCase):
