@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>助聽器選配與補助 — 引導卡片四版比較</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 16px 20px 24px;
+      font-family: "Noto Sans TC", -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", sans-serif;
+      background: var(--background, #eef1f6);
+      color: var(--foreground, #1e293b);
+      line-height: 1.45;
+    }
+
+    .sheet {
+      max-width: 1680px;
+      margin: 0 auto;
+    }
+
+    .sheet-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 14px;
+      margin-bottom: 18px;
+      border-bottom: 1px solid var(--card-border, #cbd5e1);
+    }
+
+    .sheet-title {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .sheet-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ctrl-pill {
+      padding: 6px 12px;
+      min-height: 36px;
+      border-radius: 8px;
+      border: 1px solid var(--card-border, #cbd5e1);
+      background: var(--card, #ffffff);
+      color: var(--foreground, #1e293b);
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .ctrl-pill[aria-pressed="true"] {
+      background: #1f4e8c;
+      color: #ffffff;
+      border-color: #1f4e8c;
+      font-weight: 700;
+    }
+
+    .phones-strip {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 20px;
+      align-items: flex-start;
+      overflow-x: auto;
+      padding-bottom: 12px;
+      scroll-snap-type: x proximity;
+    }
+
+    .phone-wrap {
+      width: 360px;
+      flex: 0 0 360px;
+      scroll-snap-align: start;
+    }
+
+    .phone-cap {
+      margin-bottom: 8px;
+    }
+
+    .phone-cap-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 2px;
+    }
+
+    .cap-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      border: 1px solid var(--card-border, #cbd5e1);
+      background: var(--card, #ffffff);
+    }
+
+    .cap-tag.is-rec {
+      background: #1f4e8c;
+      color: #ffffff;
+      border-color: #1f4e8c;
+    }
+
+    .cap-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .cap-ref {
+      margin: 0;
+      font-size: 13px;
+      color: var(--muted-foreground, #475569);
+    }
+
+    /* ============ Tingpal 360px Phone Screen ============ */
+    .tp-phone {
+      --tp-primary: #1f4e8c;
+      --tp-primary-dark: #163a69;
+      --tp-soft: #eef3fa;
+      --tp-soft-deep: #dce7f7;
+      --tp-surface: #f4f6f8;
+      --tp-heading: #212529;
+      --tp-body: #343a40;
+      --tp-muted: #4a5460;
+      --tp-line: #e3e7ec;
+      --tp-stamp: #b3261e;
+      --tp-scale: 18px;
+
+      width: 360px;
+      min-height: 700px;
+      background: #ffffff;
+      color: var(--tp-body);
+      border: 1px solid #94a3b8;
+      border-radius: 30px;
+      overflow: hidden;
+      font-size: var(--tp-scale);
+      line-height: 1.45;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tp-phone.is-large {
+      --tp-scale: 22px;
+    }
+
+    .tp-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.65em 0.95em;
+      border-bottom: 1px solid var(--tp-line);
+    }
+
+    .tp-logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4em;
+      font-weight: 700;
+      color: var(--tp-primary);
+    }
+
+    .tp-user {
+      width: 2em;
+      height: 2em;
+      border-radius: 999px;
+      background: var(--tp-soft);
+      color: var(--tp-primary);
+      border: 1.5px solid var(--tp-primary);
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+    }
+
+    .tp-login {
+      padding: 0.2em 0.65em;
+      border-radius: 0.6em;
+      border: 2px solid var(--tp-primary);
+      color: var(--tp-primary);
+      font-weight: 700;
+    }
+
+    .tp-main {
+      padding: 0.8em 0.95em 1.3em;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8em;
+    }
+
+    /* Compact Bird Header */
+    .tp-bird {
+      display: flex;
+      align-items: center;
+      gap: 0.6em;
+    }
+
+    .tp-bird-icon {
+      flex: none;
+      width: 2.6em;
+      height: 2.6em;
+      border-radius: 42% 58% 55% 45% / 48% 42% 58% 52%;
+      background: var(--tp-primary);
+      color: #ffffff;
+      display: grid;
+      place-items: center;
+    }
+
+    .tp-bird-bubble {
+      flex: 1;
+      padding: 0.5em 0.8em;
+      border-radius: 0.95em;
+      background: var(--tp-soft);
+    }
+
+    .tp-bird-title {
+      margin: 0;
+      font-size: 1.25em;
+      font-weight: 700;
+      color: var(--tp-heading);
+    }
+
+    /* Compact Hearing Data Pill Strip (replaces long bottom paragraphs!) */
+    .tp-data-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4em;
+    }
+
+    .tp-data-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3em;
+      padding: 0.28em 0.65em;
+      border-radius: 999px;
+      background: var(--tp-surface);
+      color: var(--tp-heading);
+      font-size: 1em;
+      font-weight: 700;
+    }
+
+    .tp-data-pill.is-blue {
+      background: var(--tp-soft);
+      color: var(--tp-primary);
+    }
+
+    /* Stamp */
+    .tp-stamp {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.22em;
+      padding: 0.08em 0.45em;
+      border: 2px solid var(--tp-stamp);
+      border-radius: 0.38em;
+      background: #ffffff;
+      color: var(--tp-stamp);
+      font-weight: 700;
+      font-size: 1em;
+    }
+
+    /* ============ VERSION 1: Swipeable Story Deck ============ */
+    .v1-deck {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 0.55em;
+    }
+
+    .v1-card {
+      background: var(--tp-primary);
+      color: #ffffff;
+      border-radius: 1.35em;
+      padding: 1.1em 1em 1em;
+      min-height: 15.8em;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      text-align: center;
+    }
+
+    .v1-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .v1-step-chip {
+      padding: 0.15em 0.6em;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.18);
+      font-weight: 700;
+    }
+
+    .v1-art {
+      height: 4.8em;
+      display: grid;
+      place-items: center;
+      margin: 0.35em 0;
+    }
+
+    .v1-title {
+      margin: 0;
+      font-size: 1.45em;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .v1-sub {
+      margin: 0.25em 0 0.7em;
+      color: #ffffff;
+    }
+
+    .tp-white-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.3em;
+      width: 100%;
+      min-height: 2.85em;
+      border-radius: 0.8em;
+      border: 0;
+      background: #ffffff;
+      color: var(--tp-primary);
+      font-size: 1.05em;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .v1-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 0.2em;
+    }
+
+    .v1-arrow {
+      width: 2.5em;
+      height: 2.5em;
+      border-radius: 999px;
+      border: 1.5px solid var(--tp-primary);
+      background: #ffffff;
+      color: var(--tp-primary);
+      font-weight: 700;
+      font-size: 1.05em;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+    }
+
+    .v1-dots {
+      display: flex;
+      gap: 0.38em;
+    }
+
+    .v1-dot {
+      width: 0.55em;
+      height: 0.55em;
+      border-radius: 999px;
+      background: var(--tp-soft-deep);
+    }
+
+    .v1-dot.is-on {
+      width: 1.5em;
+      background: var(--tp-primary);
+    }
+
+    /* Mini 2x3 Visual Topic Grid */
+    .mini-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5em;
+    }
+
+    .mini-tile {
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+      padding: 0.65em 0.65em;
+      min-height: 3.1em;
+      border-radius: 0.85em;
+      background: var(--tp-surface);
+      color: var(--tp-heading);
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .mini-tile svg {
+      flex: none;
+      color: var(--tp-primary);
+    }
+
+    /* ============ VERSION 2: Interactive Decision Wizard Card ============ */
+    .v2-wizard {
+      background: var(--tp-soft);
+      border: 2px solid var(--tp-primary);
+      border-radius: 1.35em;
+      padding: 1.05em 0.95em;
+      display: flex;
+      flex-direction: column;
+      gap: 0.7em;
+    }
+
+    .v2-q-label {
+      margin: 0;
+      color: var(--tp-primary);
+      font-weight: 700;
+    }
+
+    .v2-q-title {
+      margin: 0;
+      font-size: 1.35em;
+      font-weight: 700;
+      color: var(--tp-heading);
+    }
+
+    .v2-choices {
+      display: grid;
+      gap: 0.5em;
+    }
+
+    .v2-choice {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 3em;
+      padding: 0.55em 0.85em;
+      border-radius: 0.85em;
+      border: 1.5px solid #cbd5e1;
+      background: #ffffff;
+      color: var(--tp-heading);
+      font-size: 1.05em;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .v2-choice:hover {
+      border-color: var(--tp-primary);
+    }
+
+    .v2-result-card {
+      background: var(--tp-primary);
+      color: #ffffff;
+      border-radius: 1.35em;
+      padding: 1.1em 1em;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6em;
+      text-align: center;
+    }
+
+    .v2-reset {
+      background: transparent;
+      border: 0;
+      color: var(--tp-primary);
+      font-size: 1em;
+      font-weight: 700;
+      text-decoration: underline;
+      cursor: pointer;
+      padding: 0.3em;
+      align-self: center;
+    }
+
+    /* ============ VERSION 3: Apple Tips Bento Cards ============ */
+    .v3-hero {
+      background: var(--tp-primary);
+      color: #ffffff;
+      border-radius: 1.3em;
+      padding: 0.95em 1em;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.7em;
+    }
+
+    .v3-bento {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.6em;
+    }
+
+    .v3-card {
+      background: var(--tp-surface);
+      border-radius: 1.1em;
+      padding: 0.8em 0.75em;
+      min-height: 6.8em;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    .v3-card.is-highlight {
+      background: var(--tp-soft);
+      border: 2px solid var(--tp-primary);
+    }
+
+    .v3-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.3em;
+    }
+
+    .v3-tag {
+      padding: 0.1em 0.45em;
+      border-radius: 0.45em;
+      background: #ffffff;
+      color: var(--tp-primary);
+      font-weight: 700;
+      font-size: 1em;
+    }
+
+    .v3-name {
+      display: block;
+      color: var(--tp-heading);
+      font-weight: 700;
+      font-size: 1.08em;
+      margin-top: 0.45em;
+    }
+
+    /* ============ VERSION 4: Top Icon Rail + Single Spotlight Card ============ */
+    .v4-rail {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.28em;
+      background: var(--tp-surface);
+      padding: 0.3em;
+      border-radius: 1em;
+    }
+
+    .v4-node {
+      border: 2px solid transparent;
+      background: transparent;
+      border-radius: 0.75em;
+      padding: 0.4em 0.1em;
+      min-height: 3.3em;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.15em;
+      color: var(--tp-muted);
+      font-size: 1em;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .v4-node[aria-selected="true"] {
+      background: #ffffff;
+      color: var(--tp-primary);
+      border-color: var(--tp-primary);
+    }
+
+    .v4-spotlight {
+      flex: 1;
+      background: var(--tp-soft);
+      border-radius: 1.4em;
+      padding: 1.15em 1em;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      text-align: center;
+      gap: 0.65em;
+    }
+
+    .v4-visual-flow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45em;
+      background: #ffffff;
+      padding: 0.75em 0.8em;
+      border-radius: 1em;
+      width: 100%;
+      font-weight: 700;
+      color: var(--tp-heading);
+    }
+
+    .tp-solid-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 2.95em;
+      border-radius: 0.8em;
+      border: 0;
+      background: var(--tp-primary);
+      color: #ffffff;
+      font-size: 1.05em;
+      font-weight: 700;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <header class="sheet-bar">
+      <div>
+        <h1 class="sheet-title">助聽器選配與補助 — 「少字・引導卡片」四版比較</h1>
+        <p class="cap-ref">全部拿掉長篇文字與圓點直線，改用主流 App 引導卡片（可直接點擊卡片內的按鈕／箭頭試玩）</p>
+      </div>
+      <div class="sheet-controls">
+        <button type="button" data-persona="subsidy" class="ctrl-pill" aria-pressed="true">已登入（達 45% 門檻）</button>
+        <button type="button" data-persona="guest" class="ctrl-pill" aria-pressed="false">未登入／家屬</button>
+        <button type="button" data-size="normal" class="ctrl-pill" aria-pressed="true">18px</button>
+        <button type="button" data-size="large" class="ctrl-pill" aria-pressed="false">放大字</button>
+      </div>
+    </header>
+
+    <main class="phones-strip">
+      <!-- VERSION 1 -->
+      <section class="phone-wrap">
+        <div class="phone-cap">
+          <div class="phone-cap-row">
+            <span class="cap-tag is-rec">版 1（推薦）</span>
+            <h2 class="cap-title">橫滑故事引導卡</h2>
+          </div>
+          <p class="cap-ref">參考 Apple 健康／Headspace：一張大圖卡講一關（可按 ‹ › 滑動），底下配極簡六格章節磚</p>
+        </div>
+        <div class="tp-phone" data-ui id="p1"></div>
+      </section>
+
+      <!-- VERSION 2 -->
+      <section class="phone-wrap">
+        <div class="phone-cap">
+          <div class="phone-cap-row">
+            <span class="cap-tag">版 2</span>
+            <h2 class="cap-title">一步一問・分流精靈卡</h2>
+          </div>
+          <p class="cap-ref">參考 Wise／Apple 選購精靈：不用自己看流程圖，點兩個大按鈕直接跳出「您現在要看的那張卡」</p>
+        </div>
+        <div class="tp-phone" data-ui id="p2"></div>
+      </section>
+
+      <!-- VERSION 3 -->
+      <section class="phone-wrap">
+        <div class="phone-cap">
+          <div class="phone-cap-row">
+            <span class="cap-tag">版 3</span>
+            <h2 class="cap-title">雙欄圖示方塊卡（Bento）</h2>
+          </div>
+          <p class="cap-ref">參考 Apple「提示」App：一格一圖一重點標籤（45%、最高3萬、先核定），一眼掃完零長文</p>
+        </div>
+        <div class="tp-phone" data-ui id="p3"></div>
+      </section>
+
+      <!-- VERSION 4 -->
+      <section class="phone-wrap">
+        <div class="phone-cap">
+          <div class="phone-cap-row">
+            <span class="cap-tag">版 4</span>
+            <h2 class="cap-title">頂端五關軌 ＋ 單張聚光卡</h2>
+          </div>
+          <p class="cap-ref">參考 LINE Bank／Airbnb：點上方五關切換中間大圖卡，整頁剛好一個畫面高、完全不用往下滑</p>
+        </div>
+        <div class="tp-phone" data-ui id="p4"></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const st = {
+      persona: "subsidy",
+      large: false,
+      v1Index: 2, // starts on "等公文再買" when logged in!
+      v2Step: "q1", // "q1" | "q2" | "res_doc" | "res_form9" | "res_hosp" | "res_direct"
+      v4Index: 2
+    };
+
+    const ICONS = {
+      bird: `<svg width="24" height="24" viewBox="0 0 64 64" aria-hidden="true"><path fill="currentColor" d="M12 50c1-3 3-6 5-9 0-14 9-24 21-24a11 11 0 0 1 11 9l7 4-7 3c-2 11-10 17-21 17z"/><path fill="none" stroke="#1f4e8c" stroke-width="4" stroke-linecap="round" d="M24 33a5.5 5.5 0 0 1 11 0c0 3.5-3.5 4.5-3.5 7.5a2.8 2.8 0 0 1-5 1.6"/></svg>`,
+      stamp: `<svg width="15" height="15" viewBox="0 0 48 48" aria-hidden="true"><path fill="currentColor" d="M24 4L29.88 16.91L44 18.18L33.5 27.64L36.36 41.5L24 34.36L11.64 41.5L14.5 27.64L4 18.18L18.12 16.91Z"/></svg>`,
+      hosp: `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M12 8v6M9 11h6"/></svg>`,
+      doc: `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>`,
+      seal: `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="6"/><path d="M9 10l2 2 4-4M8 15l-2 6 6-2 6 2-2-6"/></svg>`,
+      ear: `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10a6 6 0 1 1 12 0c0 4-3 5-3 8a3 3 0 0 1-6 0"/><path d="M10 10a2 2 0 0 1 4 0c0 1.5-1.5 2-1.5 3.5"/></svg>`,
+      aid: `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M9 12V7a5 5 0 0 1 10 0v3"/><circle cx="19" cy="11" r="1.5"/></svg>`,
+      checkCal: `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M9 15l2 2 4-4"/></svg>`
+    };
+
+    const BIG_ART = {
+      hosp: `<svg width="72" height="72" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="12" y="10" width="40" height="46" rx="6" fill="rgba(255,255,255,0.14)"/><path d="M32 21v16M24 29h16M22 46h20"/></svg>`,
+      doc: `<svg width="72" height="72" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="8" width="36" height="48" rx="5" fill="rgba(255,255,255,0.14)"/><path d="M23 22h18M23 31h18M23 40h10"/><circle cx="43" cy="43" r="8" fill="#ffffff" stroke="none"/><path d="M40 43l2.2 2.2L46.5 41" stroke="#1f4e8c" stroke-width="3"/></svg>`,
+      seal: `<svg width="72" height="72" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="14" width="44" height="36" rx="6" fill="rgba(255,255,255,0.14)"/><circle cx="32" cy="32" r="10"/><path d="M28 32l3 3 6-6"/></svg>`,
+      aid: `<svg width="72" height="72" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="42" r="9" fill="rgba(255,255,255,0.18)"/><path d="M24 33V21a12 12 0 0 1 24 0v9"/><circle cx="48" cy="33" r="4"/></svg>`,
+      cal: `<svg width="72" height="72" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="14" width="44" height="40" rx="6" fill="rgba(255,255,255,0.14)"/><path d="M22 9v10M42 9v10M10 26h44M25 39l5 5 10-10"/></svg>`
+    };
+
+    const STORIES = [
+      { key: "hosp", step: "第 1 關", done: true, title: "身障鑑定", sub: "雙耳達 45% 門檻即可辦", btn: "查鑑定醫院 ›", diagram: ["醫院檢查", "→", "身障證明"] },
+      { key: "doc", step: "第 2 關", done: true, title: "開九號表送公所", sub: "開立後 3 個月內有效", btn: "看九號表與金額 ›", diagram: ["九號表", "→", "送公所"] },
+      { key: "seal", step: "第 3 關", done: false, title: "等核定公文再買", sub: "先買不補助！核定後 6 個月內買", btn: "先看：找聽力師前準備 ›", diagram: ["收到公文", "→", "才能購買"] },
+      { key: "aid", step: "第 4 關", done: false, title: "試戴與挑外型", sub: "最高補助 2,000～30,000 元", btn: "看助聽器種類與價格 ›", diagram: ["試聽評估", "→", "購買請款"] },
+      { key: "cal", step: "第 5 關", done: false, title: "配戴滿月核銷", sub: "戴滿 1～3 個月做二十五號表", btn: "看二十五號表驗證 ›", diagram: ["戴滿 1 個月", "→", "二十五號表"] }
+    ];
+
+    function topShell() {
+      return `
+        <div class="tp-top">
+          <span class="tp-logo">${ICONS.bird}<span>聽伴</span></span>
+          ${st.persona === "guest" ? `<span class="tp-login">登入</span>` : `<span class="tp-user">王</span>`}
+        </div>
+      `;
+    }
+
+    function birdHeader() {
+      const strip = st.persona === "subsidy" ? `
+        <div class="tp-data-strip">
+          <span class="tp-data-pill is-blue">建議找聽力師</span>
+          <span class="tp-data-pill is-blue">估算 52.5%（達 45% 門檻）</span>
+        </div>
+      ` : "";
+      return `
+        <div class="tp-bird">
+          <span class="tp-bird-icon">${ICONS.bird}</span>
+          <div class="tp-bird-bubble">
+            <h3 class="tp-bird-title">助聽器選配與補助</h3>
+          </div>
+        </div>
+        ${strip}
+      `;
+    }
+
+    /* -------- V1: Swipeable Story Deck -------- */
+    function renderV1() {
+      const s = STORIES[st.v1Index];
+      const badge = (st.persona === "subsidy" && s.done)
+        ? `<span class="tp-stamp">${ICONS.stamp}已完成</span>`
+        : (st.persona === "subsidy" && st.v1Index === 2)
+          ? `<span class="v1-step-chip">目前在這關</span>`
+          : `<span class="v1-step-chip">共 5 關</span>`;
+
+      const dots = STORIES.map((_, i) => `<span class="v1-dot ${i === st.v1Index ? "is-on" : ""}"></span>`).join("");
+
+      return `
+        ${topShell()}
+        <div class="tp-main">
+          ${birdHeader()}
+          <div class="v1-deck">
+            <article class="v1-card">
+              <div class="v1-card-top">
+                <span class="v1-step-chip">${s.step}</span>
+                ${badge}
+              </div>
+              <div class="v1-art">${BIG_ART[s.key]}</div>
+              <div>
+                <h4 class="v1-title">${s.title}</h4>
+                <p class="v1-sub">${s.sub}</p>
+                <button type="button" class="tp-white-btn">${s.btn}</button>
+              </div>
+            </article>
+            <div class="v1-nav">
+              <button type="button" class="v1-arrow" data-v1="-1" aria-label="上一關">‹</button>
+              <div class="v1-dots" aria-hidden="true">${dots}</div>
+              <button type="button" class="v1-arrow" data-v1="1" aria-label="下一關">›</button>
+            </div>
+          </div>
+
+          <div class="mini-grid">
+            <div class="mini-tile">${ICONS.hosp}<span>鑑定醫院</span></div>
+            <div class="mini-tile">${ICONS.doc}<span>九號表補助</span></div>
+            <div class="mini-tile">${ICONS.ear}<span>找聽力師前</span></div>
+            <div class="mini-tile">${ICONS.aid}<span>種類與價格</span></div>
+            <div class="mini-tile">${ICONS.seal}<span>配戴之後</span></div>
+            <div class="mini-tile">${ICONS.checkCal}<span>二十五號表</span></div>
+          </div>
+        </div>
+      `;
+    }
+
+    /* -------- V2: Interactive Decision Wizard Card -------- */
+    function renderV2() {
+      let cardHtml = "";
+      if (st.v2Step === "q1") {
+        cardHtml = `
+          <div class="v2-wizard">
+            <p class="v2-q-label">2 秒幫您指路（1 / 2）</p>
+            <h4 class="v2-q-title">有聽覺身障證明嗎？</h4>
+            <div class="v2-choices">
+              <button type="button" class="v2-choice" data-v2="q2"><span>有證明</span><span>›</span></button>
+              <button type="button" class="v2-choice" data-v2="res_hosp"><span>還沒有，想看能不能辦</span><span>›</span></button>
+              <button type="button" class="v2-choice" data-v2="res_direct"><span>不辦補助，直接配</span><span>›</span></button>
+            </div>
+          </div>
+        `;
+      } else if (st.v2Step === "q2") {
+        cardHtml = `
+          <div class="v2-wizard">
+            <p class="v2-q-label">最後一題（2 / 2）</p>
+            <h4 class="v2-q-title">九號表送公所了嗎？</h4>
+            <div class="v2-choices">
+              <button type="button" class="v2-choice" data-v2="res_doc"><span>送了，等核定或準備買</span><span>›</span></button>
+              <button type="button" class="v2-choice" data-v2="res_form9"><span>還沒開九號表</span><span>›</span></button>
+            </div>
+            <button type="button" class="v2-reset" data-v2="q1">← 回上一題</button>
+          </div>
+        `;
+      } else {
+        const map = {
+          res_doc: { art: BIG_ART.seal, title: "收到核定公文才能買", sub: "先買不補助！等公文時可先看試戴準備", btn: "看：去找聽力師之前 ›" },
+          res_form9: { art: BIG_ART.doc, title: "先開九號表送公所", sub: "最高補助 3 萬元・3 個月內有效", btn: "看：九號表怎麼辦 ›" },
+          res_hosp: { art: BIG_ART.hosp, title: "雙耳達 45% 可辦鑑定", sub: "先到鑑定醫院檢查，拿到證明再買", btn: "查各縣市鑑定醫院 ›" },
+          res_direct: { art: BIG_ART.aid, title: "直接預約聽力師試戴", sub: "不用等公文，亦可看其他長輩補助", btn: "看：種類與價格 ›" }
+        };
+        const r = map[st.v2Step];
+        cardHtml = `
+          <div class="v2-result-card">
+            <div class="v1-art">${r.art}</div>
+            <h4 class="v1-title">${r.title}</h4>
+            <p class="v1-sub">${r.sub}</p>
+            <button type="button" class="tp-white-btn">${r.btn}</button>
+          </div>
+          <button type="button" class="v2-reset" data-v2="q1">換一個狀況重選</button>
+        `;
+      }
+
+      return `
+        ${topShell()}
+        <div class="tp-main">
+          ${birdHeader()}
+          ${cardHtml}
+          <div class="mini-grid">
+            <div class="mini-tile">${ICONS.hosp}<span>鑑定醫院</span></div>
+            <div class="mini-tile">${ICONS.doc}<span>九號表補助</span></div>
+            <div class="mini-tile">${ICONS.ear}<span>找聽力師前</span></div>
+            <div class="mini-tile">${ICONS.aid}<span>種類與價格</span></div>
+            <div class="mini-tile">${ICONS.seal}<span>配戴之後</span></div>
+            <div class="mini-tile">${ICONS.checkCal}<span>二十五號表</span></div>
+          </div>
+        </div>
+      `;
+    }
+
+    /* -------- V3: Apple Tips Bento Cards -------- */
+    function renderV3() {
+      return `
+        ${topShell()}
+        <div class="tp-main">
+          ${birdHeader()}
+
+          <div class="v3-hero">
+            <div>
+              <div style="font-weight:700; opacity:0.9;">辦補助第一鐵則</div>
+              <div style="font-size:1.22em; font-weight:700; margin-top:0.1em;">拿到核定公文再買</div>
+            </div>
+            <span style="background:#fff; color:var(--tp-primary); padding:0.35em 0.7em; border-radius:0.65em; font-weight:700; white-space:nowrap;">看流程 ›</span>
+          </div>
+
+          <div class="v3-bento">
+            <div class="v3-card">
+              <div class="v3-card-top">
+                <span style="color:var(--tp-primary);">${ICONS.hosp}</span>
+                ${st.persona === "subsidy" ? `<span class="tp-stamp">${ICONS.stamp}完成</span>` : `<span class="v3-tag">45% 門檻</span>`}
+              </div>
+              <span class="v3-name">鑑定與醫院</span>
+            </div>
+
+            <div class="v3-card">
+              <div class="v3-card-top">
+                <span style="color:var(--tp-primary);">${ICONS.doc}</span>
+                ${st.persona === "subsidy" ? `<span class="tp-stamp">${ICONS.stamp}完成</span>` : `<span class="v3-tag">最高 3 萬</span>`}
+              </div>
+              <span class="v3-name">九號表補助</span>
+            </div>
+
+            <div class="v3-card ${st.persona === "subsidy" ? "is-highlight" : ""}">
+              <div class="v3-card-top">
+                <span style="color:var(--tp-primary);">${ICONS.ear}</span>
+                <span class="v3-tag">${st.persona === "subsidy" ? "現在看" : "必問清單"}</span>
+              </div>
+              <span class="v3-name">去找聽力師前</span>
+            </div>
+
+            <div class="v3-card">
+              <div class="v3-card-top">
+                <span style="color:var(--tp-primary);">${ICONS.aid}</span>
+                <span class="v3-tag">外型分級</span>
+              </div>
+              <span class="v3-name">種類與價格</span>
+            </div>
+
+            <div class="v3-card">
+              <div class="v3-card-top">
+                <span style="color:var(--tp-primary);">${ICONS.seal}</span>
+                <span class="v3-tag">前幾週</span>
+              </div>
+              <span class="v3-name">配戴之後</span>
+            </div>
+
+            <div class="v3-card">
+              <div class="v3-card-top">
+                <span style="color:var(--tp-primary);">${ICONS.checkCal}</span>
+                <span class="v3-tag">1–3 個月</span>
+              </div>
+              <span class="v3-name">二十五號表</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    /* -------- V4: Top Icon Rail + Single Spotlight Card -------- */
+    function renderV4() {
+      const labels = ["鑑定", "九號表", "公文", "選配", "核銷"];
+      const s = STORIES[st.v4Index];
+      const darkArt = BIG_ART[s.key]
+        .replace(/rgba\(255,255,255,0\.14\)/g, "#dce7f7")
+        .replace(/rgba\(255,255,255,0\.18\)/g, "#dce7f7")
+        .replace(/stroke="currentColor"/g, 'stroke="#1f4e8c"');
+
+      const rail = labels.map((lb, i) => `
+        <button type="button" class="v4-node" data-v4="${i}" aria-selected="${i === st.v4Index}">
+          <span>${lb}</span>
+        </button>
+      `).join("");
+
+      return `
+        ${topShell()}
+        <div class="tp-main">
+          ${birdHeader()}
+          <div class="v4-rail" role="tablist" aria-label="選配五關">
+            ${rail}
+          </div>
+          <div class="v4-spotlight">
+            <div style="display:flex; width:100%; justify-content:space-between; align-items:center;">
+              <span style="font-weight:700; color:var(--tp-primary);">${s.step}</span>
+              ${st.persona === "subsidy" && s.done ? `<span class="tp-stamp">${ICONS.stamp}已完成</span>` : ""}
+            </div>
+            <div>${darkArt}</div>
+            <div>
+              <h4 style="margin:0; font-size:1.4em; font-weight:700; color:var(--tp-heading);">${s.title}</h4>
+              <p style="margin:0.25em 0 0; color:var(--tp-muted);">${s.sub}</p>
+            </div>
+            <div class="v4-visual-flow">
+              <span>${s.diagram[0]}</span>
+              <span style="color:var(--tp-primary);">${s.diagram[1]}</span>
+              <span>${s.diagram[2]}</span>
+            </div>
+            <button type="button" class="tp-solid-btn">${s.btn}</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderAll() {
+      document.querySelectorAll(".tp-phone").forEach((el) => {
+        el.classList.toggle("is-large", st.large);
+      });
+      document.getElementById("p1").innerHTML = renderV1();
+      document.getElementById("p2").innerHTML = renderV2();
+      document.getElementById("p3").innerHTML = renderV3();
+      document.getElementById("p4").innerHTML = renderV4();
+    }
+
+    document.addEventListener("click", (e) => {
+      const per = e.target.closest("[data-persona]");
+      if (per) {
+        st.persona = per.dataset.persona;
+        st.v1Index = st.persona === "subsidy" ? 2 : 0;
+        st.v4Index = st.persona === "subsidy" ? 2 : 0;
+        st.v2Step = st.persona === "subsidy" ? "res_doc" : "q1";
+        document.querySelectorAll("[data-persona]").forEach((b) => {
+          b.setAttribute("aria-pressed", String(b === per));
+        });
+        renderAll();
+        return;
+      }
+
+      const sz = e.target.closest("[data-size]");
+      if (sz) {
+        st.large = sz.dataset.size === "large";
+        document.querySelectorAll("[data-size]").forEach((b) => {
+          b.setAttribute("aria-pressed", String(b === sz));
+        });
+        renderAll();
+        return;
+      }
+
+      const v1 = e.target.closest("[data-v1]");
+      if (v1) {
+        const delta = Number(v1.dataset.v1);
+        st.v1Index = (st.v1Index + delta + STORIES.length) % STORIES.length;
+        renderAll();
+        return;
+      }
+
+      const v2 = e.target.closest("[data-v2]");
+      if (v2) {
+        st.v2Step = v2.dataset.v2;
+        renderAll();
+        return;
+      }
+
+      const v4 = e.target.closest("[data-v4]");
+      if (v4) {
+        st.v4Index = Number(v4.dataset.v4);
+        renderAll();
+      }
+    });
+
+    renderAll();
+  </script>
+</body>
+</html>
