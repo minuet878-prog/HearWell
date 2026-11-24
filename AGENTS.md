@@ -25,7 +25,7 @@ Claude Code 與 Codex 共用這份指引（Claude Code 經 `CLAUDE.md` 匯入）
 | 2 寫規格 | `/mattpocock-skills:to-spec` ★ | 寫成 GitHub issue，驗收條件用 Given / When / Then |
 | 3 拆票 | `/mattpocock-skills:to-tickets` ★ | 拆成 tracer-bullet tickets，標明誰擋住誰 |
 | 4 實作 | `/mattpocock-skills:implement` ★（一張或少數幾張）或 `/mattpocock-skills:implement-spec` ★（整份規格、平行） | TDD；全部完成後跑 `/code-review` 自審 |
-| 4b 交叉審查 | `/code-review`（換另一個代理跑） | 碰到計分、門檻、動資料的 migration、權限時必做，見下方 |
+| 4b 交叉審查 | `/code-review`（實作的代理在背景叫另外兩個代理跑） | 碰到計分、門檻、動資料的 migration、權限時必做，見下方 |
 | 5 驗收 | — | 貼出測試結果、逐條對驗收條件打勾，等我實際操作確認；驗收結果寫進 `docs/verification/`，跟程式放在同一個 PR |
 | 6 PR | `/pr` | 寫 PR 說明（摘要、證據、合併風險）；我驗收通過才合併，不在合併後另開 PR 補記驗收 |
 | 7 收尾 | — | 更新 `docs/roadmap.md` 和 `docs/interview/`（見下方） |
@@ -39,13 +39,14 @@ Claude Code 與 Codex 共用這份指引（Claude Code 經 `CLAUDE.md` 匯入）
 
 - 原因：代理審自己寫的程式容易漏看。#84 自審 0 項，合併後換另一個代理審，才找出 #90 的三個問題。
 - 何時必做：diff 碰到計分或分級、門檻、會動資料的 migration、權限（登入、限定 `request.user`）。其他票做完第 4 步的自審就進第 5 步，驗證紀錄寫明「不需交叉審查」。
-- 誰審：實作和審查不能是同一個代理。Codex 實作的由 Claude Code 審，Claude Code 實作的由 Codex 審。
-- 時機：自審修完之後、寫驗證紀錄（`docs/verification/`）和我實際驗收之前。實作的代理做到這裡先停，告訴我分支名稱、規格 issue 編號，以及要貼給另一個代理的指令。
+- 誰審：Claude Code、Codex、Gemini 三個裡，實作的以外另外兩個。
+- 時機：自審修完之後、寫驗證紀錄（`docs/verification/`）和我實際驗收之前。
+- 怎麼叫：實作的代理照 `docs/agents/cross-review.md` 在背景叫兩個審查代理同時跑。叫不動時先停，告訴我分支名稱、規格 issue 編號，以及要貼給審查代理的指令。
 - 怎麼審：
   - 用 Matt 的 `/code-review`，基準點 `main`。Claude Code 裡要打 `/mattpocock-skills:code-review`：直接打 `/code-review` 會叫到 Claude Code 內建、只抓 bug 的另一種審查（第 4 步自審也一樣）。
   - 審查者只看 diff、規格 issue 和 `CODING_STANDARDS.md`，不看實作的對話和自審結果。
   - Spec 軸要逐條列出每個驗收條件由哪個測試的哪個斷言證明（`檔案:行號`）；找不到斷言，或斷言沒有真的驗證那一條，就算一項發現。
-- 結果：審查結果用繁體中文留言到規格 issue（留言前先問我）。實作的代理照留言修完，再請審查的代理只複核修過的項目，直到沒有「要修」才進第 5 步。
+- 結果：實作的代理把兩份結果併成一份對照，每項標出誰提出，原樣保留每一項和它的「要修／建議」；兩邊看法不同的項目由我決定。對照用繁體中文留言到規格 issue（留言前先問我）。照留言修完，再請同兩個審查代理只複核修過的項目，直到沒有「要修」才進第 5 步。
 
 ### 收尾
 
