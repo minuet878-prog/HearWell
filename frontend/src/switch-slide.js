@@ -10,7 +10,8 @@ export function setUpSwitchSlide(win) {
   let switching = false;
 
   doc.addEventListener("click", (event) => {
-    switching = Boolean(event.target.closest("a[href]")?.closest(SWITCHES));
+    const link = event.target.closest("a[href]");
+    switching = Boolean(link?.closest(SWITCHES) && !link.hasAttribute("aria-current"));
   });
   doc.addEventListener("submit", () => {
     switching = false;

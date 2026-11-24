@@ -215,7 +215,7 @@
     height: 100%;
     padding: 0.7778rem;
     border: 0;
-    border-radius: 1.1111rem;
+    border-radius: var(--radius-badge);
     background-color: var(--color-brand-soft);
   }
 
@@ -533,6 +533,7 @@
   .question-number {
     color: var(--color-primary);
     font-size: 1.5556rem;
+    font-variant-numeric: tabular-nums;
   }
   .question-left {
     margin-left: auto;
@@ -696,6 +697,11 @@
   /* Readability batch 3 (the owner's C1 B): under a new password, how many characters are in
      (password-count.js), on the register page and the 設新密碼 page; the success green
      (--color-normal, ADR 0007) with its tick once there are enough. */
+  .password-count,
+  .feedback-count {
+    font-variant-numeric: tabular-nums;
+  }
+
   .password-count {
     margin: 0.25rem 0 0;
     color: var(--color-muted);
@@ -1327,6 +1333,7 @@
     color: var(--color-primary);
     font-weight: 700;
     white-space: nowrap;
+    font-variant-numeric: tabular-nums;
   }
 
   /* A questionnaire's source line under a result: small print in the muted grey (T1), after

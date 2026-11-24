@@ -49,22 +49,42 @@ const STATUSES = [
 ];
 
 // size is the half width; data-* keep the centre for tests (shapes have no cx/cy of their own).
-function Shape({ shape, x, y, size, status }) {
+function Shape({ shape, x, y, size, status, active = false }) {
   const common = {
-    className: "trend-dot",
+    className: active ? "trend-dot trend-dot-active" : "trend-dot",
     stroke: PRIMARY,
-    strokeWidth: 3,
+    strokeWidth: active ? 4 : 3,
     "data-cx": x,
     "data-cy": y,
     "data-size": size,
     "data-status": status,
   };
-  if (shape === "circle") return <circle {...common} cx={x} cy={y} r={size} fill={PRIMARY} />;
+  const halo = active && (
+    <circle className="trend-dot-halo" cx={x} cy={y} r={size + 6} fill={PRIMARY} fillOpacity={0.22} />
+  );
+  if (shape === "circle") {
+    return (
+      <g>
+        {halo}
+        <circle {...common} cx={x} cy={y} r={size} fill={PRIMARY} />
+      </g>
+    );
+  }
   if (shape === "square") {
-    return <rect {...common} x={x - size} y={y - size} width={size * 2} height={size * 2} fill="#fff" />;
+    return (
+      <g>
+        {halo}
+        <rect {...common} x={x - size} y={y - size} width={size * 2} height={size * 2} fill="#fff" />
+      </g>
+    );
   }
   const points = `${x},${y - size * 1.2} ${x + size * 1.1},${y + size * 0.8} ${x - size * 1.1},${y + size * 0.8}`;
-  return <polygon {...common} points={points} fill="#fff" />;
+  return (
+    <g>
+      {halo}
+      <polygon {...common} points={points} fill="#fff" />
+    </g>
+  );
 }
 
 // #650 (spec #644 R2, the #645 mockup's A): 開始戴 in a small white box above the plot, in rem so
@@ -147,7 +167,13 @@ export default function TrendChart({ code, fittedOn }) {
       </p>
     );
   }
-  if (state.status === "error") return <p className="trend-plot-message text-xl/normal">{ERROR_TEXT}</p>;
+  if (state.status === "error") {
+    return (
+      <p className="trend-plot-message text-xl/normal" role="status">
+        {ERROR_TEXT}
+      </p>
+    );
+  }
 
   const points = selectPoints(state.page.results, code);
   if (points.length === 0) return null;
@@ -184,12 +210,29 @@ export default function TrendChart({ code, fittedOn }) {
       ) : (
         <g key={index} />
       );
+  const renderActiveDot =
+    (status) =>
+    ({ cx, cy, index, payload }) =>
+      payload[status.key] !== null ? (
+        <Shape
+          key={index}
+          shape={status.shape}
+          status={status.key}
+          x={cx}
+          y={cy}
+          size={(index === latestIndex && status.wearing === latestWearing ? 9 : 6) + 2}
+          active
+        />
+      ) : (
+        <g key={index} />
+      );
   // HHIE-S and THI totals are even (every answer is 0, 2 or 4), so halfway between two levels is
   // the lower level's top + 1 (spec 4.4): 9 and 25, never on a score. Only they have this chart.
   const bandEdge = (i) => (i === levels.length - 1 ? levels[i].max : levels[i].max + 1);
 
   // Score above each point; below it when the point is near the top so it stays inside the chart.
   // Each series has an empty slot for the other statuses' records: no label there.
+  // White stroke halo (paintOrder: stroke) keeps the score legible when it overlaps a band's name.
   const renderScore = ({ x, y, value }) =>
     value == null ? null : (
       <text
@@ -198,6 +241,10 @@ export default function TrendChart({ code, fittedOn }) {
         y={value >= top * 0.85 ? y + 28 : y - 14}
         textAnchor="middle"
         fill={TEXT_COLOR}
+        stroke="#fff"
+        strokeWidth={4}
+        strokeLinejoin="round"
+        paintOrder="stroke"
         fontWeight="700"
         style={FONT}
       >
@@ -275,7 +322,7 @@ export default function TrendChart({ code, fittedOn }) {
               // Skip the other statuses' records, so the line joins this status's points.
               connectNulls
               dot={renderDot(status)}
-              activeDot={false}
+              activeDot={renderActiveDot(status)}
               isAnimationActive={false}
             >
               <LabelList dataKey={status.key} content={renderScore} />

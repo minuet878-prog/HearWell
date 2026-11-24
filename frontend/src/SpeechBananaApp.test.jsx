@@ -1,11 +1,13 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import SpeechBananaApp from "./SpeechBananaApp.jsx";
 import { CHART, x, y } from "./audiogram.js";
 
 // jsdom has no layout: make one screen pixel equal one chart unit.
 beforeEach(() => {
+  Element.prototype.scrollIntoView = vi.fn();
+  window.matchMedia = (query) => ({ matches: false });
   SVGElement.prototype.getBoundingClientRect = () => ({ left: 0, top: 0, width: CHART.width, height: CHART.height });
 });
 afterEach(cleanup);
@@ -120,13 +122,14 @@ it("opens on the right ear and says so to a screen reader", () => {
   expect(screen.getByRole("img").getAttribute("aria-label")).toBe(chartLabel("右耳"));
 });
 
-it("switching ears changes the marks and the chart's words, keeps the group and both ears' sentences", () => {
+it("switching ears changes the marks and the chart's words, announces the ear, keeps the group and both ears' sentences (C3)", () => {
   const { container } = render(<SpeechBananaApp data={JUDGED} />);
   pick("ㄈㄐㄑㄓㄔㄒㄕ");
   const before = screen.getByRole("status").textContent;
   fireEvent.click(earButton("左耳"));
   expect(earButton("左耳").getAttribute("aria-pressed")).toBe("true");
   expect(earButton("右耳").getAttribute("aria-pressed")).toBe("false");
+  expect(container.querySelector('[aria-live="polite"]').textContent).toBe("已切換到左耳");
   expect(screen.getByRole("img").getAttribute("aria-label")).toBe(chartLabel("左耳"));
   expect(container.querySelector('[data-point="left-air-500"]')).not.toBeNull();
   expect(container.querySelector('[data-point="right-air-1000"]')).toBeNull();
@@ -137,6 +140,7 @@ it("switching ears changes the marks and the chart's words, keeps the group and 
   // The white edge follows the ear too.
   expect(container.querySelectorAll(".speech-banana-mark-edges circle")).toHaveLength(5);
   fireEvent.click(earButton("右耳"));
+  expect(container.querySelector('[aria-live="polite"]').textContent).toBe("已切換到右耳");
   expect(container.querySelector('[data-point="right-air-1000"]')).not.toBeNull();
   expect(screen.getByRole("img").getAttribute("aria-label")).toBe(chartLabel("右耳"));
 });
@@ -209,13 +213,21 @@ it("hatches nothing without a stretch, whatever the results say", () => {
   expect(hatches(container)).toHaveLength(0);
 });
 
-it("explains the yellow, the hatching and the dashes in the reviewed words", () => {
+it("explains the red/blue line, the yellow, the hatching and the dashes in the reviewed words (C3)", () => {
   render(<SpeechBananaApp data={DATA} />);
-  screen.getByText("黃色是語言香蕉區，是說話聲通常落在的範圍。斜線蓋住的部分和虛線框的注音，這一耳沒戴助聽器時可能不容易聽到。");
+  screen.getByText("紅線（右耳）或藍線（左耳）是您的聽力圖。黃色是語言香蕉區，是說話聲通常落在的範圍。斜線蓋住的部分和虛線框的注音，這一耳沒戴助聽器時可能不容易聽到。");
 });
 
-it("picking from the list darkens that box and writes the group and both ears", () => {
+it("picking from the list darkens that box, scrolls to the chart (respecting reduced motion), and writes the group and both ears (C3)", () => {
   const { container } = render(<SpeechBananaApp data={DATA} />);
+  Element.prototype.scrollIntoView.mockClear();
+  pick("ㄈㄐㄑㄓㄔㄒㄕ");
+  expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ block: "start", behavior: "smooth" });
+  expect(Element.prototype.scrollIntoView.mock.contexts[0]).toBe(container.querySelector(".audiogram-chart"));
+  window.matchMedia = (query) => ({ matches: query === "(prefers-reduced-motion: reduce)" });
+  Element.prototype.scrollIntoView.mockClear();
+  pick("ㄗㄙㄘ");
+  expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ block: "start", behavior: "instant" });
   pick("ㄈㄐㄑㄓㄔㄒㄕ");
   const result = within(screen.getByRole("status"));
   expect(screen.getByRole("status").textContent).not.toContain("點圖上的注音");
@@ -316,7 +328,7 @@ it("puts the result right under the chart, the explanation after it (#465)", () 
   const { container } = render(<SpeechBananaApp data={DATA} />);
   const result = screen.getByRole("status");
   expect(container.querySelector(".audiogram-chart").nextElementSibling).toBe(result);
-  expect(result.nextElementSibling.textContent).toMatch(/^黃色是語言香蕉區/);
+  expect(result.nextElementSibling.textContent).toMatch(/黃色是語言香蕉區/);
 });
 
 it("folds the list as a list row (#465)", () => {

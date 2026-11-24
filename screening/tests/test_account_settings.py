@@ -291,9 +291,9 @@ class AccountSettingsT361Tests(TestCase):
                 self.user.save()
                 rows = self._rows()
                 self.assertNotIn(self.NOTE, "".join(rows.values()))
-                for name, blank in (("電子郵件", not email), ("出生年", birth_year is None)):
+                for name, blank in (("email", not email), ("出生年", birth_year is None)):
                     if blank:
-                        self.assertEqual(rows[name], "未填 補上" if name == "電子郵件" else "未填")
+                        self.assertEqual(rows[name], "未填 補上" if name == "email" else "未填")
                 group = self._group()
                 self.assertEqual(group.count(self.NOTE), 1)
                 # #580: 複製信箱 follows the sentence, the last thing under the details.

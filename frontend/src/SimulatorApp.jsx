@@ -123,7 +123,7 @@ export default function SimulatorApp({ data, engine }) {
             <span aria-hidden="true">›</span>
           </button>
         </div>
-        <p className="simulator-caption">
+        <p className="simulator-caption" aria-live="polite">
           第 {sentenceIndex + 1} 句・{sentence.voice}聲<span>（共 {data.sentences.length} 句）</span>
         </p>
         {loading && <p className="simulator-status" role="status">聲音載入中…</p>}

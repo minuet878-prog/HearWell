@@ -874,7 +874,7 @@ describe("keeping unfinished answers", () => {
   it("asks to continue after a reload, and continuing restores every answer", async () => {
     await answerUpToQuestion4();
     await reload();
-    screen.getByRole("heading", { name: "您上次答到第 4 題，要接著答嗎？" });
+    screen.getByRole("heading", { level: 2, name: "您上次答到第 4 題，要接著答嗎？" });
     fireEvent.click(screen.getByRole("button", { name: "接著答" }));
     expect(legend()).toMatch(/^第 4 題/);
     history.back();

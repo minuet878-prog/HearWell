@@ -95,6 +95,9 @@ export function setUpPlayInView(win = window) {
     doc.addEventListener("card-stack-show", check);
     layout?.observe(doc.body);
   };
+  // The page changing height without a scroll (a fold opening, a late font, a chart growing, the
+  // text size) can bring an element into view too. iPhones before iOS 13.4 have no ResizeObserver.
+  if (win.ResizeObserver) layout = new win.ResizeObserver(check);
   watch();
   check();
   // Taken over: layout.html's fallback, which would play them all at once, is called off.
@@ -109,10 +112,4 @@ export function setUpPlayInView(win = window) {
     watch();
     check();
   }).observe(doc.body, { childList: true, subtree: true });
-
-  // The page changing height without a scroll (a fold opening, a late font, a chart growing, the
-  // text size) can bring an element into view too. Last, as iPhones before iOS 13.4 have no
-  // ResizeObserver: there this stops with an error, and scrolling still starts the animations.
-  layout = new win.ResizeObserver(check);
-  layout.observe(doc.body);
 }

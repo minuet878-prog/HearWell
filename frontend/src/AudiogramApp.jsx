@@ -150,6 +150,8 @@ export default function AudiogramApp({
   const testedOn = isoDate(date);
   const thisYear = Number(today.slice(0, 4));
   const [errors, setErrors] = useState([]);
+  const [dateInvalid, setDateInvalid] = useState(false);
+  const [reachedConfirm, setReachedConfirm] = useState(false);
   const [sending, setSending] = useState(false);
   const [saved, setSaved] = useState(false);
   // One receipt number per page, so a retry after a lost response cannot save twice. Editing needs
@@ -200,15 +202,39 @@ export default function AudiogramApp({
     stepText.current?.scrollIntoView({ block: "start" });
   }, [step]);
 
+  const checkFirstStep = () => {
+    const problems = [];
+    if (!source) problems.push(SOURCE_REQUIRED);
+    let badDate = false;
+    if (testedOn === "") {
+      problems.push("請填寫檢查日期");
+      badDate = true;
+    } else if (testedOn === null) {
+      problems.push(WRONG_DATE);
+      badDate = true;
+    } else if (testedOn > today) {
+      problems.push("檢查日期不能是未來");
+      badDate = true;
+    }
+    setDateInvalid(badDate);
+    setErrors(problems);
+    return problems.length === 0;
+  };
+
   const goTo = (next) => {
+    if (step === 1 && next > 1 && !checkFirstStep()) return;
     moved.current = true;
     setErrors([]);
+    setDateInvalid(false);
     setLast(null);
     setScreenReaderText("");
     if (STEP_EAR[next]) setSymbolKey(`${STEP_EAR[next]}-air`);
+    if (next === 4) setReachedConfirm(true);
     setMasked(false);
     setStep(next);
   };
+
+  const clearedText = (target, frequency) => `已清除 ${target.label} ${frequency} Hz`;
 
   const commit = (target, frequency, level, mark = masked) => {
     const next = place(points, target, frequency, level, mark);
@@ -216,7 +242,7 @@ export default function AudiogramApp({
     setPoints(next);
     if (next[changed]) setLast(changed);
     else if (last === changed) setLast(null);
-    setScreenReaderText(next[changed] ? readingText(next[changed]) : "");
+    setScreenReaderText(next[changed] ? readingText(next[changed]) : clearedText(target, frequency));
   };
 
   const setFromTable = (target, frequency, value) => {
@@ -225,7 +251,7 @@ export default function AudiogramApp({
       const { [changed]: _removed, ...others } = points;
       setPoints(others);
       if (last === changed) setLast(null);
-      setScreenReaderText("");
+      setScreenReaderText(clearedText(target, frequency));
       return;
     }
     // A select only fires on a new value, so place() never takes this as "same point, delete".
@@ -239,10 +265,12 @@ export default function AudiogramApp({
   };
 
   const clearLast = () => {
+    const removed = points[last];
     const { [last]: _removed, ...others } = points;
     setPoints(others);
     setLast(null);
-    setScreenReaderText("");
+    const target = removed && SYMBOLS.find((s) => s.ear === removed.ear && s.conduction === removed.conduction);
+    setScreenReaderText(target ? clearedText(target, removed.frequency) : "");
   };
 
   async function save() {
@@ -376,6 +404,7 @@ export default function AudiogramApp({
                 <input
                   id={id}
                   aria-label={name}
+                  aria-invalid={dateInvalid ? "true" : undefined}
                   className={`form-control form-control-lg date-part-${part}`}
                   inputMode="numeric"
                   // 日 is the last: that step sends nothing, so its key is left to the phone.
@@ -383,7 +412,10 @@ export default function AudiogramApp({
                   onKeyDown={part === "day" ? undefined : nextOnEnter}
                   maxLength={length}
                   value={date[part]}
-                  onChange={(e) => setDate({ ...date, [part]: e.target.value.trim() })}
+                  onChange={(e) => {
+                    setDateInvalid(false);
+                    setDate({ ...date, [part]: e.target.value.trim() });
+                  }}
                 />
                 <span aria-hidden="true">{after}</span>
               </span>
@@ -520,9 +552,15 @@ export default function AudiogramApp({
         </>
       )}
 
+      {step === 1 && errorList}
       {step < 4 && (
         <button type="button" className="btn btn-primary btn-lg w-full mb-2" onClick={() => goTo(step + 1)}>
           {FORWARD[step]}
+        </button>
+      )}
+      {step < 4 && reachedConfirm && (
+        <button type="button" className="btn btn-outline-primary btn-lg w-full mb-2" onClick={() => goTo(4)}>
+          改好了，回確認存檔
         </button>
       )}
       {step > 1 && (

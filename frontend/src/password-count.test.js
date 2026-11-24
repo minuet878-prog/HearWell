@@ -85,3 +85,44 @@ describe("password character count", () => {
     expect(line().textContent).toBe("✓ 已經輸入 8 個字");
   });
 });
+
+describe("feedback character count (C6)", () => {
+  const box = () => document.getElementById("id_text");
+  const countLine = () => document.querySelector(".feedback-count");
+  const help = () => document.getElementById("id_text_helptext");
+  const countStatus = () => document.querySelector(".feedback-count-status");
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    document.body.innerHTML = `
+      <div>
+        <textarea id="id_text"></textarea>
+        <p class="feedback-count" data-for="id_text" data-max="1000" data-help="id_text_helptext" aria-hidden="true" hidden></p>
+        <p class="visually-hidden feedback-count-status" role="status"></p>
+        <div id="id_text_helptext">最多 1,000 字</div>
+      </div>`;
+    new Function(readFileSync(SCRIPT, "utf-8"))();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    document.body.innerHTML = "";
+  });
+
+  it("shows the static help text when empty, and replaces it with the live count while typing", () => {
+    expect(countLine().hidden).toBe(true);
+    expect(help().hidden).toBe(false);
+    box().value = "字太小了";
+    box().dispatchEvent(new Event("input"));
+    expect(countLine().hidden).toBe(false);
+    expect(help().hidden).toBe(true);
+    expect(countLine().textContent).toBe("已輸入 4 / 1,000 字");
+    expect(countStatus().textContent).toBe("");
+    vi.advanceTimersByTime(1000);
+    expect(countStatus().textContent).toBe("已輸入 4 / 1,000 字");
+    box().value = "";
+    box().dispatchEvent(new Event("input"));
+    expect(countLine().hidden).toBe(true);
+    expect(help().hidden).toBe(false);
+  });
+});

@@ -79,7 +79,7 @@ class SendFeedbackTests(TestCase):
         self.assertRedirects(response, reverse("feedback_sent"))
         self.assertFalse(Feedback.objects.exists())
 
-    def test_the_page_it_came_from_is_said_and_kept_in_words(self):
+    def test_the_page_it_came_from_is_kept_in_words_without_cluttering_the_form(self):
         cases = {
             "result": "結果頁",
             "guide_chapter:assessment": "選配指引：身障鑑定與鑑定醫院",
@@ -89,7 +89,7 @@ class SendFeedbackTests(TestCase):
         for page, words in cases.items():
             with self.subTest(page):
                 shown = self.client.get(reverse("feedback"), {"page": page})
-                self.assertContains(shown, f"您是從「{words}」過來的。")
+                self.assertNotContains(shown, "過來的")
                 self.send(page=page)
                 self.assertEqual(Feedback.objects.latest("pk").page, words)
 
@@ -189,12 +189,12 @@ class SendFeedbackTests(TestCase):
         user.delete_with_data()
         self.assertEqual(Feedback.objects.get().email, "leaving@example.com")
 
-    def test_the_urgent_box_comes_before_the_form(self):
+    def test_the_urgent_box_comes_after_the_form(self):
         page = self.client.get(reverse("feedback")).content.decode()
         urgent = f'href="{reverse("qa_answer", args=["sudden-hearing-loss"])}"'
         self.assertIn(urgent, page)
         self.assertIn("突然聽不到、耳朵流血？請盡快就醫", page)
-        self.assertLess(page.index(urgent), page.index('name="text"'))
+        self.assertLess(page.index("</form>"), page.index(urgent))
 
     def test_people_and_screen_readers_never_meet_the_robots_box(self):
         page = self.client.get(reverse("feedback")).content.decode()
@@ -470,20 +470,19 @@ class FeedbackPrivacyTests(TestCase):
         self.assertEqual(self.client.get(reverse("my_hearing")).status_code, 200)
 
 
-REMINDER = (
-    "這裡不是諮詢，不會馬上回覆。您寫的內容會匿名保存 90 天，"
-    "請不要輸入姓名、電話、身分證字號、病歷號碼。"
-)
+REMINDER = "內容匿名保存 90 天"
 SENT_LINE = "我們會看每一則意見，但不一定會回覆。有填 email 的，需要時會寫信給您。"
 
 
 class OwnersWordsTests(TestCase):
-    """Spec #633 (#642, acceptance 11, 48): the owner's words from #635, as they were chosen."""
+    """Spec #633 (#642, acceptance 11, 48; C6): the anonymous-storage line above the form and the
+    urgent box after the form."""
 
-    def test_the_reminder_comes_before_the_urgent_box(self):
+    def test_the_reminder_comes_before_the_form_and_urgent_box_after(self):
         page = self.client.get(reverse("feedback")).content.decode()
-        self.assertIn(f'<p class="tip-box">{REMINDER}</p>', page)
-        self.assertLess(page.index(REMINDER), page.index("突然聽不到、耳朵流血？請盡快就醫"))
+        self.assertIn(f'<p class="text-(--color-muted) mb-4">{REMINDER}</p>', page)
+        self.assertLess(page.index(REMINDER), page.index('name="text"'))
+        self.assertLess(page.index("</form>"), page.index("突然聽不到、耳朵流血？請盡快就醫"))
 
     def test_the_sent_page_says_what_happens_next(self):
         response = self.client.get(reverse("feedback_sent"))

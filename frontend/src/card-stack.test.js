@@ -72,7 +72,7 @@ describe("setUpCardStack", () => {
     setUpCardStack(page(), fakeWindow());
     expect(document.querySelector(".card-stack-controls").hidden).toBe(false);
     expect(shown()).toBe("HHIE-S");
-    expect(position()).toBe("第 1 張，共 3 張");
+    expect(position()).toBe("第 1 張，共 3 張：HHIE-S");
     expect(prev().disabled).toBe(true);
     expect(next().disabled).toBe(false);
     for (const card of cards().slice(1)) {
@@ -91,14 +91,15 @@ describe("setUpCardStack", () => {
     ]);
   });
 
-  it("goes to the next card with › and back with ‹, stopping at either end", () => {
+  it("goes to the next card with › and back with ‹, stopping at either end and announcing the card title (C7)", () => {
     setUpCardStack(page(), fakeWindow());
     next().click();
     expect(shown()).toBe("SSQ12-TW");
-    expect(position()).toBe("第 2 張，共 3 張");
+    expect(position()).toBe("第 2 張，共 3 張：SSQ12-TW");
     expect(prev().disabled).toBe(false);
     next().click();
     expect(shown()).toBe("THI");
+    expect(position()).toBe("第 3 張，共 3 張：THI");
     expect(next().disabled).toBe(true);
     prev().click();
     expect(shown()).toBe("SSQ12-TW");

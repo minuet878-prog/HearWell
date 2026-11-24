@@ -1,6 +1,8 @@
 // #457 (ADR 0045): the bottom tab bar makes way while the page scrolls down and comes back on
 // the way up. This only marks the bar (data-hidden); site.css slides it away on phones alone,
 // so without JavaScript, and on wide screens, it always shows.
+export const SCROLL_THRESHOLD = 14; // px: ignore tiny finger jitter / bounce
+
 export function setUpTabBar(win = window) {
   // Reduced motion: the bar stays put, so none of this is set up (site.css never slides it
   // either, should the setting change after the page opened).
@@ -19,9 +21,13 @@ export function setUpTabBar(win = window) {
 
   win.addEventListener("scroll", () => {
     const y = win.scrollY;
-    if (mustShow(y)) bar.removeAttribute("data-hidden");
-    else if (y !== lastY) bar.toggleAttribute("data-hidden", y > lastY);
-    lastY = y;
+    if (mustShow(y)) {
+      bar.removeAttribute("data-hidden");
+      lastY = y;
+    } else if (Math.abs(y - lastY) >= SCROLL_THRESHOLD) {
+      bar.toggleAttribute("data-hidden", y > lastY);
+      lastY = y;
+    }
   }, { passive: true });
 
   bar.addEventListener("focusin", () => bar.removeAttribute("data-hidden"));

@@ -20,6 +20,7 @@
 </section>
 
 <div class="report-rows">
+<p class="no-print mb-3"><button id="report-fold-toggle" type="button" class="btn btn-outline-primary btn-lg w-full" hidden>全部展開</button></p>
 {# Information only, nothing to open: a grey label over its words, no icon and no arrow (screen only; paper has the summary). #}
 {% if aid_report_text %}<div class="report-info no-print"><span class="report-info-label">助聽器</span><span class="report-info-value">{{ aid_report_text }}</span></div>{% endif %}
 

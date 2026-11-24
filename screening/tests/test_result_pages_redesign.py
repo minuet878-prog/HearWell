@@ -108,10 +108,31 @@ class GradedResultPageTests(TestCase):
         # Read as a screen reader reads it: without the gauge and what is drawn by it (#750).
         self.assertEqual(
             read(banner),
-            "總分 14 分（滿分 40） 輕度到中度影響 比上次少 4 分 上次 2026/03/26 是 18 分",
+            "2026/11/12・沒戴助聽器 總分 14 分（滿分 40） 輕度到中度影響 "
+            "比上次少 4 分 上次 2026/03/26 是 18 分",
         )
         for verdict in ("進步", "退步", "改善", "變好", "變差"):
             self.assertNotIn(verdict, main)
+
+    def test_reopened_graded_result_shows_date_and_wearing_while_just_saved_omits_it(self):
+        # C2: reopening a historical record shows YYYY/MM/DD・沒戴／有戴助聽器 at the top of the
+        # banner; right after submitting (just_saved) the banner stays clean.
+        record = self.hhie_s([4, 4, 2, 2, 0, 0, 0, 0, 0, 0], (2026, 11, 12))
+        reopened_banner = BANNER.search(self.main(record)).group(2)
+        self.assertIn('<p class="result-banner-meta">2026/11/12・沒戴助聽器</p>', reopened_banner)
+
+        from screening.views.common import JUST_SAVED
+
+        session = self.client.session
+        session[JUST_SAVED] = record.pk
+        session.save()
+        saved_banner = BANNER.search(self.main(record)).group(2)
+        self.assertNotIn("result-banner-meta", saved_banner)
+
+        # Unrecorded wearing status shows only the date.
+        Submission.objects.filter(pk=record.pk).update(wearing_hearing_aid=None)
+        unrecorded_banner = BANNER.search(self.main(record)).group(2)
+        self.assertIn('<p class="result-banner-meta">2026/11/12</p>', unrecorded_banner)
 
     def test_a_changed_level_is_written_in_the_block(self):
         # Acceptance 24.

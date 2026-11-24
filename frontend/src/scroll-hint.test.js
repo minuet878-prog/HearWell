@@ -40,7 +40,7 @@ beforeEach(() => {
 });
 
 describe("setUpScrollHint", () => {
-  it("shows the hint just above a table wider than its box", () => {
+  it("shows the hint just above a table wider than its box and links it via aria-describedby (D4)", () => {
     const win = fakeWindow();
     setUpScrollHint(win);
     setWidths(boxes()[0], 500, 300);
@@ -48,6 +48,9 @@ describe("setUpScrollHint", () => {
     win.sizesChanged();
     expect(shownHints()).toEqual(["表格可以左右滑動"]);
     expect(boxes()[0].previousElementSibling.textContent).toBe("表格可以左右滑動");
+    expect(boxes()[0].getAttribute("aria-describedby")).toBe("scroll-hint-1");
+    expect(boxes()[0].previousElementSibling.id).toBe("scroll-hint-1");
+    expect(boxes()[1].getAttribute("aria-describedby")).toBe("scroll-hint-2");
   });
 
   it("keeps the hint hidden until a size is known", () => {

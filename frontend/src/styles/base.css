@@ -115,6 +115,9 @@
     line-height: 1.2;
     color: inherit;
   }
+  h1, h2, h3, h4, .h1, .h2, .h3, .h4 {
+    text-wrap: balance;
+  }
   h1, .h1 { font-size: calc(1.375rem + 1.5vw); }
   h2, .h2 { font-size: calc(1.325rem + 0.9vw); }
   h3, .h3 { font-size: calc(1.3rem + 0.6vw); }
@@ -146,7 +149,9 @@
   dd { margin: 0 0 0.5rem; }
   b, strong { font-weight: bolder; }
   a { color: var(--color-primary); text-decoration: underline; }
-  a:hover { color: var(--color-primary-hover); }
+  @media (hover: hover) {
+    a:hover { color: var(--color-primary-hover); }
+  }
   /* #328 (A4, ADR 0028): a text link in the page or the footer gets a thicker underline under a
      mouse and a light blue behind its words while pressed; colour only. Button links and the
      tabs and switches set their own, which win over this layer. */
@@ -550,6 +555,7 @@
     margin-bottom: 1rem;
     vertical-align: top;
     border-color: var(--color-border-subtle);
+    font-variant-numeric: tabular-nums;
   }
   .table > :not(caption) > * > * {
     padding: 0.5rem;

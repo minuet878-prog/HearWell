@@ -52,7 +52,10 @@ class AccountSettingsLookTests(TestCase):
         main = self._main()
 
         self.assertLess(main.index("我的帳號</h2>"), main.index('class="account-card"'))
-        self.assertLess(main.index('class="account-card"'), main.index("電子郵件"))
+        self.assertLess(
+            main.index('class="account-card"'),
+            main.index('<dt class="settings-row-note">email</dt>'),
+        )
         self.assertIn("民國 39 年（1950）", _text(main))
 
     def test_the_reminder_is_a_bell_beside_its_title_in_a_grey_box(self):
@@ -73,7 +76,7 @@ class AccountSettingsLookTests(TestCase):
 
         self.assertIn(
             f'<a class="btn btn-outline-primary btn-pill" href="{reverse("add_email")}" '
-            'aria-label="補上電子郵件">補上</a>',
+            'aria-label="補上 email">補上</a>',
             main,
         )
         self.assertIn(

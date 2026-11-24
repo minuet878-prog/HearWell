@@ -19,7 +19,7 @@
 <section class="card-stack" aria-roledescription="輪播" aria-label="問卷卡片">
     <div class="card-stack-cards">
     {% for questionnaire, why in stack %}
-        <article class="hero-card card-stack-card" role="group" aria-roledescription="卡片" aria-label="第 {{ forloop.counter }} 張，共 {{ stack|length }} 張：{{ questionnaire.definition.topic }}（{{ questionnaire }}）">
+        <article class="hero-card card-stack-card" role="group" aria-roledescription="卡片" aria-label="第 {{ forloop.counter }} 張，共 {{ stack|length }} 張：{{ questionnaire.definition.topic }}（{{ questionnaire }}）"{% if not forloop.first %} inert{% endif %}>
             {% if why %}<p class="hero-card-label">推薦您做這一份</p>{% endif %}
             {% include "screening/recommended_questionnaire.html" with level=2 title_id="stack-"|add:questionnaire.code audience=True %}
         </article>

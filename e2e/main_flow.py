@@ -186,6 +186,8 @@ AUDIOGRAM_FORWARD = re.compile("^下一步：標右耳$|換左耳$|確認存檔$
 def audiogram_step(page, live_server_url, step):
     """#199: the new-audiogram page opens on the date; walk on to step (2: 標右耳, 4: 確認存檔)."""
     page.goto(f"{live_server_url}/audiograms/new")
+    if step > 1:
+        type_audiogram_date(page.get_by_role("main"), "115", "9", "1")
     for _ in range(step - 1):
         page.get_by_role("main").get_by_role("button", name=AUDIOGRAM_FORWARD).click()
 
@@ -1600,7 +1602,9 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
 
     def stack_card(self, place):
         # The front stacked card, checked to be the one at this place of three (#753).
-        expect(self.main().locator(".card-stack-position")).to_have_text(f"第 {place} 張，共 3 張")
+        expect(self.main().locator(".card-stack-position")).to_have_text(
+            re.compile(rf"^第 {place} 張，共 3 張")
+        )
         card = self.main().get_by_role("group", name=re.compile(rf"^第 {place} 張，共 3 張："))
         expect(card).to_be_visible()
         return card
@@ -2486,6 +2490,8 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             for step in ("哪一種、哪一天", "標右耳", "標左耳", "確認存檔"):
                 with self.subTest(step=step):
                     expect(self.main()).to_contain_text(f"共 4 步：{step}")
+                    if step == "哪一種、哪一天":
+                        type_audiogram_date(self.main(), "115", "9", "1")
                     for summary in self.main().locator("details > summary").all():
                         summary.click()
                     self.assert_fits_a_phone_at_double_text_size(f"new audiogram, {step}")
@@ -7325,8 +7331,13 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
                     current = nav.locator("[aria-current]")
                     props = ("backgroundColor", "backgroundImage", "color")
                     at_rest = {prop: self.style(current, prop) for prop in props}
-                    self.assertEqual(at_rest["backgroundColor"], self.BRAND_SELECTED)
-                    self.assertEqual(at_rest["color"], self.PRIMARY)
+                    if name == "ear switch":
+                        # C3: selected ear uses solid primary background with white text.
+                        self.assertEqual(at_rest["backgroundColor"], self.PRIMARY)
+                        self.assertEqual(at_rest["color"], self.WHITE)
+                    else:
+                        self.assertEqual(at_rest["backgroundColor"], self.BRAND_SELECTED)
+                        self.assertEqual(at_rest["color"], self.PRIMARY)
                     self.assertEqual(at_rest["backgroundImage"], "none")
                     for states in (("hover",), ("hover", "active")):
                         self.assertEqual(self.under(current, *states, props=props), at_rest)
@@ -7345,8 +7356,8 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
             current = ears.get_by_role("button", name="右耳")
             props = ("backgroundColor", "backgroundImage", "color")
             at_rest = {prop: self.style(current, prop) for prop in props}
-            self.assertEqual(at_rest["backgroundColor"], self.BRAND_SELECTED)
-            self.assertEqual(at_rest["color"], self.PRIMARY)
+            self.assertEqual(at_rest["backgroundColor"], self.PRIMARY)
+            self.assertEqual(at_rest["color"], self.WHITE)
             self.assertEqual(at_rest["backgroundImage"], "none")
             for states in (("hover",), ("hover", "active")):
                 self.assertEqual(self.under(current, *states, props=props), at_rest)
@@ -12408,6 +12419,10 @@ class SpeechBananaEarTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             expect(self.ear("左耳")).to_have_attribute("aria-pressed", "false")
             self.main().locator("summary", has_text="用清單選").click()
             self.main().get_by_role("button", name=self.GROUP_5).click()
+            wait_until(
+                self.page,
+                "document.documentElement.getAnimations({ subtree: true }).length === 0",
+            )
             result = self.main().get_by_role("status")
             sentences = result.text_content()
             self.assertIn("右耳：可能不容易聽到", sentences)
@@ -14919,6 +14934,7 @@ class RecordsT465Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTes
         with self.saving_artifacts():
             self.visit(True, "/audiograms/new", width=390)
             expect(self.page.locator(".site-nav")).to_be_hidden()
+            type_audiogram_date(self.main(), "115", "9", "1")
             self.page.get_by_role("main").get_by_role("button", name=AUDIOGRAM_FORWARD).click()
             expect(self.main().get_by_role("img", name=re.compile("聽力圖"))).to_be_visible()
             expect(self.page.locator(".site-nav")).to_be_hidden()
@@ -15622,7 +15638,9 @@ class LearnStackT754Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
     def front(self, place, title):
         card = self.main().get_by_role("group", name=f"第 {place} 張，共 5 張：{title}")
         expect(card).to_be_visible()
-        expect(self.main().locator(".card-stack-position")).to_have_text(f"第 {place} 張，共 5 張")
+        expect(self.main().locator(".card-stack-position")).to_have_text(
+            f"第 {place} 張，共 5 張：{title}"
+        )
         return card
 
     def test_each_card_s_drawing_plays_once_when_it_comes_to_the_front(self):
@@ -16650,6 +16668,8 @@ class AudiogramReadingTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServ
 
     def open_step(self, step, width=390):
         self.open("/audiograms/new", size=(width, 844))
+        if step > 1:
+            type_audiogram_date(self.main(), "115", "9", "1")
         for _ in range(step - 1):
             self.main().get_by_role("button", name=AUDIOGRAM_FORWARD).click()
 
@@ -16861,6 +16881,7 @@ class AudiogramDemoTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerT
         with self.saving_artifacts():
             self.page.emulate_media(reduced_motion="reduce")
             self.page.reload()
+            type_audiogram_date(self.main(), "115", "9", "1")
             self.main().get_by_role("button", name=AUDIOGRAM_FORWARD).click()
             expect(self.main().get_by_text("選下面的符號")).to_be_visible()
             expect(self.demo_button()).to_have_count(0)
@@ -16946,7 +16967,7 @@ class AudiogramMissedMarksTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
             self.main().get_by_role("button", name="改左耳").click()
             self.main().get_by_text(self.TABLE).click()
             self.mark("左耳氣導", (2000,))
-            self.main().get_by_role("button", name=AUDIOGRAM_FORWARD).click()
+            self.main().get_by_role("button", name="左耳標完了，確認存檔", exact=True).click()
             expect(self.tip().locator("p")).to_have_text(["左耳沒有標 4000、8000 Hz。", self.LAST])
 
             # Acceptance 57: one press saves, nothing else asked.

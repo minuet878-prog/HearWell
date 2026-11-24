@@ -92,6 +92,12 @@ describe("every other change of page has no transition", () => {
     click(".link-card");
     expect(leave()).toHaveBeenCalledOnce();
   });
+
+  it("pressing the already active switch tab (aria-current) does not leave switching true (D4)", () => {
+    page();
+    click('.records-switch a[aria-current="page"]');
+    expect(leave()).toHaveBeenCalledOnce();
+  });
 });
 
 it("leaves a page without any transition alone", () => {

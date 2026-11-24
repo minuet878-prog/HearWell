@@ -1,16 +1,17 @@
 {% extends "screening/layout.html" %}
-{% load custom_filters %}
+{% load static custom_filters %}
 
 {% block title %}意見回饋｜聽伴{% endblock %}
 
+{% block extra_head %}
+<script defer src="{% static 'screening/password-count.js' %}"></script>
+{% endblock %}
+
 {% block body %}
-{# Spec #633 (#636), the #634 mockup's A: the reminder and the urgent box come before the form, so they are read before writing. #}
+{# Spec #633 (#636), C6: one pale anonymous-storage line above the form, urgent box below the submit button. #}
 <div class="narrow-form">
     {% include "screening/bird_dialogue.html" with lead="feedback"|page_lead title="意見回饋" %}
-    {% if page_words %}<p class="tip-box">您是從「{{ page_words }}」過來的。</p>{% endif %}
-    {# #642: the owner's reminder, chosen in #635. #}
-    <p class="tip-box">這裡不是諮詢，不會馬上回覆。您寫的內容會匿名保存 90 天，請不要輸入姓名、電話、身分證字號、病歷號碼。</p>
-    {% include "screening/qa/urgent_box.html" %}
+    <p class="text-(--color-muted) mb-4">內容匿名保存 90 天</p>
     {# #637: refused, in the login page's red box above the form; the words stay in the box. #}
     {% if too_many == "hour" %}<div class="error-box" role="alert">{{ too_many_an_hour }}</div>{% endif %}
     {% if too_many == "day" %}<div class="error-box wrap-anywhere" role="alert"><span>今天收到的意見太多了，請明天再試，或寫信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a>。您寫的字還在下面。</span></div>{% endif %}
@@ -22,6 +23,8 @@
         <div class="mb-4">
             <label for="{{ form.text.id_for_label }}" class="form-label font-bold text-heading">{{ form.text.label }}</label>
             <textarea {% if form.text.errors %}autofocus aria-invalid="true" aria-describedby="{{ form.text.auto_id }}_error {{ form.text.auto_id }}_helptext" {% else %}aria-describedby="{{ form.text.auto_id }}_helptext" {% endif %}class="form-control" id="{{ form.text.id_for_label }}" name="{{ form.text.html_name }}" rows="6" maxlength="{{ form.text.field.max_length }}" required>{{ form.text.value|default:'' }}</textarea>
+            <p class="feedback-count field-help mt-1 mb-0" data-for="{{ form.text.auto_id }}" data-max="{{ form.text.field.max_length }}" data-help="{{ form.text.auto_id }}_helptext" aria-hidden="true" hidden></p>
+            <p class="visually-hidden feedback-count-status" role="status"></p>
             {% include "screening/field_messages.html" with field=form.text help_class="field-help" %}
         </div>
         <div class="mb-4">
@@ -36,5 +39,6 @@
         </div>
         <button type="submit" class="btn btn-primary btn-lg w-full">送出</button>
     </form>
+    {% include "screening/qa/urgent_box.html" %}
 </div>
 {% endblock %}

@@ -3,12 +3,15 @@
 // JavaScript; the shadows at the box's edges are CSS alone.
 export function setUpScrollHint(win = window) {
   const doc = win.document;
-  const pairs = [...doc.querySelectorAll(".scroll-box")].map((box) => {
+  const pairs = [...doc.querySelectorAll(".scroll-box")].map((box, index) => {
     const hint = doc.createElement("p");
+    hint.id = `scroll-hint-${index + 1}`;
     hint.className = "scroll-hint";
     hint.textContent = "表格可以左右滑動";
     hint.hidden = true;
     box.before(hint);
+    const existing = box.getAttribute("aria-describedby");
+    box.setAttribute("aria-describedby", existing ? `${existing} ${hint.id}` : hint.id);
     return [box, hint];
   });
 

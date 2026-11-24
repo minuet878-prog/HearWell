@@ -28,4 +28,29 @@
     // A password the browser filled in is counted on arrival (the server never sends one back).
     if (input.value) count();
   });
+
+  // C6: live character count for maximum-length fields (e.g. feedback text), replacing the static
+  // help text while characters are typed and announcing to screen readers after a 1s pause.
+  document.querySelectorAll(".feedback-count").forEach((line) => {
+    const input = document.getElementById(line.dataset.for);
+    const help = document.getElementById(line.dataset.help);
+    const status = line.parentElement.querySelector(".feedback-count-status");
+    const max = Number(line.dataset.max).toLocaleString("en-US");
+    let pause;
+
+    function count() {
+      const typed = Array.from(input.value).length;
+      const words = typed === 0 ? "" : `已輸入 ${typed.toLocaleString("en-US")} / ${max} 字`;
+      line.hidden = typed === 0;
+      if (help) help.hidden = typed > 0;
+      line.textContent = words;
+      clearTimeout(pause);
+      pause = setTimeout(() => {
+        status.textContent = words;
+      }, 1000);
+    }
+
+    input.addEventListener("input", count);
+    if (input.value) count();
+  });
 })();
