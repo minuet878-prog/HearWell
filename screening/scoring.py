@@ -183,10 +183,12 @@ ANSWER_CARDS = {
         {"True": ("是", "已經收到", "yes"), "False": ("否", "還沒收到", "no")},
     ),
 }
+# #778 (spec #774's 實作中本人補充): said above the notice's ears and level on the card.
+NOTICE_SO_FAR = "已經收到核定公文"
 # The way on after an answer that leaves the stop to do.
 FIND_AN_ASSESSMENT_HOSPITAL = "查詢鑑定醫院"
 FORM_9_STEPS = "看九號表的流程"
-RECORD_THE_NOTICE = "記下核定的耳朵與等級"
+RECORD_THE_NOTICE = "記下核定的耳朵與等級"  # since #778, a result page's way to the card
 TYPES_AND_PRICES_FIRST = "先了解助聽器種類與價格"
 BEFORE_YOU_GO_BUTTON = "了解須知"
 AFTER_FITTING_WORDS = "配戴一個月後才能做二十五號表，配合問卷使用更能知道助聽器的效果。"

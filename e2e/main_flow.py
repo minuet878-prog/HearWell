@@ -4047,6 +4047,47 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     expect(card.get_by_role("heading", level=2)).to_contain_text(next_stop)
                     expect(card.locator(".done-stamp")).to_have_count(0)
 
+    # #778 (spec #774 acceptance 23): the notice's three on the home page's card, one at a time
+    # without JavaScript on a 320px phone, the focus on each new question, never via my guide.
+    def test_answering_the_notice_s_three_on_the_home_card(self):
+        user = User.objects.get(username="guide_e2e")
+        self.my_guide_opened()
+        AidAndSubsidy.objects.create(user=user, certificate="yes", form_9_done=True)
+        self.context = self.browser.new_context(
+            java_script_enabled=False, viewport={"width": 320, "height": 640}
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.addCleanup(self.context.close)
+        self.page = self.context.new_page()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            card = self.main().locator(".journey-card")
+            expect(card.get_by_role("heading", level=2)).to_have_text("等待核定公文")
+            card.get_by_role("button", name="是 已經收到").click()
+
+            expect(self.page).to_have_url(f"{self.live_server_url}/#journey-question")
+            ears = card.get_by_role("group", name="核定的是單耳還是雙耳？")
+            expect(ears).to_be_focused()
+            expect(card.locator(".answer-card-so-far")).to_have_text("✓ 已經收到核定公文")
+            self.assert_fits_a_phone_at_double_text_size("/ the notice's ears")
+            ears.get_by_role("button", name="雙耳", exact=True).click()
+
+            level = card.get_by_role("group", name="補助的等級是？")
+            expect(level).to_be_focused()
+            expect(card.locator(".answer-card-so-far")).to_have_text("✓ 已經收到核定公文、雙耳")
+            self.assert_fits_a_phone_at_double_text_size("/ the notice's level")
+            level.get_by_role("button", name="中階型", exact=True).click()
+
+            expect(self.page).to_have_url(f"{self.live_server_url}/?done=notice#journey-now")
+            expect(card.locator(".done-stamp")).to_have_text("已完成")
+            chosen = card.get_by_role("button", name="中階型", exact=True)
+            expect(chosen).to_have_attribute("aria-pressed", "true")
+            card.get_by_role("link", name="接著往下一站：去找聽力師之前").click()
+            expect(card.get_by_role("heading", level=2)).to_have_text("去找聽力師之前")
+        aid = AidAndSubsidy.objects.get(user=user)
+        self.assertEqual((aid.notice_received, aid.approved_ears, aid.level), (True, "both", "mid"))
+
     # #258: the 目前這一站's ring lights only when motion is welcome. This user has answered
     # nothing, so the stop is the assessment (ADR 0074). #341 (ADR 0029): it plays once the
     # stop is in view, so the route is scrolled to first. #467 (I2): on the tab's first visit
