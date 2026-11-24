@@ -90,7 +90,8 @@ class ReportRowsTests(TestCase):
             [(reverse("share_report"), "分享報告給家人"), (reverse("my_hearing"), "回我的紀錄")],
         )
         self.assertIn('id="report-share"', rows)
-        self.assertNotIn("btn-outline-primary", main)
+        self.assertNotIn("btn-outline-primary", rows)
+        self.assertIn('id="report-fold-toggle"', main)
 
     def test_hearing_aids_and_a_kept_comparison_are_information_rows(self):
         self._full_records()

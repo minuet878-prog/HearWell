@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import AudiogramChart from "./AudiogramChart.jsx";
 import FoldSummary from "./FoldSummary.jsx";
@@ -121,17 +121,32 @@ export default function SpeechBananaApp({ data }) {
   const group = selected === null ? null : data.groups[selected];
   // The server lists the right ear first.
   const [shownEar, setShownEar] = useState(0);
+  const [earAnnounce, setEarAnnounce] = useState("");
+  const chartBox = useRef(null);
   const shown = data.ears[shownEar];
+
+  function switchEar(index) {
+    setShownEar(index);
+    setEarAnnounce(`已切換到${data.ears[index].label}`);
+  }
+
+  function pickFromList(index) {
+    setSelected(index);
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    chartBox.current?.scrollIntoView?.({ block: "start", behavior: reduced ? "instant" : "smooth" });
+  }
+
   return (
     <>
       <div className="ear-switch" role="group" aria-label="選耳朵">
         {data.ears.map((ear, i) => (
-          <button key={ear.ear} type="button" aria-pressed={i === shownEar} onClick={() => setShownEar(i)}>
+          <button key={ear.ear} type="button" aria-pressed={i === shownEar} onClick={() => switchEar(i)}>
             {ear.label}
           </button>
         ))}
       </div>
-      <div className="audiogram-chart">
+      <p className="visually-hidden" aria-live="polite">{earAnnounce}</p>
+      <div ref={chartBox} className="audiogram-chart">
         <AudiogramChart
           points={shown.marks}
           label={`聽力圖，畫出語言香蕉區、六群注音和${shown.label}的標記。要看每一群的結果，請用圖下的「用清單選」。`}
@@ -173,7 +188,7 @@ export default function SpeechBananaApp({ data }) {
           <p>點圖上的注音，看那一群。</p>
         )}
       </div>
-      <p>黃色是語言香蕉區，是說話聲通常落在的範圍。斜線蓋住的部分和虛線框的注音，這一耳沒戴助聽器時可能不容易聽到。</p>
+      <p>紅線（右耳）或藍線（左耳）是您的聽力圖。黃色是語言香蕉區，是說話聲通常落在的範圍。斜線蓋住的部分和虛線框的注音，這一耳沒戴助聽器時可能不容易聽到。</p>
       <details className="result-details">
         <FoldSummary icon="table" title="用清單選" />
         <div className="result-details-body speech-banana-picks">
@@ -183,7 +198,7 @@ export default function SpeechBananaApp({ data }) {
               type="button"
               className="btn btn-outline-primary speech-banana-pick"
               aria-pressed={i === selected}
-              onClick={() => setSelected(i)}
+              onClick={() => pickFromList(i)}
             >
               {groupName(g)}
             </button>

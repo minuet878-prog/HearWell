@@ -26,13 +26,13 @@
     <dl class="settings-group">
         {% if user.email_confirmed %}
         <div class="settings-row">
-            <dt class="settings-row-note">電子郵件</dt>
+            <dt class="settings-row-note">email</dt>
             <dd class="settings-row-title">{{ user.email }}</dd>
         </div>
         {% elif user.email %}
         {# Security check 2026-11-19 (docs/design/email-confirmation-mockup.html 4): 還沒確認 under it, 重寄確認信 on the right of its row. #}
         <div class="settings-row grid grid-cols-[1fr_auto] items-center gap-x-3">
-            <dt class="settings-row-note">電子郵件</dt>
+            <dt class="settings-row-note">email</dt>
             <dd class="settings-row-title wrap-anywhere">{{ user.email }}</dd>
             <dd class="m-0"><span class="email-unconfirmed">還沒確認</span></dd>
             <dd class="col-start-2 row-span-3 row-start-1 m-0">{% include "screening/email_confirm_resend.html" with small=True %}</dd>
@@ -40,9 +40,9 @@
         {% else %}
         {# #660 (the #657 mockup's 二): without one, 補上 on the right of its row, after 確認本人. #}
         <div class="settings-row grid grid-cols-[1fr_auto] items-center gap-x-3">
-            <dt class="settings-row-note">電子郵件</dt>
+            <dt class="settings-row-note">email</dt>
             <dd class="settings-row-title">未填</dd>
-            <dd class="col-start-2 row-span-2 row-start-1"><a class="btn btn-outline-primary btn-pill" href="{% url 'add_email' %}" aria-label="補上電子郵件">補上</a></dd>
+            <dd class="col-start-2 row-span-2 row-start-1"><a class="btn btn-outline-primary btn-pill" href="{% url 'add_email' %}" aria-label="補上 email">補上</a></dd>
         </div>
         {% endif %}
         <div class="settings-row">

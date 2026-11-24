@@ -206,7 +206,7 @@ export default function AnswerApp({
     const where = saved.step === 0 ? "您上次還沒答完" : `您上次答到第 ${saved.step} 題`;
     return (
       <div className="answer-app">
-        <h3 className="h4 answer-resume-title">{where}，要接著答嗎？</h3>
+        <h2 className="h4 answer-resume-title">{where}，要接著答嗎？</h2>
         {/* #462: one above the other, each the whole width. */}
         <div className="answer-nav answer-resume">
           <button type="button" className="btn btn-primary btn-lg" onClick={() => begin(saved, true)}>接著答</button>

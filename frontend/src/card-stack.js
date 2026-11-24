@@ -37,7 +37,15 @@ export function setUpCardStack(root, win = window) {
       card.inert = offset !== 0;
     });
     dots.forEach((dot, n) => dot.toggleAttribute("data-current", n === index));
-    position.textContent = `第 ${index + 1} 張，共 ${cards.length} 張`;
+    const title = cards[index].querySelector("h2, h3")?.textContent?.trim();
+    position.innerHTML = "";
+    position.append(`第 ${index + 1} 張，共 ${cards.length} 張`);
+    if (title) {
+      const hiddenTitle = root.ownerDocument.createElement("span");
+      hiddenTitle.className = "visually-hidden";
+      hiddenTitle.textContent = `：${title}`;
+      position.append(hiddenTitle);
+    }
     // A button that has just reached its end keeps the focus from falling to the page.
     const focused = root.ownerDocument.activeElement;
     prev.disabled = index === 0;

@@ -37,6 +37,7 @@ const renderApp = () => render(<AudiogramApp today={TODAY} csrfToken="csrf-token
 // Most tests mark points: open on the right ear's step, or the left ear's.
 const renderRight = () => {
   renderApp();
+  setDate(TODAY);
   forward();
 };
 const renderLeft = () => {
@@ -91,6 +92,7 @@ describe("input", () => {
   it("starts empty with right-ear air selected (acceptance 1)", () => {
     renderApp();
     expect(dateGroup()).toBeTruthy();
+    setDate(TODAY);
     forward();
     expect(chart().querySelectorAll("[data-point]")).toHaveLength(0);
     expect(screen.getByRole("button", { name: /右耳氣導/ }).getAttribute("aria-pressed")).toBe("true");
@@ -437,6 +439,7 @@ describe("steps", () => {
     expect(document.querySelectorAll(".step-progress-segment")).toHaveLength(4);
     expect(document.querySelectorAll(".step-progress-segment.is-done")).toHaveLength(1);
 
+    setDate(TODAY);
     forward();
     expect(progress()).toBe("第 2 步／共 4 步：標右耳");
     expect(screen.getByText("報告上的 O 是右耳（通常是紅色），X 是左耳（通常是藍色）")).toBeTruthy();
@@ -490,6 +493,7 @@ describe("steps", () => {
     renderApp();
     const text = document.querySelector(".step-progress-text");
     expect(document.activeElement).not.toBe(text);
+    setDate(TODAY);
     forward();
     expect(document.activeElement).toBe(document.querySelector(".step-progress-text"));
   });
@@ -528,23 +532,37 @@ describe("steps", () => {
     }
   });
 
-  it("jumps back to the step to change (#200 acceptance 1)", () => {
+  it("jumps back to the step to change, and offers a shortcut back to confirm (#200 acceptance 1, C1)", () => {
     renderApp();
+    setDate(TODAY);
     forward();
+    // Before reaching step 4, there is no shortcut button.
+    expect(screen.queryByRole("button", { name: "改好了，回確認存檔" })).toBeNull();
     forward();
     forward();
     expect(screen.getByText("右耳：還沒有標任何點")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "改右耳" }));
     expect(progress()).toBe("第 2 步／共 4 步：標右耳");
     drag(1000, 40, 40);
-    forward();
-    forward();
+    // Shortcut directly back to step 4 without clicking through left ear.
+    fireEvent.click(screen.getByRole("button", { name: "改好了，回確認存檔" }));
+    expect(progress()).toBe("第 4 步／共 4 步：確認存檔");
     expect(screen.getByText("右耳：氣導 1 個、骨導 0 個")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "改左耳" }));
     expect(progress()).toBe("第 3 步／共 4 步：標左耳");
-    forward();
+    fireEvent.click(screen.getByRole("button", { name: "改好了，回確認存檔" }));
+    expect(progress()).toBe("第 4 步／共 4 步：確認存檔");
     fireEvent.click(screen.getByRole("button", { name: "改日期" }));
     expect(progress()).toBe("第 1 步／共 4 步：哪一種、哪一天");
+    // On step 1, the shortcut also validates source and date before jumping to step 4.
+    typeDate("115", "2", "30");
+    fireEvent.click(screen.getByRole("button", { name: "改好了，回確認存檔" }));
+    expect(progress()).toBe("第 1 步／共 4 步：哪一種、哪一天");
+    expect(screen.getByRole("alert").textContent).toContain("檢查日期不對，請照報告再填一次");
+    typeDate("115", "10", "2");
+    fireEvent.click(screen.getByRole("button", { name: "改好了，回確認存檔" }));
+    expect(progress()).toBe("第 4 步／共 4 步：確認存檔");
+    expect(document.querySelector(".audiogram-app").textContent).toContain("日期：2026/10/02");
   });
 });
 
@@ -559,19 +577,17 @@ describe("which kind (spec #702)", () => {
     expect(radios.map((r) => r.labels[0].textContent)).toEqual([EXAM, SELF_TEST]);
     expect(radios.every((r) => !r.checked)).toBe(true);
     expect(dateGroup()).toBeTruthy();
+    setDate(TODAY);
     forward();
     expect(kindGroup()).toBeNull();
   });
 
-  it("will not save until one is chosen (acceptance 11)", async () => {
+  it("will not move past step 1 until one is chosen (acceptance 11, C1)", async () => {
     renderApp();
     typeDate("115", "10", "1");
     forward();
-    drag(1000, 40, 40);
-    confirmAndSave();
+    expect(progress()).toBe("第 1 步／共 4 步：哪一種、哪一天");
     expect(screen.getByRole("alert").textContent).toContain("請選擇這是哪一種");
-    expect(fetch).not.toHaveBeenCalled();
-    expect(document.querySelector(".audiogram-app").textContent).toContain("哪一種：未選");
   });
 
   it("sends the chosen kind and shows it before saving (acceptance 11)", async () => {
@@ -709,30 +725,36 @@ describe("save", () => {
     expect(JSON.parse(fetch.mock.calls[0][1].body).tested_on).toBe("2026-10-01");
   });
 
-  it("says a date that is not on the calendar, or half typed, is not right (walkthrough 12A)", () => {
+  it("says a date that is not on the calendar, or half typed, is not right on step 1 and sets aria-invalid (walkthrough 12A, C1)", () => {
     for (const [year, month, day] of [["115", "2", "30"], ["115", "", ""], ["一一五", "1", "1"]]) {
       cleanup();
       renderApp();
+      pickKind(EXAM);
       typeDate(year, month, day);
       forward();
-      drag(1000, 40, 40);
-      confirmAndSave();
+      expect(progress()).toBe("第 1 步／共 4 步：哪一種、哪一天");
       expect(screen.getByRole("alert").textContent).toContain("檢查日期不對，請照報告再填一次");
+      for (const name of ["民國年", "月", "日"]) {
+        expect(screen.getByLabelText(name).getAttribute("aria-invalid")).toBe("true");
+      }
     }
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("needs a date that is not in the future (acceptance 13)", () => {
-    renderRight();
-    drag(1000, 40, 40);
-    confirmAndSave();
+  it("needs a date that is not in the future on step 1 (acceptance 13, C1)", () => {
+    renderApp();
+    pickKind(EXAM);
+    forward();
+    expect(progress()).toBe("第 1 步／共 4 步：哪一種、哪一天");
     expect(screen.getByRole("alert").textContent).toContain("請填寫檢查日期");
-    fireEvent.click(screen.getByRole("button", { name: "改日期" }));
+    for (const name of ["民國年", "月", "日"]) {
+      expect(screen.getByLabelText(name).getAttribute("aria-invalid")).toBe("true");
+    }
     setDate("2026-10-17");
-    confirmAndSave();
+    forward();
+    expect(progress()).toBe("第 1 步／共 4 步：哪一種、哪一天");
     expect(screen.getByRole("alert").textContent).toContain("檢查日期不能是未來");
     expect(fetch).not.toHaveBeenCalled();
-    expect(point("right-air-1000")).not.toBeNull();
   });
 
   it("needs at least one point (acceptance 14)", () => {
@@ -865,9 +887,8 @@ describe("edit", () => {
   it("checks the date and points before sending (acceptance 3)", () => {
     renderEdit();
     setDate("2026-10-17");
-    confirmAndSave();
+    forward();
     expect(screen.getByRole("alert").textContent).toContain("檢查日期不能是未來");
-    fireEvent.click(screen.getByRole("button", { name: "改日期" }));
     setDate("2026-01-10");
     forward();
     fireEvent.change(select("右耳氣導 1000 Hz"), { target: { value: "" } });
@@ -954,7 +975,7 @@ describe("reading over the chart (#617)", () => {
     expect(said()).toBe("右耳氣導　500 Hz　30 dB");
   });
 
-  it("goes back to the hint when the point is deleted, three ways (acceptance 35)", () => {
+  it("goes back to the hint and announces 已清除 when the point is deleted, three ways (acceptance 35, C1)", () => {
     for (const remove of [
       () => drag(1000, 45, 45),
       () => fireEvent.click(screen.getByRole("button", { name: "清除 右耳氣導 1000 Hz" })),
@@ -966,7 +987,7 @@ describe("reading over the chart (#617)", () => {
       remove();
       expect(point("right-air-1000")).toBeNull();
       expect(shown()).toEqual(HINT);
-      expect(said()).toBe("");
+      expect(said()).toBe("已清除 右耳氣導 1000 Hz");
     }
   });
 
@@ -1005,6 +1026,7 @@ describe("reading over the chart (#617)", () => {
 describe("field names (#354)", () => {
   it("no label or legend ends in a colon, on any step", () => {
     renderApp();
+    setDate(TODAY);
     const names = [];
     const collect = () =>
       document.querySelectorAll("label, legend").forEach((el) => names.push(el.textContent.trim()));
@@ -1022,7 +1044,7 @@ describe("field names (#354)", () => {
 describe("layout (#465)", () => {
   const howto = () => document.querySelector(".audiogram-howto");
   const renderEdit = () =>
-    render(<AudiogramApp today={TODAY} csrfToken="csrf-token" navigate={navigate} audiogramId={7} initialTestedOn="2026-01-10" />);
+    render(<AudiogramApp today={TODAY} csrfToken="csrf-token" navigate={navigate} audiogramId={7} initialTestedOn="2026-01-10" initialSource="exam" />);
 
   it("shows how to mark on a new audiogram's first ear, folded under 怎麼標記 on the second", () => {
     renderRight();
@@ -1049,6 +1071,7 @@ describe("layout (#465)", () => {
 
   it("puts 存檔 and 上一步 before the folded value table on the confirm step", () => {
     renderApp();
+    setDate(TODAY);
     forward();
     forward();
     forward();
@@ -1072,7 +1095,7 @@ describe("demo under 怎麼標記 (#618)", () => {
   const howto = () => document.querySelector(".audiogram-howto").parentElement;
   const demoButton = () => [...howto().querySelectorAll("button")].find((b) => /看示範|再看一次/.test(b.textContent));
   const renderEdit = () =>
-    render(<AudiogramApp today={TODAY} csrfToken="csrf-token" navigate={navigate} audiogramId={7} initialTestedOn="2026-01-10" />);
+    render(<AudiogramApp today={TODAY} csrfToken="csrf-token" navigate={navigate} audiogramId={7} initialTestedOn="2026-01-10" initialSource="exam" />);
 
   it("is in how to mark on both ear steps, open or folded, new or editing (acceptance 42)", () => {
     renderRight();

@@ -186,6 +186,8 @@ AUDIOGRAM_FORWARD = re.compile("^下一步：標右耳$|換左耳$|確認存檔$
 def audiogram_step(page, live_server_url, step):
     """#199: the new-audiogram page opens on the date; walk on to step (2: 標右耳, 4: 確認存檔)."""
     page.goto(f"{live_server_url}/audiograms/new")
+    if step > 1:
+        type_audiogram_date(page.get_by_role("main"), "115", "9", "1")
     for _ in range(step - 1):
         page.get_by_role("main").get_by_role("button", name=AUDIOGRAM_FORWARD).click()
 
@@ -1598,7 +1600,9 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
 
     def stack_card(self, place):
         # The front stacked card, checked to be the one at this place of three (#753).
-        expect(self.main().locator(".card-stack-position")).to_have_text(f"第 {place} 張，共 3 張")
+        expect(self.main().locator(".card-stack-position")).to_have_text(
+            re.compile(rf"^第 {place} 張，共 3 張")
+        )
         card = self.main().get_by_role("group", name=re.compile(rf"^第 {place} 張，共 3 張："))
         expect(card).to_be_visible()
         return card
@@ -12407,6 +12411,10 @@ class SpeechBananaEarTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             expect(self.ear("左耳")).to_have_attribute("aria-pressed", "false")
             self.main().locator("summary", has_text="用清單選").click()
             self.main().get_by_role("button", name=self.GROUP_5).click()
+            wait_until(
+                self.page,
+                "document.documentElement.getAnimations({ subtree: true }).length === 0",
+            )
             result = self.main().get_by_role("status")
             sentences = result.text_content()
             self.assertIn("右耳：可能不容易聽到", sentences)
@@ -15621,7 +15629,9 @@ class LearnStackT754Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
     def front(self, place, title):
         card = self.main().get_by_role("group", name=f"第 {place} 張，共 5 張：{title}")
         expect(card).to_be_visible()
-        expect(self.main().locator(".card-stack-position")).to_have_text(f"第 {place} 張，共 5 張")
+        expect(self.main().locator(".card-stack-position")).to_have_text(
+            f"第 {place} 張，共 5 張：{title}"
+        )
         return card
 
     def test_each_card_s_drawing_plays_once_when_it_comes_to_the_front(self):

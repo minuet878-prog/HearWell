@@ -193,10 +193,11 @@ it("tells the limits always and the 高頻下降 note only on 高頻下降", () 
   for (const limit of DATA.limits) expect(hint()).toContain(limit);
 });
 
-it("announces the line that says what is heard", () => {
-  // #484 acceptance 20: the bars are drawn, the line says it.
+it("announces the line that says what is heard and the sentence caption (C9)", () => {
+  // #484 acceptance 20: the bars are drawn, the line says it; C9: caption also has aria-live.
   const { container } = open();
   expect(container.querySelector(".simulator-line").getAttribute("aria-live")).toBe("polite");
+  expect(container.querySelector(".simulator-caption").getAttribute("aria-live")).toBe("polite");
   expect(container.querySelector(".simulator-bars").getAttribute("aria-hidden")).toBe("true");
 });
 

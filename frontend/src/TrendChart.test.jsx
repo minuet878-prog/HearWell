@@ -62,7 +62,7 @@ async function chartDrawn(container) {
 
 // Every point is drawn as a .trend-dot shape (circle, square or triangle) carrying its centre.
 function dots(container) {
-  return [...container.querySelectorAll(".recharts-line-dots .trend-dot")];
+  return [...container.querySelectorAll(".recharts-line-dots .trend-dot:not(.trend-dot-active)")];
 }
 
 function dateTicks(container) {
@@ -81,7 +81,7 @@ function vertices(curve) {
 function lineParts(container, status) {
   // Recharts draws dots in a layer of their own, so they are found by their status, not their line.
   const curve = container.querySelector(`.trend-line-${status} .recharts-line-curve`);
-  const points = [...container.querySelectorAll(`.trend-dot[data-status="${status}"]`)].map(
+  const points = [...container.querySelectorAll(`.trend-dot:not(.trend-dot-active)[data-status="${status}"]`)].map(
     (d) => `${Number(d.dataset.cx)},${Number(d.dataset.cy)}`,
   );
   return { curve, points };
@@ -262,10 +262,11 @@ describe("TrendChart", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
-  it("explains when the API returns an error, also to screen readers", async () => {
+  it("explains when the API returns an error, also to screen readers with role=status (C4)", async () => {
     globalThis.fetch = vi.fn(() => Promise.resolve({ ok: false, json: () => Promise.resolve({}) }));
     render(<TrendChart code="hhie-s" />);
     const message = await screen.findByText(ERROR_TEXT);
+    expect(message.getAttribute("role")).toBe("status");
     expect(message.closest("[aria-hidden]")).toBeNull();
   });
 
@@ -292,12 +293,23 @@ describe("TrendChart", () => {
       }
     });
 
-    it("writes each score next to its point, including 0", async () => {
+    it("writes each score next to its point with a white stroke halo, and highlights the active dot on hover (C4)", async () => {
       threePoints();
       const { container } = render(<TrendChart code="hhie-s" />);
       await chartDrawn(container);
-      const labels = [...container.querySelectorAll(".trend-score")].map((t) => t.textContent);
-      expect(labels).toEqual(["12", "18", "0"]);
+      const scoreNodes = [...container.querySelectorAll(".trend-score")];
+      expect(scoreNodes.map((t) => t.textContent)).toEqual(["12", "18", "0"]);
+      for (const node of scoreNodes) {
+        expect(node.getAttribute("paint-order")).toBe("stroke");
+        expect(node.getAttribute("stroke")).toBe("#fff");
+      }
+      const targetDot = dots(container)[0];
+      fireEvent.mouseMove(container.querySelector(".recharts-wrapper"), {
+        clientX: Number(targetDot.dataset.cx),
+        clientY: Number(targetDot.dataset.cy),
+      });
+      await vi.waitFor(() => expect(container.querySelector(".trend-dot-active")).not.toBeNull());
+      expect(container.querySelector(".trend-dot-halo")).not.toBeNull();
     });
 
     it("uses soft band colours and no y axis numbers", async () => {

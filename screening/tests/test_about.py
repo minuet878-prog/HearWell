@@ -3,7 +3,7 @@ import re
 from django.test import TestCase
 from django.urls import reverse
 
-from screening.models import User
+from screening.models import Feedback, User
 from screening.tests import test_layout
 
 
@@ -52,8 +52,8 @@ class AboutPageTests(TestCase):
         self.assertEqual(self.client.get(reverse("about")).status_code, 200)
 
     def test_feedback_from_it_names_it(self):
-        response = self.client.get(reverse("feedback"), {"page": "about"})
-        self.assertContains(response, "您是從「關於聽伴」過來的。")
+        self.client.post(f"{reverse('feedback')}?page=about", {"text": "關於聽伴寫得很清楚"})
+        self.assertEqual(Feedback.objects.get().page, "關於聽伴")
 
 
 # Spec #633 (#642): the owner's three parts from #635.

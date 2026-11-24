@@ -245,7 +245,7 @@
     justify-content: center;
     min-height: var(--spacing-touch);
     padding: 0.25rem 1rem;
-    border-radius: var(--radius-tab);
+    border-radius: calc(var(--radius-tab) - 0.25rem);
     color: var(--color-muted);
     font-weight: 400;
     text-decoration: none;

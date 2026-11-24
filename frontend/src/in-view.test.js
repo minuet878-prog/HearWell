@@ -187,6 +187,20 @@ describe("setUpPlayInView: entrance animations", () => {
     behind.dispatchEvent(new Event("card-stack-show", { bubbles: true }));
     expect(drawing(behind).hasAttribute("data-in-view")).toBe(true);
   });
+
+  it("disconnects ResizeObserver immediately when no animations are waiting on initial load (D4)", () => {
+    page(`<p>沒有動畫的頁面</p>`);
+    const win = fakeWindow();
+    let disconnected = false;
+    win.ResizeObserver = class {
+      observe() {}
+      disconnect() {
+        disconnected = true;
+      }
+    };
+    setUpPlayInView(win);
+    expect(disconnected).toBe(true);
+  });
 });
 
 // Codex cross review of #741, item 2: the guest result page puts its result in after this set up

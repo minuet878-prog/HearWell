@@ -1,6 +1,9 @@
 {# The graded result page's result section, under its header (#494). A result from_answers() (a guest's, spec #492) is drawn by it alone: without a record it has no 照顧旅程 and no records, report or sharing. #750 (spec #741 acceptance 48, canvas ProResult): the score block (the gauge, the score, the level's short name, the two bars against last time), the blue 建議下一步 card, then the rows; the score shows at once and the gauge draws once in view (ADR 0077). Since 2026-11-21 (the owner) 這個分數怎麼算 is open between the block and the 建議下一步 (score_explain.html), not a row. #}
 {% with result=submission.result %}
 <div class="result-banner result-banner-{{ result.level.color }}">
+    {% if not just_saved and not result.is_guest %}
+    <p class="result-banner-meta">{{ submission.created_at|date:"Y/m/d" }}{% if submission.wearing_hearing_aid is not None %}・{{ submission.get_wearing_hearing_aid_display }}助聽器{% endif %}</p>
+    {% endif %}
     {% if gauge %}
     <div class="result-gauge-row">
         {% include "screening/semicircle_gauge.html" %}

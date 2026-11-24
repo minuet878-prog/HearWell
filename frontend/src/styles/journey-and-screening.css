@@ -52,6 +52,7 @@
     font-size: 2.2222rem;
     font-weight: 700;
     line-height: 1.15;
+    font-variant-numeric: tabular-nums;
   }
 
   .journey-tile-score small {
@@ -667,6 +668,7 @@
     color: var(--color-primary);
     font-size: 1.4444rem;
     font-weight: 700;
+    font-variant-numeric: tabular-nums;
   }
 
   /* #745 (spec #741, the canvas's 照顧旅程展開, grill Q4, Q21): step 5's answer card, white on
@@ -680,7 +682,7 @@
     /* As the hero card's: narrower sides on a 320px phone at 200% text. */
     padding: 1rem clamp(0.5rem, (100% - 9rem) * 100, 1rem);
     border: 1.5px solid var(--color-brand-soft-deep);
-    border-radius: 1rem;
+    border-radius: var(--radius-badge);
     background-color: #fff;
     box-shadow: 0 2px 8px rgba(31, 78, 140, 0.08);
     color: var(--color-heading);
@@ -733,7 +735,7 @@
     min-height: 6.2222rem;
     padding: 0.6667rem 0.25rem;
     border: 2px solid var(--color-brand-soft-deep);
-    border-radius: 0.8889rem;
+    border-radius: var(--radius-button);
     background-color: var(--color-brand-soft);
     color: var(--color-heading);
     font: inherit;
@@ -802,7 +804,7 @@
     gap: 0.75rem 1rem;
     padding: 1rem clamp(0.5rem, (100% - 9rem) * 100, 1rem);
     border: 1.5px solid var(--color-brand-soft-deep);
-    border-radius: 1rem;
+    border-radius: var(--radius-badge);
     background-color: #fff;
     box-shadow: 0 2px 8px rgba(31, 78, 140, 0.08);
     color: var(--color-heading);
@@ -1216,7 +1218,7 @@
     grid-template-columns: minmax(0, 1fr) auto;
     min-height: 3.75rem;
     padding: 0.5rem 0.75rem 0.5rem 1rem;
-    border-radius: 0.8889rem;
+    border-radius: var(--radius-button);
     font-weight: 700;
   }
 

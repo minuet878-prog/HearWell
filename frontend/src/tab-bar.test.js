@@ -41,14 +41,22 @@ describe("setUpTabBar", () => {
     expect(isHidden()).toBe(false);
   });
 
-  it("hides the bar while scrolling down and brings it back on scrolling up", () => {
+  it("hides the bar while scrolling down and brings it back on scrolling up, ignoring jitter under 14px (C8)", () => {
     const win = fakeWindow();
     setUpTabBar(win);
+    win.scrollTo(10);
+    expect(isHidden()).toBe(false);
     win.scrollTo(300);
+    expect(isHidden()).toBe(true);
+    // Tiny upward jitter (e.g. 8px) keeps the bar hidden.
+    win.scrollTo(292);
     expect(isHidden()).toBe(true);
     win.scrollTo(600);
     expect(isHidden()).toBe(true);
     win.scrollTo(550);
+    expect(isHidden()).toBe(false);
+    // Tiny downward jitter (e.g. 10px) keeps the bar visible.
+    win.scrollTo(560);
     expect(isHidden()).toBe(false);
   });
 

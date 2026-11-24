@@ -17,7 +17,7 @@ from screening.tests.helpers import consented_user
 
 CARD = re.compile(
     r'<article class="hero-card card-stack-card" role="group" aria-roledescription="卡片" '
-    r'aria-label="([^"]+)">(.*?)</article>',
+    r'aria-label="([^"]+)"(?: inert)?>(.*?)</article>',
     re.S,
 )
 
