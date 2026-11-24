@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>助聽器選配與補助 — 四版設計比較頁</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: "Noto Sans TC", -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", sans-serif;
+      background: var(--background, #eef1f6);
+      color: var(--foreground, #1e293b);
+      line-height: 1.5;
+    }
+
+    .sheet-wrap {
+      max-width: 1680px;
+      margin: 0 auto;
+    }
+
+    .sheet-header {
+      border-bottom: 1px solid var(--card-border, #cbd5e1);
+      padding-bottom: 16px;
+      margin-bottom: 20px;
+    }
+
+    .sheet-top-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .sheet-title {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .sheet-sub {
+      margin: 4px 0 0;
+      font-size: 15px;
+      color: var(--muted-foreground, #475569);
+    }
+
+    .sheet-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+      margin-top: 12px;
+    }
+
+    .sheet-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sheet-group-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted-foreground, #475569);
+      margin-right: 4px;
+    }
+
+    .sheet-pill {
+      padding: 6px 12px;
+      min-height: 36px;
+      border-radius: 8px;
+      border: 1px solid var(--card-border, #cbd5e1);
+      background: var(--card, #ffffff);
+      color: var(--foreground, #1e293b);
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .sheet-pill[aria-pressed="true"] {
+      background: #1f4e8c;
+      color: #ffffff;
+      border-color: #1f4e8c;
+      font-weight: 700;
+    }
+
+    .sheet-pill[aria-pressed="true"]::before {
+      content: "";
+      display: inline-block;
+      width: 0.9em;
+      height: 0.9em;
+      margin-right: 0.3em;
+      vertical-align: -0.12em;
+      background-color: currentColor;
+      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat;
+      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat;
+    }
+
+    .before-box {
+      background: var(--card, #ffffff);
+      border: 1px solid var(--card-border, #cbd5e1);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+
+    .before-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .before-item {
+      border: 1px solid var(--card-border, #cbd5e1);
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 14px;
+    }
+
+    .phones-grid {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 20px;
+      align-items: flex-start;
+      overflow-x: auto;
+      padding-bottom: 12px;
+      scroll-snap-type: x proximity;
+    }
+
+    .phone-col {
+      width: 360px;
+      flex: 0 0 360px;
+      scroll-snap-align: start;
+    }
+
+    .phone-meta {
+      margin-bottom: 10px;
+    }
+
+    .phone-meta-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .phone-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      border: 1px solid var(--card-border, #cbd5e1);
+      background: var(--card, #ffffff);
+    }
+
+    .phone-badge.is-rec {
+      background: #1f4e8c;
+      color: #ffffff;
+      border-color: #1f4e8c;
+    }
+
+    .phone-meta-title {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .phone-meta-desc {
+      margin: 0;
+      font-size: 14px;
+      color: var(--muted-foreground, #475569);
+      min-height: 3.2em;
+    }
+
+    /* Simulated 390px Tingpal Phone Frame — exact Tingpal light palette & 18px base scale */
+    .tp-phone {
+      --tp-primary: #1f4e8c;
+      --tp-primary-hover: #173b6a;
+      --tp-soft: #eef3fa;
+      --tp-selected: #e8eef7;
+      --tp-surface: #f4f6f8;
+      --tp-heading: #212529;
+      --tp-body: #343a40;
+      --tp-muted: #4a5460;
+      --tp-line: #e3e7ec;
+      --tp-line-strong: #8a94a3;
+      --tp-stamp: #b3261e;
+      --tp-scale: 18px;
+
+      width: 360px;
+      max-width: 100%;
+      background: #ffffff;
+      color: var(--tp-body);
+      border: 1px solid #94a3b8;
+      border-radius: 28px;
+      overflow: hidden;
+      font-size: var(--tp-scale);
+      line-height: 1.5;
+      flex: none;
+    }
+
+    .tp-phone.is-large-text {
+      --tp-scale: 24px;
+    }
+
+    .tp-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.7em 1em;
+      border-bottom: 1px solid var(--tp-line);
+      background: #ffffff;
+    }
+
+    .tp-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45em;
+      font-weight: 700;
+      font-size: 1.15em;
+      color: var(--tp-primary);
+    }
+
+    .tp-avatar {
+      width: 2.2em;
+      height: 2.2em;
+      border-radius: 999px;
+      background: var(--tp-soft);
+      color: var(--tp-primary);
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+      border: 1.5px solid var(--tp-primary);
+    }
+
+    .tp-login-btn {
+      padding: 0.25em 0.75em;
+      min-height: 2.4em;
+      border-radius: 0.65em;
+      border: 2px solid var(--tp-primary);
+      color: var(--tp-primary);
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .tp-body {
+      padding: 0.9em 1em 1.6em;
+    }
+
+    /* Bird Dialogue (ADR 0076) */
+    .tp-bird {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 0.65em;
+      margin: 0.15em 0 0.9em;
+    }
+
+    .tp-bird-mark {
+      flex: none;
+      width: 3em;
+      height: 3em;
+      border-radius: 42% 58% 55% 45% / 48% 42% 58% 52%;
+      background: var(--tp-primary);
+      display: grid;
+      place-items: center;
+      color: #ffffff;
+    }
+
+    .tp-bird-bubble {
+      position: relative;
+      flex: 1 1 9em;
+      min-width: 0;
+      padding: 0.65em 0.85em 0.75em;
+      border-radius: 1.05em;
+      background: var(--tp-soft);
+    }
+
+    .tp-bird-lead {
+      margin: 0;
+      color: var(--tp-body);
+      font-size: 1em;
+    }
+
+    .tp-bird-title {
+      margin: 0.1em 0 0;
+      color: var(--tp-heading);
+      font-size: 1.45em;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    /* Deep Blue Hero Card (ADR 0076 — at most one per page) */
+    .tp-hero {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55em;
+      padding: 1.05em 1.05em 1.1em;
+      border-radius: 1.25em;
+      background: var(--tp-primary);
+      color: #ffffff;
+      margin: 0 0 1em;
+    }
+
+    .tp-hero-title {
+      margin: 0;
+      font-size: 1.25em;
+      font-weight: 700;
+      line-height: 1.32;
+      color: #ffffff;
+    }
+
+    .tp-hero-p {
+      margin: 0;
+      font-size: 1em;
+      line-height: 1.48;
+      color: #ffffff;
+    }
+
+    .tp-hero-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35em;
+      min-height: 3em;
+      padding: 0.45em 1em;
+      margin-top: 0.25em;
+      border-radius: 0.75em;
+      background: #ffffff;
+      color: var(--tp-primary);
+      font-size: 1.05em;
+      font-weight: 700;
+      text-align: center;
+      cursor: pointer;
+      border: 0;
+      width: 100%;
+    }
+
+    .tp-hero-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(7.2em, 1fr));
+      gap: 0.5em;
+      margin-top: 0.15em;
+    }
+
+    .tp-hero-stat {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 0.75em;
+      padding: 0.55em 0.7em;
+    }
+
+    .tp-hero-stat-num {
+      display: block;
+      font-size: 1.18em;
+      font-weight: 700;
+      line-height: 1.25;
+      margin-top: 0.1em;
+    }
+
+    /* Segmented Track / Pills — non-colour ✓ cue (#17) */
+    .tp-seg {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.3em;
+      padding: 0.28em;
+      border-radius: 1em;
+      background: var(--tp-surface);
+      margin: 0 0 0.95em;
+    }
+
+    .tp-seg-3 {
+      grid-template-columns: repeat(auto-fit, minmax(5.6em, 1fr));
+    }
+
+    .tp-seg button {
+      min-height: 2.75em;
+      padding: 0.35em 0.45em;
+      border-radius: 0.8em;
+      border: 2px solid transparent;
+      background: transparent;
+      color: var(--tp-muted);
+      font-size: 1em;
+      font-weight: 700;
+      line-height: 1.25;
+      cursor: pointer;
+    }
+
+    .tp-seg button[aria-selected="true"] {
+      background: #ffffff;
+      color: var(--tp-primary);
+      border-color: var(--tp-primary);
+    }
+
+    .tp-seg button[aria-selected="true"]::before {
+      content: "";
+      display: inline-block;
+      width: 0.95em;
+      height: 0.95em;
+      margin-right: 0.25em;
+      vertical-align: -0.14em;
+      background-color: currentColor;
+      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat;
+      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat;
+    }
+
+    /* Tappable Chapter Rows (E-style clickable rows) */
+    .tp-row-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .tp-row-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.65em;
+      min-height: 3.6em;
+      padding: 0.7em 0.2em;
+      border-top: 1px solid var(--tp-line);
+      cursor: pointer;
+    }
+
+    .tp-row-list > li:last-child .tp-row-item {
+      border-bottom: 1px solid var(--tp-line);
+    }
+
+    .tp-row-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .tp-row-title {
+      display: block;
+      color: var(--tp-heading);
+      font-weight: 700;
+      font-size: 1.05em;
+      line-height: 1.35;
+    }
+
+    .tp-row-sub {
+      display: block;
+      color: var(--tp-muted);
+      font-size: 1em;
+      margin-top: 0.12em;
+    }
+
+    .tp-row-chev {
+      flex: none;
+      color: var(--tp-primary);
+      font-size: 1.55em;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    /* Vermilion Done Stamp (ADR 0075) */
+    .tp-stamp {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25em;
+      padding: 0.1em 0.5em;
+      border: 2px solid var(--tp-stamp);
+      border-radius: 0.4em;
+      color: var(--tp-stamp);
+      background: #ffffff;
+      font-weight: 700;
+      font-size: 1em;
+      line-height: 1.3;
+      white-space: nowrap;
+    }
+
+    .tp-here-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.12em 0.55em;
+      border-radius: 999px;
+      background: var(--tp-primary);
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 1em;
+      line-height: 1.35;
+      white-space: nowrap;
+    }
+
+    /* Version A Stage Blocks (Tone-stepped chapters, no thin boxes, no 01/02/03) */
+    .tp-stage {
+      padding: 0.9em 0.9em 0.65em;
+      border-radius: 1.15em;
+      margin-bottom: 0.8em;
+    }
+
+    .tp-stage-1 { background: var(--tp-surface); }
+    .tp-stage-2 { background: var(--tp-soft); }
+    .tp-stage-3 { background: var(--tp-surface); }
+
+    .tp-stage-head {
+      margin: 0 0 0.5em;
+      color: var(--tp-heading);
+      font-size: 1.16em;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .tp-gate-banner {
+      background: #ffffff;
+      border-left: 5px solid var(--tp-primary);
+      border-radius: 0.55em;
+      padding: 0.6em 0.75em;
+      margin: 0 0 0.6em;
+      color: var(--tp-heading);
+      font-weight: 700;
+    }
+
+    .tp-stage-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6em;
+      background: #ffffff;
+      border-radius: 0.8em;
+      padding: 0.7em 0.8em;
+      margin-bottom: 0.5em;
+      min-height: 3.4em;
+    }
+
+    /* Version C 2x2 Subsidy Passbook Grid */
+    .tp-passbook {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(7.8em, 1fr));
+      gap: 0.55em;
+      margin: 0.45em 0;
+    }
+
+    .tp-pass-cell {
+      background: var(--tp-surface);
+      border-radius: 0.9em;
+      padding: 0.75em 0.8em;
+      border: 2px solid transparent;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 0.4em;
+    }
+
+    .tp-pass-cell.is-active {
+      background: var(--tp-soft);
+      border-color: var(--tp-primary);
+    }
+
+    .tp-pass-when {
+      color: var(--tp-muted);
+      font-size: 1em;
+    }
+
+    .tp-pass-rule {
+      background: var(--tp-soft);
+      color: var(--tp-heading);
+      border-left: 5px solid var(--tp-primary);
+      border-radius: 0.6em;
+      padding: 0.6em 0.75em;
+      margin: 0.55em 0;
+      font-weight: 700;
+    }
+
+    /* Fold details */
+    details.tp-fold {
+      border-top: 1px solid var(--tp-line);
+      border-bottom: 1px solid var(--tp-line);
+      margin: 0.5em 0 0.95em;
+    }
+
+    details.tp-fold summary {
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 2.85em;
+      padding: 0.45em 0.2em;
+      font-weight: 700;
+      color: var(--tp-primary);
+      cursor: pointer;
+    }
+
+    details.tp-fold summary::-webkit-details-marker {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="sheet-wrap">
+    <header class="sheet-header">
+      <div class="sheet-top-row">
+        <div>
+          <h1 class="sheet-title">「助聽器選配與補助」(/guide) 版面重設比較頁</h1>
+          <p class="sheet-sub">
+            拿掉與首頁「照顧旅程」重複的圓點直線流程圖：讓首頁管「今天做哪一步」，這頁專心讓人「看懂全局、分清補助關卡、一鍵讀章節」。
+          </p>
+        </div>
+        <button id="toggle-before" type="button" class="sheet-pill" aria-pressed="false">
+          展開「目前版本為什麼跟首頁撞車」
+        </button>
+      </div>
+
+      <div class="sheet-controls">
+        <div class="sheet-group" role="group" aria-label="預覽使用者身分">
+          <span class="sheet-group-label">切換身分看變化</span>
+          <button type="button" data-persona="subsidy" class="sheet-pill" aria-pressed="true">
+            已登入・辦補助中（達 45% 門檻）
+          </button>
+          <button type="button" data-persona="direct" class="sheet-pill" aria-pressed="false">
+            已登入・直接選配（未達門檻／自費）
+          </button>
+          <button type="button" data-persona="guest" class="sheet-pill" aria-pressed="false">
+            未登入／家屬查資料
+          </button>
+        </div>
+
+        <div class="sheet-group" role="group" aria-label="字級預覽">
+          <span class="sheet-group-label">長輩字級測試</span>
+          <button type="button" data-fontsize="normal" class="sheet-pill" aria-pressed="true">
+            標準 18px
+          </button>
+          <button type="button" data-fontsize="large" class="sheet-pill" aria-pressed="false">
+            放大 24px
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <section id="before-panel" hidden class="before-box">
+      <strong style="font-size:16px;">目前 `/guide` 與首頁重複的三個根源</strong>
+      <div class="before-grid">
+        <div class="before-item">
+          <strong>視覺同一個模子</strong>
+          <p style="margin:4px 0 0; color:var(--muted-foreground, #475569);">首頁「照顧旅程」是 7 顆圓點＋直線＋展開列；點進 `/guide` 又是 9 顆圓點＋直線＋展開列，九號表裡還有第三條 6 顆圓點直線。</p>
+        </div>
+        <div class="before-item">
+          <strong>任務重疊、進章節卻要點兩次</strong>
+          <p style="margin:4px 0 0; color:var(--muted-foreground, #475569);">#741 之後首頁第 5 步已接手身障證明、九號表、核定公文問答卡；但在這頁想讀文章，得先點開摺疊看兩句簡介、再點「看這一章」。</p>
+        </div>
+        <div class="before-item">
+          <strong>個人聽力圖判讀被壓在最底下</strong>
+          <p style="margin:4px 0 0; color:var(--muted-foreground, #475569);">記完聽力圖進來，最想知道「要不要配、有沒有達 45% 門檻」，卻得滑過 9 站長清單才看得到。</p>
+        </div>
+      </div>
+    </section>
+
+    <main class="phones-grid">
+      <!-- OPTION A -->
+      <section class="phone-col">
+        <div class="phone-meta">
+          <div class="phone-meta-head">
+            <span class="phone-badge is-rec">方案 A（推薦）</span>
+            <h2 class="phone-meta-title">雙軌路線切換 ＋ 三階段色塊</h2>
+          </div>
+          <p class="phone-meta-desc">
+            把「辦身障補助 vs 直接選配」做成一鍵切換，底下用三個平面色塊分階段（無圓點直線），中間嵌「先拿核定公文再買」關卡，每章單擊直達。
+          </p>
+        </div>
+        <div class="tp-phone" data-ui id="phone-a"></div>
+      </section>
+
+      <!-- OPTION B -->
+      <section class="phone-col">
+        <div class="phone-meta">
+          <div class="phone-meta-head">
+            <span class="phone-badge">方案 B</span>
+            <h2 class="phone-meta-title">去流程化・三幕指南手冊</h2>
+          </div>
+          <p class="phone-meta-desc">
+            徹底拿掉流程圖！進度與問答全交給首頁「照顧旅程」，這頁上方放聽力判讀大卡，下方純粹按「資格／挑選／配戴」三幕列出六章與關鍵數字。
+          </p>
+        </div>
+        <div class="tp-phone" data-ui id="phone-b"></div>
+      </section>
+
+      <!-- OPTION C -->
+      <section class="phone-col">
+        <div class="phone-meta">
+          <div class="phone-meta-head">
+            <span class="phone-badge">方案 C</span>
+            <h2 class="phone-meta-title">補助四關時限集章單 ＋ 六章清單</h2>
+          </div>
+          <p class="phone-meta-desc">
+            只把最容易搞錯期限的「身障補助四關」畫成雙欄集章格（沿用朱紅已完成印章＋標出 3 個月／6 個月／1–3 個月），與下方六章目錄分開。
+          </p>
+        </div>
+        <div class="tp-phone" data-ui id="phone-c"></div>
+      </section>
+
+      <!-- OPTION D -->
+      <section class="phone-col">
+        <div class="phone-meta">
+          <div class="phone-meta-head">
+            <span class="phone-badge">方案 D</span>
+            <h2 class="phone-meta-title">三種處境分流頁籤（一次只看當下）</h2>
+          </div>
+          <p class="phone-meta-desc">
+            頂端三個大按鈕「還沒配／辦補助中／已經買了」，登入自動停在目前處境、家屬也能自己切，畫面一次只留當下最需要的 3 篇，完全不拖長。
+          </p>
+        </div>
+        <div class="tp-phone" data-ui id="phone-d"></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const state = {
+      persona: "subsidy",
+      fontSize: "normal",
+      trackA: "subsidy",
+      tabD: "subsidy"
+    };
+
+    const BIRD_SVG = `<svg width="28" height="28" viewBox="0 0 64 64" aria-hidden="true"><path fill="currentColor" d="M12 50c1-3 3-6 5-9 0-14 9-24 21-24a11 11 0 0 1 11 9l7 4-7 3c-2 11-10 17-21 17z"/><path fill="none" stroke="#1f4e8c" stroke-width="4" stroke-linecap="round" d="M24 33a5.5 5.5 0 0 1 11 0c0 3.5-3.5 4.5-3.5 7.5a2.8 2.8 0 0 1-5 1.6"/></svg>`;
+    const STAMP_SVG = `<svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true"><path fill="currentColor" d="M24 4L29.88 16.91L44 18.18L33.5 27.64L36.36 41.5L24 34.36L11.64 41.5L14.5 27.64L4 18.18L18.12 16.91Z"/></svg>`;
+
+    function renderHeader() {
+      const right = state.persona === "guest"
+        ? `<span class="tp-login-btn">登入</span>`
+        : `<span class="tp-avatar" aria-label="帳號設定">王</span>`;
+      return `
+        <div class="tp-header">
+          <span class="tp-brand">${BIRD_SVG}<span>聽伴</span></span>
+          ${right}
+        </div>
+      `;
+    }
+
+    function renderBird() {
+      return `
+        <div class="tp-bird">
+          <span class="tp-bird-mark" aria-hidden="true">${BIRD_SVG}</span>
+          <div class="tp-bird-bubble">
+            <p class="tp-bird-lead">一步一步來，不用急。</p>
+            <h3 class="tp-bird-title">助聽器選配與補助</h3>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderHearingFold() {
+      if (state.persona === "guest") return "";
+      if (state.persona === "subsidy") {
+        return `
+          <details class="tp-fold">
+            <summary><span>看四頻平均與 52.5% 怎麼算</span><span aria-hidden="true">▾</span></summary>
+            <div style="padding:0.2em 0.2em 0.8em; display:grid; gap:0.45em;">
+              <p style="margin:0;">依 2026/11/10 聽力檢查：右耳平均 55 dB HL、左耳平均 62.5 dB HL（正常上限 25）。</p>
+              <p style="margin:0; color:var(--tp-muted);">雙耳障礙比率約 52.5%，達身障鑑定門檻（45%），實際以鑑定醫院為準。</p>
+            </div>
+          </details>
+        `;
+      }
+      return `
+        <details class="tp-fold">
+          <summary><span>看四頻平均與門檻估算明細</span><span aria-hidden="true">▾</span></summary>
+          <div style="padding:0.2em 0.2em 0.8em; display:grid; gap:0.45em;">
+            <p style="margin:0;">依 2026/11/10 聽力檢查：右耳平均 35 dB HL、左耳平均 38.8 dB HL，建議找聽力師評估。</p>
+            <p style="margin:0; color:var(--tp-muted);">雙耳障礙比率約 16.3%，未達身障鑑定門檻（45%）。仍可看「沒有身障證明時」的其他資源。</p>
+          </div>
+        </details>
+      `;
+    }
+
+    /* ---------------- OPTION A ---------------- */
+    function renderOptionA() {
+      const hero = state.persona === "subsidy" ? `
+        <section class="tp-hero">
+          <h4 class="tp-hero-title">建議評估選配・達鑑定門檻</h4>
+          <div class="tp-hero-stats">
+            <div class="tp-hero-stat">
+              <span>右 55 / 左 62.5 dB</span>
+              <span class="tp-hero-stat-num">建議找聽力師</span>
+            </div>
+            <div class="tp-hero-stat">
+              <span>雙耳障礙比率估算</span>
+              <span class="tp-hero-stat-num">約 52.5%（過 45%）</span>
+            </div>
+          </div>
+          <p class="tp-hero-p">您已記下「九號表完成了」，請等收到核定公文再去選配購買。</p>
+          <button type="button" class="tp-hero-btn">先看：去找聽力師之前 ›</button>
+        </section>
+      ` : state.persona === "direct" ? `
+        <section class="tp-hero">
+          <h4 class="tp-hero-title">建議找聽力師評估選配</h4>
+          <p class="tp-hero-p">依 2026/11/10 聽力檢查（右 35 / 左 38.8 dB），估算約 16.3% 未達身障門檻，可直接預約聽力師試戴評估。</p>
+          <button type="button" class="tp-hero-btn">看：去找聽力師之前 ›</button>
+        </section>
+      ` : `
+        <section class="tp-hero">
+          <h4 class="tp-hero-title">先看要不要辦補助，兩條路順序不同</h4>
+          <p class="tp-hero-p">登入後可依聽力圖自動估算 45% 身障鑑定門檻；下方章節不用登入就能看。</p>
+          <button type="button" class="tp-hero-btn">登入看我的估算 ›</button>
+        </section>
+      `;
+
+      const isSub = state.trackA === "subsidy";
+
+      const stages = isSub ? `
+        <div class="tp-stage tp-stage-1">
+          <h4 class="tp-stage-head">選配前：確認資格與送件</h4>
+          <div class="tp-stage-card">
+            <div class="tp-row-main">
+              <span class="tp-row-title">身障鑑定與鑑定醫院</span>
+              <span class="tp-row-sub">${state.persona === "subsidy" ? "已記下：有身障證明" : "雙耳達 45% 門檻・各縣市醫院查詢"}</span>
+            </div>
+            ${state.persona === "subsidy" ? `<span class="tp-stamp">${STAMP_SVG}已完成</span>` : `<span class="tp-row-chev">›</span>`}
+          </div>
+          <div class="tp-stage-card" style="margin-bottom:0;">
+            <div class="tp-row-main">
+              <span class="tp-row-title">九號表：申請助聽器補助</span>
+              <span class="tp-row-sub">${state.persona === "subsidy" ? "已記下：九號表完成了" : "評估後 3 個月內送公所・最高補助 3 萬"}</span>
+            </div>
+            ${state.persona === "subsidy" ? `<span class="tp-stamp">${STAMP_SVG}已完成</span>` : `<span class="tp-row-chev">›</span>`}
+          </div>
+        </div>
+
+        <div class="tp-stage tp-stage-2">
+          <h4 class="tp-stage-head">購買與試戴：先核定、再買</h4>
+          <div class="tp-gate-banner">
+            關鍵鐵則：收到公所「核定公文」後 6 個月內才購買，先買不補助。
+          </div>
+          <div class="tp-stage-card">
+            <div class="tp-row-main">
+              <span class="tp-row-title">去找聽力師之前</span>
+              <span class="tp-row-sub">看診要帶什麼、試戴時要問哪些問題</span>
+            </div>
+            ${state.persona === "subsidy" ? `<span class="tp-here-pill">現在看這章</span>` : `<span class="tp-row-chev">›</span>`}
+          </div>
+          <div class="tp-stage-card" style="margin-bottom:0;">
+            <div class="tp-row-main">
+              <span class="tp-row-title">助聽器的種類與價格</span>
+              <span class="tp-row-sub">外型比較、補助分級上限、擴音器差異</span>
+            </div>
+            <span class="tp-row-chev">›</span>
+          </div>
+        </div>
+
+        <div class="tp-stage tp-stage-3">
+          <h4 class="tp-stage-head">買了之後：適應與核銷撥款</h4>
+          <div class="tp-stage-card">
+            <div class="tp-row-main">
+              <span class="tp-row-title">配戴助聽器之後</span>
+              <span class="tp-row-sub">前幾週適應方式・填問卷記錄配戴效果</span>
+            </div>
+            <span class="tp-row-chev">›</span>
+          </div>
+          <div class="tp-stage-card" style="margin-bottom:0;">
+            <div class="tp-row-main">
+              <span class="tp-row-title">二十五號表：使用效益驗證</span>
+              <span class="tp-row-sub">配戴滿 1～3 個月回診驗證，再送公所核銷</span>
+            </div>
+            <span class="tp-row-chev">›</span>
+          </div>
+        </div>
+      ` : `
+        <div class="tp-stage tp-stage-1">
+          <h4 class="tp-stage-head">選配前：帶著聽力圖去評估</h4>
+          <div class="tp-stage-card" style="margin-bottom:0;">
+            <div class="tp-row-main">
+              <span class="tp-row-title">去找聽力師之前</span>
+              <span class="tp-row-sub">第一次評估要帶什麼、可以問聽力師什麼</span>
+            </div>
+            ${state.persona === "direct" ? `<span class="tp-here-pill">現在看這章</span>` : `<span class="tp-row-chev">›</span>`}
+          </div>
+        </div>
+
+        <div class="tp-stage tp-stage-2">
+          <h4 class="tp-stage-head">挑選與試戴：不用等公文</h4>
+          <div class="tp-stage-card">
+            <div class="tp-row-main">
+              <span class="tp-row-title">助聽器的種類與價格</span>
+              <span class="tp-row-sub">耳掛與耳內外型、價格帶、哪裡買才安心</span>
+            </div>
+            <span class="tp-row-chev">›</span>
+          </div>
+          <div class="tp-stage-card" style="margin-bottom:0;">
+            <div class="tp-row-main">
+              <span class="tp-row-title">沒有身障證明時的其他補助</span>
+              <span class="tp-row-sub">低收入戶老人每只 5,500 元、榮民等資源</span>
+            </div>
+            <span class="tp-row-chev">›</span>
+          </div>
+        </div>
+
+        <div class="tp-stage tp-stage-3">
+          <h4 class="tp-stage-head">買了之後：慢慢戴習慣</h4>
+          <div class="tp-stage-card" style="margin-bottom:0;">
+            <div class="tp-row-main">
+              <span class="tp-row-title">配戴助聽器之後</span>
+              <span class="tp-row-sub">剛開始戴的適應重點・用問卷比對前後效果</span>
+            </div>
+            <span class="tp-row-chev">›</span>
+          </div>
+        </div>
+      `;
+
+      return `
+        ${renderHeader()}
+        <div class="tp-body">
+          ${renderBird()}
+          ${hero}
+          ${renderHearingFold()}
+          <div class="tp-seg" role="tablist" aria-label="選擇路線">
+            <button type="button" role="tab" data-track-a="subsidy" aria-selected="${isSub}">申請身障補助</button>
+            <button type="button" role="tab" data-track-a="direct" aria-selected="${!isSub}">直接選配（自費）</button>
+          </div>
+          ${stages}
+        </div>
+      `;
+    }
+
+    /* ---------------- OPTION B ---------------- */
+    function renderOptionB() {
+      const hero = state.persona === "subsidy" ? `
+        <section class="tp-hero">
+          <h4 class="tp-hero-title">依 2026/11/10 聽力圖的兩項判讀</h4>
+          <p class="tp-hero-p">・<strong>建議找聽力師評估選配</strong>（右 55 / 左 62.5 dB）</p>
+          <p class="tp-hero-p">・<strong>達身障鑑定門檻</strong>（估算約 52.5%，門檻 45%）</p>
+          <button type="button" class="tp-hero-btn">回首頁繼續下一步（核定公文）›</button>
+        </section>
+      ` : state.persona === "direct" ? `
+        <section class="tp-hero">
+          <h4 class="tp-hero-title">依 2026/11/10 聽力圖的兩項判讀</h4>
+          <p class="tp-hero-p">・<strong>建議找聽力師評估選配</strong>（右 35 / 左 38.8 dB）</p>
+          <p class="tp-hero-p">・<strong>未達身障鑑定門檻</strong>（估算約 16.3%，門檻 45%）</p>
+          <button type="button" class="tp-hero-btn">先讀：去找聽力師之前 ›</button>
+        </section>
+      ` : `
+        <section class="tp-hero">
+          <h4 class="tp-hero-title">從檢查、補助到配戴的完整手冊</h4>
+          <p class="tp-hero-p">有身障證明者請記得「先拿核定公文再買」；還沒做過篩檢也可以先花 3 分鐘測測看。</p>
+          <button type="button" class="tp-hero-btn">開始 3 分鐘聽力篩檢 ›</button>
+        </section>
+      `;
+
+      const savedStrip = state.persona === "guest" ? "" : `
+        <div style="background:var(--tp-surface); border-radius:0.9em; padding:0.75em 0.9em; margin-top:1.1em;">
+          <p style="margin:0; font-weight:700; color:var(--tp-heading);">您已記下的選配資料</p>
+          <p style="margin:0.2em 0 0; color:var(--tp-muted);">
+            ${state.persona === "subsidy" ? "有身障證明・九號表完成了・還沒收到核定公文" : "沒有身障證明（在首頁「照顧旅程」可隨時修改）"}
+          </p>
+        </div>
+      `;
+
+      return `
+        ${renderHeader()}
+        <div class="tp-body">
+          ${renderBird()}
+          ${hero}
+          ${renderHearingFold()}
+
+          <div style="margin-top:0.6em;">
+            <h4 style="margin:0 0 0.15em; font-size:1.22em; font-weight:700; color:var(--tp-heading);">資格與補助申請</h4>
+            <p style="margin:0 0 0.5em; color:var(--tp-muted);">確認有沒有補助、一定要先核定再買</p>
+            <ul class="tp-row-list">
+              <li><div class="tp-row-item">
+                <div class="tp-row-main">
+                  <span class="tp-row-title">身障鑑定與鑑定醫院</span>
+                  <span class="tp-row-sub">雙耳障礙比率 45% 門檻・查各縣市醫院</span>
+                </div>
+                <span class="tp-row-chev">›</span>
+              </div></li>
+              <li><div class="tp-row-item">
+                <div class="tp-row-main">
+                  <span class="tp-row-title">九號表：申請助聽器補助</span>
+                  <span class="tp-row-sub">補助 2,000～30,000 元・沒證明時的其他資源</span>
+                </div>
+                <span class="tp-row-chev">›</span>
+              </div></li>
+            </ul>
+          </div>
+
+          <div style="margin-top:1.25em;">
+            <h4 style="margin:0 0 0.15em; font-size:1.22em; font-weight:700; color:var(--tp-heading);">門診評估與挑選</h4>
+            <p style="margin:0 0 0.5em; color:var(--tp-muted);">認識外型差異，帶著問題去試聽</p>
+            <ul class="tp-row-list">
+              <li><div class="tp-row-item">
+                <div class="tp-row-main">
+                  <span class="tp-row-title">去找聽力師之前</span>
+                  <span class="tp-row-sub">看診準備清單・試戴必問問題</span>
+                </div>
+                <span class="tp-row-chev">›</span>
+              </div></li>
+              <li><div class="tp-row-item">
+                <div class="tp-row-main">
+                  <span class="tp-row-title">助聽器的種類與價格</span>
+                  <span class="tp-row-sub">外型比較・為什麼擴音器不能代替助聽器</span>
+                </div>
+                <span class="tp-row-chev">›</span>
+              </div></li>
+            </ul>
+          </div>
+
+          <div style="margin-top:1.25em;">
+            <h4 style="margin:0 0 0.15em; font-size:1.22em; font-weight:700; color:var(--tp-heading);">配戴適應與核銷</h4>
+            <p style="margin:0 0 0.5em; color:var(--tp-muted);">前幾週慢慢適應，中階型以上記得驗證</p>
+            <ul class="tp-row-list">
+              <li><div class="tp-row-item">
+                <div class="tp-row-main">
+                  <span class="tp-row-title">配戴助聽器之後</span>
+                  <span class="tp-row-sub">剛戴不習慣怎麼辦・做效益問卷留紀錄</span>
+                </div>
+                <span class="tp-row-chev">›</span>
+              </div></li>
+              <li><div class="tp-row-item">
+                <div class="tp-row-main">
+                  <span class="tp-row-title">二十五號表：使用效益驗證</span>
+                  <span class="tp-row-sub">配戴滿 1～3 個月內回診・核銷撥款規定</span>
+                </div>
+                <span class="tp-row-chev">›</span>
+              </div></li>
+            </ul>
+          </div>
+
+          ${savedStrip}
+        </div>
+      `;
+    }
+
+    /* ---------------- OPTION C ---------------- */
+    function renderOptionC() {
+      const hero = state.persona === "subsidy" ? `
+        <section class="tp-hero">
+          <h4 class="tp-hero-title">補助進度：等收到核定公文再買</h4>
+          <p class="tp-hero-p">依 2026/11/10 聽力圖估算達鑑定門檻（52.5%）。趁等公文時，可以先看去聽力所前要準備什麼。</p>
+          <button type="button" class="tp-hero-btn">看：去找聽力師之前 ›</button>
+        </section>
+      ` : state.persona === "direct" ? `
+        <section class="tp-hero">
+          <h4 class="tp-hero-title">建議找聽力師評估選配</h4>
+          <p class="tp-hero-p">依 2026/11/10 聽力圖（右 35 / 左 38.8 dB），未達身障門檻（16.3%），不用走補助公文關卡，可直接試戴。</p>
+          <button type="button" class="tp-hero-btn">看：去找聽力師之前 ›</button>
+        </section>
+      ` : `
+        <section class="tp-hero">
+          <h4 class="tp-hero-title">身障補助有四道時限關卡</h4>
+          <p class="tp-hero-p">申請補助最怕「還沒核定就先買」。下方一張圖看懂時限，或直接點選想讀的章節。</p>
+          <button type="button" class="tp-hero-btn">登入對照我的聽力圖 ›</button>
+        </section>
+      `;
+
+      const passbookGrid = `
+        <div class="tp-passbook">
+          <div class="tp-pass-cell">
+            <div>
+              <strong style="color:var(--tp-heading); display:block;">先做身障鑑定 →</strong>
+              <span class="tp-pass-when">雙耳達 45% 門檻</span>
+            </div>
+            ${state.persona === "subsidy" ? `<div><span class="tp-stamp">${STAMP_SVG}已完成</span></div>` : ""}
+          </div>
+          <div class="tp-pass-cell">
+            <div>
+              <strong style="color:var(--tp-heading); display:block;">九號表送公所 ↓</strong>
+              <span class="tp-pass-when">開立後 3 個月內有效</span>
+            </div>
+            ${state.persona === "subsidy" ? `<div><span class="tp-stamp">${STAMP_SVG}已完成</span></div>` : ""}
+          </div>
+        </div>
+        <div class="tp-pass-rule">
+          公所約 10 天發「核定公文」→ 拿到公文才能買（先買不補助）
+        </div>
+        <div class="tp-passbook">
+          <div class="tp-pass-cell ${state.persona === "subsidy" ? "is-active" : ""}">
+            <div>
+              <strong style="color:var(--tp-heading); display:block;">選配購買 →</strong>
+              <span class="tp-pass-when">核定後 6 個月內</span>
+            </div>
+            ${state.persona === "subsidy" ? `<div><span class="tp-here-pill">目前在這關</span></div>` : ""}
+          </div>
+          <div class="tp-pass-cell">
+            <div>
+              <strong style="color:var(--tp-heading); display:block;">二十五號表核銷</strong>
+              <span class="tp-pass-when">配戴滿 1～3 個月內</span>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const passbookSection = state.persona === "direct" ? `
+        <details class="tp-fold">
+          <summary><span>有身障證明？展開四關補助時限圖</span><span aria-hidden="true">▾</span></summary>
+          <div style="padding-bottom:0.6em;">${passbookGrid}</div>
+        </details>
+      ` : `
+        <section style="margin-bottom:1.2em;">
+          <h4 style="margin:0 0 0.35em; font-size:1.18em; font-weight:700; color:var(--tp-heading);">身障補助四關時限圖</h4>
+          ${passbookGrid}
+        </section>
+      `;
+
+      return `
+        ${renderHeader()}
+        <div class="tp-body">
+          ${renderBird()}
+          ${hero}
+          ${renderHearingFold()}
+          ${passbookSection}
+
+          <h4 style="margin:0 0 0.35em; font-size:1.18em; font-weight:700; color:var(--tp-heading);">全部六個章節</h4>
+          <ul class="tp-row-list">
+            <li><div class="tp-row-item"><div class="tp-row-main"><span class="tp-row-title">去找聽力師之前</span><span class="tp-row-sub">要帶什麼、問什麼</span></div><span class="tp-row-chev">›</span></div></li>
+            <li><div class="tp-row-item"><div class="tp-row-main"><span class="tp-row-title">身障鑑定與鑑定醫院</span><span class="tp-row-sub">門檻與各縣市醫院名冊</span></div><span class="tp-row-chev">›</span></div></li>
+            <li><div class="tp-row-item"><div class="tp-row-main"><span class="tp-row-title">九號表：申請助聽器補助</span><span class="tp-row-sub">補助金額、輔具中心電話、其他補助</span></div><span class="tp-row-chev">›</span></div></li>
+            <li><div class="tp-row-item"><div class="tp-row-main"><span class="tp-row-title">助聽器的種類與價格</span><span class="tp-row-sub">外型、等級與購買管道</span></div><span class="tp-row-chev">›</span></div></li>
+            <li><div class="tp-row-item"><div class="tp-row-main"><span class="tp-row-title">配戴助聽器之後</span><span class="tp-row-sub">適應期與效益問卷</span></div><span class="tp-row-chev">›</span></div></li>
+            <li><div class="tp-row-item"><div class="tp-row-main"><span class="tp-row-title">二十五號表：使用效益驗證</span><span class="tp-row-sub">1～3 個月驗證與核銷準備</span></div><span class="tp-row-chev">›</span></div></li>
+          </ul>
+        </div>
+      `;
+    }
+
+    /* ---------------- OPTION D ---------------- */
+    function renderOptionD() {
+      const tab = state.tabD;
+
+      const tabHero = tab === "before" ? `
+        <section class="tp-hero">
+          <h4 class="tp-hero-title">還沒配：先做聽力檢查，再決定路線</h4>
+          <p class="tp-hero-p">${state.persona === "direct" ? "依您 2026/11/10 聽力圖建議找聽力師評估（未達 45% 身障門檻，可直接試戴）。" : "想申請身障補助的人，千萬別先買助聽器；先確認聽力是否達 45% 鑑定門檻。"}</p>
+          <button type="button" class="tp-hero-btn">看：去找聽力師之前 ›</button>
+        </section>
+      ` : tab === "subsidy" ? `
+        <section class="tp-hero">
+          <h4 class="tp-hero-title">辦補助鐵則：拿到核定公文再買</h4>
+          <p class="tp-hero-p">九號表開立後 3 個月內送公所 → 等約 10 天收到核定通知 → 6 個月內購買，最高補助 2,000～30,000 元。</p>
+          <button type="button" class="tp-hero-btn">看：九號表完整流程與金額 ›</button>
+        </section>
+      ` : `
+        <section class="tp-hero">
+          <h4 class="tp-hero-title">剛開始戴：前幾週慢慢適應很正常</h4>
+          <p class="tp-hero-p">買中階型以上並申請身障補助的人，記得在配戴滿 1 個月到 3 個月內回診做二十五號表驗證。</p>
+          <button type="button" class="tp-hero-btn">看：配戴助聽器之後 ›</button>
+        </section>
+      `;
+
+      const tabCards = tab === "before" ? `
+        <div class="tp-stage tp-stage-1" style="margin-bottom:0.75em;">
+          <h4 class="tp-stage-head">這個階段只要看這三篇</h4>
+          <div class="tp-stage-card">
+            <div class="tp-row-main">
+              <span class="tp-row-title">身障鑑定與鑑定醫院</span>
+              <span class="tp-row-sub">雙耳達 45% 可辦證明・查各縣市鑑定醫院</span>
+            </div>
+            <span class="tp-row-chev">›</span>
+          </div>
+          <div class="tp-stage-card">
+            <div class="tp-row-main">
+              <span class="tp-row-title">去找聽力師之前</span>
+              <span class="tp-row-sub">第一次評估要帶什麼、試戴怎麼問</span>
+            </div>
+            <span class="tp-row-chev">›</span>
+          </div>
+          <div class="tp-stage-card" style="margin-bottom:0;">
+            <div class="tp-row-main">
+              <span class="tp-row-title">助聽器的種類與價格</span>
+              <span class="tp-row-sub">外型差異、價格帶、擴音器不是助聽器</span>
+            </div>
+            <span class="tp-row-chev">›</span>
+          </div>
+        </div>
+      ` : tab === "subsidy" ? `
+        <div class="tp-stage tp-stage-2" style="margin-bottom:0.75em;">
+          <h4 class="tp-stage-head">辦補助必看的三篇</h4>
+          <div class="tp-stage-card">
+            <div class="tp-row-main">
+              <span class="tp-row-title">身障鑑定與鑑定醫院</span>
+              <span class="tp-row-sub">${state.persona === "subsidy" ? "已記下：有身障證明" : "先拿到聽覺機能身障證明"}</span>
+            </div>
+            ${state.persona === "subsidy" ? `<span class="tp-stamp">${STAMP_SVG}已完成</span>` : `<span class="tp-row-chev">›</span>`}
+          </div>
+          <div class="tp-stage-card">
+            <div class="tp-row-main">
+              <span class="tp-row-title">九號表：申請助聽器補助</span>
+              <span class="tp-row-sub">${state.persona === "subsidy" ? "已記下：九號表完成了" : "輔具中心電話、各等級補助上限"}</span>
+            </div>
+            ${state.persona === "subsidy" ? `<span class="tp-stamp">${STAMP_SVG}已完成</span>` : `<span class="tp-row-chev">›</span>`}
+          </div>
+          <div class="tp-stage-card" style="margin-bottom:0;">
+            <div class="tp-row-main">
+              <span class="tp-row-title">二十五號表：使用效益驗證</span>
+              <span class="tp-row-sub">買完配戴滿 1～3 個月驗證後核銷撥款</span>
+            </div>
+            <span class="tp-row-chev">›</span>
+          </div>
+        </div>
+      ` : `
+        <div class="tp-stage tp-stage-1" style="margin-bottom:0.75em;">
+          <h4 class="tp-stage-head">配戴與核銷必看的三篇</h4>
+          <div class="tp-stage-card">
+            <div class="tp-row-main">
+              <span class="tp-row-title">配戴助聽器之後</span>
+              <span class="tp-row-sub">前幾週適應方法・填寫效益問卷比對前後</span>
+            </div>
+            <span class="tp-row-chev">›</span>
+          </div>
+          <div class="tp-stage-card">
+            <div class="tp-row-main">
+              <span class="tp-row-title">二十五號表：使用效益驗證</span>
+              <span class="tp-row-sub">配戴滿 1～3 個月回診驗證與核銷文件</span>
+            </div>
+            <span class="tp-row-chev">›</span>
+          </div>
+          <div class="tp-stage-card" style="margin-bottom:0;">
+            <div class="tp-row-main">
+              <span class="tp-row-title">滿 4 年再次申請補助規定</span>
+              <span class="tp-row-sub">最低使用年限與換新機流程（九號表章節）</span>
+            </div>
+            <span class="tp-row-chev">›</span>
+          </div>
+        </div>
+      `;
+
+      return `
+        ${renderHeader()}
+        <div class="tp-body">
+          ${renderBird()}
+          <p style="margin:0 0 0.45em; font-weight:700; color:var(--tp-heading);">您目前在哪個階段？</p>
+          <div class="tp-seg tp-seg-3" role="tablist" aria-label="目前階段">
+            <button type="button" role="tab" data-tab-d="before" aria-selected="${tab === "before"}">還沒配</button>
+            <button type="button" role="tab" data-tab-d="subsidy" aria-selected="${tab === "subsidy"}">辦補助中</button>
+            <button type="button" role="tab" data-tab-d="after" aria-selected="${tab === "after"}">已經買了</button>
+          </div>
+          ${tabHero}
+          ${tabCards}
+          ${renderHearingFold()}
+        </div>
+      `;
+    }
+
+    function renderAll() {
+      document.querySelectorAll(".tp-phone").forEach((el) => {
+        el.classList.toggle("is-large-text", state.fontSize === "large");
+      });
+      document.getElementById("phone-a").innerHTML = renderOptionA();
+      document.getElementById("phone-b").innerHTML = renderOptionB();
+      document.getElementById("phone-c").innerHTML = renderOptionC();
+      document.getElementById("phone-d").innerHTML = renderOptionD();
+    }
+
+    document.addEventListener("click", (e) => {
+      const personaBtn = e.target.closest("[data-persona]");
+      if (personaBtn) {
+        state.persona = personaBtn.dataset.persona;
+        state.trackA = state.persona === "direct" ? "direct" : "subsidy";
+        state.tabD = state.persona === "subsidy" ? "subsidy" : "before";
+        document.querySelectorAll("[data-persona]").forEach((b) => {
+          b.setAttribute("aria-pressed", String(b === personaBtn));
+        });
+        renderAll();
+        return;
+      }
+
+      const fontBtn = e.target.closest("[data-fontsize]");
+      if (fontBtn) {
+        state.fontSize = fontBtn.dataset.fontsize;
+        document.querySelectorAll("[data-fontsize]").forEach((b) => {
+          b.setAttribute("aria-pressed", String(b === fontBtn));
+        });
+        renderAll();
+        return;
+      }
+
+      const trackBtn = e.target.closest("[data-track-a]");
+      if (trackBtn) {
+        state.trackA = trackBtn.dataset.trackA;
+        renderAll();
+        return;
+      }
+
+      const tabBtn = e.target.closest("[data-tab-d]");
+      if (tabBtn) {
+        state.tabD = tabBtn.dataset.tabD;
+        renderAll();
+        return;
+      }
+
+      const beforeBtn = e.target.closest("#toggle-before");
+      if (beforeBtn) {
+        const panel = document.getElementById("before-panel");
+        const nextOpen = panel.hasAttribute("hidden");
+        panel.toggleAttribute("hidden", !nextOpen);
+        beforeBtn.setAttribute("aria-pressed", String(nextOpen));
+      }
+    });
+
+    renderAll();
+  </script>
+</body>
+</html>

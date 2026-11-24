@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>補助卡 ＋ 互動式補助引導流程 三案比較</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 16px 20px 24px;
+      font-family: "Noto Sans TC", -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", sans-serif;
+      background: var(--background, #eef1f6);
+      color: var(--foreground, #1e293b);
+      line-height: 1.45;
+    }
+
+    .sheet { max-width: 1680px; margin: 0 auto; }
+
+    .sheet-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--card-border, #cbd5e1);
+    }
+
+    .sheet-title { margin: 0; font-size: 20px; font-weight: 700; }
+    .sheet-sub { margin: 2px 0 0; font-size: 14px; color: var(--muted-foreground, #475569); }
+
+    .ctrl-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .ctrl-pill {
+      padding: 6px 12px;
+      min-height: 36px;
+      border-radius: 8px;
+      border: 1px solid var(--card-border, #cbd5e1);
+      background: var(--card, #ffffff);
+      color: var(--foreground, #1e293b);
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .ctrl-pill[aria-pressed="true"] {
+      background: #1f4e8c;
+      color: #ffffff;
+      border-color: #1f4e8c;
+      font-weight: 700;
+    }
+
+    .phones-strip {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 20px;
+      align-items: flex-start;
+      overflow-x: auto;
+      padding-bottom: 12px;
+      scroll-snap-type: x proximity;
+    }
+
+    .phone-col {
+      width: 356px;
+      flex: 0 0 356px;
+      scroll-snap-align: start;
+    }
+
+    .col-divider {
+      width: 2px;
+      align-self: stretch;
+      background: var(--card-border, #cbd5e1);
+      flex: 0 0 2px;
+      margin: 0 2px;
+    }
+
+    .cap { margin-bottom: 8px; }
+    .cap-head { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
+    .cap-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid var(--card-border, #cbd5e1);
+      background: var(--card, #ffffff);
+    }
+    .cap-badge.is-entry { background: #334155; color: #ffffff; border-color: #334155; }
+    .cap-badge.is-rec { background: #1f4e8c; color: #ffffff; border-color: #1f4e8c; }
+    .cap-title { margin: 0; font-size: 16px; font-weight: 700; }
+    .cap-desc { margin: 0; font-size: 13px; color: var(--muted-foreground, #475569); min-height: 2.8em; }
+
+    /* ============ Tingpal Phone ============ */
+    .tp-phone {
+      --tp-primary: #1f4e8c;
+      --tp-soft: #eef3fa;
+      --tp-soft-deep: #d8e5f7;
+      --tp-surface: #f4f6f8;
+      --tp-heading: #212529;
+      --tp-body: #343a40;
+      --tp-muted: #4a5460;
+      --tp-line: #e3e7ec;
+      --tp-stamp: #b3261e;
+      --tp-scale: 18px;
+
+      width: 356px;
+      min-height: 690px;
+      background: #ffffff;
+      color: var(--tp-body);
+      border: 1px solid #94a3b8;
+      border-radius: 30px;
+      overflow: hidden;
+      font-size: var(--tp-scale);
+      line-height: 1.45;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tp-phone.is-large { --tp-scale: 22px; }
+
+    .tp-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.65em 0.95em;
+      border-bottom: 1px solid var(--tp-line);
+    }
+
+    .tp-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25em;
+      color: var(--tp-primary);
+      font-weight: 700;
+      background: transparent;
+      border: 0;
+      font-size: 1em;
+      padding: 0.2em 0;
+      cursor: pointer;
+    }
+
+    .tp-logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4em;
+      font-weight: 700;
+      color: var(--tp-primary);
+    }
+
+    .tp-user {
+      width: 2em;
+      height: 2em;
+      border-radius: 999px;
+      background: var(--tp-soft);
+      color: var(--tp-primary);
+      border: 1.5px solid var(--tp-primary);
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+    }
+
+    .tp-main {
+      padding: 0.8em 0.95em 1.25em;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75em;
+    }
+
+    .tp-bird {
+      display: flex;
+      align-items: center;
+      gap: 0.55em;
+    }
+
+    .tp-bird-icon {
+      flex: none;
+      width: 2.5em;
+      height: 2.5em;
+      border-radius: 42% 58% 55% 45% / 48% 42% 58% 52%;
+      background: var(--tp-primary);
+      color: #ffffff;
+      display: grid;
+      place-items: center;
+    }
+
+    .tp-bird-bubble {
+      flex: 1;
+      padding: 0.48em 0.78em;
+      border-radius: 0.95em;
+      background: var(--tp-soft);
+    }
+
+    .tp-bird-title {
+      margin: 0;
+      font-size: 1.2em;
+      font-weight: 700;
+      color: var(--tp-heading);
+    }
+
+    /* Progress bar for interactive flows */
+    .flow-prog {
+      display: flex;
+      gap: 0.3em;
+    }
+    .flow-seg {
+      flex: 1;
+      height: 0.35em;
+      border-radius: 999px;
+      background: var(--tp-soft-deep);
+    }
+    .flow-seg.is-on { background: var(--tp-primary); }
+
+    /* Entry phone swipe deck */
+    .deck-card {
+      background: var(--tp-primary);
+      color: #ffffff;
+      border-radius: 1.35em;
+      padding: 1.05em 1em;
+      min-height: 15.2em;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      text-align: center;
+    }
+
+    .deck-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .deck-chip {
+      padding: 0.14em 0.6em;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.18);
+      font-weight: 700;
+    }
+
+    .deck-art {
+      height: 4.5em;
+      display: grid;
+      place-items: center;
+    }
+
+    .deck-title {
+      margin: 0;
+      font-size: 1.4em;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .deck-sub {
+      margin: 0.25em 0 0.65em;
+      color: #ffffff;
+    }
+
+    .white-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 2.85em;
+      border-radius: 0.8em;
+      border: 0;
+      background: #ffffff;
+      color: var(--tp-primary);
+      font-size: 1.04em;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .solid-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 2.85em;
+      border-radius: 0.8em;
+      border: 0;
+      background: var(--tp-primary);
+      color: #ffffff;
+      font-size: 1.04em;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .ghost-btn {
+      background: transparent;
+      border: 0;
+      color: var(--tp-primary);
+      font-size: 1em;
+      font-weight: 700;
+      padding: 0.35em;
+      cursor: pointer;
+      text-decoration: underline;
+      align-self: center;
+    }
+
+    .deck-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 0.45em;
+    }
+
+    .deck-arrow {
+      width: 2.4em;
+      height: 2.4em;
+      border-radius: 999px;
+      border: 1.5px solid var(--tp-primary);
+      background: #ffffff;
+      color: var(--tp-primary);
+      font-weight: 700;
+      font-size: 1.05em;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+    }
+
+    .deck-dots { display: flex; gap: 0.35em; }
+    .deck-dot { width: 0.5em; height: 0.5em; border-radius: 999px; background: var(--tp-soft-deep); }
+    .deck-dot.is-on { width: 1.4em; background: var(--tp-primary); }
+
+    .mini-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.48em;
+    }
+
+    .mini-tile {
+      display: flex;
+      align-items: center;
+      gap: 0.45em;
+      padding: 0.6em;
+      min-height: 3em;
+      border-radius: 0.8em;
+      background: var(--tp-surface);
+      color: var(--tp-heading);
+      font-weight: 700;
+    }
+
+    .mini-tile svg { flex: none; color: var(--tp-primary); }
+
+    /* Interactive Question Card */
+    .q-card {
+      flex: 1;
+      background: var(--tp-surface);
+      border-radius: 1.35em;
+      padding: 1.05em 0.95em;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 0.75em;
+    }
+
+    .q-title {
+      margin: 0.15em 0 0;
+      font-size: 1.32em;
+      font-weight: 700;
+      color: var(--tp-heading);
+    }
+
+    .q-options {
+      display: grid;
+      gap: 0.52em;
+    }
+
+    .q-opt {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5em;
+      min-height: 3.15em;
+      padding: 0.6em 0.85em;
+      border-radius: 0.85em;
+      border: 2px solid #cbd5e1;
+      background: #ffffff;
+      color: var(--tp-heading);
+      font-size: 1.02em;
+      font-weight: 700;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .q-opt:hover { border-color: var(--tp-primary); background: var(--tp-soft); }
+
+    .q-opt-sub {
+      display: block;
+      font-weight: 400;
+      color: var(--tp-muted);
+      font-size: 1em;
+    }
+
+    /* Outcome Card */
+    .out-card {
+      background: var(--tp-primary);
+      color: #ffffff;
+      border-radius: 1.35em;
+      padding: 1.1em 1em;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6em;
+      text-align: center;
+    }
+
+    .out-amount {
+      font-size: 1.9em;
+      font-weight: 700;
+      line-height: 1.15;
+      color: #ffffff;
+    }
+
+    .out-warn {
+      background: rgba(255, 255, 255, 0.16);
+      border-radius: 0.75em;
+      padding: 0.55em 0.7em;
+      font-weight: 700;
+    }
+
+    /* Stamp */
+    .tp-stamp {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2em;
+      padding: 0.08em 0.45em;
+      border: 2px solid var(--tp-stamp);
+      border-radius: 0.38em;
+      background: #ffffff;
+      color: var(--tp-stamp);
+      font-weight: 700;
+      font-size: 1em;
+    }
+
+    /* Flow C: 4 Stage Interactive Flip Cards */
+    .stage-stack {
+      display: grid;
+      gap: 0.55em;
+    }
+
+    .stage-item {
+      border-radius: 1.05em;
+      background: var(--tp-surface);
+      border: 2px solid transparent;
+      overflow: hidden;
+    }
+
+    .stage-item.is-open {
+      background: var(--tp-soft);
+      border-color: var(--tp-primary);
+    }
+
+    .stage-btn {
+      width: 100%;
+      min-height: 3.3em;
+      padding: 0.65em 0.85em;
+      border: 0;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5em;
+      font-size: 1.04em;
+      font-weight: 700;
+      color: var(--tp-heading);
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .stage-body {
+      padding: 0 0.85em 0.85em;
+      display: grid;
+      gap: 0.55em;
+    }
+
+    .stage-pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35em;
+    }
+
+    .stage-pill {
+      background: #ffffff;
+      color: var(--tp-primary);
+      padding: 0.2em 0.55em;
+      border-radius: 999px;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <header class="sheet-bar">
+      <div>
+        <h1 class="sheet-title">主頁「補助卡」 → 點進「新的互動式補助引導流程」三案比較</h1>
+        <p class="sheet-sub">左邊第一支是定案的 `/guide` 主頁橫滑卡（預設停在補助卡）；右邊三支是點進「開始補助引導」後的互動頁面做法，每一支都能直接點按走完全程！</p>
+      </div>
+      <div class="ctrl-row">
+        <button type="button" data-size="normal" class="ctrl-pill" aria-pressed="true">標準 18px</button>
+        <button type="button" data-size="large" class="ctrl-pill" aria-pressed="false">放大字級</button>
+      </div>
+    </header>
+
+    <main class="phones-strip">
+      <!-- ENTRY PHONE: /guide -->
+      <section class="phone-col">
+        <div class="cap">
+          <div class="cap-head">
+            <span class="cap-badge is-entry">入口頁 `/guide`</span>
+            <h2 class="cap-title">橫滑故事卡（含補助卡）</h2>
+          </div>
+          <p class="cap-desc">固定 5 張簡潔大圖卡，其中「申請助聽器補助」卡一按就進入右邊的互動引導流程！</p>
+        </div>
+        <div class="tp-phone" data-ui id="phone-entry"></div>
+      </section>
+
+      <div class="col-divider" aria-hidden="true"></div>
+
+      <!-- FLOW A -->
+      <section class="phone-col">
+        <div class="cap">
+          <div class="cap-head">
+            <span class="cap-badge">補助流程 A</span>
+            <h2 class="cap-title">一步一問・指路精靈</h2>
+          </div>
+          <p class="cap-desc">只問 2 題進度（有沒有證明 → 九號表辦了沒），馬上翻出「現在唯一要做的事＋防踩雷時限」。</p>
+        </div>
+        <div class="tp-phone" data-ui id="phone-a"></div>
+      </section>
+
+      <!-- FLOW B -->
+      <section class="phone-col">
+        <div class="cap">
+          <div class="cap-head">
+            <span class="cap-badge is-rec">補助流程 B（推薦）</span>
+            <h2 class="cap-title">指路 ＋ 補助金額試算合一</h2>
+          </div>
+          <p class="cap-desc">一題一卡問完進度＋單雙耳／身分，最後一張卡同時給「預估能領多少錢」與「下一步去哪辦」！</p>
+        </div>
+        <div class="tp-phone" data-ui id="phone-b"></div>
+      </section>
+
+      <!-- FLOW C -->
+      <section class="phone-col">
+        <div class="cap">
+          <div class="cap-head">
+            <span class="cap-badge">補助流程 C</span>
+            <h2 class="cap-title">四關互動過關卡（可蓋章）</h2>
+          </div>
+          <p class="cap-desc">四張大號關卡（鑑定 → 九號表 → 公文後買 → 核銷），點目前這關看時限，辦好還能直接蓋印章。</p>
+        </div>
+        <div class="tp-phone" data-ui id="phone-c"></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const st = {
+      large: false,
+      deckIdx: 1, // starts on Card 2: 申請助聽器補助
+      // Flow A state
+      aStep: 0, // 0: cert, 1: form9, 2: result
+      aCert: "yes",
+      aProg: "wait_notice",
+      // Flow B state
+      bStep: 0, // 0: cert, 1: ears+tier, 2: income, 3: result
+      bCert: "yes",
+      bTier: "mid_2", // mid_2 = 雙耳中階 20000 base, adv_2 = 雙耳進階 40000 base, mid_1 = 單耳中階 10000
+      bRate: 0.5, // 0.5 一般, 0.75 中低, 1.0 低收
+      // Flow C state
+      cOpen: 2,
+      cDone: { 0: true, 1: true, 2: false, 3: false }
+    };
+
+    const IC = {
+      bird: `<svg width="24" height="24" viewBox="0 0 64 64" aria-hidden="true"><path fill="currentColor" d="M12 50c1-3 3-6 5-9 0-14 9-24 21-24a11 11 0 0 1 11 9l7 4-7 3c-2 11-10 17-21 17z"/><path fill="none" stroke="#1f4e8c" stroke-width="4" stroke-linecap="round" d="M24 33a5.5 5.5 0 0 1 11 0c0 3.5-3.5 4.5-3.5 7.5a2.8 2.8 0 0 1-5 1.6"/></svg>`,
+      stamp: `<svg width="14" height="14" viewBox="0 0 48 48" aria-hidden="true"><path fill="currentColor" d="M24 4L29.88 16.91L44 18.18L33.5 27.64L36.36 41.5L24 34.36L11.64 41.5L14.5 27.64L4 18.18L18.12 16.91Z"/></svg>`,
+      hosp: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M12 8v6M9 11h6"/></svg>`,
+      doc: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>`,
+      ear: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10a6 6 0 1 1 12 0c0 4-3 5-3 8a3 3 0 0 1-6 0"/></svg>`,
+      aid: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="15" r="3"/><path d="M9 12V7a5 5 0 0 1 10 0v3"/></svg>`,
+      seal: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="6"/><path d="M9 10l2 2 4-4M8 15l-2 6 6-2 6 2-2-6"/></svg>`,
+      cal: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>`
+    };
+
+    const ART = {
+      chart: `<svg width="68" height="68" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="12" width="44" height="40" rx="6" fill="rgba(255,255,255,0.15)"/><path d="M18 38l10-10 8 6 10-12"/><circle cx="46" cy="22" r="3" fill="currentColor"/></svg>`,
+      subsidy: `<svg width="68" height="68" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="12" y="10" width="40" height="44" rx="6" fill="rgba(255,255,255,0.15)"/><circle cx="32" cy="28" r="9"/><path d="M28 28l3 3 5-5M22 44h20"/></svg>`,
+      clinic: `<svg width="68" height="68" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="28" r="10" fill="rgba(255,255,255,0.15)"/><path d="M12 48a12 12 0 0 1 24 0M42 20h12M42 28h12M42 36h8"/></svg>`,
+      aid: `<svg width="68" height="68" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="42" r="9" fill="rgba(255,255,255,0.18)"/><path d="M24 33V21a12 12 0 0 1 24 0v9"/><circle cx="48" cy="33" r="4"/></svg>`,
+      adapt: `<svg width="68" height="68" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="14" width="44" height="38" rx="6" fill="rgba(255,255,255,0.15)"/><path d="M22 9v10M42 9v10M24 35l6 6 11-11"/></svg>`
+    };
+
+    const GUIDE_CARDS = [
+      { art: "chart", tag: "第 1 步", title: "記錄聽力圖", sub: "看要不要配・算 45% 鑑定門檻", btn: "去記錄聽力圖 ›" },
+      { art: "subsidy", tag: "補助專區", title: "申請助聽器補助", sub: "最高省 3 萬・先拿公文再買", btn: "開始補助引導 ›", isSubsidy: true },
+      { art: "clinic", tag: "選配前", title: "去找聽力師之前", sub: "看診帶什麼・試戴必問清單", btn: "看準備清單 ›" },
+      { art: "aid", tag: "挑款式", title: "種類與價格", sub: "外型差異・各級補助上限", btn: "看種類與價格 ›" },
+      { art: "adapt", tag: "買了後", title: "配戴與核銷", sub: "前幾週適應・滿月二十五號表", btn: "看配戴之後 ›" }
+    ];
+
+    /* -------- ENTRY PHONE: /guide -------- */
+    function renderEntry() {
+      const c = GUIDE_CARDS[st.deckIdx];
+      const dots = GUIDE_CARDS.map((_, i) => `<span class="deck-dot ${i === st.deckIdx ? "is-on" : ""}"></span>`).join("");
+
+      return `
+        <div class="tp-top">
+          <span class="tp-logo">${IC.bird}<span>聽伴</span></span>
+          <span class="tp-user">王</span>
+        </div>
+        <div class="tp-main">
+          <div class="tp-bird">
+            <span class="tp-bird-icon">${IC.bird}</span>
+            <div class="tp-bird-bubble"><h3 class="tp-bird-title">助聽器選配與補助</h3></div>
+          </div>
+
+          <div>
+            <article class="deck-card">
+              <div class="deck-top">
+                <span class="deck-chip">${c.tag}</span>
+                <span class="deck-chip">${st.deckIdx + 1} / 5</span>
+              </div>
+              <div class="deck-art">${ART[c.art]}</div>
+              <div>
+                <h4 class="deck-title">${c.title}</h4>
+                <p class="deck-sub">${c.sub}</p>
+                <button type="button" class="white-btn" ${c.isSubsidy ? `data-focus-right="1"` : ""}>${c.btn}</button>
+              </div>
+            </article>
+            <div class="deck-nav">
+              <button type="button" class="deck-arrow" data-deck="-1" aria-label="上一張">‹</button>
+              <div class="deck-dots">${dots}</div>
+              <button type="button" class="deck-arrow" data-deck="1" aria-label="下一張">›</button>
+            </div>
+          </div>
+
+          <div class="mini-grid">
+            <div class="mini-tile">${IC.hosp}<span>鑑定醫院</span></div>
+            <div class="mini-tile">${IC.doc}<span>九號表補助</span></div>
+            <div class="mini-tile">${IC.ear}<span>找聽力師前</span></div>
+            <div class="mini-tile">${IC.aid}<span>種類與價格</span></div>
+            <div class="mini-tile">${IC.seal}<span>配戴之後</span></div>
+            <div class="mini-tile">${IC.cal}<span>二十五號表</span></div>
+          </div>
+        </div>
+      `;
+    }
+
+    /* -------- SUB-HEADER FOR SUBSIDY FLOWS -------- */
+    function flowShell(title, stepNow, stepTotal, bodyHtml) {
+      const segs = Array.from({ length: stepTotal }, (_, i) =>
+        `<span class="flow-seg ${i <= stepNow ? "is-on" : ""}"></span>`
+      ).join("");
+
+      return `
+        <div class="tp-top">
+          <button type="button" class="tp-back">‹ 回選配與補助</button>
+          <span class="tp-user">王</span>
+        </div>
+        <div class="tp-main">
+          <div class="flow-prog" aria-hidden="true">${segs}</div>
+          <div class="tp-bird">
+            <span class="tp-bird-icon">${IC.bird}</span>
+            <div class="tp-bird-bubble"><h3 class="tp-bird-title">${title}</h3></div>
+          </div>
+          ${bodyHtml}
+        </div>
+      `;
+    }
+
+    /* -------- FLOW A: 2-Step Pure Wayfinding -------- */
+    function renderFlowA() {
+      if (st.aStep === 0) {
+        return flowShell("助聽器補助引導", 0, 3, `
+          <div class="q-card">
+            <div>
+              <span style="font-weight:700; color:var(--tp-primary);">第 1 題</span>
+              <h4 class="q-title">有聽覺身障證明嗎？</h4>
+            </div>
+            <div class="q-options">
+              <button type="button" class="q-opt" data-a-cert="yes"><span>有證明</span><span>›</span></button>
+              <button type="button" class="q-opt" data-a-cert="no_want"><span>還沒有，想看能不能辦</span><span>›</span></button>
+              <button type="button" class="q-opt" data-a-cert="none"><span>沒有（看其他長輩補助）</span><span>›</span></button>
+            </div>
+          </div>
+        `);
+      }
+
+      if (st.aStep === 1) {
+        return flowShell("助聽器補助引導", 1, 3, `
+          <div class="q-card">
+            <div>
+              <span style="font-weight:700; color:var(--tp-primary);">第 2 題</span>
+              <h4 class="q-title">目前辦到哪一步了？</h4>
+            </div>
+            <div class="q-options">
+              <button type="button" class="q-opt" data-a-prog="no_form9"><span>還沒開九號表</span><span>›</span></button>
+              <button type="button" class="q-opt" data-a-prog="has_form9"><span>九號表開好了，還沒送公所</span><span>›</span></button>
+              <button type="button" class="q-opt" data-a-prog="wait_notice"><span>已送公所，等核定公文</span><span>›</span></button>
+              <button type="button" class="q-opt" data-a-prog="got_notice"><span>已收到核定公文</span><span>›</span></button>
+            </div>
+            <button type="button" class="ghost-btn" data-a-reset="0">← 上一題</button>
+          </div>
+        `);
+      }
+
+      const outcomes = {
+        no_want: { title: "先去鑑定醫院做檢查", warn: "雙耳障礙比率達 45% 才能拿證明", btn: "查各縣市鑑定醫院 ›" },
+        none: { title: "低收長輩另有每只 5,500 元", warn: "65 歲以上低收入戶可向縣市申請", btn: "看其他補助規定 ›" },
+        no_form9: { title: "先找聽力師開「九號表」", warn: "還沒核定前，千萬別先買助聽器！", btn: "查各縣市輔具中心電話 ›" },
+        has_form9: { title: "3 個月內送戶籍公所", warn: "帶身分證、印章、九號表（可線上辦）", btn: "看公所申請步驟 ›" },
+        wait_notice: { title: "等收到核定公文再買", warn: "約 10 天核定，先買絕對不補助！", btn: "先看：找聽力師前準備 ›" },
+        got_notice: { title: "6 個月內選配購買", warn: "中階型以上戴滿 1～3 個月要做 25 號表", btn: "看種類與補助上限 ›" }
+      };
+      const key = st.aCert !== "yes" ? st.aCert : st.aProg;
+      const res = outcomes[key];
+
+      return flowShell("您的下一步", 2, 3, `
+        <div class="out-card">
+          <div class="deck-art">${ART.subsidy}</div>
+          <h4 class="deck-title">${res.title}</h4>
+          <div class="out-warn">${res.warn}</div>
+          <button type="button" class="white-btn">${res.btn}</button>
+        </div>
+        <button type="button" class="ghost-btn" data-a-reset="0">重選其他狀況</button>
+      `);
+    }
+
+    /* -------- FLOW B: Wayfinding + Subsidy Amount Calculator -------- */
+    function renderFlowB() {
+      if (st.bStep === 0) {
+        return flowShell("補助指路與試算", 0, 4, `
+          <div class="q-card">
+            <div>
+              <span style="font-weight:700; color:var(--tp-primary);">1 / 3・資格</span>
+              <h4 class="q-title">有聽覺身障證明嗎？</h4>
+            </div>
+            <div class="q-options">
+              <button type="button" class="q-opt" data-b-cert="yes"><span>有（或準備去辦）</span><span>›</span></button>
+              <button type="button" class="q-opt" data-b-cert="none"><span>沒有身障證明</span><span>›</span></button>
+            </div>
+          </div>
+        `);
+      }
+
+      if (st.bStep === 1) {
+        return flowShell("補助指路與試算", 1, 4, `
+          <div class="q-card">
+            <div>
+              <span style="font-weight:700; color:var(--tp-primary);">2 / 3・款式</span>
+              <h4 class="q-title">預計配哪一種？</h4>
+            </div>
+            <div class="q-options">
+              <button type="button" class="q-opt" data-b-tier="adv_2">
+                <span>雙耳・進階型<span class="q-opt-sub">最常見數位多頻道</span></span><span>›</span>
+              </button>
+              <button type="button" class="q-opt" data-b-tier="mid_2">
+                <span>雙耳・中階型<span class="q-opt-sub">基本數位降噪</span></span><span>›</span>
+              </button>
+              <button type="button" class="q-opt" data-b-tier="adv_1">
+                <span>單耳・進階型</span><span>›</span>
+              </button>
+            </div>
+            <button type="button" class="ghost-btn" data-b-back="0">← 上一題</button>
+          </div>
+        `);
+      }
+
+      if (st.bStep === 2) {
+        return flowShell("補助指路與試算", 2, 4, `
+          <div class="q-card">
+            <div>
+              <span style="font-weight:700; color:var(--tp-primary);">3 / 3・比例</span>
+              <h4 class="q-title">戶籍福利身分是？</h4>
+            </div>
+            <div class="q-options">
+              <button type="button" class="q-opt" data-b-rate="0.5"><span>一般戶（補助 50%）</span><span>›</span></button>
+              <button type="button" class="q-opt" data-b-rate="0.75"><span>中低收入戶（補助 75%）</span><span>›</span></button>
+              <button type="button" class="q-opt" data-b-rate="1"><span>低收入戶（補助 100%）</span><span>›</span></button>
+            </div>
+            <button type="button" class="ghost-btn" data-b-back="1">← 上一題</button>
+          </div>
+        `);
+      }
+
+      if (st.bCert === "none") {
+        return flowShell("試算與下一步", 3, 4, `
+          <div class="out-card">
+            <div style="font-weight:700; opacity:0.9;">低收入戶 65 歲以上長輩</div>
+            <div class="out-amount">每只最高 5,500 元</div>
+            <div class="out-warn">一般自費免等公文，可直接預約聽力師試戴</div>
+            <button type="button" class="white-btn">看其他補助與醫院 ›</button>
+          </div>
+          <button type="button" class="ghost-btn" data-b-back="0">重新試算</button>
+        `);
+      }
+
+      const baseMap = { adv_2: 40000, mid_2: 20000, adv_1: 20000 };
+      const amt = Math.round(baseMap[st.bTier] * st.bRate).toLocaleString("en-US");
+
+      return flowShell("試算與下一步", 3, 4, `
+        <div class="out-card">
+          <div style="font-weight:700; opacity:0.9;">預估最高可補助</div>
+          <div class="out-amount">${amt} 元</div>
+          <div class="out-warn">鐵則：先開九號表送公所，拿到「核定公文」才能買！</div>
+          <button type="button" class="white-btn">看九號表申請 4 步驟 ›</button>
+        </div>
+        <p style="margin:0; font-size:0.88em; color:var(--tp-muted); text-align:center;">
+          註：65 歲後初次鑑定輕度選進階型另有總額上限；實際以公所核定為準。
+        </p>
+        <button type="button" class="ghost-btn" data-b-back="0">換條件重算</button>
+      `);
+    }
+
+    /* -------- FLOW C: 4-Stage Interactive Pass Cards -------- */
+    function renderFlowC() {
+      const stages = [
+        { name: "1. 身障鑑定", pills: ["門檻 45%", "醫院檢查"], tip: "先取得聽覺機能身障證明", btn: "查各縣市鑑定醫院 ›" },
+        { name: "2. 開九號表送公所", pills: ["3 個月內有效", "最高 3 萬"], tip: "找聽力師或輔具中心評估後送公所", btn: "查輔具中心電話 ›" },
+        { name: "3. 收到公文才購買", pills: ["約 10 天核定", "6 個月內買"], tip: "沒收到核定公文先買，一毛都不補助！", btn: "看種類與補助上限 ›" },
+        { name: "4. 二十五號表核銷", pills: ["配戴 1–3 個月", "1 個月撥款"], tip: "中階型以上回診驗證後，送憑證核銷", btn: "看核銷要帶什麼 ›" }
+      ];
+
+      const doneCount = Object.values(st.cDone).filter(Boolean).length;
+
+      const listHtml = stages.map((s, idx) => {
+        const open = st.cOpen === idx;
+        const done = st.cDone[idx];
+        const rightBadge = done
+          ? `<span class="tp-stamp">${IC.stamp}完成</span>`
+          : `<span>${open ? "▴" : "▾"}</span>`;
+
+        const body = open ? `
+          <div class="stage-body">
+            <div class="stage-pill-row">
+              ${s.pills.map((p) => `<span class="stage-pill">${p}</span>`).join("")}
+            </div>
+            <p style="margin:0; color:var(--tp-heading);">${s.tip}</p>
+            <button type="button" class="solid-btn">${s.btn}</button>
+            <button type="button" class="ghost-btn" data-c-toggle-done="${idx}">
+              ${done ? "取消完成標記" : "標記「這關辦好了」"}
+            </button>
+          </div>
+        ` : "";
+
+        return `
+          <div class="stage-item ${open ? "is-open" : ""}">
+            <button type="button" class="stage-btn" data-c-open="${idx}">
+              <span>${s.name}</span>
+              ${rightBadge}
+            </button>
+            ${body}
+          </div>
+        `;
+      }).join("");
+
+      return flowShell("補助四關過關卡", Math.min(doneCount, 3), 4, `
+        <div class="stage-stack">${listHtml}</div>
+      `);
+    }
+
+    function renderAll() {
+      document.querySelectorAll(".tp-phone").forEach((el) => {
+        el.classList.toggle("is-large", st.large);
+      });
+      document.getElementById("phone-entry").innerHTML = renderEntry();
+      document.getElementById("phone-a").innerHTML = renderFlowA();
+      document.getElementById("phone-b").innerHTML = renderFlowB();
+      document.getElementById("phone-c").innerHTML = renderFlowC();
+    }
+
+    document.addEventListener("click", (e) => {
+      const sz = e.target.closest("[data-size]");
+      if (sz) {
+        st.large = sz.dataset.size === "large";
+        document.querySelectorAll("[data-size]").forEach((b) => {
+          b.setAttribute("aria-pressed", String(b === sz));
+        });
+        renderAll();
+        return;
+      }
+
+      const dk = e.target.closest("[data-deck]");
+      if (dk) {
+        st.deckIdx = (st.deckIdx + Number(dk.dataset.deck) + GUIDE_CARDS.length) % GUIDE_CARDS.length;
+        renderAll();
+        return;
+      }
+
+      const focusRight = e.target.closest("[data-focus-right]");
+      if (focusRight) {
+        document.getElementById("phone-b").scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+        return;
+      }
+
+      // Flow A handlers
+      const aCert = e.target.closest("[data-a-cert]");
+      if (aCert) {
+        st.aCert = aCert.dataset.aCert;
+        st.aStep = st.aCert === "yes" ? 1 : 2;
+        renderAll();
+        return;
+      }
+      const aProg = e.target.closest("[data-a-prog]");
+      if (aProg) {
+        st.aProg = aProg.dataset.aProg;
+        st.aStep = 2;
+        renderAll();
+        return;
+      }
+      const aReset = e.target.closest("[data-a-reset]");
+      if (aReset) {
+        st.aStep = Number(aReset.dataset.aReset);
+        renderAll();
+        return;
+      }
+
+      // Flow B handlers
+      const bCert = e.target.closest("[data-b-cert]");
+      if (bCert) {
+        st.bCert = bCert.dataset.bCert;
+        st.bStep = st.bCert === "yes" ? 1 : 3;
+        renderAll();
+        return;
+      }
+      const bTier = e.target.closest("[data-b-tier]");
+      if (bTier) {
+        st.bTier = bTier.dataset.bTier;
+        st.bStep = 2;
+        renderAll();
+        return;
+      }
+      const bRate = e.target.closest("[data-b-rate]");
+      if (bRate) {
+        st.bRate = Number(bRate.dataset.bRate);
+        st.bStep = 3;
+        renderAll();
+        return;
+      }
+      const bBack = e.target.closest("[data-b-back]");
+      if (bBack) {
+        st.bStep = Number(bBack.dataset.bBack);
+        renderAll();
+        return;
+      }
+
+      // Flow C handlers
+      const cOpen = e.target.closest("[data-c-open]");
+      if (cOpen) {
+        st.cOpen = Number(cOpen.dataset.cOpen);
+        renderAll();
+        return;
+      }
+      const cDone = e.target.closest("[data-c-toggle-done]");
+      if (cDone) {
+        const idx = Number(cDone.dataset.cToggleDone);
+        st.cDone[idx] = !st.cDone[idx];
+        if (st.cDone[idx] && idx < 3) st.cOpen = idx + 1;
+        renderAll();
+      }
+    });
+
+    renderAll();
+  </script>
+</body>
+</html>
