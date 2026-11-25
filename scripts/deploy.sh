@@ -16,7 +16,8 @@ echo "==> check before deploy:"
 "$PY" manage.py check --deploy --fail-level WARNING
 
 echo "==> build frontend:"
-npm ci --include=dev --prefix frontend && npm run build --prefix frontend
+npm ci --include=dev --prefix frontend
+npm run build --prefix frontend
 
 echo "==> collect static files:"
 "$PY" manage.py collectstatic --no-input
