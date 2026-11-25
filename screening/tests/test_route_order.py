@@ -23,7 +23,7 @@ from screening.models import (
 )
 from screening.questionnaires import hhie_s, ioi_ha
 from screening.tests import test_guide_summary
-from screening.tests.helpers import consented_user, route_stops
+from screening.tests.helpers import consented_user
 from screening.tests.test_route_answers import answer_buttons
 
 PTA_55 = test_guide_summary.PTA_55
@@ -78,13 +78,14 @@ class RouteOrderTestCase(TestCase):
         )
 
     def stops(self):
-        return route_stops(self.client.get(reverse("guide")).content.decode())
+        """#779: the route's stops, as fitting_state has them now my guide no longer draws it."""
+        return fitting_state(self.user, TODAY).stops
 
     def marks(self):
-        """The marks each stop on my guide carries, by slug."""
-        return {
-            slug: [m for m in (DONE, HERE) if f">{m}<" in markup] for slug, markup in self.stops()
-        }
+        """The marks each stop on the route carries, by slug."""
+        state = fitting_state(self.user, TODAY)
+        found = {DONE: lambda slug: slug in state.done, HERE: lambda slug: slug == state.stop}
+        return {slug: [m for m, on in found.items() if on(slug)] for slug in state.stops}
 
     def guide_here(self):
         return [slug for slug, marks in self.marks().items() if HERE in marks]
@@ -92,16 +93,12 @@ class RouteOrderTestCase(TestCase):
 
 class RouteOrderPageTests(RouteOrderTestCase):
     # Acceptance 31
-    def test_my_guide_lists_the_nine_stops_in_the_new_order(self):
+    def test_the_route_has_the_nine_stops_in_the_new_order(self):
         self.aid(certificate=Certificate.YES)
-        self.assertEqual(tuple(slug for slug, _ in self.stops()), NINE)
+        self.assertEqual(self.stops(), NINE)
 
-    def test_folded_my_guide_keeps_the_order_without_the_subsidy_stops(self):
-        for signed_in in (True, False):
-            with self.subTest(signed_in=signed_in):
-                if not signed_in:
-                    self.client.logout()
-                self.assertEqual(tuple(slug for slug, _ in self.stops()), FIVE)
+    def test_folded_the_route_keeps_the_order_without_the_subsidy_stops(self):
+        self.assertEqual(self.stops(), FIVE)
 
     def test_after_the_audiogram_the_route_asks_for_the_certificate_first(self):
         self.submit(self.hhie_s, TODAY)

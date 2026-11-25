@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from screening.audiogram import DB_MAX
 from screening.care_journey import care_journey
+from screening.fitting_route import fitting_state
 from screening.models import (
     Answer,
     Audiogram,
@@ -98,7 +99,8 @@ class GuideSummaryTests(TestCase):
         return audiogram
 
     def text(self):
-        return test_guide.text_of(self.client.get(reverse("guide")))
+        """#780: what the audiogram says is in the shut 看聽力圖數值與計算公式 fold."""
+        return test_guide.numbers_fold_text(self, self.client.get(reverse("guide")))
 
     def test_uses_the_latest_audiogram_and_says_its_date(self):
         self.make(PTA_60, PTA_60, tested_on=date(2026, 3, 1))
@@ -112,13 +114,13 @@ class GuideSummaryTests(TestCase):
     def test_reached_says_so_and_points_to_assessment_first(self):
         self.make(PTA_55, PTA_55)
         response = self.client.get(reverse("guide"))
-        text = test_guide.text_of(response)
+        text = test_guide.numbers_fold_text(self, response)
+        fold = test_guide.inside_numbers_fold(self, response)
         for sentence in (THRESHOLD_TITLE, THRESHOLD_NOTE, REACHED, CERTIFICATE_FIRST):
             with self.subTest(sentence=sentence):
                 self.assertIn(sentence, text)
-        self.assertContains(
-            response,
-            f'<a href="{reverse("guide_chapter", args=["assessment"])}">{FIND_HOSPITAL}</a>',
+        self.assertIn(
+            f'<a href="{reverse("guide_chapter", args=["assessment"])}">{FIND_HOSPITAL}</a>', fold
         )
         self.assertNotIn("未達到", text)
         self.assertNotIn(NO_RESPONSE_NOTE, text)
@@ -126,25 +128,27 @@ class GuideSummaryTests(TestCase):
     def test_not_reached_points_to_subsidies_without_a_certificate(self):
         self.make(PTA_53_75, PTA_60)
         response = self.client.get(reverse("guide"))
-        text = test_guide.text_of(response)
+        text = test_guide.numbers_fold_text(self, response)
+        fold = test_guide.inside_numbers_fold(self, response)
         self.assertIn(NOT_REACHED, text)
         self.assertIn(OTHER_SUBSIDIES, text)
         without = reverse("guide_chapter", args=["form-9"]) + "#without-certificate"
-        self.assertContains(response, f'<a href="{without}">{WITHOUT_CERTIFICATE}</a>')
+        self.assertIn(f'<a href="{without}">{WITHOUT_CERTIFICATE}</a>', fold)
         self.assertNotIn(CERTIFICATE_FIRST, text)
 
     def test_uncertain_never_says_not_reached(self):
         # Left 4 kHz unheard at 120 dB: 35.0% is only a lower bound.
         self.make((40, 40, 40, 40), (80, 80, 80, 80), no_response_at=("left", 4000))
         response = self.client.get(reverse("guide"))
-        text = test_guide.text_of(response)
+        text = test_guide.numbers_fold_text(self, response)
+        fold = test_guide.inside_numbers_fold(self, response)
         self.assertIn(UNCERTAIN, text)
         self.assertNotIn("未達到", text)
         self.assertIn(OTHER_SUBSIDIES, text)
         assessment = reverse("guide_chapter", args=["assessment"])
-        self.assertContains(response, f'<a href="{assessment}">{FIND_HOSPITAL}</a>')
+        self.assertIn(f'<a href="{assessment}">{FIND_HOSPITAL}</a>', fold)
         without = reverse("guide_chapter", args=["form-9"]) + "#without-certificate"
-        self.assertContains(response, f'<a href="{without}">{WITHOUT_CERTIFICATE}</a>')
+        self.assertIn(f'<a href="{without}">{WITHOUT_CERTIFICATE}</a>', fold)
 
     def test_reached_with_a_no_response_point_notes_it(self):
         # Right 55, 55, 55 and 2 kHz unheard at 120: PTA 71.25, so 49.1% at least.
@@ -165,8 +169,9 @@ class GuideSummaryTests(TestCase):
         self.make(PTA_53_75, PTA_60)
         response = self.client.get(reverse("guide"))
         # #467: a bold subhead inside 看完整說明 (it was a fold of its own).
-        self.assertContains(response, f'<h4 class="guide-hearing-subhead">{HOW}</h4>')
-        text = test_guide.text_of(response)
+        fold = test_guide.inside_numbers_fold(self, response)
+        self.assertIn(f'<h4 class="guide-hearing-subhead">{HOW}</h4>', fold)
+        text = test_guide.numbers_fold_text(self, response)
         for sentence in (
             HOW_FORMULA,
             EACH_EAR,
@@ -272,7 +277,7 @@ QUESTIONNAIRE_FIRST = (
     "您的聽力圖是輕度聽力損失。輕度要不要評估選配，要看聽力對生活的影響，先做一份生活影響問卷。"
 )
 DO_QUESTIONNAIRE = "去做問卷"
-HERE = '<span class="route-mark">您在這裡</span>'
+# #779: the route is no longer drawn; whether it has a 目前這一站 is fitting_state's.
 
 
 class GuideSummaryStatesTests(TestCase):
@@ -350,14 +355,16 @@ class GuideSummaryStatesTests(TestCase):
         # Spec #693 acceptance 5: 41.25 dB HL, without a questionnaire.
         self.make((40, 40, 40, 45), (20, 20, 20, 20))
         response = self.client.get(reverse("guide"))
-        text = test_guide.text_of(response)
+        text = test_guide.numbers_fold_text(self, response)
+        fold = test_guide.inside_numbers_fold(self, response)
         self.assertIn(FITTING_TITLE, text)
         self.assertIn(RECOMMENDS, text)
         self.assertNotIn(MILD_WITH_IMPACT, text)
         before = reverse("guide_chapter", args=["before-you-go"])
-        self.assertContains(response, f'<a href="{before}">{BEFORE_YOU_GO}</a>')
-        self.assertNotIn(NO_AUDIOGRAM, text)
-        self.assertNotIn(NO_RECORDS, text)
+        self.assertIn(f'<a href="{before}">{BEFORE_YOU_GO}</a>', fold)
+        page = test_guide.text_of(response)
+        self.assertNotIn(NO_AUDIOGRAM, page)
+        self.assertNotIn(NO_RECORDS, page)
 
     def test_both_ears_within_25_only_repeat_the_numbers(self):
         self.make((25, 25, 25, 25), (20, 20, 20, 20))
@@ -371,11 +378,12 @@ class GuideSummaryStatesTests(TestCase):
         audiogram = self.make(PTA_55, PTA_55)
         audiogram.points.filter(frequency=4000).delete()
         response = self.client.get(reverse("guide"))
-        text = test_guide.text_of(response)
+        text = test_guide.numbers_fold_text(self, response)
+        fold = test_guide.inside_numbers_fold(self, response)
         self.assertIn(FITTING_INSUFFICIENT, text)
         self.assertIn(INSUFFICIENT, text)
         edit = reverse("audiogram_edit", args=[audiogram.pk])
-        self.assertContains(response, f'<a href="{edit}">{EDIT_AUDIOGRAM}</a>')
+        self.assertIn(f'<a href="{edit}">{EDIT_AUDIOGRAM}</a>', fold)
         self.assertNotIn(RECOMMENDS, text)
 
     def test_wearing_in_the_latest_questionnaire_points_to_reapplying(self):
@@ -383,11 +391,12 @@ class GuideSummaryStatesTests(TestCase):
         self.answer(wearing=True, day=2)
         self.make((30, 30, 30, 30), (20, 20, 20, 20))
         response = self.client.get(reverse("guide"))
-        text = test_guide.text_of(response)
+        text = test_guide.numbers_fold_text(self, response)
+        fold = test_guide.inside_numbers_fold(self, response)
         self.assertIn(FITTING_TITLE, text)
         self.assertIn(WEARING, text)
         reapply = reverse("guide_chapter", args=["form-9"]) + "#reapply"
-        self.assertContains(response, f'<a href="{reapply}">{REAPPLY}</a>')
+        self.assertIn(f'<a href="{reapply}">{REAPPLY}</a>', fold)
         self.assertNotIn(RECOMMENDS, text)
         # The other boxes stay as they are.
         self.assertIn("您 2026/10/02 做的聽力對生活的影響（HHIE-S）：顯著影響。", text)
@@ -402,10 +411,11 @@ class GuideSummaryStatesTests(TestCase):
         Submission.objects.filter(pk=submission.pk).update(created_at=moment)
         self.make((30, 30, 30, 30), (20, 20, 20, 20))
         response = self.client.get(reverse("guide"))
-        text = test_guide.text_of(response)
+        text = test_guide.numbers_fold_text(self, response)
+        fold = test_guide.inside_numbers_fold(self, response)
         self.assertIn(WEARING, text)
         reapply = reverse("guide_chapter", args=["form-9"]) + "#reapply"
-        self.assertContains(response, f'<a href="{reapply}">{REAPPLY}</a>')
+        self.assertIn(f'<a href="{reapply}">{REAPPLY}</a>', fold)
         self.assertNotIn(RECOMMENDS, text)
 
     def test_wearing_with_both_ears_without_a_pta_still_points_to_reapplying(self):
@@ -413,10 +423,11 @@ class GuideSummaryStatesTests(TestCase):
         audiogram = self.make(PTA_55, PTA_55)
         audiogram.points.filter(frequency=4000).delete()
         response = self.client.get(reverse("guide"))
-        text = test_guide.text_of(response)
+        text = test_guide.numbers_fold_text(self, response)
+        fold = test_guide.inside_numbers_fold(self, response)
         self.assertIn(WEARING, text)
         reapply = reverse("guide_chapter", args=["form-9"]) + "#reapply"
-        self.assertContains(response, f'<a href="{reapply}">{REAPPLY}</a>')
+        self.assertIn(f'<a href="{reapply}">{REAPPLY}</a>', fold)
         self.assertNotIn(FITTING_INSUFFICIENT, text)
         # The threshold box still says there is too little data.
         self.assertIn(INSUFFICIENT, text)
@@ -441,8 +452,9 @@ class GuideSummaryStatesTests(TestCase):
             self.make(*ears, **options)
             response = self.client.get(reverse("guide"))
             with self.subTest(status=status):
-                self.assertIn(HAS_CERTIFICATE, test_guide.text_of(response))
-                self.assertContains(response, f'<a href="{form_9}">{FORM_9_STEPS}</a>')
+                self.assertIn(HAS_CERTIFICATE, test_guide.numbers_fold_text(self, response))
+                fold = test_guide.inside_numbers_fold(self, response)
+                self.assertIn(f'<a href="{form_9}">{FORM_9_STEPS}</a>', fold)
 
     def test_no_threshold_result_leaves_out_the_certificate_line(self):
         audiogram = self.make(PTA_55, PTA_55)
@@ -457,7 +469,7 @@ class GuideSummaryStatesTests(TestCase):
         self.make((30, 30, 30, 30), (20, 20, 20, 20))
         response = self.client.get(reverse("guide"))
         self.assertIn("no-store", response["Cache-Control"])
-        text = test_guide.text_of(response)
+        text = test_guide.numbers_fold_text(self, response)
         self.assertIn("您 2026/10/03 做的", text)
         self.assertIn("依您 2026/10/01 的聽力圖 ", text)
         self.assertIn("右耳四頻平均 30 dB HL 左耳四頻平均 20 dB HL", text)
@@ -497,13 +509,19 @@ class FittingAdviceGuideTests(TestCase):
     answer = GuideSummaryStatesTests.answer
 
     def page(self):
+        """The page and its 看聽力圖數值與計算公式 fold's text (#780)."""
         response = self.client.get(reverse("guide"))
-        return response, test_guide.text_of(response)
+        return response, test_guide.numbers_fold_text(self, response)
+
+    def here(self):
+        """The route's 目前這一站, None while it waits (#779: no longer drawn on the page)."""
+        return fitting_state(self.user, timezone.localdate()).stop
 
     def assert_before_you_go(self, response, shown=True):
         before = reverse("guide_chapter", args=["before-you-go"])
         link = f'<a href="{before}">{BEFORE_YOU_GO}</a>'
-        (self.assertContains if shown else self.assertNotContains)(response, link)
+        fold = test_guide.inside_numbers_fold(self, response)
+        (self.assertIn if shown else self.assertNotIn)(link, fold)
 
     def test_mild_with_life_impact_recommends_and_the_route_is_here(self):
         for scores in (MILD, SEVERE):
@@ -516,16 +534,16 @@ class FittingAdviceGuideTests(TestCase):
                 self.assertIn(MILD_WITH_IMPACT, text)
                 self.assertNotIn(RECOMMENDS, text)
                 self.assert_before_you_go(response)
-                self.assertContains(response, HERE)
+                self.assertIsNotNone(self.here())
 
     def test_mild_without_life_impact_is_tracked_and_the_route_waits(self):
         self.answer(scores=SLIGHT)
         self.make((40, 40, 40, 40), (20, 20, 20, 20))
-        response, text = self.page()
+        _, text = self.page()
         self.assertIn(TRACK, text)
         self.assertNotIn("建議找聽力師評估選配", text)
         self.assertNotIn(BEFORE_YOU_GO, text)
-        self.assertNotContains(response, HERE)
+        self.assertIsNone(self.here())
 
     def test_mild_without_a_questionnaire_links_to_the_one_step_1_asks_for(self):
         self.make((30, 30, 30, 30), (20, 20, 20, 20))
@@ -535,7 +553,7 @@ class FittingAdviceGuideTests(TestCase):
         self.assertEqual(step_1[0], DO_QUESTIONNAIRE)
         self.assertContains(response, f'<a href="{step_1[1]}">{DO_QUESTIONNAIRE}</a>')
         self.assertNotIn(BEFORE_YOU_GO, text)
-        self.assertNotContains(response, HERE)
+        self.assertIsNone(self.here())
 
     def test_wearing_points_to_reapplying_whatever_the_advice(self):
         # Spec #693 acceptance 12: someone wearing hearing aids is not judged by it.
@@ -552,7 +570,7 @@ class FittingAdviceGuideTests(TestCase):
                 self.assertContains(response, f'<a href="{reapply}">{REAPPLY}</a>')
                 for wording in (TRACK, MILD_WITH_IMPACT, WITHIN_NORMAL):
                     self.assertNotIn(wording, text)
-                self.assertContains(response, HERE)  # 配戴之後, as before
+                self.assertEqual(self.here(), "after-fitting")  # as before
 
 
 class SelfReview693AdviceWordsTests(TestCase):

@@ -183,10 +183,12 @@ ANSWER_CARDS = {
         {"True": ("是", "已經收到", "yes"), "False": ("否", "還沒收到", "no")},
     ),
 }
+# #778 (spec #774's 實作中本人補充): said above the notice's ears and level on the card.
+NOTICE_SO_FAR = "已經收到核定公文"
 # The way on after an answer that leaves the stop to do.
 FIND_AN_ASSESSMENT_HOSPITAL = "查詢鑑定醫院"
 FORM_9_STEPS = "看九號表的流程"
-RECORD_THE_NOTICE = "記下核定的耳朵與等級"
+RECORD_THE_NOTICE = "記下核定的耳朵與等級"  # since #778, a result page's way to the card
 TYPES_AND_PRICES_FIRST = "先了解助聽器種類與價格"
 BEFORE_YOU_GO_BUTTON = "了解須知"
 AFTER_FITTING_WORDS = "配戴一個月後才能做二十五號表，配合問卷使用更能知道助聽器的效果。"
@@ -217,6 +219,26 @@ FITTING_ADVICE_NORMAL = (
 )
 # 建議's link, to 去找聽力師之前; 先做問卷's is LIFE_IMPACT_BUTTON, as step 1's.
 FITTING_ADVICE_BEFORE_YOU_GO = "去之前要準備什麼"
+
+# #780 (spec #774, the owner's picks of 2026-11-24): my guide's two 結論標籤 under the bird, the
+# sentences above in short, as (words, suggests something to do); the latter are pale blue, the
+# rest pale grey. 建議評估選配's by its result (ADR 0067), wearing hearing aids before it.
+FITTING_TAGS = {
+    "recommend": ("建議找聽力師評估", True),
+    "track": ("建議每年追蹤", False),
+    "questionnaire-first": ("先做生活影響問卷", True),
+    "normal": ("兩耳在正常範圍", False),
+    "unknown": ("聽力圖資料不足", False),
+    "wearing": ("已在使用助聽器", False),
+}
+# The 身障鑑定門檻 estimate's by its status (ADR 0017), and only a self test's (ADR 0068).
+THRESHOLD_TAGS = {
+    "reached": ("估算達到鑑定門檻", True),
+    "not_reached": ("估算未達鑑定門檻", False),
+    "uncertain": ("無法確定是否達到門檻", False),
+    "insufficient": ("資料不足，無法估算", False),
+    "self-test": ("自我測試不估算門檻", False),
+}
 
 
 # What each step is, said when it is opened on the home page (#459 I1), step 1 first: step 3's,

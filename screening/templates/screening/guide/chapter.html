@@ -11,20 +11,44 @@
 {% include "screening/bird_dialogue.html" with lead="guide_chapter"|page_lead title=chapter.title %}
 {% block chapter %}{% endblock %}
 </article>
-{# #293: the stop's question again, signed in and not yet answered; the route moves on with it. #}
-{% if question %}
+{# #293: the stop's question again, signed in and not yet answered; the route moves on with it. #294: answered, the same place says what was kept and leads back to my guide (#779: its cards, as the route is gone). #777: 修改 opens the question here, answering comes back here; the chapter's own address, as a form sent back with its errors is drawn at the answer's. #}
+{% if foot %}
+{% url 'guide_chapter' chapter.slug as chapter_url %}
 <section id="stop-question" class="mt-6" data-jump-box aria-labelledby="stop-question-title">
+    {% if foot.answer %}
+    <h2 id="stop-question-title" class="h4">已記下：{{ foot.answer }}</h2>
+    {% if not foot.questions %}<p class="mb-0"><a href="{{ chapter_url }}?edit=1#stop-question" aria-label="修改{{ chapter.title }}的回答">修改</a></p>{% endif %}
+    {% else %}
     <h2 id="stop-question-title" class="h4">看完了嗎？</h2>
-    {% include "screening/guide/stop_question.html" with stop=chapter.slug next=request.path|add:"#stop-question" %}
-    <p class="mt-2 mb-0">答了之後，選配路線會往下一站走。</p>
+    {% endif %}
+    {# #779 (the owner's pick, #774): what the route said under the stop, under the answer here. #}
+    {% for wording, href in notes %}<p class="mt-2 mb-0">{% if href %}<a href="{{ href }}">{{ wording }}</a>{% else %}{{ wording }}{% endif %}</p>{% endfor %}
+    {% for question in foot.questions %}{% include "screening/guide/stop_question.html" with stop=chapter.slug next=chapter_url|add:"#stop-question" %}{% endfor %}
+    {% if foot.editing %}
+    <p class="mt-2 mb-0"><a href="{{ chapter_url }}#stop-question">不用改了</a></p>
+    {% elif not foot.answer %}
+    <p class="mt-2 mb-0">答了之後，首頁的照顧旅程會跟著往下走。</p>
+    {% endif %}
+    {# #777 (spec #774 acceptance 22, the owner's pick): form 9 done, its foot goes on to the notice, one question at a time with what is kept so far above it; answered, its answer and 修改. #}
+    {% if notice %}
+    <div id="stop-notice" class="mt-5 pt-5 border-t border-line" data-jump-box>
+        {% if notice.halfway %}
+        <p class="route-answer">{{ notice.answer }}</p>
+        {% elif notice.answer %}
+        <h3 id="stop-notice-title" class="h4">{{ notice.answer }}</h3>
+        {% if not notice.questions %}<p class="mb-0"><a href="{{ chapter_url }}?edit=notice#stop-notice" aria-label="修改核定公文的回答">修改</a></p>{% endif %}
+        {% endif %}
+        {% for question in notice.questions %}{% include "screening/guide/stop_question.html" with stop="notice" next=chapter_url|add:"#stop-notice" %}{% endfor %}
+        {% if notice.editing %}<p class="mt-2 mb-0"><a href="{{ chapter_url }}#stop-notice">不用改了</a></p>{% endif %}
+    </div>
+    {% endif %}
+    {% if foot.answer and not foot.editing %}
+    <a class="btn btn-primary btn-lg w-full mt-2" href="{% url 'guide' %}">回到助聽器選配與補助</a>
+    {% endif %}
 </section>
-{# #294: answered, the same place says what was kept and leads back to the route. #}
-{% elif answered %}
-<section id="stop-question" class="mt-6" data-jump-box aria-labelledby="stop-question-title">
-    <h2 id="stop-question-title" class="h4">已記下：{{ answered }}</h2>
-    <p class="mb-0"><a href="{% url 'guide' %}?edit={{ chapter.slug }}#stop-{{ chapter.slug }}" aria-label="修改{{ chapter.title }}的回答">修改</a></p>
-    <a class="btn btn-primary btn-lg w-full mt-2" href="{% url 'guide' %}#contents-title">回選配路線看下一站</a>
-</section>
+{% elif notes %}
+{# #779: a chapter with nothing to answer (種類與價格) says them at its foot on their own. #}
+{% for wording, href in notes %}<p class="mt-6 mb-0">{% if href %}<a href="{{ href }}">{{ wording }}</a>{% else %}{{ wording }}{% endif %}</p>{% endfor %}
 {% endif %}
 {# #579 (spec #576, the owner's A in the #577 mockup): the next chapter in reading order, a list row after the stop's question or its answer and never a second solid button; the last chapter has none. #}
 {% if next_chapter %}
@@ -39,7 +63,7 @@
 </div>
 {% endif %}
 {# #367 (spec #354): not answered (or nothing to answer), the chapter's end leads back to the guide too. #}
-{% if not answered %}
+{% if not foot.answer %}
 <p class="mt-6 mb-0"><a class="btn btn-outline-primary btn-lg w-full" href="{% url 'guide' %}">回到助聽器選配與補助</a></p>
 {% endif %}
 {# Sources behind a dropdown box (text-heavy pages tidy-up); the links are unchanged (#218 Q7). #}

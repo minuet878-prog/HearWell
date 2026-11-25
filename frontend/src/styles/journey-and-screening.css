@@ -712,6 +712,15 @@
     line-height: 1.4;
   }
 
+  /* #778 (spec #774's 實作中本人補充): the notice's answers so far, a small line above its ears
+     and level; still 1rem, as an answer kept is (the small-text rule, #357). */
+  .answer-card-so-far {
+    margin: 0 0 0.5rem;
+    color: var(--color-muted);
+    font-size: 1rem;
+    line-height: 1.4;
+  }
+
   .answer-card-question .action-card-icon {
     width: 2.6667rem;
     height: 2.6667rem;
@@ -1263,12 +1272,4 @@
       --tab-bar-height: 0px;
     }
   }
-}
-
-@keyframes route-line {
-  from { transform: scaleY(0); }
-}
-
-@keyframes route-ring {
-  50% { box-shadow: 0 0 0 0.75rem rgba(31, 78, 140, 0.22); }
 }

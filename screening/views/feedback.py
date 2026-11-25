@@ -59,6 +59,7 @@ PAGE_NAMES = {
     "qa_topic": "問答小助手",
     "qa_results": "問答小助手",
     "guide": "助聽器選配與補助",
+    "guide_subsidy": "補助引導與試算",
     "questionnaire_list": "選問卷",
     "screening": "作答頁",
     "guest_result": "結果頁",

@@ -85,6 +85,8 @@ urlpatterns = [
     path("qa/results", qa_assistant.qa_results, name="qa_results"),
     path("qa/<slug:code>", qa_assistant.qa_answer, name="qa_answer"),
     path("guide", guide.guide, name="guide"),
+    # Before the chapters, whose slug it would otherwise be (#775).
+    path("guide/subsidy", guide.guide_subsidy, name="guide_subsidy"),
     path("guide/<slug:chapter>", guide.guide_chapter, name="guide_chapter"),
     path("route_answer", guide.route_answer, name="route_answer"),
     path("consent", accounts.consent, name="consent"),

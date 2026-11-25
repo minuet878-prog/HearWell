@@ -37,6 +37,8 @@ LEADS = {
     "learn": "想多了解一點嗎？",
     "guide": "一步一步來，不用急。",
     "guide_chapter": "慢慢看，有問題可以問聽力師。",
+    # #775: a draft until the owner has reviewed it.
+    "guide_subsidy": "回答幾題，一起算算看。",
     "family_guide": "謝謝您關心家人的聽力。",
     "family_talk": "換個方式說，他會聽得更清楚。",
     "family_reluctant": "長輩不想去，是很常見的事。",

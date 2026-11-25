@@ -1,18 +1,23 @@
 {% extends "screening/layout.html" %}
-{% load static custom_filters %}
+{% load custom_filters %}
 {% block title %}助聽器選配與補助｜聽伴{% endblock %}
-{% block extra_head %}
-{# #467: one route stop open at a time, and the route's entrance on the tab's first visit only. #}
-<script type="module" src="{% static 'screening/frontend/guide.js' %}"></script>
-{% endblock %}
 {% block body %}
 {# Wording finalised in #220; change it only after review (ADR 0013). #}
+{% if audiogram %}
+{# #780 (spec #774, the owner's pick of 2026-11-24): with an audiogram the bird sums it up in two 結論標籤 under it, pale blue for something to do, pale grey for how things are; not links. What they sum up is in the fold under the 章節磚. #}
+{% capture said %}<p class="bird-said">依您 {{ audiogram.tested_on|date:"Y/m/d" }} 的聽力圖，整理出兩個重點。</p>{% endcapture %}
+{% include "screening/bird_dialogue.html" with lead="guide"|page_lead title="助聽器選配與補助" after=said %}
+<ul class="guide-tags" role="list">
+    {% for words, suggests in tags %}<li class="guide-tag{% if suggests %} is-suggestion{% endif %}">{{ words }}</li>{% endfor %}
+</ul>
+{% else %}
 {% include "screening/bird_dialogue.html" with lead="guide"|page_lead title="助聽器選配與補助" %}
+{% endif %}
 {% if not user.is_authenticated %}
 <p>登入後，這裡會依您的問卷和聽力圖，整理出要不要找聽力師評估，以及有沒有達到身障鑑定門檻。下面的章節不用登入也能看。</p>
 <p><a class="btn btn-primary btn-lg" href="{% url 'login' %}?next={{ request.path|urlencode }}">登入</a></p>
 {% else %}
-<p>依您在聽伴最新的紀錄，整理出現在的狀況，和接下來可以看的章節。</p>
+{% if not audiogram %}<p>依您在聽伴最新的紀錄，整理出現在的狀況，和接下來可以看的章節。</p>{% endif %}
 {% if not has_records %}
 <p>這裡要用您的問卷或聽力圖才能整理。可以先做一份問卷，或把醫院給的聽力圖記錄下來。</p>
 <p><a class="btn btn-primary btn-lg" href="{% url 'questionnaire_list' %}">開始篩檢</a></p>
@@ -20,57 +25,32 @@
 <p><a class="btn btn-outline-primary btn-lg" href="{% url 'audiogram_import' %}">從 iPhone 匯入</a></p>
 {% endif %}
 {% endif %}
-{# #467 (the #466 mockup A): the route first, its 您在這裡 card holding the page's one solid button. #}
+{# #779 (spec #774, ADR 0083, the owner's 版 1 of the guided cards mockup): the five 引導卡 in a row that scrolls sideways and snaps to each card, without JavaScript; each a short title, one line and one button, 已完成 stamped by the 選配路線 stops behind it. They slide up once when in view (ADR 0077), not under reduced motion; nothing turns by itself. #}
 <section class="mt-6" data-jump-box aria-labelledby="contents-title">
-    <h2 id="contents-title" class="h4" tabindex="-1">選配與補助，一步一步看</h2>
-    {# #258: the 選配路線, its marks from the records (route-grill-decisions.md Q2–Q9). N3 dots on a line, blue as far as the 目前這一站 (I2). Every other stop opens in place to say what it is, its link on inside (I1); guide.js keeps one open at a time. On a tab's first visit the done ticks, the line and the ring play once, when the 目前這一站 is in view (ADR 0028's 2026-11-12 exception, ADR 0029). #}
-    <ol class="route" role="list" style="--route-here: {{ route_pace }}">
-        {% for stop in route %}
-        <li class="route-stop{% if stop.here %} is-here{% endif %}{% if stop.done %} is-done{% endif %}{% if route_here is not None and forloop.counter0 < route_here %} is-walked{% endif %}{% if stop.below %} is-below{% endif %}{% if stop.not_applicable %} is-na{% endif %}{% if stop.slug == done_now %} is-done-now{% endif %}" data-stop="{{ stop.slug }}"{% if stop.here %} aria-current="step"{% endif %} style="--route-step: {{ forloop.counter0 }}"{% if stop.slug == done_now %} data-play-in-view{% endif %} id="stop-{{ stop.slug }}" tabindex="-1">
-            {# #336: the stop an answer here just made 已完成 is ticked once; every done stop shows a tick, its number kept for screen readers. #}
-            <span class="route-number">{% if stop.slug == done_now %}<svg class="route-tick" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="visually-hidden">{{ forloop.counter }}</span>{% elif stop.done %}<svg class="route-check" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="visually-hidden">{{ forloop.counter }}</span>{% else %}{{ forloop.counter }}{% endif %}</span>
-            {% if stop.here %}
-            <div class="route-box route-card">
-                {# The ring waits for the card's top, not the whole stop: #480 moved data-play-in-view here from the stop, as the to-dos and the question under it made the stop too tall to be in view on arrival (ADR 0029 itself unchanged). #}
-                <div class="route-card-main" data-play-in-view>
-                <p class="route-here-label"><span class="route-mark">您在這裡</span></p>
-                <a class="route-title" href="{{ stop.url }}"><span>{{ stop.title }}</span><span class="route-chevron" aria-hidden="true"></span></a>
-                {% if stop.other_marks %}<p class="route-marks">{% for mark in stop.other_marks %}<span class="route-mark">{{ mark }}</span>{% endfor %}</p>{% endif %}
-                {% for note in stop.notes %}<p class="route-note">{{ note }}</p>{% endfor %}
-                {% for wording, href in stop.links %}<p class="route-note"><a class="tap-link" href="{{ href }}">{{ wording }}</a></p>{% endfor %}
-                {# #467: the button above the question (the #367 order turned round); without records the start button above is the page's solid one, so this is a link. #}
-                {% if stop.action %}{% if has_records %}<a class="btn btn-primary btn-lg w-full mt-3" href="{{ stop.action.1 }}">{{ stop.action.0 }}</a>{% else %}<p class="route-note"><a class="tap-link" href="{{ stop.action.1 }}">{{ stop.action.0 }}</a></p>{% endif %}{% endif %}
-                {# Spec #702 (#703 mockup 1C): beside recording one, importing an Apple hearing test's PDF. #}
-                {% if stop.action and stop.slug == "audiogram" %}{% if has_records %}<a class="btn btn-outline-primary btn-lg w-full mt-3" href="{% url 'audiogram_import' %}">從 iPhone 匯入</a>{% else %}<p class="route-note"><a class="tap-link" href="{% url 'audiogram_import' %}">從 iPhone 匯入</a></p>{% endif %}{% endif %}
-                </div>
-                {% include "screening/guide/route_answer.html" %}
+    <h2 id="contents-title" class="h4">選配與補助，一步一步看</h2>
+    <ol class="guide-cards" role="list" data-play-in-view>
+        {% for card in cards %}
+        <li class="guide-card play-once-slide-up" data-card="{{ card.slug }}">
+            <div class="guide-card-top">
+                <span class="guide-card-step">第 {{ forloop.counter }} 張，共 {{ cards|length }} 張</span>
+                {% if card.done %}{% include "screening/done_stamp.html" %}{% endif %}
             </div>
-            {% else %}
-            <div class="route-box"{% if forloop.first and route_here %} data-play-in-view{% endif %}>
-                <details class="route-about">
-                    <summary><span class="route-row"><span class="route-title">{{ stop.title }}</span>{% if stop.marks %}<span class="route-marks">{% for mark in stop.marks %}{% if not forloop.first %}・{% endif %}<span class="route-mark">{{ mark }}</span>{% endfor %}{% if stop.tested_on %}・{{ stop.tested_on|date:"Y/m/d" }} 的聽力圖{% endif %}</span>{% endif %}</span><span class="result-details-arrow" aria-hidden="true"></span></summary>
-                    <div class="route-about-body">
-                        <p>{{ stop.about }}</p>
-                        {% if stop.about_link %}<a class="tap-link" href="{{ stop.url }}">{{ stop.about_link }}{% if stop.about_link != stop.title %}<span class="visually-hidden">：{{ stop.title }}</span>{% endif %}</a>{% endif %}
-                    </div>
-                </details>
-                {% for note in stop.notes %}<p class="route-note">{{ note }}</p>{% endfor %}
-                {% for wording, href in stop.links %}<p class="route-note"><a class="tap-link" href="{{ href }}">{{ wording }}</a></p>{% endfor %}
-                {% include "screening/guide/route_answer.html" %}
-            </div>
-            {% endif %}
-            {# #296: on the line on to the next stop, beside it. #}
-            {% if stop.gap %}<p class="route-gap">{{ stop.gap }}</p>{% endif %}
+            <span class="guide-card-art">{% include "screening/guide/card_icon.html" with icon=card.icon %}</span>
+            <h3 id="card-{{ card.slug }}-title" class="guide-card-title">{{ card.title }}</h3>
+            <p class="guide-card-point">{{ card.point }}</p>
+            <a class="btn btn-hero btn-lg guide-card-button" href="{{ card.button.1 }}">{{ card.button.0 }}</a>
         </li>
         {% endfor %}
     </ol>
-    {# #596 (ADR 0063, the #595 mockup's A and 甲): the 補助站 folded into a line under the route, outside its list so it is no stop; signed out too. #}
-    {% if subsidy_folded %}
-    <div class="route-fold">
-        <p>有身障證明的人另外有四站：九號表、等待核定公文、二十五號表、等待補助發放</p>
-        <p><a class="tap-link" href="{% url 'guide_chapter' 'form-9' %}">看申請補助的流程<span class="route-chevron" aria-hidden="true"></span></a></p>
-    </div>
-    {% endif %}
+</section>
+{# #779: the 章節磚, two by three in the route's reading order, each an icon and the chapter's short name. #}
+<section class="mt-6" aria-labelledby="chapters-title">
+    <h2 id="chapters-title" class="h4">直接看章節</h2>
+    <ul class="chapter-tiles" role="list">
+        {% for slug, name, icon in tiles %}
+        <li><a class="chapter-tile" href="{% url 'guide_chapter' slug %}">{% include "screening/guide/card_icon.html" with icon=icon %}<span>{{ name }}</span></a></li>
+        {% endfor %}
+    </ul>
 </section>
 {% if latest and not audiogram %}
 {% if life_impact %}
@@ -81,7 +61,7 @@
 {% endif %}
 <section class="mt-8" data-jump-box aria-labelledby="audiogram-title">
     <h2 id="audiogram-title" class="h4">聽力圖</h2>
-    {# #467: the 您在這裡 card has the same button, so this one is a link. #}
+    {# #467: the 記錄聽力圖 引導卡 (#779) has the same button, so this one is a link. #}
     <p>問卷反映的是您感受到的生活影響，不能判定聽損程度。建議先做聽力檢查，再把聽力圖記錄下來，這裡就能整理下一步。</p>
     <p><a href="{% url 'audiogram_new' %}">記錄聽力圖</a></p>
     <p class="mb-0"><a href="{% url 'audiogram_import' %}">從 iPhone 匯入</a></p>
@@ -89,8 +69,11 @@
 {% endif %}
 {% if audiogram %}
 {% with date=audiogram.tested_on|date:"Y/m/d" %}
+{# #780 (spec #774): what the two 結論標籤 sum up, word for word as it was, in a native fold under the 章節磚, shut until opened; it opens without JavaScript. #}
+<details class="dropdown-line guide-numbers mt-8" data-audiogram-numbers>
+<summary>看聽力圖數值與計算公式</summary>
 {# #467: one title over what the latest audiogram says (draft), the old boxes' titles as bold subheads. #}
-<section class="mt-8 guide-hearing" data-jump-box aria-labelledby="hearing-title">
+<section class="guide-hearing" data-jump-box aria-labelledby="hearing-title">
 <h2 id="hearing-title" class="h4">依您 {{ date }} 的聽力圖</h2>
 {% if life_impact %}
 <section aria-labelledby="questionnaire-title">
@@ -182,6 +165,7 @@
     {% endwith %}{% endif %}
 </section>
 </section>
+</details>
 {% endwith %}
 {% endif %}
 {% endblock %}

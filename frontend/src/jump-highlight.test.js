@@ -18,14 +18,14 @@ beforeEach(() => {
       <div id="comparison-errors" role="alert"><a href="#id_aided_0">有戴的紀錄</a></div>
       <a href="#without-certificate">看沒有身障證明時</a>
       <a href="/guide/form-9#reapply">看再次申請的規定</a>
-      <a href="/guide?edit=form-9#stop-form-9">修改</a>
+      <a href="/guide?edit=form-9">修改</a>
       <section data-jump-box aria-labelledby="without-certificate">
         <h2 id="without-certificate">沒有身障證明時</h2>
       </section>
       <section data-jump-box aria-labelledby="contents-title">
         <h2 id="contents-title">選配與補助，一步一步看</h2>
-        <ol class="route">
-          <li class="route-stop" id="stop-form-9"><div class="route-box"></div></li>
+        <ol class="guide-cards" data-jump-box id="guide-cards">
+          <li id="first-card">記錄聽力圖</li>
         </ol>
       </section>
       <section data-jump-box aria-labelledby="talk-title">
@@ -47,15 +47,15 @@ beforeEach(() => {
 const byId = (id) => doc.getElementById(id);
 const titledBy = (id) => doc.querySelector(`[aria-labelledby="${id}"]`);
 
-// A jump lights the part its target is in (a part marked data-jump-box, a route stop), or the
+// A jump lights the nearest part its target is in (a part marked data-jump-box), or the
 // target itself when it is in none.
 describe("jumpBox", () => {
   it("is the marked part a heading titles", () => {
     expect(jumpBox(byId("without-certificate"))).toBe(titledBy("without-certificate"));
   });
 
-  it("is the route stop itself, not the route's part around it", () => {
-    expect(jumpBox(byId("stop-form-9"))).toBe(byId("stop-form-9"));
+  it("is the nearest marked part, not the part around it", () => {
+    expect(jumpBox(byId("first-card"))).toBe(byId("guide-cards"));
   });
 
   // The family page's topic is marked as a whole, its heading above its tips: all of it.
@@ -169,11 +169,11 @@ describe("setUpJumpHighlight", () => {
   });
 
   it("takes the light off one box at once when a jump goes to another", () => {
-    const win = fakeWindow({ hash: "#stop-form-9" });
+    const win = fakeWindow({ hash: "#guide-cards" });
     setUpJumpHighlight(win);
     win.dispatchEvent(new Event("load"));
     vi.advanceTimersByTime(150);
-    expect(lit()).toEqual([byId("stop-form-9")]);
+    expect(lit()).toEqual([byId("guide-cards")]);
     click("看沒有身障證明時");
     expect(lit()).toEqual([]);
     vi.advanceTimersByTime(150);
@@ -181,18 +181,18 @@ describe("setUpJumpHighlight", () => {
   });
 
   it("lights the box an address with a # lands on when the page opens", () => {
-    const win = fakeWindow({ hash: "#stop-form-9" });
+    const win = fakeWindow({ hash: "#guide-cards" });
     setUpJumpHighlight(win);
     win.dispatchEvent(new Event("load"));
     vi.advanceTimersByTime(150);
-    expect(lit()).toEqual([byId("stop-form-9")]);
+    expect(lit()).toEqual([byId("guide-cards")]);
   });
 
   // #531: when the browser scrolls to the # as the page opens is up to it; by the time the page
   // has loaded it has. On a slow machine that may be well after the short wait: the box, already
   // in view at the top of the page, must not light before the page jumps to it.
   it("waits for the page to load before waiting for the jump to the # to stop", () => {
-    const win = fakeWindow({ hash: "#stop-form-9", scrollEnd: true });
+    const win = fakeWindow({ hash: "#guide-cards", scrollEnd: true });
     setUpJumpHighlight(win);
     vi.advanceTimersByTime(1000);
     expect(lit()).toEqual([]);
@@ -201,13 +201,13 @@ describe("setUpJumpHighlight", () => {
     vi.advanceTimersByTime(1000);
     expect(lit()).toEqual([]);
     win.dispatchEvent(new Event("scrollend"));
-    expect(lit()).toEqual([byId("stop-form-9")]);
+    expect(lit()).toEqual([byId("guide-cards")]);
   });
 
   // A link on the page used while it is still loading: its box lights, and the page's load does
   // not take the light over for the # the page opened at.
   it("keeps to a jump made before the page has loaded", () => {
-    const win = fakeWindow({ hash: "#stop-form-9" });
+    const win = fakeWindow({ hash: "#guide-cards" });
     setUpJumpHighlight(win);
     click("看沒有身障證明時");
     win.dispatchEvent(new Event("load"));

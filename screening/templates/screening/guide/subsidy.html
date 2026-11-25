@@ -1,0 +1,61 @@
+{% extends "screening/layout.html" %}
+{% load custom_filters %}
+{% block title %}補助引導與試算｜聽伴{% endblock %}
+{% block body %}
+{# #775 (spec #774, the owner's flow B): the questions, rules and words are in subsidy_estimate.py, drafts until the owner has reviewed them. One question a page by plain POST, so it works without JavaScript: the answers so far ride along as hidden fields, nothing is kept, and autocomplete="off" stops the browser putting answers back. After a press, autofocus puts focus on what is new with no script. #}
+<p class="mt-4 mb-0"><a class="inline-link" href="{% url 'guide' %}">回到助聽器選配與補助</a></p>
+<article class="guide-chapter wrap-anywhere">
+{% include "screening/bird_dialogue.html" with lead="guide_subsidy"|page_lead title="補助引導與試算" %}
+{% if not answers and not result %}<p>{{ intro }}</p>{% endif %}
+
+<form method="post" action="{% url 'guide_subsidy' %}" autocomplete="off" class="mb-6">
+    {% csrf_token %}
+    {% for name, value in answers.items %}<input type="hidden" name="{{ name }}" value="{{ value }}">
+    {% endfor %}
+{% if result %}
+    <section class="hero-card" aria-labelledby="result-title">
+        {% if result.amount is not None %}
+        <h2 id="result-title" class="hero-card-label" tabindex="-1"{% if moved %} autofocus{% endif %}>{{ amount_label }}</h2>
+        <p class="hero-card-title">{{ result.amount_words }}</p>
+        <p>{{ amount_note }}</p>
+        <h3 class="hero-card-label mt-2">{{ next_step_label }}</h3>
+        {% else %}{# #776: no certificate and not a low-income elder, so no amount to estimate. #}
+        <h2 id="result-title" class="hero-card-label" tabindex="-1"{% if moved %} autofocus{% endif %}>{{ next_step_label }}</h2>
+        {% endif %}
+        <p class="font-bold text-xl/normal">{{ result.next_step.title }}</p>
+        <p>{{ result.next_step.words }}</p>
+        {% for item in result.reminders %}
+        <p>{{ item.words }}{% if item.link %}<a class="block py-[0.6rem]" href="{{ item.link.url }}">{{ item.link.words }}</a>{% endif %}</p>
+        {% endfor %}
+        <p>{{ young_note }}</p>
+        {% if result.next_step.link %}<a class="btn btn-hero btn-lg" href="{{ result.next_step.link.url }}">{{ result.next_step.link.words }}</a>{% endif %}
+    </section>
+    <button class="btn btn-outline-primary btn-lg w-full" type="submit" name="back" value="result">上一題</button>
+{% else %}
+    <input type="hidden" name="shown" value="{{ question.name }}">
+    {% for field in form %}
+    <fieldset class="mb-6"{% if field.errors %} aria-describedby="{{ field.auto_id }}_error"{% endif %}>
+        <legend><span class="question-progress">第 {{ number }} 題</span><h2 id="question-title" class="font-bold text-xl/normal mb-0" tabindex="-1"{% if moved %} autofocus{% endif %}>{{ field.label }}</h2></legend>
+        {% include "screening/field_messages.html" %}
+        {{ field }}
+    </fieldset>
+    {% endfor %}
+    {# 下一題 first: pressing Enter on an answer sends the form with the first button. #}
+    <button class="btn btn-primary btn-lg w-full" type="submit">下一題</button>
+    {% if answers %}<button class="btn btn-outline-primary btn-lg w-full mt-3" type="submit" name="back" value="{{ question.name }}">上一題</button>{% endif %}
+{% endif %}
+</form>
+{% if result %}<p class="mb-0"><a class="btn btn-outline-primary btn-lg w-full" href="{% url 'guide_subsidy' %}">重新試算</a></p>{% endif %}
+
+<footer class="mt-6 wrap-anywhere guide-sources" aria-label="資料查核與來源">
+    <details class="dropdown-box mb-2">
+        <summary>資料來源</summary>
+        <ul>
+            {% for title, url in sources %}<li><a href="{{ url }}">{{ title }}</a></li>
+            {% endfor %}
+        </ul>
+    </details>
+    <p class="guide-checked">本頁資料查核於 {{ checked_on|date:"Y/m/d" }}。法規、金額如有變動，以官方公告為準。</p>
+</footer>
+</article>
+{% endblock %}

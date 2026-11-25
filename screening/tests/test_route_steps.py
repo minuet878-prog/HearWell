@@ -384,28 +384,6 @@ class SubsidyStopsFoldTests(TestCase):
                 self.assertEqual(state.not_applicable, not_applicable)
 
 
-class PurchaseReminderTests(TestCase):
-    """#294 (spec #291 acceptance 10, Q12): 種類與價格 says the six months to buy in, to
-    everyone the 補助站 are shown to (#596: folded or signed out, it says nothing of a notice);
-    the notice's date is not asked."""
-
-    REMINDER = '<p class="route-note">收到核定通知後 6 個月內要買。</p>'
-
-    def stop(self):
-        content = self.client.get(reverse("guide")).content.decode()
-        start = content.index('data-stop="types-and-prices"')
-        return content[start : content.index("</li>", start)]
-
-    def test_shown_the_subsidy_s_stops_the_stop_says_it(self):
-        user = consented_user(username="reminder_user")
-        AidAndSubsidy.objects.create(user=user, certificate="yes")
-        self.client.force_login(user)
-        self.assertIn(self.REMINDER, self.stop())
-
-    def test_signed_out_it_says_nothing_of_the_notice(self):
-        self.assertNotIn(self.REMINDER, self.stop())
-
-
 class Form9AndNoticeStopTests(TestCase):
     """#294 (spec #291 acceptance 8, 9): 九號表 is done by 完成了; 等待核定公文 by 收到了 with
     單耳 or 雙耳 and the level both answered. 還沒 stays."""

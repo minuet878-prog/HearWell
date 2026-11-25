@@ -60,6 +60,8 @@ OPEN_PAGES = {
     "family_subsidy_check",
     "family_deadlines",
     "guide_chapter",
+    # 補助引導與試算 reads and keeps no one's data, as 補助檢核 (#775, ADR 0083).
+    "guide_subsidy",
     "shared_cover",
     "shared_report",
     "qa_home",

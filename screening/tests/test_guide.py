@@ -97,6 +97,38 @@ def part(response, title):
     raise AssertionError(f"No part titled {title}")
 
 
+NUMBERS_FOLD = re.compile(r"<details [^>]*data-audiogram-numbers[^>]*>")
+
+
+def numbers_fold(content):
+    """#780: my guide's 看聽力圖數值與計算公式 fold, as (its opening tag, its markup up to its
+    own </details>), or None; the folds nested in it (看完整說明) are counted, not taken for its
+    end."""
+    start = NUMBERS_FOLD.search(content)
+    if start is None:
+        return None
+    depth, at = 1, start.end()
+    for match in re.finditer(r"<(/?)details\b", content[at:]):
+        depth += -1 if match.group(1) else 1
+        if depth == 0:
+            return start.group(0), content[at : at + match.start()]
+    raise AssertionError("the fold is never closed")
+
+
+def inside_numbers_fold(testcase, response):
+    """The 看聽力圖數值與計算公式 fold's markup, after checking it is there and shut."""
+    found = numbers_fold(response.content.decode())
+    testcase.assertIsNotNone(found, "no 看聽力圖數值與計算公式 fold")
+    opening, inside = found
+    testcase.assertNotIn(" open", opening)
+    return inside
+
+
+def numbers_fold_text(testcase, response):
+    """inside_numbers_fold's text, tags removed, as text_of."""
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", inside_numbers_fold(testcase, response)))
+
+
 def heading_levels(response):
     """The level of every heading in <main>, in order."""
     content = response.content.decode()
@@ -126,14 +158,7 @@ class GuideContentsTests(TestCase):
         self.assertIn(f'<h1 class="bird-title">{TITLE}</h1>', content)
         self.assertIn(LOGIN_NOTE, content)
         self.assertIn(CONTENTS_TITLE, content)
-        # In the body: the head's description (spec #583) names some chapters too.
-        body = content[content.index("<body") :]
-        # #596: signed out the 補助站 are folded, so form 9 and form 25 are no stops; the
-        # chapters as the route orders them (ADR 0074).
-        shown = ["身障鑑定與鑑定醫院", "去找聽力師之前", "助聽器的種類與價格", "配戴助聽器之後"]
-
-        positions = [body.index(title) for title in shown]
-        self.assertEqual(positions, sorted(positions))
+        # #779: the 引導卡 and 章節磚 in place of the route: test_guide_cards.
 
     def test_logged_in_user_sees_the_contents_without_the_login_note(self):
         self.client.force_login(consented_user(username="guide_reader"))
@@ -142,14 +167,12 @@ class GuideContentsTests(TestCase):
         self.assertNotIn(LOGIN_NOTE, content)
 
     def test_every_chapter_is_linked(self):
-        # #596 (ADR 0063's cost): folded, form 25 is reached from form 9's chapter, which the
-        # line under the route links.
+        # #779: every chapter has its 章節磚, form 25 too (#596 reached it from form 9's).
         content = self.client.get(self.url).content.decode()
-        form_9 = self.client.get(reverse("guide_chapter", args=["form-9"])).content.decode()
         for chapter in GUIDE_CHAPTERS:
             href = f'href="{reverse("guide_chapter", args=[chapter.slug])}"'
             with self.subTest(chapter=chapter.slug):
-                self.assertIn(href, form_9 if chapter.slug == "form-25" else content)
+                self.assertIn(href, content)
 
 
 class GuideChapterTests(TestCase):
@@ -346,17 +369,18 @@ class NextChapterTests(TestCase):
         main = self.main("assessment")
         question = main.index('id="stop-question"')
         self.assertIn("看完了嗎？", main[question:])
-        self.assertLess(main.index("答了之後，選配路線會往下一站走。"), self.row_at(main))
+        self.assertLess(main.index("答了之後，首頁的照顧旅程會跟著往下走。"), self.row_at(main))
         self.assertLess(self.row_at(main), main.index(self.BACK_BUTTON))
 
-    # Acceptance 15: answered, the solid button is still the route's; the row is one more way on.
+    # Acceptance 15: answered, the solid button leads back to my guide (#779: no longer to the
+    # route); the row is one more way on.
     def test_answered_the_row_follows_the_card_and_is_no_second_solid_button(self):
         user = consented_user(username="next_answered")
         AidAndSubsidy.objects.create(user=user, certificate="yes")
         self.client.force_login(user)
         main = self.main("assessment")
         solid = main.index('class="btn btn-primary btn-lg w-full mt-2"')
-        self.assertIn(">回選配路線看下一站</a>", main[solid:])
+        self.assertIn(f'href="/guide">{BACK}</a>', main[solid:])
         self.assertLess(solid, self.row_at(main))
         # The chapter's end has the one solid button (this chapter has its own above, 查詢).
         self.assertEqual(main[main.index("</article>") :].count("btn-primary"), 1)

@@ -7,14 +7,16 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
+from django.views.decorators.cache import never_cache
 
-from screening import assessment_hospitals, device_centres, models
+from screening import assessment_hospitals, device_centres, models, subsidy_estimate
 from screening.audiogram import FittingAdvice, over_mild
 from screening.fitting_route import (
     AUDIOGRAM,
     GUIDE_PAGE,
     STOPS,
     SUBSIDY_STOPS,
+    TYPES_AND_PRICES,
     fitting_state,
     keep_view,
     not_applicable_stops,
@@ -22,7 +24,7 @@ from screening.fitting_route import (
     subsidy_declined,
     subsidy_stops_shown,
 )
-from screening.forms import STOP_QUESTIONS
+from screening.forms import STOP_QUESTIONS, SubsidyEstimateForm
 from screening.main_flow import get_user_state
 from screening.models import Ear, Questionnaire
 from screening.questionnaires.ssq12_tw import CODE as SSQ12
@@ -33,7 +35,9 @@ from screening.scoring import (
     FITTING_ADVICE_OVER_MILD,
     FITTING_ADVICE_QUESTIONNAIRE_FIRST,
     FITTING_ADVICE_TRACK,
+    FITTING_TAGS,
     LIFE_IMPACT_BUTTON,
+    THRESHOLD_TAGS,
 )
 from screening.views.answering import list_order, wearing_follow_ups
 from screening.views.common import form_address, health_data_page, safe_next
@@ -149,23 +153,11 @@ GUIDE_CHAPTERS = (
 )
 
 
-# #336 (spec #326 E5): the stop an answer on the route just made 已完成, ticked once on the
-# route it goes back to. Kept in the session, which logging out or in as someone else empties.
-DONE_NOW = "screening.route_done_now"
-
-
 def guide(request):
-    # Open without logging in (spec #218): the contents are for family too. ?edit=<slug>
-    # opens an answered stop's question again (#293).
-    done_now = request.session.pop(DONE_NOW, None)
+    # Open without logging in (spec #218): the contents are for family too. The old ?edit=<slug>
+    # (#293) opens nothing now the route is gone (#779): the page shows as it is.
     keep_view(request.user, GUIDE_PAGE)
-    return _guide_page(request, edit=request.GET.get("edit"), done_now=done_now)
-
-
-def _guide_page(request, edit=None, question=None, done_now=None):
-    """我的選配指引, the stop being edited showing its question: question, a form sent back
-    with its errors, or else one holding the current answer; done_now, the stop to tick."""
-    context, state = {"done_now": done_now}, None
+    context, state = {}, None
     if request.user.is_authenticated:
         today = timezone.localdate()
         state = fitting_state(request.user, today)
@@ -179,19 +171,97 @@ def _guide_page(request, edit=None, question=None, done_now=None):
         if state.audiogram is not None:
             context |= _guide_audiogram(state)
             context["fitting_words"] = _fitting_words(state, request.user, today)
-    context["route"] = route = _route(state, edit, question)
-    # #596 (ADR 0063): the 補助站 folded into a line under the route, signed out too.
-    context["subsidy_folded"] = state is None or not state.subsidy_shown
-    # #467 (I2): the line is blue as far as the 目前這一站, and its entrance is paced by how far
-    # that is, so it takes about the same time wherever the stop is.
-    here = next((i for i, stop in enumerate(route) if stop.here), None)
-    context["route_here"] = here
-    context["route_pace"] = max(here or 0, 1)
+            context["tags"] = _conclusion_tags(state)
+    context["cards"] = _guide_cards(state)
+    context["tiles"] = CHAPTER_TILES
     response = render(request, "screening/guide/index.html", context)
     if request.user.is_authenticated:
         # Shows this account's records (GLOSSARY 健康資料頁面): never cached.
         add_never_cache_headers(response)
     return response
+
+
+@dataclass(frozen=True)
+class GuideCard:
+    """An 引導卡 (GLOSSARY, ADR 0083): a short title, one line, one button and an icon."""
+
+    slug: str
+    title: str
+    point: str
+    button: tuple[str, str]  # (wording, url)
+    icon: str  # one of guide/card_icon.html's
+    done: bool = False
+
+
+def _guide_cards(state):
+    """#779 (spec #774): the five 引導卡, the same five for everyone; each 已完成 by the 選配路線
+    stops behind it (the owner's pick of 2026-11-24), none signed out (state None). The words
+    are drafts for the owner to review."""
+    chapter = {c.slug: reverse("guide_chapter", args=[c.slug]) for c in GUIDE_CHAPTERS}
+    audiogram = ("記錄聽力圖", reverse("audiogram_new"))
+    done, form_25_passed = frozenset(), False
+    if state is not None:
+        done = state.done
+        if state.insufficient:
+            # As the route did (grill Q9): never 已完成, and the button edits that audiogram.
+            audiogram = ("修改這張聽力圖", reverse("audiogram_edit", args=[state.audiogram.pk]))
+        # Form 25 done, or 不適用 by the answers whether the 補助站 are shown or folded.
+        form_25_passed = "form-25" in done or "form-25" in not_applicable_stops(state.aid)
+    return (
+        GuideCard(
+            AUDIOGRAM,
+            "記錄聽力圖",
+            "把醫院給的聽力圖記下來，這裡就能幫您整理下一步。",
+            audiogram,
+            "audiogram",
+            AUDIOGRAM in done,
+        ),
+        GuideCard(
+            "subsidy",
+            "申請助聽器補助",
+            "有身障證明可以申請補助；一定要先拿到核定公文再買。",
+            ("算算看可以補助多少", reverse("guide_subsidy")),
+            "document",
+            # The notice's stop, never done after 沒有: the 補助站 stay folded (ADR 0063).
+            "notice" in done,
+        ),
+        GuideCard(
+            "before-you-go",
+            "去找聽力師之前",
+            "第一次去評估前，先看要帶什麼、可以問聽力師什麼。",
+            ("看要準備什麼", chapter["before-you-go"]),
+            "ear",
+            "before-you-go" in done,
+        ),
+        GuideCard(
+            TYPES_AND_PRICES,
+            "助聽器的種類與價格",
+            "看助聽器有哪些外型、補助分幾級，和去哪裡買。",
+            ("看種類與價格", chapter[TYPES_AND_PRICES]),
+            "aid",
+            TYPES_AND_PRICES in done,
+        ),
+        GuideCard(
+            "after-fitting",
+            "配戴與核銷",
+            "剛戴要慢慢適應；用身障補助的，之後還要做二十五號表、核銷補助。",
+            ("看配戴之後", chapter["after-fitting"]),
+            "calendar",
+            "after-fitting" in done and form_25_passed,
+        ),
+    )
+
+
+# #779 (spec #774): the 章節磚, the six chapters in the route's reading order (#760), each with
+# an icon and a short name (drafts for the owner to review).
+CHAPTER_TILES = (
+    ("assessment", "身障鑑定", "certificate"),
+    ("form-9", "九號表補助", "document"),
+    ("before-you-go", "找聽力師之前", "ear"),
+    (TYPES_AND_PRICES, "種類與價格", "aid"),
+    ("after-fitting", "配戴之後", "calendar"),
+    ("form-25", "二十五號表", "seal"),
+)
 
 
 def _fitting_words(state, user, today):
@@ -215,6 +285,14 @@ def _fitting_words(state, user, today):
     if state.advice == FittingAdvice.NORMAL:
         return FITTING_ADVICE_NORMAL, None
     return None
+
+
+def _conclusion_tags(state):
+    """#780 (spec #774): the two 結論標籤, (words, suggests something to do) each: what the fold's
+    要不要找聽力師評估 says, then its 身障鑑定門檻."""
+    fitting = "wearing" if state.wearing else state.advice
+    threshold = "self-test" if state.assessment is None else state.assessment["status"]
+    return FITTING_TAGS[fitting], THRESHOLD_TAGS[threshold]
 
 
 def _percent(ratio):
@@ -249,52 +327,13 @@ def _guide_audiogram(state):
 
 @dataclass(frozen=True)
 class RouteStop:
+    """The 目前這一站 the 照顧旅程's card and the 建議下一步 take (ADR 0044)."""
+
     slug: str
     title: str
     url: str
-    marks: tuple[str, ...] = ()  # 已完成, 您在這裡, 資料不足, 估算未達門檻, in that order
-    tested_on: object | None = None  # the recorded audiogram's date, on the done first stop
-    links: tuple[tuple[str, str], ...] = ()  # (wording, url) under the title
-    action: tuple[str, str] | None = None  # the 目前這一站's button
-    notes: tuple[str, ...] = ()  # dated (#288) or fixed (#294) wordings under the title
-    answer: str = ""  # the user's answer in short (#293)
-    answer_link: tuple[str, str] | None = None  # (wording, url) under the answer (#597)
-    questions: tuple = ()  # the stop's question forms shown open (#293, #294)
-    editable: bool = False  # 修改 opens questions answered but not shown (#294)
-    gap: str = ""  # said on the line on to the next stop (#296)
-
-    @property
-    def here(self):
-        return "您在這裡" in self.marks
-
-    @property
-    def below(self):
-        return "估算未達門檻" in self.marks
-
-    @property
-    def not_applicable(self):
-        return "不適用" in self.marks
-
-    @property
-    def done(self):
-        return "已完成" in self.marks
-
-    @property
-    def other_marks(self):
-        """The marks besides 您在這裡, which the 您在這裡 card says as its label (#467)."""
-        return tuple(mark for mark in self.marks if mark != "您在這裡")
-
-    @property
-    def about(self):
-        return ROUTE_ABOUT[self.slug][0]
-
-    @property
-    def about_link(self):
-        """The wording of the link under what the stop is about; none where 修改這張聽力圖 is
-        already the way on."""
-        if "資料不足" in self.marks:
-            return ""
-        return ROUTE_ABOUT[self.slug][1]
+    action: tuple[str, str] | None = None  # its button
+    questions: tuple = ()  # its next question's form (#293, #294)
 
 
 # #293: each answer in short, under its stop.
@@ -305,36 +344,6 @@ CERTIFICATE_ANSWERS = {
 }
 FORM_9_ANSWERS = {True: "九號表完成了", False: "九號表還沒完成"}  # #294
 FORM_25_ANSWERS = {True: "二十五號表完成了", False: "二十五號表還沒完成"}  # #296
-# Said under the stop for everyone the 補助站 are shown to (#294, spec #291 Q12: the notice's
-# date is not asked; #596: not while they are folded, as there is no notice).
-ROUTE_REMINDERS = {"types-and-prices": ("收到核定通知後 6 個月內要買。",)}
-# #467 (I1, the owner's pick on the step interactions page): what each stop is about, said when
-# its row is opened, and the wording of its link on. Drafts for the owner to review.
-ROUTE_ABOUT = {
-    AUDIOGRAM: (
-        "把醫院給的聽力圖記下來，這裡就能整理要不要找聽力師評估，和有沒有達到身障鑑定門檻。",
-        "記錄聽力圖",
-    ),
-    "before-you-go": ("第一次去評估選配助聽器前，先看要帶什麼、可以問聽力師哪些問題。", "看這一章"),
-    "assessment": (
-        "要申請助聽器的身障補助，先要有身心障礙證明；這一章說明鑑定門檻、怎麼申請和鑑定醫院。",
-        "看這一章",
-    ),
-    "form-9": (
-        "九號表是買助聽器前要做的評估報告；有身障證明的人，帶著它到公所申請補助。",
-        "看這一章",
-    ),
-    "notice": ("到公所申請後，等主管機關核定；一定要先拿到核定通知再買。", "看申請流程"),
-    "types-and-prices": ("看助聽器有哪些外型、補助多少，和去哪裡買。", "看這一章"),
-    "after-fitting": ("剛開始戴要慢慢適應；也可以用聽伴的問卷記錄配戴的效果。", "看這一章"),
-    "form-25": (
-        "買中階型、進階型或雙對側傳聲型的人，配戴滿 1 個月後、3 個月內要做使用效益驗證。",
-        "看這一章",
-    ),
-    "payout": ("帶購買憑證、保固書影本（和二十五號表）核銷，受理後 1 個月內撥款。", "看申請流程"),
-}
-# #296 (spec #291 acceptance 14): form 25 comes at least a month after the fitting date.
-FORM_25_GAP = "至少 1 個月"
 
 
 def _answer(slug, aid):
@@ -376,10 +385,12 @@ def _reached(slug, aid):
     return questions if aid.approved_ears else questions[:2]
 
 
-def _route(state, edit=None, question=None):
-    # 選配路線 (#258, spec #291): recording an audiogram, then the chapters in reading order
-    # and the two waits, which have no chapter and point to form 9's 申請流程 (Q15). Signed
-    # out, no stop is marked.
+def here_stop(state):
+    """The 目前這一站 (title, url, button, question), or None without one; the 照顧旅程's card
+    takes it (ADR 0044). #779: my guide no longer draws the 選配路線 it is a stop of."""
+    slug = state.stop
+    if slug not in state.stops:
+        return None
     steps = reverse("guide_chapter", args=["form-9"]) + "#steps-title"
     places = {c.slug: (c.title, reverse("guide_chapter", args=[c.slug])) for c in GUIDE_CHAPTERS}
     places |= {
@@ -387,43 +398,12 @@ def _route(state, edit=None, question=None):
         "notice": ("等待核定公文", steps),
         "payout": ("等待補助發放", steps),
     }
-    # Signed out, the 補助站 are folded, so neither the reminder nor the line on to form 25.
-    shown = stops_on_route(False) if state is None else state.stops
-    stops = [(slug, *places[slug]) for slug in shown]
-    if state is None:
-        return [RouteStop(slug=slug, title=title, url=url) for slug, title, url in stops]
-    return [_route_stop(state, *stop, edit, question) for stop in stops]
-
-
-def here_stop(state):
-    """The 目前這一站 as the route shows it (title, url, button), or None without one; the
-    照顧旅程's card takes it (ADR 0044)."""
-    return next((stop for stop in _route(state) if stop.here), None)
-
-
-def _route_stop(state, slug, title, url, edit=None, question=None):
-    marks, links, action, tested_on = [], [], None, None
-    notes = list(ROUTE_REMINDERS.get(slug, ())) if state.subsidy_shown else []
-    form_9 = reverse("guide_chapter", args=["form-9"])
-    without_certificate = ("看沒有身障證明時", f"{form_9}#without-certificate")
+    title, url = places[slug]
     if slug == AUDIOGRAM and state.insufficient:
-        # Never 已完成 (grill Q9): the title and a link go to editing it instead.
+        # Never 已完成 (grill Q9): the title and the button go to editing it instead.
         url = reverse("audiogram_edit", args=[state.audiogram.pk])
-    if slug in state.done:
-        marks.append("已完成")
-        if slug == AUDIOGRAM:
-            tested_on = state.audiogram.tested_on
-    if slug == state.stop:
-        marks.append("您在這裡")
-    if slug in state.not_applicable:
-        marks.append("不適用")
-    if slug == AUDIOGRAM and state.insufficient:
-        marks.append("資料不足")
-        if slug == state.stop:
-            action = ("修改這張聽力圖", url)
-        else:
-            links.append(("修改這張聽力圖", url))
-    elif slug == state.stop:
+        action = ("修改這張聽力圖", url)
+    else:
         # The waits and types and prices have no button: the title is the only link.
         action = {
             AUDIOGRAM: ("記錄聽力圖", url),
@@ -433,65 +413,11 @@ def _route_stop(state, slug, title, url, edit=None, question=None):
             "after-fitting": ("記錄配戴的效果", f"{url}#record-title"),
             "form-25": ("看二十五號表要帶什麼", url),
         }.get(slug)
-    # Only what ADR 0017 lets the page say: 未達到 is said, 無法確定 is not marked. Once the
-    # certificate is answered the estimate is left out (#293).
-    if (
-        slug == "assessment"
-        and slug not in state.done
-        and state.assessment
-        and state.assessment["status"] == "not_reached"
-    ):
-        marks.append("估算未達門檻")
-        links.append(without_certificate)
-    # #597 (spec #593 acceptance 21, the #595 mockup): 沒有 always leads on to the help there is
-    # without a certificate, under the answer, whatever the estimate.
-    declined = slug == "assessment" and subsidy_declined(state.aid)
-    answer_link = without_certificate if declined else None
-    if slug == "form-9" and state.reapply_on:
-        notes.append(f"{state.reapply_on:%Y/%m/%d} 起可以再申請補助")  # #284 acceptance 17
-    if slug == "form-9" and state.wearing:
-        links.append(("看再次申請的規定", f"{form_9}#reapply"))
-    if slug == "form-25" and state.form_25:
-        # #296 (spec #291 acceptance 14): from when before it opens, by when while open, and
-        # once it has closed the deadline, never saying it is overdue.
-        opens, closes = state.form_25
-        if state.today < opens:
-            notes.append(f"{opens:%Y/%m/%d} 起可以做")
-        elif state.today <= closes:
-            notes.append(f"{closes:%Y/%m/%d} 前要做完")
-        else:
-            notes.append(f"期限是 {closes:%Y/%m/%d}")
-    answer, shown, editable = "", (), False
+    # Spec #291 Q14: the next question only.
+    questions = ()
     if slug in STOP_QUESTIONS:
-        answer = _answer(slug, state.aid)
-        reached = _reached(slug, state.aid)
-        # Spec #291 Q14: open at the 目前這一站, the next question only; where the user chose
-        # 修改, every one asked so far, and then only that stop. A form sent back with its
-        # errors is the edited stop's.
-        if slug == edit and question is not None:
-            shown = (question,)
-        elif slug == edit:
-            shown = tuple(form_class(instance=state.aid) for form_class in reached)
-        elif slug == state.stop and edit not in STOP_QUESTIONS:
-            shown = (reached[-1](instance=state.aid),)
-        editable = bool(answer) and len(shown) < len(reached)
-    # On the line on to form 25, unless form 25 is 不適用 or folded away (#596).
-    gap = FORM_25_GAP if slug == "after-fitting" and state.form_25_on_route else ""
-    return RouteStop(
-        slug=slug,
-        title=title,
-        url=url,
-        marks=tuple(marks),
-        tested_on=tested_on,
-        links=tuple(links),
-        action=action,
-        notes=tuple(notes),
-        answer=answer,
-        answer_link=answer_link,
-        questions=shown,
-        editable=editable,
-        gap=gap,
-    )
+        questions = (_reached(slug, state.aid)[-1](instance=state.aid),)
+    return RouteStop(slug, title, url, action, questions)
 
 
 def guide_chapter(request, chapter):
@@ -513,25 +439,37 @@ def _next_chapter(chapter, aid):
     return next((chapters[slug] for slug in later if slug in chapters and slug in on_route), None)
 
 
-def _chapter_page(request, chapter, question=None):
+# #777 (spec #774 acceptance 22): the notice, which has no chapter, is asked at form 9's foot
+# once form 9 is done.
+NOTICE_CHAPTER = "form-9"
+
+
+def _chapter_page(request, chapter, sent=None):
     """A chapter, with its stop's question at the foot (#293) while a signed-in, consented
     user has not answered it, and 已記下 with the answer once they have (#294), but neither
-    where the stop is 不適用 (#291 review) or a 補助站 after 沒有 (#596); question is a form sent
-    back with its errors."""
+    where the stop is 不適用 (#291 review) or a 補助站 after 沒有 (#596). ?edit=1 opens the
+    answered question again in place, ?edit=notice the notice's (#777); sent is (stop, form),
+    a form sent back with its errors."""
     user = request.user
     aid = models.AidAndSubsidy.for_user(user) if user.is_authenticated else None
     context = {"chapter": chapter, "next_chapter": _next_chapter(chapter, aid)}
     if chapter.extra_context:
         context.update(chapter.extra_context(request))
+    if user.is_authenticated:
+        context["notes"] = _foot_notes(chapter.slug, user, aid)
     asked = chapter.slug in STOP_QUESTIONS and user.is_authenticated and user.has_consented()
     declined = subsidy_declined(aid) and chapter.slug in SUBSIDY_STOPS
-    if asked and (chapter.slug in not_applicable_stops(aid) or declined):
-        asked, question = False, None
-    if question is None and asked:
-        context["answered"] = _answer(chapter.slug, aid)
-        if not context["answered"]:
-            question = STOP_QUESTIONS[chapter.slug][0](instance=aid)
-    context["question"] = question
+    if asked and not (chapter.slug in not_applicable_stops(aid) or declined):
+        edit = request.GET.get("edit")
+        stop, form = sent or (None, None)
+        own = form if stop == chapter.slug else None
+        context["foot"] = _foot(chapter.slug, aid, edit == "1", own)
+        form_9_done = aid is not None and aid.form_9_done
+        if chapter.slug == NOTICE_CHAPTER and form_9_done and subsidy_stops_shown(aid):
+            sent_here = form if stop == "notice" else None
+            context["notice"] = notice = _foot("notice", aid, edit == "notice", sent_here)
+            if aid.notice_received and not notice["halfway"]:
+                notice["answer"] = f"核定公文：{notice['answer']}"  # 核定公文：雙耳、中階型
     response = render(request, chapter.template, context)
     if user.is_authenticated:
         # Whether the question shows depends on this account's answers.
@@ -539,11 +477,64 @@ def _chapter_page(request, chapter, question=None):
     return response
 
 
+# #779 (the owner's pick of 2026-11-24, #774's 實作中本人補充): what the 選配路線 said under its
+# stops, said at the chapter's foot under the answer now my guide no longer draws the route.
+PURCHASE_REMINDER = "收到核定通知後 6 個月內要買。"  # #294 (spec #291 Q12)
+
+
+def _foot_notes(slug, user, aid):
+    """The chapter's notes at its foot, each (wording, url or None): 沒有 leads on to the help
+    without a certificate (#597); 種類與價格 says the six months to buy in while the 補助站 are
+    shown (#294, #596); form 9 says when 身障補助 can be applied for again (#288), form 25 its
+    dates (#296, spec #291 acceptance 14). The rules are the route's."""
+    if slug == "assessment" and subsidy_declined(aid):
+        form_9 = reverse("guide_chapter", args=["form-9"])
+        return (("看沒有身障證明時", f"{form_9}#without-certificate"),)
+    if slug == TYPES_AND_PRICES and subsidy_stops_shown(aid):
+        return ((PURCHASE_REMINDER, None),)
+    if slug not in ("form-9", "form-25") or subsidy_declined(aid):
+        return ()
+    state = fitting_state(user, timezone.localdate())
+    if slug == "form-9":
+        reapply = state.reapply_on
+        return ((f"{reapply:%Y/%m/%d} 起可以再申請補助", None),) if reapply else ()
+    if state.form_25 is None:
+        return ()
+    # From when before it opens, by when while open, and once it has closed the deadline,
+    # never saying it is overdue.
+    opens, closes = state.form_25
+    if state.today < opens:
+        return ((f"{opens:%Y/%m/%d} 起可以做", None),)
+    if state.today <= closes:
+        return ((f"{closes:%Y/%m/%d} 前要做完", None),)
+    return ((f"期限是 {closes:%Y/%m/%d}", None),)
+
+
+def _foot(slug, aid, editing, sent):
+    """A stop at a chapter's foot: its answer in short, and the questions shown open: sent, a
+    form sent back with its errors; editing, every one asked so far (#777); else the next one
+    while unanswered or halfway, the notice received without its ears or level (#294). An
+    answered stop with its questions open, not halfway, is being edited."""
+    answer = _answer(slug, aid)
+    reached = _reached(slug, aid)
+    halfway = slug == "notice" and aid.notice_received and not (aid.approved_ears and aid.level)
+    if sent is not None:
+        questions = (sent,)
+    elif editing and answer:
+        questions = tuple(form_class(instance=aid) for form_class in reached)
+    elif not answer or halfway:
+        questions = (reached[-1](instance=aid),)
+    else:
+        questions = ()
+    editing = bool(answer and questions) and not halfway
+    return {"answer": answer, "questions": questions, "halfway": halfway, "editing": editing}
+
+
 @form_address
 @health_data_page
 def route_answer(request):
-    # #293 (spec #291 acceptance 28): a stop's answer, request.user's own only; back to the
-    # stop on the route, or to the chapter's question.
+    # #293 (spec #291 acceptance 28): a stop's answer, request.user's own only; back to where it
+    # was asked, a chapter's foot or the home page's card, else (#779) to the stop's chapter.
     stop = request.POST.get("stop")
     questions = STOP_QUESTIONS.get(stop)
     if questions is None:
@@ -554,22 +545,75 @@ def route_answer(request):
     aid = models.AidAndSubsidy.for_user(request.user)
     form = form_class(request.POST, instance=aid or models.AidAndSubsidy(user=request.user))
     next_url = safe_next(request)
+    destination = urlsplit(next_url)
+    # An older open guide page can still post a return address for the removed route.
+    if destination.path == reverse("guide") and destination.fragment.startswith("stop-"):
+        next_url = ""
+    # The notice is asked at form 9's foot (#777), every other stop at its own chapter's.
+    slug = NOTICE_CHAPTER if stop == "notice" else stop
+    chapter = next(c for c in GUIDE_CHAPTERS if c.slug == slug)
     if form.is_valid():
         today = timezone.localdate()
         here = fitting_state(request.user, today).stop
         form.save()
-        path = urlsplit(next_url).path
         # #336: only the 您在這裡 stop turning 已完成, which a stop turning 不適用 is not.
-        if path in ("", reverse("guide"), reverse("index")):
-            done_now = here == stop and stop in fitting_state(request.user, today).done
-            if done_now and path == reverse("index"):
+        if destination.path == reverse("index"):
+            if here == stop and stop in fitting_state(request.user, today).done:
                 # #745 (grill Q13): the home page's answer card, back at the step with the stop
                 # just finished in the address, so 接著往下一站 to the page itself loads it anew.
                 return HttpResponseRedirect(f"{reverse('index')}?done={stop}#journey-now")
-            if done_now:
-                request.session[DONE_NOW] = stop
-        return HttpResponseRedirect(next_url or f"{reverse('guide')}#stop-{stop}")
-    if urlsplit(next_url).path == reverse("guide_chapter", args=[stop]):
-        chapter = next(c for c in GUIDE_CHAPTERS if c.slug == stop)
-        return _chapter_page(request, chapter, form)
-    return _guide_page(request, edit=stop, question=form)
+        place = "#stop-notice" if stop == "notice" else "#stop-question"
+        foot = reverse("guide_chapter", args=[chapter.slug]) + place
+        return HttpResponseRedirect(next_url or foot)
+    # #779: the errors at the stop's chapter's foot, wherever it was sent from.
+    return _chapter_page(request, chapter, (stop, form))
+
+
+@never_cache
+def guide_subsidy(request):
+    # #775 (spec #774, ADR 0083): 補助引導與試算, open without logging in (CODING_STANDARDS.md
+    # 2): it reads and keeps no one's data, signed in or not. The answers so far come in this
+    # POST and go back in this response as hidden fields, with no redirect, session or database;
+    # never_cache keeps 上一頁 on a shared phone from showing them.
+    sent = request.POST
+    answers, step = {}, subsidy_estimate.estimate({})
+    while isinstance(step, subsidy_estimate.Question) and step.name in sent:
+        form = SubsidyEstimateForm(step, sent)
+        if not form.is_valid():
+            break
+        answers |= form.cleaned_data
+        step = subsidy_estimate.estimate(answers)
+    if "back" in sent:
+        # 上一題: the question before the one shown (or before the result), its answer chosen.
+        names = list(answers)
+        if sent["back"] in names:
+            names = names[: names.index(sent["back"])]
+        initial = {names[-1]: answers[names[-1]]} if names else {}
+        answers = {name: answers[name] for name in names[:-1]}
+        step = subsidy_estimate.estimate(answers)
+        form = SubsidyEstimateForm(step, initial=initial)
+    elif isinstance(step, subsidy_estimate.Question):
+        # The question sent without an answer (or a made-up one) says so; the next comes fresh.
+        asked = step.name in sent or sent.get("shown") == step.name
+        form = SubsidyEstimateForm(step, sent if asked else None)
+    is_result = isinstance(step, subsidy_estimate.Result)
+    return render(
+        request,
+        "screening/guide/subsidy.html",
+        {
+            "question": None if is_result else step,
+            "form": None if is_result else form,
+            "result": step if is_result else None,
+            "answers": answers,
+            "number": len(answers) + 1,
+            # After a press, focus goes to what is new: the question's title or the result's.
+            "moved": request.method == "POST",
+            "intro": subsidy_estimate.INTRO,
+            "amount_label": subsidy_estimate.AMOUNT_LABEL,
+            "amount_note": subsidy_estimate.AMOUNT_NOTE,
+            "next_step_label": subsidy_estimate.NEXT_STEP_LABEL,
+            "young_note": subsidy_estimate.YOUNG_NOTE,
+            "sources": subsidy_estimate.SOURCES,
+            "checked_on": subsidy_estimate.CHECKED_ON,
+        },
+    )

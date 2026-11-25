@@ -156,21 +156,77 @@ class Form9AndNoticeCardTests(AnswerCardTestCase):
         self.assertEqual(HERO_BUTTON.findall(card), [("/guide/form-9", "看九號表的流程")])
         self.assertNotIn(STAMP, card)
 
-    def test_notice_yes_asks_for_the_ears_and_level_and_only_then_is_done(self):
-        # Acceptance 16.
+    def test_notice_yes_asks_the_ears_on_the_same_card(self):
+        # Acceptance 16; #778 (spec #774 acceptance 23): the ears asked here, not on my guide.
         self.aid(certificate=Certificate.YES, form_9_done=True)
         self.assertEqual(
             self.text(self.home_card()),
             "現在這一步 等待核定公文 您收到核定公文了嗎？ 是 已經收到 否 還沒收到",
         )
-        card = self.answered("notice", "notice_received", "True")
-        self.assertIn(("notice_received", "True", True, "是 已經收到"), self.choices(card))
+        response = self.send("notice", "notice_received", "True")
+        self.assertRedirects(response, NOW, fetch_redirect_response=False)
+        card = self.home_card(response["Location"])
         self.assertEqual(
-            HERO_BUTTON.findall(card), [("/guide#stop-notice", "記下核定的耳朵與等級")]
+            self.text(card),
+            "現在這一步 等待核定公文 已經收到核定公文 核定的是單耳還是雙耳？ 單耳 雙耳",
         )
+        self.assertIn('<span aria-hidden="true">✓ </span>已經收到核定公文', card)
+        self.assertEqual(
+            self.choices(card),
+            [("approved_ears", "one", False, "單耳"), ("approved_ears", "both", False, "雙耳")],
+        )
+        self.assertIn('<input type="hidden" name="stop" value="notice">', card)
+        self.assertEqual(self.links(card), [])
         self.assertNotIn(STAMP, card)
-        self.aid(approved_ears="both", level=AidLevel.MID)
+        self.assertNotIn("/guide", card)
+
+    def test_the_ears_answered_ask_the_level_on_the_same_card(self):
+        # #778: then the level, what is answered so far above it.
+        self.aid(certificate=Certificate.YES, form_9_done=True, notice_received=True)
+        response = self.send("notice", "approved_ears", "both")
+        self.assertRedirects(response, NOW, fetch_redirect_response=False)
+        card = self.home_card(response["Location"])
+        self.assertEqual(
+            self.text(card),
+            "現在這一步 等待核定公文 已經收到核定公文、雙耳 補助的等級是？ "
+            "簡易型 中階型 進階型 雙對側傳聲型 不知道",
+        )
+        self.assertEqual(
+            [value for _, value, _, _ in self.choices(card)],
+            ["basic", "mid", "advanced", "cros", "unknown"],
+        )
+        self.assertEqual({name for name, _, _, _ in self.choices(card)}, {"level"})
+        self.assertNotIn(STAMP, card)
+        self.assertNotIn("/guide", card)
+
+    def test_the_level_answered_stamps_the_card_and_moves_on_when_pressed(self):
+        # #778 (spec #774 acceptance 23): the three answered, the card is stamped as any stop
+        # finished here, and 接著往下一站 goes on.
+        self.aid(
+            certificate=Certificate.YES, form_9_done=True, notice_received=True, approved_ears="one"
+        )
+        response = self.send("notice", "level", "mid")
+        address = DONE_AT.format("notice")
+        self.assertRedirects(response, address, fetch_redirect_response=False)
+        aid = AidAndSubsidy.objects.get(user=self.user)
+        self.assertEqual((aid.notice_received, aid.approved_ears, aid.level), (True, "one", "mid"))
+        card = self.home_card(address)
+        self.assertIn('<h2 class="hero-card-title">等待核定公文</h2>', card)
+        self.assertIn(("level", "mid", True, "中階型"), self.choices(card))
+        self.assertNotIn("已經收到核定公文", card)
+        self.assertIn(STAMP, card)
+        self.assertEqual(self.links(card), [(NOW, "接著往下一站：去找聽力師之前")])
+        self.assertNotIn("/guide", card)
         self.assertIn('<h2 class="hero-card-title">去找聽力師之前</h2>', self.home_card())
+
+    def test_the_ears_kept_the_card_asks_the_level_straight_away(self):
+        # #778 acceptance 3: the ears answered before, the level not yet.
+        self.aid(
+            certificate=Certificate.YES, form_9_done=True, notice_received=True, approved_ears="one"
+        )
+        card = self.home_card()
+        self.assertIn("補助的等級是？", self.text(card))
+        self.assertIn("已經收到核定公文、單耳", self.text(card))
 
     def test_notice_no_offers_types_and_prices(self):
         # Acceptance 16.
@@ -256,6 +312,38 @@ class AnswerCardFormTests(AnswerCardTestCase):
         address = DONE_AT.format("assessment")
         self.assertRedirects(response, address, fetch_redirect_response=False)
         self.assertEqual(AidAndSubsidy.objects.get(user=self.user).certificate, Certificate.YES)
+
+    def test_the_notice_s_three_are_answered_one_by_one_with_the_page_s_own_form(self):
+        # #778 acceptance 4: without JavaScript, each answer comes back to the card's next
+        # question, which the address lands on (the fieldset takes the focus).
+        self.aid(certificate=Certificate.YES, form_9_done=True)
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.user)
+        address = reverse("index")
+        for field, value in (("notice_received", "True"), ("approved_ears", "both")):
+            page = client.get(address).content.decode()
+            form = re.search(
+                r'<form method="post" action="([^"]*)" class="answer-card-form">(.*?)</form>',
+                page,
+                re.S,
+            )
+            self.assertIn('<fieldset id="journey-question" tabindex="-1"', form.group(2))
+            data = dict(
+                re.findall(r'<input type="hidden" name="([^"]*)" value="([^"]*)"', form.group(2))
+            )
+            self.assertEqual(data["next"], "/#journey-question")
+            data[field] = value
+            response = client.post(form.group(1), data)
+            self.assertRedirects(response, "/#journey-question", fetch_redirect_response=False)
+            address = response["Location"]
+        page = client.get(address).content.decode()
+        self.assertIn('aria-describedby="journey-so-far"', page)
+        self.assertIn('<p class="answer-card-so-far" id="journey-so-far">', page)
+        form = re.search(r'class="answer-card-form">(.*?)</form>', page, re.S).group(1)
+        data = dict(re.findall(r'<input type="hidden" name="([^"]*)" value="([^"]*)"', form))
+        response = client.post(reverse("route_answer"), data | {"level": "advanced"})
+        self.assertRedirects(response, DONE_AT.format("notice"), fetch_redirect_response=False)
+        self.assertIn("notice", fitting_state(self.user, TODAY).done)
 
     def test_only_the_signed_in_user_s_record_changes(self):
         other = consented_user(username="someone_else")

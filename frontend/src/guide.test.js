@@ -1,10 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { openFoldsForJump, playRouteOnce } from "./guide.js";
+import { openFoldsForJump } from "./guide.js";
 
-// #467: 我的選配指引's 選配路線 entrance (the owner's pick I2, ADR 0028's 2026-11-12 exception;
-// one at a time and once a tab are step-list.js's) and the chapters' folds (H2), which open where
-// a jump lands.
+// #467: the chapters' folds (H2), which open where a jump lands. #779: my guide's 選配路線
+// entrance went with the route.
 
 function fakeWindow({ reduce = false, hash = "" } = {}) {
   window.sessionStorage.clear();
@@ -15,58 +14,6 @@ function fakeWindow({ reduce = false, hash = "" } = {}) {
   window.history.replaceState(null, "", `/guide${hash}`);
   return window;
 }
-
-const route = (extra = "") => `
-  <ol class="route">
-    <li class="route-stop is-done"><details class="route-about"><summary>1</summary><p>一</p></details></li>
-    <li class="route-stop is-here${extra}"><div class="route-card">您在這裡</div></li>
-    <li class="route-stop"><details class="route-about"><summary>3</summary><p>三</p></details></li>
-    <li class="route-stop"><details class="route-about"><summary>4</summary><p>四</p></details></li>
-  </ol>`;
-
-const plays = () => document.documentElement.classList.contains("route-plays");
-
-describe("playRouteOnce", () => {
-  beforeEach(() => {
-    document.body.innerHTML = route();
-  });
-
-  it("plays the route's entrance on the tab's first visit", () => {
-    playRouteOnce(fakeWindow());
-    expect(plays()).toBe(true);
-  });
-
-  it("does not play it again later in the same tab", () => {
-    const win = fakeWindow();
-    playRouteOnce(win);
-    document.documentElement.className = "";
-    playRouteOnce(win);
-    expect(plays()).toBe(false);
-  });
-
-  it("never plays with reduced motion, nor counts as played", () => {
-    const win = fakeWindow({ reduce: true });
-    playRouteOnce(win);
-    expect(plays()).toBe(false);
-    expect(win.sessionStorage.length).toBe(0);
-  });
-
-  it("waits while a stop just answered draws its own tick", () => {
-    document.body.innerHTML = route().replace('class="route-stop is-done"', 'class="route-stop is-done-now"');
-    const win = fakeWindow();
-    playRouteOnce(win);
-    expect(plays()).toBe(false);
-    expect(win.sessionStorage.length).toBe(0);
-  });
-
-  it("has nothing to play without a 目前這一站", () => {
-    document.body.innerHTML = route().replace(" is-here", "");
-    const win = fakeWindow();
-    playRouteOnce(win);
-    expect(plays()).toBe(false);
-    expect(win.sessionStorage.length).toBe(0);
-  });
-});
 
 describe("openFoldsForJump", () => {
   // The folds come open in the page, so without JavaScript every part shows in full.
