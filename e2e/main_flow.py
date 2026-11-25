@@ -3511,6 +3511,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             self.page.goto(f"{self.live_server_url}/guide")
             expect(stamped).to_have_text(["記錄聽力圖", "去找聽力師之前", "助聽器的種類與價格"])
 
+            self.assert_fits_a_phone_at_double_text_size("/guide cards")
             # Only the keyboard: Tab reaches each card's button in turn.
             buttons = self.main().locator(".guide-card-button")
             buttons.first.focus()
@@ -3520,7 +3521,6 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     expect(buttons.nth(index)).to_be_in_viewport()
                     self.page.keyboard.press("Tab")
 
-            self.assert_fits_a_phone_at_double_text_size("/guide cards")
             for index in range(5):
                 card = cards.nth(index)
                 card.locator(".guide-card-button").scroll_into_view_if_needed()

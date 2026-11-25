@@ -171,6 +171,26 @@ describe("setUpPlayInView: entrance animations", () => {
     expect(box.hasAttribute("data-in-view")).toBe(true);
   });
 
+  it("waits for a guide card stamp to scroll inside the row before playing it once", () => {
+    page(`<ol class="guide-cards"><li><span data-play-in-view>已完成</span></li></ol>`);
+    const row = document.querySelector(".guide-cards");
+    const stamp = row.querySelector("[data-play-in-view]");
+    row.getBoundingClientRect = () => ({ left: 16, right: 304 });
+    const scrollTo = (left) => {
+      stamp.getBoundingClientRect = () => ({ top: 100, bottom: 160, left, right: left + 80 });
+      row.dispatchEvent(new Event("scroll"));
+    };
+    scrollTo(320);
+    setUpPlayInView(fakeWindow());
+    expect(stamp.hasAttribute("data-in-view")).toBe(false);
+    scrollTo(260);
+    expect(stamp.hasAttribute("data-in-view")).toBe(false);
+    scrollTo(210);
+    expect(stamp.hasAttribute("data-in-view")).toBe(true);
+    scrollTo(320);
+    expect(stamp.hasAttribute("data-in-view")).toBe(true);
+  });
+
   it("holds a drawing on a stacked card behind the front until the card comes forward", () => {
     // #754: the 了解 page's cards behind the front one are inert; card-stack.js says when one
     // comes to the front.

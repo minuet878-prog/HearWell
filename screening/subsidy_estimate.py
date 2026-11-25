@@ -203,10 +203,10 @@ def _amount(answers):
     return MOST_PER_AID[grade] * SHARE_PERCENT[answers[HOUSEHOLD.name]] // 100 * aids
 
 
-def _mild_at_65_may_lower(cap):
-    return Item(
-        f"如果是滿 65 歲以後才第一次鑑定為輕度，進階型的補助總額最多 {cap:,} 元，會比上面的金額少。"
-    )
+def _mild_at_65_reminder(cap, amount):
+    words = f"如果是滿 65 歲以後才第一次鑑定為輕度，進階型的補助總額最多 {cap:,} 元"
+    ending = "，會比上面的金額少。" if cap < amount else "。"
+    return Item(words + ending)
 
 
 def _on_the_way(answers):
@@ -242,9 +242,8 @@ def estimate(answers):
         cap = MILD_AT_65_CAP[answers[HOUSEHOLD.name]]
         if answers[MILD_AT_65.name] == YES:
             amount = min(amount, cap)
-        # Not sure: the usual amount, and a word on the cap only where it would make it less.
-        elif answers[MILD_AT_65.name] == UNSURE and cap < amount:
-            reminders.append(_mild_at_65_may_lower(cap))
+        elif answers[MILD_AT_65.name] == UNSURE:
+            reminders.append(_mild_at_65_reminder(cap, amount))
     if answers[CERTIFICATE.name] == PLANNING:
         return Result(amount, _ASSESSMENT_FIRST, (*reminders, _NOTICE_FIRST))
     progress = answers[PROGRESS.name]

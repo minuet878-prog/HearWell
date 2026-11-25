@@ -545,6 +545,10 @@ def route_answer(request):
     aid = models.AidAndSubsidy.for_user(request.user)
     form = form_class(request.POST, instance=aid or models.AidAndSubsidy(user=request.user))
     next_url = safe_next(request)
+    destination = urlsplit(next_url)
+    # An older open guide page can still post a return address for the removed route.
+    if destination.path == reverse("guide") and destination.fragment.startswith("stop-"):
+        next_url = ""
     # The notice is asked at form 9's foot (#777), every other stop at its own chapter's.
     slug = NOTICE_CHAPTER if stop == "notice" else stop
     chapter = next(c for c in GUIDE_CHAPTERS if c.slug == slug)
@@ -553,7 +557,7 @@ def route_answer(request):
         here = fitting_state(request.user, today).stop
         form.save()
         # #336: only the 您在這裡 stop turning 已完成, which a stop turning 不適用 is not.
-        if urlsplit(next_url).path == reverse("index"):
+        if destination.path == reverse("index"):
             if here == stop and stop in fitting_state(request.user, today).done:
                 # #745 (grill Q13): the home page's answer card, back at the step with the stop
                 # just finished in the address, so 接著往下一站 to the page itself loads it anew.

@@ -81,7 +81,13 @@ export function setUpPlayInView(win = window) {
       // shut <details> still lays it out when asked, so its box alone would say in view. Opening
       // it grows the page.
       if (element.matches(SHUT_FOLD)) return true;
-      if (!isInView(element.getBoundingClientRect(), win.innerHeight, inset)) return true;
+      const rect = element.getBoundingClientRect();
+      if (!isInView(rect, win.innerHeight, inset)) return true;
+      const guideRow = element.closest(".guide-cards");
+      if (guideRow) {
+        const row = guideRow.getBoundingClientRect();
+        if (rect.left < row.left || rect.right > row.right) return true;
+      }
       element.setAttribute("data-in-view", "");
       if (element.hasAttribute("data-count-up")) countUp(element, win);
       return false;
@@ -89,14 +95,20 @@ export function setUpPlayInView(win = window) {
     if (waiting.length === 0) {
       win.removeEventListener("scroll", check);
       win.removeEventListener("resize", check);
+      doc.removeEventListener("scroll", checkGuideScroll, true);
       doc.removeEventListener("card-stack-show", check);
       layout?.disconnect();
     }
+  };
+  // Element scroll events do not bubble; capture the guide row's horizontal scroll.
+  const checkGuideScroll = (event) => {
+    if (event.target.matches?.(".guide-cards")) check();
   };
   // Adding a listener it has already does nothing, so this starts watching again or goes on.
   const watch = () => {
     win.addEventListener("scroll", check, { passive: true });
     win.addEventListener("resize", check);
+    doc.addEventListener("scroll", checkGuideScroll, { capture: true, passive: true });
     doc.addEventListener("card-stack-show", check);
     layout?.observe(doc.body);
   };

@@ -83,7 +83,7 @@ class RouteAnswerTests(TestCase):
         self.assertRedirects(response, CHAPTER_CARD, fetch_redirect_response=False)
         self.assertEqual(self.certificate(), "yes")
 
-    def test_without_a_next_each_stop_goes_to_where_its_chapter_asks_it(self):
+    def test_missing_or_old_guide_return_goes_to_where_the_chapter_asks_it(self):
         # #779 (spec #774): in place of /guide#stop-<slug>; the notice is asked at form 9's.
         AidAndSubsidy.objects.create(user=self.user, certificate="yes", form_9_done=True)
         for stop, field, value, address in (
@@ -93,10 +93,11 @@ class RouteAnswerTests(TestCase):
             ("form-25", "form_25_done", "False", "/guide/form-25#stop-question"),
             ("after-fitting", "not_fitted", "1", "/guide/after-fitting#stop-question"),
         ):
-            with self.subTest(stop=stop):
-                data = {"stop": stop, field: value}
-                response = self.client.post(reverse("route_answer"), data)
-                self.assertRedirects(response, address, fetch_redirect_response=False)
+            for next_url in ("", f"/guide#stop-{stop}"):
+                with self.subTest(stop=stop, next_url=next_url):
+                    data = {"stop": stop, field: value, "next": next_url}
+                    response = self.client.post(reverse("route_answer"), data)
+                    self.assertRedirects(response, address, fetch_redirect_response=False)
 
     def test_only_the_signed_in_user_s_answer_changes(self):
         other = consented_user(username="other_answering_user")

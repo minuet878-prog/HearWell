@@ -204,15 +204,31 @@ class EstimateRulesTests(SimpleTestCase):
                 words = [item.words for item in result.reminders]
                 self.assertIn(_mild_at_65_may_lower(cap), words)
 
-    def test_yes_no_and_a_cap_that_changes_nothing_say_nothing_of_it(self):
+    def test_yes_and_no_need_no_reminder(self):
         for changes in (
             {"mild_at_65": rules.YES},
             {"mild_at_65": rules.NO},
-            {"mild_at_65": rules.UNSURE, "ears": rules.ONE},
         ):
             with self.subTest(**changes):
                 result = _estimate(grade=rules.ADVANCED, **changes)
                 self.assertFalse([i for i in result.reminders if "65 歲" in i.words])
+
+    def test_not_sure_mentions_the_cap_even_when_the_one_ear_amount_is_unchanged(self):
+        for household, cap in ((rules.GENERAL, 10000), (rules.NEAR_LOW, 15000), (rules.LOW, 20000)):
+            with self.subTest(household=household):
+                result = _estimate(
+                    grade=rules.ADVANCED,
+                    ears=rules.ONE,
+                    household=household,
+                    mild_at_65=rules.UNSURE,
+                )
+                self.assertEqual(result.amount, cap)
+                self.assertTrue(
+                    any(
+                        "滿 65 歲" in item.words and f"{cap:,} 元" in item.words
+                        for item in result.reminders
+                    )
+                )
 
     def test_one_ear_basic_low_income_is_2000(self):
         result = _estimate(grade=rules.BASIC, ears=rules.ONE, household=rules.LOW)
@@ -684,7 +700,9 @@ class SubsidyEstimateSignedInTests(TestCase):
         given = {}
         for name, value in answers.items():
             given[name] = value
-            self.assertEqual(self.client.post(url, {"shown": name, **given}).status_code, 200)
+            response = self.client.post(url, {"shown": name, **given})
+            self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "預估最高補助")
         self.assertEqual(self.client.post(url, {**answers, "back": "result"}).status_code, 200)
         self.assertEqual(self._records(), before)
         self.assertEqual(self._home(), home)
