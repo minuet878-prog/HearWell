@@ -8,8 +8,8 @@ from django.urls import reverse
 
 from screening.care_journey import DONE, care_journey
 from screening.models import Audiogram, AudiogramPoint, AudiogramSource
-from screening.tests import test_guide, test_guide_summary
-from screening.tests.helpers import consented_user, route_stops
+from screening.tests import test_guide, test_guide_cards, test_guide_summary
+from screening.tests.helpers import consented_user
 
 PTA_30 = (30, 30, 30, 30)
 PTA_60 = test_guide_summary.PTA_60
@@ -77,21 +77,13 @@ class SelfTestAssessmentTests(TestCase):
         self.assertNotIn("之後的自我測試不列入估算", part)
         self.assertNotIn(SELF_TEST_ONLY, part)
 
-    def test_the_route_marks_no_estimate_from_a_self_test(self):
-        """The 身障鑑定 stop's 估算未達門檻 comes from an exam only (ADR 0017, 0068)."""
-        self.self_test(PTA_30, PTA_30, date(2026, 10, 1))
-        stops = dict(route_stops(self.page()))
-        self.assertNotIn("估算未達門檻", stops["assessment"])
-        self.make(PTA_30, PTA_30, tested_on=date(2024, 5, 3))
-        stops = dict(route_stops(self.page()))
-        self.assertIn("估算未達門檻", stops["assessment"])
-
     def test_a_self_test_still_completes_the_audiogram_stop(self):
-        """Acceptance 18: 照顧旅程 step 2 and the route's first stop are done, and 建議評估選配
-        (spec #693's rule) reads the self test, whatever the source."""
+        """Acceptance 18: 照顧旅程 step 2 and the route's first stop are done (#779: the
+        記錄聽力圖 引導卡 stamped), and 建議評估選配 (spec #693's rule) reads the self test,
+        whatever the source."""
         self.self_test(PTA_60, PTA_60, date(2026, 10, 1))
-        stops = dict(route_stops(self.page()))
-        self.assertIn("已完成", stops["audiogram"])
+        cards = dict(test_guide_cards.cards(self.client.get(reverse("guide"))))
+        self.assertIn(test_guide_cards.STAMP, cards["audiogram"])
         self.assertEqual(care_journey(self.user, date(2026, 11, 17)).steps[1].state, DONE)
         text = test_guide.text_of(self.client.get(reverse("guide")))
         self.assertIn("您有一耳以上的四頻平均超過 40 dB HL，建議找聽力師評估選配助聽器。", text)

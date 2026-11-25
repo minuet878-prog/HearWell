@@ -202,12 +202,10 @@ class GuideMetersTests(TestCase):
         self.assertIn("正常上限 25", spoken)
         self.assertIn("門檻 45%", spoken)
 
-    # #467: the route's title still takes the focus a link to it gives (回選配路線看下一站).
-    def test_the_route_title_takes_focus_and_there_is_no_jump_to_it(self):
+    # #779: no jump down to the cards either; the chapters' way back is to /guide itself.
+    def test_there_is_no_jump_to_the_cards(self):
         self.make(RIGHT_48_75, LEFT_36_25)
-        page = self.page()
-        self.assertNotIn(JUMP, page)
-        self.assertRegex(page, r'<h2 id="contents-title" [^>]*tabindex="-1"')
+        self.assertNotIn(JUMP, self.page())
 
     def test_without_an_audiogram_there_are_no_meters_or_jump(self):
         for records in ("none", "questionnaire only"):

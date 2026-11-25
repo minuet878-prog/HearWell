@@ -254,13 +254,12 @@ class ImportEntryTests(TestCase):
         self.assertIn("btn-outline-primary", self._after_record(content, reverse("audiogram_new")))
 
     def test_the_guide_with_a_questionnaire_and_no_audiogram(self):
-        """The 您在這裡 stop's 記錄聽力圖 and the audiogram part's link both have it."""
+        """The audiogram part's link has it (#779: the 記錄聽力圖 引導卡 has one button only, in
+        place of the 您在這裡 stop's two)."""
         from screening.models import Submission
 
         Submission.objects.create(user=self.user, questionnaire=self.hhie_s)
         content = self.client.get(reverse("guide")).content.decode()
-        stop = content[content.index('data-stop="audiogram"') :]
-        self.assertIn("btn-outline-primary", self._after_record(stop, reverse("audiogram_new")))
         part = content[content.index('id="audiogram-title"') :]
         self._after_record(part, reverse("audiogram_new"))
 

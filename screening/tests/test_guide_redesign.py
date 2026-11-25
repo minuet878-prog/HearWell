@@ -3,10 +3,10 @@ import re
 from django.test import TestCase
 from django.urls import reverse
 
-from screening.models import AidAndSubsidy, GuideChapterView, Questionnaire, Submission
+from screening.models import Questionnaire, Submission
 from screening.questionnaires import hhie_s
 from screening.tests import test_guide, test_guide_summary
-from screening.tests.helpers import consented_user, route_stops
+from screening.tests.helpers import consented_user
 
 PTA_55 = test_guide_summary.PTA_55
 SOLID = re.compile(r'class="btn btn-primary[ "]')
@@ -14,8 +14,9 @@ FOLD = '<details class="result-details">'
 
 
 class MyGuideRedesignTests(TestCase):
-    """#467 (the #466 mockup A): 我的選配指引 with the 選配路線 first, the 您在這裡 card holding
-    the page's one solid button, and the audiogram's long paragraphs behind 看完整說明."""
+    """#467 (the #466 mockup A): 我的選配指引 with its steps first and the audiogram's long
+    paragraphs behind 看完整說明. #779: the steps are the 引導卡 now, in place of the 選配路線
+    and its 您在這裡 card (test_guide_cards)."""
 
     @classmethod
     def setUpTestData(cls):
@@ -30,15 +31,12 @@ class MyGuideRedesignTests(TestCase):
     def page(self, query=""):
         return self.client.get(reverse("guide") + query).content.decode()
 
-    def stops(self, page=None):
-        return dict(route_stops(page or self.page()))
-
-    def test_the_route_comes_first_and_the_jump_down_to_it_is_gone(self):
+    def test_the_cards_come_first_and_the_jump_down_to_them_is_gone(self):
         self.make(PTA_55, PTA_55)
         page = self.page()
-        route = page.index('id="contents-title"')
+        cards = page.index('id="contents-title"')
         summary = page.index(">依您 2026/10/01 的聽力圖</h2>")
-        self.assertLess(route, summary)
+        self.assertLess(cards, summary)
         self.assertNotIn("看我的路線", page)
 
     def test_the_long_paragraphs_wait_behind_the_full_explanation(self):
@@ -57,71 +55,12 @@ class MyGuideRedesignTests(TestCase):
         audiogram.points.filter(frequency=4000).delete()
         self.assertNotIn(FOLD, self.page())
 
-    def test_the_here_card_has_the_one_solid_button_above_its_question(self):
-        self.make(PTA_55, PTA_55)
-        for chapter in ("before-you-go",):
-            GuideChapterView.objects.create(user=self.user, chapter=chapter)
-        AidAndSubsidy.objects.create(user=self.user, certificate="yes")
-        page = self.page()
-        here = self.stops(page)["form-9"]
-        self.assertIn(
-            '<p class="route-here-label"><span class="route-mark">您在這裡</span></p>', here
-        )
-        button = here.index(">看九號表的流程</a>")
-        self.assertLess(button, here.index("九號表完成了嗎？"))
-        self.assertRegex(here[: button + 1], r'class="btn btn-primary btn-lg w-full[^"]*"[^>]*>$')
-        self.assertEqual(len(SOLID.findall(page)), 1)
-
-    def test_changing_an_answer_marks_it_with_a_frame_and_a_tick(self):
-        self.make(PTA_55, PTA_55)
-        GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
-        AidAndSubsidy.objects.create(user=self.user, certificate="yes")
-        page = self.page("?edit=assessment")
-        assessment = self.stops(page)["assessment"]
-        current = re.search(r'<button [^>]*value="yes"[^>]*>(.*?)</button>', assessment, re.S)
-        self.assertIn('class="btn btn-lg btn-outline-primary is-current"', current.group(0))
-        self.assertIn('aria-pressed="true"', current.group(0))
-        self.assertIn('<svg class="stop-answer-tick"', current.group(1))
-        self.assertEqual(len(SOLID.findall(page)), 1)
-
-    def test_other_stops_open_in_place_to_say_what_they_are(self):
-        self.make(PTA_55, PTA_55)
-        stops = self.stops()
-        here = stops.pop("assessment")
-        self.assertNotIn("<details", here)
-        for slug, stop in stops.items():
-            with self.subTest(slug=slug):
-                self.assertIn('<details class="route-about">', stop)
-                summary = stop[stop.index("<summary") : stop.index("</summary>")]
-                self.assertIn('<span class="route-title">', summary)
-                self.assertNotIn("<a ", summary)
-        types = stops["types-and-prices"]
-        body = types[types.index("</summary>") : types.index("</details>")]
-        self.assertIn("看助聽器有哪些外型、補助多少，和去哪裡買。", body)
-        self.assertIn(f'href="{reverse("guide_chapter", args=["types-and-prices"])}"', body)
-
-    def test_the_way_walked_and_the_done_ticks(self):
-        self.make(PTA_55, PTA_55)
-        AidAndSubsidy.objects.create(user=self.user, certificate="no_subsidy")
-        page = self.page()
-        stops = re.findall(r'<li class="route-stop([^"]*)" data-stop="([^"]+)"', page)
-        walked = [slug for classes, slug in stops if "is-walked" in classes]
-        self.assertEqual(walked, ["audiogram", "assessment"])
-        self.assertIn('style="--route-here: 2"', page)
-        done = self.stops(page)["assessment"]
-
-        self.assertRegex(
-            done,
-            r'<span class="route-number"><svg class="route-check" aria-hidden="true" '
-            r'focusable="false"[^>]*>.*?</svg><span class="visually-hidden">2</span></span>',
-        )
-
-    def test_a_questionnaire_without_an_audiogram_links_once_to_record_one(self):
+    def test_a_questionnaire_without_an_audiogram_links_to_record_one(self):
+        # The 記錄聽力圖 card's button, and a plain link in the 聽力圖 part (#779).
         Submission.objects.create(user=self.user, questionnaire=self.hhie_s)
         page = self.page()
-        self.assertEqual(len(SOLID.findall(page)), 1)
-        here = self.stops(page)["audiogram"]
-        self.assertRegex(here, r'class="btn btn-primary btn-lg w-full[^"]*"[^>]*>記錄聽力圖<')
+        self.assertEqual(SOLID.findall(page), [])
+        self.assertIn(f'<a class="guide-card-button" href="{reverse("audiogram_new")}">', page)
         audiogram = page[page.index('id="audiogram-title"') :]
         self.assertIn(f'<a href="{reverse("audiogram_new")}">記錄聽力圖</a>', audiogram)
 
@@ -129,8 +68,6 @@ class MyGuideRedesignTests(TestCase):
         page = self.page()
         self.assertEqual(SOLID.findall(page), ['class="btn btn-primary '])
         self.assertIn(">開始篩檢</a>", page)
-        here = self.stops(page)["audiogram"]
-        self.assertNotIn("btn-primary", here)
 
 
 class ChapterRedesignTests(TestCase):

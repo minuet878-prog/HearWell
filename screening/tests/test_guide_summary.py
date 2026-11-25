@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from screening.audiogram import DB_MAX
 from screening.care_journey import care_journey
+from screening.fitting_route import fitting_state
 from screening.models import (
     Answer,
     Audiogram,
@@ -272,7 +273,7 @@ QUESTIONNAIRE_FIRST = (
     "您的聽力圖是輕度聽力損失。輕度要不要評估選配，要看聽力對生活的影響，先做一份生活影響問卷。"
 )
 DO_QUESTIONNAIRE = "去做問卷"
-HERE = '<span class="route-mark">您在這裡</span>'
+# #779: the route is no longer drawn; whether it has a 目前這一站 is fitting_state's.
 
 
 class GuideSummaryStatesTests(TestCase):
@@ -500,6 +501,10 @@ class FittingAdviceGuideTests(TestCase):
         response = self.client.get(reverse("guide"))
         return response, test_guide.text_of(response)
 
+    def here(self):
+        """The route's 目前這一站, None while it waits (#779: no longer drawn on the page)."""
+        return fitting_state(self.user, timezone.localdate()).stop
+
     def assert_before_you_go(self, response, shown=True):
         before = reverse("guide_chapter", args=["before-you-go"])
         link = f'<a href="{before}">{BEFORE_YOU_GO}</a>'
@@ -516,16 +521,16 @@ class FittingAdviceGuideTests(TestCase):
                 self.assertIn(MILD_WITH_IMPACT, text)
                 self.assertNotIn(RECOMMENDS, text)
                 self.assert_before_you_go(response)
-                self.assertContains(response, HERE)
+                self.assertIsNotNone(self.here())
 
     def test_mild_without_life_impact_is_tracked_and_the_route_waits(self):
         self.answer(scores=SLIGHT)
         self.make((40, 40, 40, 40), (20, 20, 20, 20))
-        response, text = self.page()
+        _, text = self.page()
         self.assertIn(TRACK, text)
         self.assertNotIn("建議找聽力師評估選配", text)
         self.assertNotIn(BEFORE_YOU_GO, text)
-        self.assertNotContains(response, HERE)
+        self.assertIsNone(self.here())
 
     def test_mild_without_a_questionnaire_links_to_the_one_step_1_asks_for(self):
         self.make((30, 30, 30, 30), (20, 20, 20, 20))
@@ -535,7 +540,7 @@ class FittingAdviceGuideTests(TestCase):
         self.assertEqual(step_1[0], DO_QUESTIONNAIRE)
         self.assertContains(response, f'<a href="{step_1[1]}">{DO_QUESTIONNAIRE}</a>')
         self.assertNotIn(BEFORE_YOU_GO, text)
-        self.assertNotContains(response, HERE)
+        self.assertIsNone(self.here())
 
     def test_wearing_points_to_reapplying_whatever_the_advice(self):
         # Spec #693 acceptance 12: someone wearing hearing aids is not judged by it.
@@ -552,7 +557,7 @@ class FittingAdviceGuideTests(TestCase):
                 self.assertContains(response, f'<a href="{reapply}">{REAPPLY}</a>')
                 for wording in (TRACK, MILD_WITH_IMPACT, WITHIN_NORMAL):
                     self.assertNotIn(wording, text)
-                self.assertContains(response, HERE)  # 配戴之後, as before
+                self.assertEqual(self.here(), "after-fitting")  # as before
 
 
 class SelfReview693AdviceWordsTests(TestCase):

@@ -11,7 +11,7 @@
 {% include "screening/bird_dialogue.html" with lead="guide_chapter"|page_lead title=chapter.title %}
 {% block chapter %}{% endblock %}
 </article>
-{# #293: the stop's question again, signed in and not yet answered; the route moves on with it. #294: answered, the same place says what was kept and leads back to the route. #777: 修改 opens the question here, answering comes back here; the chapter's own address, as a form sent back with its errors is drawn at the answer's. #}
+{# #293: the stop's question again, signed in and not yet answered; the route moves on with it. #294: answered, the same place says what was kept and leads back to my guide (#779: its cards, as the route is gone). #777: 修改 opens the question here, answering comes back here; the chapter's own address, as a form sent back with its errors is drawn at the answer's. #}
 {% if foot %}
 {% url 'guide_chapter' chapter.slug as chapter_url %}
 <section id="stop-question" class="mt-6" data-jump-box aria-labelledby="stop-question-title">
@@ -25,7 +25,7 @@
     {% if foot.editing %}
     <p class="mt-2 mb-0"><a href="{{ chapter_url }}#stop-question">不用改了</a></p>
     {% elif not foot.answer %}
-    <p class="mt-2 mb-0">答了之後，選配路線會往下一站走。</p>
+    <p class="mt-2 mb-0">答了之後，首頁的照顧旅程會跟著往下走。</p>
     {% endif %}
     {# #777 (spec #774 acceptance 22, the owner's pick): form 9 done, its foot goes on to the notice, one question at a time with what is kept so far above it; answered, its answer and 修改. #}
     {% if notice %}
@@ -41,7 +41,7 @@
     </div>
     {% endif %}
     {% if foot.answer and not foot.editing %}
-    <a class="btn btn-primary btn-lg w-full mt-2" href="{% url 'guide' %}#contents-title">回選配路線看下一站</a>
+    <a class="btn btn-primary btn-lg w-full mt-2" href="{% url 'guide' %}">回到助聽器選配與補助</a>
     {% endif %}
 </section>
 {% endif %}

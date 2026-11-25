@@ -57,9 +57,10 @@ class ChapterInPlaceEditTests(TestCase):
         chapter = reverse("guide_chapter", args=["assessment"])
         self.assertIn(f'<input type="hidden" name="next" value="{chapter}#stop-question">', card)
         self.assertIn(f'<a href="{chapter}#stop-question">不用改了</a>', card)
-        # Open, the answer's own 修改 and the way back to the route give way to the question.
+        # Open, the answer's own 修改 and the way back to my guide (#779's wording) give way to
+        # the question.
         self.assertNotIn(">修改</a>", card)
-        self.assertNotIn("回選配路線看下一站", card)
+        self.assertNotIn("回到助聽器選配與補助", card)
 
     def test_a_new_answer_comes_back_to_the_chapter_s_foot(self):
         AidAndSubsidy.objects.create(user=self.user, certificate="yes")
