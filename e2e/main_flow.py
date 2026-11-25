@@ -3697,6 +3697,31 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             expect(following).to_be_focused()
             expect(following).to_have_css("opacity", "1")
 
+    def test_guide_arrow_brightness_returns_when_the_next_card_stops(self):
+        self.open(320, 640)
+        self.page.emulate_media(reduced_motion="no-preference")
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/guide")
+            row = self.main().locator(".guide-cards")
+            arrow = self.main().get_by_role("button", name="下一張引導卡")
+            arrow.scroll_into_view_if_needed()
+            expect(arrow).to_have_css("opacity", "1")
+            row.evaluate("""row => {
+                row.addEventListener("scrollend", () => {
+                    const arrow = document.querySelector(".guide-card-next");
+                    const next = row.querySelectorAll(".guide-card")[1].getBoundingClientRect();
+                    const box = row.getBoundingClientRect();
+                    const centered = Math.abs(next.x + next.width / 2 - box.x - box.width / 2);
+                    const opacity = getComputedStyle(arrow).opacity;
+                    window.guideArrowAtScrollEnd = {centered, opacity};
+                }, {once: true});
+            }""")
+            arrow.click()
+            self.page.wait_for_function("() => window.guideArrowAtScrollEnd")
+            result = self.page.evaluate("window.guideArrowAtScrollEnd")
+            self.assertLessEqual(result["centered"], 1)
+            self.assertEqual(result["opacity"], "1")
+
     def test_visible_guide_stamp_plays_without_horizontal_scrolling(self):
         self.open(320, 640)
         self.page.emulate_media(reduced_motion="no-preference")

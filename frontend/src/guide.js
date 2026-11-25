@@ -67,31 +67,43 @@ export function setUpGuideCards(row) {
   };
 
   const queuedDirections = [];
+  const hasScrollEnd = "onscrollend" in row;
   let moving = false;
+  let wrapping = false;
   let scrollTimer;
 
   function checkWhenSettled() {
-    arrows.setAttribute("data-guide-scrolling", "");
-    window.clearTimeout(scrollTimer);
-    scrollTimer = window.setTimeout(settle, 120);
+    if (!wrapping) arrows.setAttribute("data-guide-scrolling", "");
+    if (!hasScrollEnd) {
+      window.clearTimeout(scrollTimer);
+      scrollTimer = window.setTimeout(settle, 120);
+    }
   }
 
   function goTo(left) {
+    if (Math.abs(row.scrollLeft - left) < 1) {
+      settle();
+      return;
+    }
     moving = true;
-    row.scrollTo({ left, behavior: reducedMotion.matches ? "auto" : "smooth" });
     checkWhenSettled();
+    row.scrollTo({ left, behavior: reducedMotion.matches ? "auto" : "smooth" });
   }
 
   function settle() {
     if (row.hasAttribute("data-dragging")) return;
     const offsets = positions();
-    let index = nearestIndex(offsets);
-    // Continue on the corresponding real card after its look-alike comes to rest.
+    const index = nearestIndex(offsets);
+    // Finish on the real card without dimming the arrows again for the instant reposition.
     if (index === 0 || index === cards.length - 1) {
-      index = index === 0 ? originals.length : 1;
-      row.scrollTo({ left: offsets[index], behavior: "auto" });
+      wrapping = moving = true;
+      if (!queuedDirections.length) arrows.removeAttribute("data-guide-scrolling");
+      const real = index === 0 ? originals.length : 1;
+      checkWhenSettled();
+      row.scrollTo({ left: offsets[real], behavior: "auto" });
+      return;
     }
-    moving = false;
+    wrapping = moving = false;
     if (queuedDirections.length) {
       goTo(offsets[index + queuedDirections.shift()]);
     } else {
@@ -107,6 +119,7 @@ export function setUpGuideCards(row) {
   previous.addEventListener("click", () => requestStep(-1));
   following.addEventListener("click", () => requestStep(1));
   row.addEventListener("scroll", checkWhenSettled, { passive: true });
+  row.addEventListener("scrollend", settle);
   controls.setAttribute("data-guide-controls", "");
   row.scrollTo({ left: positions()[1], behavior: "auto" });
   function placeArrows() {

@@ -174,12 +174,9 @@
   }
 
   @media (prefers-reduced-motion: no-preference) {
-    .guide-card-arrow {
-      transition: opacity 100ms ease-out;
-    }
-
     .guide-card-arrows[data-guide-scrolling] .guide-card-arrow:not(:active, :focus-visible) {
       opacity: 0.38;
+      transition: opacity 100ms ease-out;
     }
 
     .guide-card-arrow:active {
