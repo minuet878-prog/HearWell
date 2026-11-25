@@ -50,7 +50,8 @@ export function setUpGuideCards(row) {
     const cardBox = card.getBoundingClientRect();
     const art = card.querySelector(".guide-card-art").getBoundingClientRect();
     const rowBox = row.getBoundingClientRect();
-    arrows.style.setProperty("--guide-art-x", `${art.left + art.width / 2 - rowBox.left}px`);
+    arrows.style.setProperty("--guide-card-left", `${cardBox.left - rowBox.left}px`);
+    arrows.style.setProperty("--guide-card-right", `${rowBox.right - cardBox.right}px`);
     arrows.style.setProperty("--guide-art-y", `${card.offsetTop + art.top - cardBox.top + art.height / 2}px`);
     previous.disabled = row.scrollLeft <= 1;
     following.disabled = row.scrollLeft >= maximum() - 1;

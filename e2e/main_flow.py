@@ -3565,14 +3565,18 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             subsidy.click()
             expect(self.page).to_have_url(f"{guide}/subsidy")
 
-    def test_round_guide_arrows_flank_the_illustration_and_change_color_when_pressed(self):
+    def test_round_guide_arrows_at_the_card_edges_press_in_without_changing_color(self):
         self.open(320, 640)
-        self.page.emulate_media(reduced_motion="reduce")
+        self.page.emulate_media(reduced_motion="no-preference")
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/guide")
             previous = self.main().get_by_role("button", name="上一張引導卡")
             following = self.main().get_by_role("button", name="下一張引導卡")
-            art = self.main().locator(".guide-card-art svg").first
+            card = self.main().locator(".guide-card").first
+            art = card.locator(".guide-card-art svg")
+            self.main().locator(".guide-cards").scroll_into_view_if_needed()
+            self.page.wait_for_function("""() => document.querySelector(".guide-card")
+                .getAnimations().every(animation => animation.playState === "finished")""")
             expect(following).to_have_css("border-radius", "50%")
             for zoom in (False, True):
                 with self.subTest(double_text=zoom):
@@ -3580,6 +3584,12 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                         self.assert_fits_a_phone_at_double_text_size("/guide arrows")
                     art_box, left, right = (
                         locator.bounding_box() for locator in (art, previous, following)
+                    )
+                    card_box = card.bounding_box()
+                    self.assertAlmostEqual(
+                        left["x"] - card_box["x"],
+                        card_box["x"] + card_box["width"] - right["x"] - right["width"],
+                        delta=1,
                     )
                     self.assertLessEqual(left["x"] + left["width"], art_box["x"])
                     self.assertGreaterEqual(right["x"], art_box["x"] + art_box["width"])
@@ -3595,7 +3605,11 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             background = "button => getComputedStyle(button).backgroundColor"
             resting = following.evaluate(background)
             self.page.mouse.down()
-            self.assertNotEqual(following.evaluate(background), resting)
+            self.assertEqual(following.evaluate(background), resting)
+            expect(following).to_have_css("transform", "matrix(0.94, 0, 0, 0.94, 0, 2)")
+            self.assertIn(
+                "inset", following.evaluate("button => getComputedStyle(button).boxShadow")
+            )
             self.page.mouse.up()
 
     def test_visible_guide_stamp_plays_without_horizontal_scrolling(self):
