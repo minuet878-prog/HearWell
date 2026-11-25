@@ -14,11 +14,15 @@ NO_FORM, HAS_FORM, APPLIED, NOTICE = "no_form", "has_form", "applied", "notice"
 BASIC, MID, ADVANCED, CROS = "basic", "mid", "advanced", "cros"
 ONE, BOTH = "one", "both"
 LOW, NEAR_LOW, GENERAL = "low", "near_low", "general"
+YES, NO, UNSURE = "yes", "no", "unsure"
 
 # The most per hearing aid (基準表 items 82–84), or per set of two for 雙對側傳聲型 (item 85).
 MOST_PER_AID = {BASIC: 2000, MID: 10000, ADVANCED: 20000, CROS: 30000}
 # Article 3: the share of that most, in percent, by the household.
 SHARE_PERCENT = {LOW: 100, NEAR_LOW: 75, GENERAL: 50}
+# The 基準表's special rule (#776): 進階型 for someone first assessed mild at 65 or over has a
+# cap on the total within the years it must last, by the household.
+MILD_AT_65_CAP = {LOW: 20000, NEAR_LOW: 15000, GENERAL: 10000}
 
 
 @dataclass(frozen=True)
@@ -60,6 +64,12 @@ HOUSEHOLD = Question(
     "household",
     "戶籍的福利身分是哪一種？",
     ((GENERAL, "一般戶"), (NEAR_LOW, "中低收入戶"), (LOW, "低收入戶")),
+)
+# #776: asked with 進階型 alone, for the special rule's cap (MILD_AT_65_CAP).
+MILD_AT_65 = Question(
+    "mild_at_65",
+    "是不是滿 65 歲以後才第一次鑑定為輕度？",
+    ((YES, "是"), (NO, "否"), (UNSURE, "不確定")),
 )
 
 
@@ -158,15 +168,25 @@ def _amount(answers):
     return MOST_PER_AID[grade] * SHARE_PERCENT[answers[HOUSEHOLD.name]] // 100 * aids
 
 
+def _mild_at_65_may_lower(cap):
+    return Item(
+        f"如果是滿 65 歲以後才第一次鑑定為輕度，進階型的補助總額最多 {cap:,} 元，會比上面的金額少。"
+    )
+
+
 def _on_the_way(answers):
     """The questions asked, in order; each one decided only once those before it are answered."""
     yield CERTIFICATE
-    yield PROGRESS
+    # Planning to apply has no application under way yet (the owner's pick after #775).
+    if answers[CERTIFICATE.name] != PLANNING:
+        yield PROGRESS
     yield GRADE
     # A set of 雙對側傳聲型 counts as one, for either ear (item 85).
     if answers[GRADE.name] != CROS:
         yield EARS
     yield HOUSEHOLD
+    if answers[GRADE.name] == ADVANCED:
+        yield MILD_AT_65
 
 
 def estimate(answers):
@@ -175,13 +195,19 @@ def estimate(answers):
     for question in _on_the_way(answers):
         if question.name not in answers:
             return question
+    amount, reminders = _amount(answers), []
+    if answers[GRADE.name] == ADVANCED:
+        cap = MILD_AT_65_CAP[answers[HOUSEHOLD.name]]
+        if answers[MILD_AT_65.name] == YES:
+            amount = min(amount, cap)
+        # Not sure: the usual amount, and a word on the cap only where it would make it less.
+        elif answers[MILD_AT_65.name] == UNSURE and cap < amount:
+            reminders.append(_mild_at_65_may_lower(cap))
     if answers[CERTIFICATE.name] == PLANNING:
-        return Result(_amount(answers), _ASSESSMENT_FIRST, (_NOTICE_FIRST,))
+        return Result(amount, _ASSESSMENT_FIRST, (*reminders, _NOTICE_FIRST))
     progress = answers[PROGRESS.name]
     if progress != NOTICE:
-        reminders = (_NOTICE_FIRST,)
+        reminders.append(_NOTICE_FIRST)
     elif answers[GRADE.name] != BASIC:
-        reminders = (_FORM_25_DUE,)
-    else:
-        reminders = ()
-    return Result(_amount(answers), _NEXT_STEPS[progress], reminders)
+        reminders.append(_FORM_25_DUE)
+    return Result(amount, _NEXT_STEPS[progress], tuple(reminders))

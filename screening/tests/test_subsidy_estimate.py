@@ -19,6 +19,13 @@ from screening.views import guide
 NOTICE_FIRST = "先拿核定公文再買，先買不補助。"
 FORM_25 = "中階型以上要在配戴 1 到 3 個月內做二十五號表，核銷時要附上。"
 HOSPITALS = ("看各縣市的鑑定醫院", "/guide/assessment#hospitals-title")
+MILD_AT_65 = "是不是滿 65 歲以後才第一次鑑定為輕度？"
+
+
+def _mild_at_65_may_lower(cap):
+    return (
+        f"如果是滿 65 歲以後才第一次鑑定為輕度，進階型的補助總額最多 {cap:,} 元，會比上面的金額少。"
+    )
 
 
 def _answers(**changes):
@@ -30,6 +37,8 @@ def _answers(**changes):
         "grade": rules.MID,
         "ears": rules.BOTH,
         "household": rules.GENERAL,
+        # Asked only with 進階型.
+        "mild_at_65": rules.NO,
         **changes,
     }
 
@@ -41,6 +50,15 @@ def _asked(answers):
         asked.append(step.name)
         given[step.name] = answers[step.name]
     return asked
+
+
+def _given(answers):
+    """answers cut down to the questions asked, as the page would send them."""
+    return {name: answers[name] for name in _asked(answers)}
+
+
+def _estimate(**changes):
+    return estimate(_given(_answers(**changes)))
 
 
 class EstimateQuestionsTests(SimpleTestCase):
@@ -55,10 +73,31 @@ class EstimateQuestionsTests(SimpleTestCase):
             _asked(_answers(grade=rules.CROS)), ["certificate", "progress", "grade", "household"]
         )
 
-    def test_planning_to_apply_goes_on_through_the_same_questions(self):
+    # Spec #774 acceptance 14: 進階型 alone is asked the 65 mild question, after the
+    # household.
+    def test_only_the_advanced_type_is_asked_about_mild_at_65(self):
+        self.assertEqual(
+            _asked(_answers(grade=rules.ADVANCED)),
+            ["certificate", "progress", "grade", "ears", "household", "mild_at_65"],
+        )
+        for grade in (rules.BASIC, rules.MID, rules.CROS):
+            with self.subTest(grade=grade):
+                self.assertNotIn("mild_at_65", _asked(_answers(grade=grade)))
+
+    def test_the_65_mild_question_is_yes_no_or_not_sure(self):
+        answers = _given(_answers(grade=rules.ADVANCED))
+        del answers["mild_at_65"]
+        question = estimate(answers)
+        self.assertEqual(question.label, MILD_AT_65)
+        self.assertEqual(
+            question.choices, ((rules.YES, "是"), (rules.NO, "否"), (rules.UNSURE, "不確定"))
+        )
+
+    # Spec #774, the owner's pick after #775: planning to apply skips how far it has got.
+    def test_planning_to_apply_skips_the_progress_and_goes_on_to_the_grade(self):
         self.assertEqual(
             _asked(_answers(certificate=rules.PLANNING)),
-            ["certificate", "progress", "grade", "ears", "household"],
+            ["certificate", "grade", "ears", "household"],
         )
 
     # #775: the first question has only these two answers until #776 adds 沒有.
@@ -67,12 +106,12 @@ class EstimateQuestionsTests(SimpleTestCase):
         self.assertEqual([value for value, _ in first.choices], [rules.HAS, rules.PLANNING])
 
     def test_every_answer_given_gives_the_result(self):
-        self.assertIsInstance(estimate(_answers()), Result)
+        self.assertIsInstance(_estimate(), Result)
 
 
 class EstimateRulesTests(SimpleTestCase):
     def test_the_notice_both_ears_mid_general_estimates_10000_and_buying_in_6_months(self):
-        result = estimate(_answers())
+        result = _estimate()
         self.assertIsInstance(result, Result)
         self.assertEqual(result.amount, 10000)
         self.assertEqual(result.amount_words, "10,000 元")
@@ -96,7 +135,7 @@ class EstimateRulesTests(SimpleTestCase):
             for ears, times in ((rules.ONE, 1), (rules.BOTH, 2)):
                 with self.subTest(grade=grade, household=household, ears=ears):
                     answers = _answers(grade=grade, household=household, ears=ears)
-                    self.assertEqual(estimate(answers).amount, amount * times)
+                    self.assertEqual(estimate(_given(answers)).amount, amount * times)
 
     def test_cros_counts_as_one_set_whatever_the_household(self):
         for household, amount in (
@@ -109,8 +148,53 @@ class EstimateRulesTests(SimpleTestCase):
                 del answers["ears"]
                 self.assertEqual(estimate(answers).amount, amount)
 
+    # Spec #774 acceptance 14 and #776: 進階型 first assessed mild at 65 or over has a cap on
+    # the total (research.md, 基準表 special rules), the smaller of it and the usual amount.
+    def test_advanced_mild_at_65_both_ears_by_household(self):
+        for household, yes, usual in (
+            (rules.GENERAL, 10000, 20000),
+            (rules.NEAR_LOW, 15000, 30000),
+            (rules.LOW, 20000, 40000),
+        ):
+            for answer, amount in ((rules.YES, yes), (rules.NO, usual), (rules.UNSURE, usual)):
+                with self.subTest(household=household, mild_at_65=answer):
+                    result = _estimate(grade=rules.ADVANCED, household=household, mild_at_65=answer)
+                    self.assertEqual(result.amount, amount)
+
+    def test_advanced_mild_at_65_one_ear_is_already_within_the_cap(self):
+        for household, amount in (
+            (rules.GENERAL, 10000),
+            (rules.NEAR_LOW, 15000),
+            (rules.LOW, 20000),
+        ):
+            for answer in (rules.YES, rules.NO, rules.UNSURE):
+                with self.subTest(household=household, mild_at_65=answer):
+                    result = _estimate(
+                        grade=rules.ADVANCED, ears=rules.ONE, household=household, mild_at_65=answer
+                    )
+                    self.assertEqual(result.amount, amount)
+
+    def test_not_sure_says_the_cap_may_make_it_less(self):
+        for household, cap in ((rules.GENERAL, 10000), (rules.NEAR_LOW, 15000), (rules.LOW, 20000)):
+            with self.subTest(household=household):
+                result = _estimate(
+                    grade=rules.ADVANCED, household=household, mild_at_65=rules.UNSURE
+                )
+                words = [item.words for item in result.reminders]
+                self.assertIn(_mild_at_65_may_lower(cap), words)
+
+    def test_yes_no_and_a_cap_that_changes_nothing_say_nothing_of_it(self):
+        for changes in (
+            {"mild_at_65": rules.YES},
+            {"mild_at_65": rules.NO},
+            {"mild_at_65": rules.UNSURE, "ears": rules.ONE},
+        ):
+            with self.subTest(**changes):
+                result = _estimate(grade=rules.ADVANCED, **changes)
+                self.assertFalse([i for i in result.reminders if "65 歲" in i.words])
+
     def test_one_ear_basic_low_income_is_2000(self):
-        result = estimate(_answers(grade=rules.BASIC, ears=rules.ONE, household=rules.LOW))
+        result = _estimate(grade=rules.BASIC, ears=rules.ONE, household=rules.LOW)
         self.assertEqual(result.amount_words, "2,000 元")
 
     def test_cros_near_low_income_is_22500(self):
@@ -123,10 +207,10 @@ class EstimateNextStepTests(SimpleTestCase):
     """Spec #774 acceptance 12 and 15: one thing to do now, by how far the application has got."""
 
     def _step(self, **changes):
-        return estimate(_answers(**changes)).next_step
+        return _estimate(**changes).next_step
 
     def _reminders(self, **changes):
-        return [item.words for item in estimate(_answers(**changes)).reminders]
+        return [item.words for item in _estimate(**changes).reminders]
 
     def test_each_progress_has_its_own_next_step(self):
         for progress, title in (
@@ -138,19 +222,17 @@ class EstimateNextStepTests(SimpleTestCase):
             with self.subTest(progress=progress):
                 self.assertEqual(self._step(progress=progress).title, title)
 
-    def test_planning_to_apply_leads_to_the_assessment_hospitals_whatever_the_progress(self):
-        for progress in (rules.NO_FORM, rules.HAS_FORM, rules.APPLIED, rules.NOTICE):
-            with self.subTest(progress=progress):
-                step = self._step(certificate=rules.PLANNING, progress=progress)
-                self.assertEqual(step.title, "先找醫院做身障鑑定")
-                self.assertEqual((step.link.words, step.link.url), HOSPITALS)
+    def test_planning_to_apply_leads_to_the_assessment_hospitals(self):
+        step = self._step(certificate=rules.PLANNING)
+        self.assertEqual(step.title, "先找醫院做身障鑑定")
+        self.assertEqual((step.link.words, step.link.url), HOSPITALS)
 
     def test_before_the_notice_every_result_says_to_get_it_before_buying(self):
         for changes in (
             {"progress": rules.NO_FORM},
             {"progress": rules.HAS_FORM},
             {"progress": rules.APPLIED},
-            {"certificate": rules.PLANNING, "progress": rules.NOTICE},
+            {"certificate": rules.PLANNING},
         ):
             with self.subTest(**changes):
                 self.assertIn(NOTICE_FIRST, self._reminders(**changes))
@@ -190,10 +272,9 @@ class SubsidyEstimatePageTests(TestCase):
         return self.client.post(self.url, {"shown": shown, **answers})
 
     def _result(self, **changes):
-        answers = _answers(**changes)
-        if answers["grade"] == rules.CROS:
-            del answers["ears"]
-        return self._main(self._post("household", **answers))
+        """The result page, every question asked sent with its answer, the last one shown."""
+        answers = _given(_answers(**changes))
+        return self._main(self._post(list(answers)[-1], **answers))
 
     def _legend(self, main):
         return _text(re.search(r"<legend[^>]*>(.*?)</legend>", main, re.S).group(1)).strip()
@@ -359,6 +440,34 @@ class SubsidyEstimatePageTests(TestCase):
                 self.assertIn(f"現在要做的事 {title}", text)
                 self.assertIn(NOTICE_FIRST, text)
 
+    # Spec #774 acceptance 14 (#776): 進階型 is asked one more question after the household.
+    def test_the_advanced_type_is_asked_about_mild_at_65_last(self):
+        given = _given(_answers(grade=rules.ADVANCED))
+        del given["mild_at_65"]
+        main = self._main(self._post("household", **given))
+        self.assertEqual(self._legend(main), f"第 6 題 {MILD_AT_65}")
+        for words in ("是", "否", "不確定"):
+            self.assertRegex(main, rf"<label[^>]*>\s*<input[^>]*>\s*{words}\s*</label>")
+
+    def test_mild_at_65_caps_the_amount_and_not_sure_says_it_may_be_less(self):
+        for changes, amount in (
+            ({"mild_at_65": rules.YES}, "10,000 元"),
+            ({"mild_at_65": rules.YES, "household": rules.NEAR_LOW}, "15,000 元"),
+            ({"mild_at_65": rules.UNSURE}, "20,000 元"),
+        ):
+            with self.subTest(**changes):
+                text = _text(self._card(self._result(grade=rules.ADVANCED, **changes)))
+                self.assertIn(f"預估最高補助 {amount}", text)
+                self.assertEqual(
+                    _mild_at_65_may_lower(10000) in text, changes["mild_at_65"] == rules.UNSURE
+                )
+
+    # The owner's pick after #775: planning to apply goes from the first question to the grade.
+    def test_planning_to_apply_is_asked_the_grade_next(self):
+        main = self._main(self._post("certificate", certificate=rules.PLANNING))
+        self.assertEqual(self._legend(main), "第 2 題 預計買哪一級的助聽器？")
+        self.assertNotIn("辦到哪一步", main)
+
     def test_planning_to_apply_links_to_the_assessment_hospitals(self):
         card = self._card(self._result(certificate=rules.PLANNING))
         self.assertIn("現在要做的事 先找醫院做身障鑑定", _text(card))
@@ -480,7 +589,9 @@ class SubsidyEstimateSignedInTests(TestCase):
         before, home = self._records(), self._home()
         url = reverse("guide_subsidy")
         self.assertEqual(self.client.get(url).status_code, 200)
-        answers = _answers(certificate=rules.PLANNING, grade=rules.ADVANCED, household=rules.LOW)
+        answers = _given(
+            _answers(certificate=rules.PLANNING, grade=rules.ADVANCED, household=rules.LOW)
+        )
         given = {}
         for name, value in answers.items():
             given[name] = value
