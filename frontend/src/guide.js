@@ -71,12 +71,13 @@ export function setUpGuideCards(row) {
   let moving = false;
   let wrapping = false;
   let scrollTimer;
+  let slideFrame;
 
   function checkWhenSettled() {
     if (!wrapping) arrows.setAttribute("data-guide-scrolling", "");
     if (!hasScrollEnd) {
       window.clearTimeout(scrollTimer);
-      scrollTimer = window.setTimeout(settle, 120);
+      if (slideFrame === undefined) scrollTimer = window.setTimeout(settle, 120);
     }
   }
 
@@ -87,11 +88,30 @@ export function setUpGuideCards(row) {
     }
     moving = true;
     checkWhenSettled();
-    row.scrollTo({ left, behavior: reducedMotion.matches ? "auto" : "smooth" });
+    if (reducedMotion.matches) {
+      row.scrollTo({ left, behavior: "auto" });
+      return;
+    }
+
+    const from = row.scrollLeft;
+    const started = performance.now();
+    row.setAttribute("data-guide-sliding", "");
+    function slide(now) {
+      const progress = Math.min((now - started) / 140, 1);
+      row.scrollLeft = from + (left - from) * (1 - (1 - progress) ** 3);
+      if (progress < 1) {
+        slideFrame = window.requestAnimationFrame(slide);
+        return;
+      }
+      slideFrame = undefined;
+      row.removeAttribute("data-guide-sliding");
+      settle();
+    }
+    slideFrame = window.requestAnimationFrame(slide);
   }
 
   function settle() {
-    if (row.hasAttribute("data-dragging")) return;
+    if (slideFrame !== undefined || row.hasAttribute("data-dragging")) return;
     const offsets = positions();
     const index = nearestIndex(offsets);
     // Finish on the real card without dimming the arrows again for the instant reposition.
@@ -133,9 +153,19 @@ export function setUpGuideCards(row) {
     layout.observe(row);
   }
 
-  let start;
-  row.addEventListener("pointerdown", (event) => {
+  function interruptSlide() {
     queuedDirections.length = 0;
+    if (slideFrame === undefined) return;
+    window.cancelAnimationFrame(slideFrame);
+    slideFrame = undefined;
+    row.removeAttribute("data-guide-sliding");
+    settle();
+  }
+
+  let start;
+  row.addEventListener("wheel", interruptSlide, { passive: true });
+  row.addEventListener("pointerdown", (event) => {
+    interruptSlide();
     if (event.pointerType !== "mouse" || event.button !== 0) return;
     start = { x: event.clientX, left: row.scrollLeft, pointerId: event.pointerId };
   });

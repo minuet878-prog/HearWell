@@ -3707,14 +3707,17 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             arrow.scroll_into_view_if_needed()
             expect(arrow).to_have_css("opacity", "1")
             row.evaluate("""row => {
-                row.addEventListener("scrollend", () => {
+                function atEnd() {
+                    if (row.hasAttribute("data-guide-sliding")) return;
                     const arrow = document.querySelector(".guide-card-next");
                     const next = row.querySelectorAll(".guide-card")[1].getBoundingClientRect();
                     const box = row.getBoundingClientRect();
                     const centered = Math.abs(next.x + next.width / 2 - box.x - box.width / 2);
                     const opacity = getComputedStyle(arrow).opacity;
                     window.guideArrowAtScrollEnd = {centered, opacity};
-                }, {once: true});
+                    row.removeEventListener("scrollend", atEnd);
+                }
+                row.addEventListener("scrollend", atEnd);
             }""")
             arrow.click()
             self.page.wait_for_function("() => window.guideArrowAtScrollEnd")

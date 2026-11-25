@@ -198,6 +198,9 @@
 
   .guide-cards[data-dragging] {
     cursor: grabbing;
+  }
+
+  .guide-cards:is([data-dragging], [data-guide-sliding]) {
     scroll-snap-type: none;
   }
 
