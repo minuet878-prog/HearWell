@@ -5,5 +5,6 @@
 - [Issue tracker](issue-tracker.md)：規格、工作票、子議題與原生阻擋關係的使用方式。
 - [分流標籤](triage-labels.md)：待釐清、可交代理或須人工處理等標籤定義。
 - [領域文件](domain.md)：專案詞彙與新決策紀錄的讀取位置及維護方式。
+- [交叉審查怎麼叫](cross-review.md)：第 4b 步在背景叫 Codex、Gemini、Claude Code 審查的指令與交辦範本。
 
 任務中的授權、服務與資料操作規則，仍以根目錄工作指引為準。
