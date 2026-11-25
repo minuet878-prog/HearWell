@@ -1,15 +1,5 @@
-// #467: 我的選配指引's 選配路線 and the guide chapters' folds (H2). The route's steps share
-// step-list.js with the home page's 照顧旅程 (#459).
-import { playOnceATab } from "./step-list.js";
-
-// I2: the route's entrance (step-list.js), but only with a 目前這一站 to play up to, and not while
-// a stop just answered draws its own tick (#336): not both at once.
-export function playRouteOnce(win = window) {
-  const doc = win.document;
-  if (!doc.querySelector(".route-stop.is-here")) return;
-  if (doc.querySelector(".route-stop.is-done-now")) return;
-  playOnceATab(win, "route-played", "route-plays");
-}
+// #467: the guide chapters' folds (H2). #779: my guide no longer draws the 選配路線, so its
+// entrance went with it.
 
 // H2: a chapter's folds come open in the page, so without JavaScript every part shows in full.
 // Here they fold away, all but the one a jump lands on (from the route, 補助檢核 or the

@@ -1,5 +1,5 @@
 {% load static %}
-{# #293: a 選配路線 stop's question, on the route and at the foot of its chapter. Each answer is a submit button, so one press sends it without JavaScript; the current answer is framed with a tick (#467). #295: 配戴之後's date and choices are sent with one save button instead. #}
+{# #293: a 選配路線 stop's question at the foot of its chapter (#779: no longer on my guide). Each answer is a submit button, so one press sends it without JavaScript; the current answer is framed with a tick (#467). #295: 配戴之後's date and choices are sent with one save button instead. #}
 <form method="post" action="{% url 'route_answer' %}" class="stop-question">
     {% csrf_token %}
     <input type="hidden" name="stop" value="{{ stop }}">
@@ -34,7 +34,7 @@
     {% endfor %}
     {% if question.save_label %}
     <div class="stop-answers">
-        <button type="submit" class="btn {% if on_route %}btn-outline-primary{% else %}btn-primary{% endif %} btn-lg">{{ question.save_label }}</button>
+        <button type="submit" class="btn btn-primary btn-lg">{{ question.save_label }}</button>
         {% if question.answered %}<button type="submit" name="{{ question.NOT_FITTED }}" value="1" class="btn btn-outline-primary btn-lg">還沒開始戴</button>{% endif %}
     </div>
     {% endif %}

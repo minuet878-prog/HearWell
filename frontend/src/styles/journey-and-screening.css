@@ -1273,11 +1273,3 @@
     }
   }
 }
-
-@keyframes route-line {
-  from { transform: scaleY(0); }
-}
-
-@keyframes route-ring {
-  50% { box-shadow: 0 0 0 0.75rem rgba(31, 78, 140, 0.22); }
-}

@@ -29,7 +29,7 @@
             <span class="guide-card-art">{% include "screening/guide/card_icon.html" with icon=card.icon %}</span>
             <h3 id="card-{{ card.slug }}-title" class="guide-card-title">{{ card.title }}</h3>
             <p class="guide-card-point">{{ card.point }}</p>
-            <a class="guide-card-button" href="{{ card.button.1 }}">{{ card.button.0 }}</a>
+            <a class="btn btn-hero btn-lg guide-card-button" href="{{ card.button.1 }}">{{ card.button.0 }}</a>
         </li>
         {% endfor %}
     </ol>

@@ -15,7 +15,7 @@ SLUGS = ("audiogram", "subsidy", "before-you-go", "types-and-prices", "after-fit
 TILES = ("assessment", "form-9", "before-you-go", "types-and-prices", "after-fitting", "form-25")
 CARD = re.compile(r'<li class="guide-card[^"]*" data-card="([a-z-]+)".*?</li>', re.S)
 TILE = re.compile(r'<a class="chapter-tile" href="/guide/([a-z0-9-]+)"')
-BUTTON = re.compile(r'<a class="guide-card-button" href="([^"]+)">')
+BUTTON = re.compile(r'<a class="btn btn-hero btn-lg guide-card-button" href="([^"]+)">')
 STAMP = "已完成"
 
 

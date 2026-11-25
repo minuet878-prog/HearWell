@@ -60,7 +60,10 @@ class MyGuideRedesignTests(TestCase):
         Submission.objects.create(user=self.user, questionnaire=self.hhie_s)
         page = self.page()
         self.assertEqual(SOLID.findall(page), [])
-        self.assertIn(f'<a class="guide-card-button" href="{reverse("audiogram_new")}">', page)
+        self.assertIn(
+            f'<a class="btn btn-hero btn-lg guide-card-button" href="{reverse("audiogram_new")}">',
+            page,
+        )
         audiogram = page[page.index('id="audiogram-title"') :]
         self.assertIn(f'<a href="{reverse("audiogram_new")}">記錄聽力圖</a>', audiogram)
 

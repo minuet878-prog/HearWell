@@ -763,118 +763,6 @@
     line-height: 1.4;
   }
 
-  /* My guide's 選配路線 (#258, #467): numbered stops on a line (N3, ADR 0043), the line blue as
-     far as the 目前這一站, which is a pale blue card beside it (the home page's 現在這一步).
-     Marks are words, never the level colours (ADR 0007). The number's size is shared with the
-     folded 補助站's line (#596), so that line is level with the titles. */
-  .route,
-  .route-fold {
-    --route-size: 1.7778rem;
-  }
-
-  .route {
-    container-type: inline-size;
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  .route-stop {
-    position: relative;
-    display: flex;
-    gap: 0.75rem;
-    padding-bottom: 0.75rem;
-  }
-
-  .route-stop:not(:last-child)::after {
-    content: "";
-    position: absolute;
-    top: calc(var(--route-size) + 0.25rem);
-    bottom: 0.25rem;
-    left: calc((var(--route-size) - 2px) / 2);
-    width: 2px;
-    border-radius: var(--radius-pill);
-    background-color: var(--color-line-strong);
-  }
-
-  /* #467 I2: the way walked, up to the 目前這一站, is blue. */
-  .route-stop.is-walked::after {
-    z-index: 1;
-    background-color: var(--color-primary);
-    transform-origin: top;
-  }
-
-  /* A white circle in a 2px blue frame, like the chapters' .step-list-number; a done stop's holds
-     a blue tick (blue, not green, as on the home page: green is a level's colour). */
-  .route-number {
-    flex: none;
-    width: var(--route-size);
-    height: var(--route-size);
-    margin-top: 0.3rem;
-    border: 2px solid var(--color-primary);
-    border-radius: 50%;
-    background-color: #fff;
-    color: var(--color-primary);
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .route-box {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-
-  .route-title {
-    color: var(--color-heading);
-    font-weight: 700;
-  }
-
-  .route-marks {
-    display: block;
-    margin: 0;
-    color: var(--color-muted);
-    font-weight: 400;
-  }
-
-  .route-note {
-    margin: 0.25rem 0 0;
-  }
-
-  /* 不適用 (#293): a pale grey circle, the 不適用 mark saying so in words; the text keeps its
-     contrast. */
-  .route-stop.is-na .route-number {
-    border-color: var(--color-border);
-    background-color: var(--color-surface);
-    color: var(--color-body);
-  }
-
-  .route-check,
-  .route-tick {
-    width: 60%;
-    height: 60%;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 3;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    stroke-dasharray: 1;
-  }
-
-  /* #296: said on the line on to the next stop, beside it under the box. */
-  .route-stop:has(.route-gap) {
-    flex-wrap: wrap;
-  }
-
-  .route-gap {
-    flex-basis: 100%;
-    margin: 0;
-    padding-left: calc(var(--route-size) + 0.75rem);
-    color: var(--color-muted);
-    font-size: 1rem;
-  }
-
   /* #293: the answer in short under a stop, in the muted grey, as the field help is. */
   .route-answer {
     margin: 0.5rem 0 0;
@@ -882,8 +770,8 @@
     font-size: 1rem;
   }
 
-  /* #293: a stop's question, on the route and at a chapter's foot. Each answer is a large
-     button; long answers wrap inside it rather than widening a phone page. */
+  /* #293: a stop's question at a chapter's foot. Each answer is a large button; long answers
+     wrap inside it rather than widening a phone page. */
   .stop-question {
     margin-top: 0.75rem;
   }
@@ -915,37 +803,6 @@
       grid-template-columns: none;
       grid-auto-columns: minmax(0, 1fr);
       grid-auto-flow: column;
-    }
-  }
-
-  /* #336 (spec #326 E5, ADR 0028): the stop an answer on the route just made 已完成, on the page
-     the answer goes back to only: its tick draws once in 0.45 s, as the score gauge's arcs do;
-     with reduced motion it is simply there. */
-  @media (prefers-reduced-motion: no-preference) {
-    .route-tick path {
-      animation: gauge-draw 0.45s ease-out both;
-    }
-  }
-
-  /* At large text sizes the box drops under the number instead of shrinking to a few
-     characters a line; the joining line would cross it, so it goes. */
-  @container (max-width: 15rem) {
-    .route-stop {
-      flex-direction: column;
-      gap: 0.4rem;
-    }
-
-    .route-stop:not(:last-child)::after {
-      display: none;
-    }
-
-    /* Stacked, the line's words simply follow the box; wrapping a column would add columns. */
-    .route-stop:has(.route-gap) {
-      flex-wrap: nowrap;
-    }
-
-    .route-gap {
-      padding-left: 0;
     }
   }
 

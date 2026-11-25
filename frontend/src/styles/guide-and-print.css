@@ -104,168 +104,144 @@
   }
 }
 
-/* #467 hearing aid guide (the #466 mockup A, the owner's picks H1 + H2 and I1 + I2): the
-   route's rows that open in place and its 您在這裡 card, the route's entrance, the audiogram's
-   subheads, the chapters' key cards and folds, and source links tall enough to tap. */
+/* #467 hearing aid guide (the #466 mockup A, the owner's picks H1 + H2): my guide's 引導卡 and
+   章節磚 (#779, in place of the route), the audiogram's subheads, the chapters' key cards and
+   folds, and source links tall enough to tap. */
 @layer components {
-  /* I1: every stop but the 目前這一站 is a row that opens in place to say what it is (the whole
-     row, a blue arrow at its end, down while folded and up when open, swapped not turned so
-     nothing moves); pressing it only changes colour (ADR 0028). */
-  .route-about > summary {
+  /* #779 (spec #774, ADR 0083, the owner's 版 1): the five 引導卡 in a row that scrolls
+     sideways and snaps to each card, with no JavaScript; nothing turns by itself. Each card
+     is most of the row's width, so the next one peeks in at its edge; its scrollbar stays, so
+     a mouse can scroll it too. The row scrolls within itself, so the page never widens. */
+  .guide-cards {
     display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
-    min-height: var(--spacing-touch);
-    padding: 0.35rem 0.25rem;
-    border-radius: var(--radius-small);
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0 0 0.75rem;
     list-style: none;
-    cursor: pointer;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
   }
 
-  .route-about > summary::-webkit-details-marker {
-    display: none;
-  }
-
-  .route-row {
-    flex: 1;
+  .guide-card {
+    flex: 0 0 85%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
     min-width: 0;
+    padding: 1.125rem 1rem 1rem;
+    border-radius: var(--radius-large);
+    background-image: linear-gradient(160deg, var(--color-primary), var(--color-primary-hover));
+    color: #fff;
+    text-align: center;
+    scroll-snap-align: start;
     overflow-wrap: anywhere;
   }
 
-  .route-about .result-details-arrow {
-    margin-top: 0.2rem;
-  }
-
-  .route-about[open] .result-details-arrow {
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6-6 6 6'/%3E%3C/svg%3E");
-  }
-
-  @media (hover: hover) and (pointer: fine) {
-    .route-about > summary:hover {
-      background-color: var(--color-brand-soft);
-    }
-  }
-
-  .route-about > summary:active {
-    background-color: var(--color-brand-selected);
-  }
-
-  /* What follows a row lines up with its title. */
-  .route-box:not(.route-card) > :is(.route-note, .route-answer) {
-    padding-inline-start: 0.25rem;
-  }
-
-  .route-about-body {
-    padding: 0.25rem 0.25rem 0.25rem;
-  }
-
-  .route-about-body p {
+  .guide-card > * {
     margin: 0;
   }
 
-  .route-about-body a {
-    font-weight: 700;
+  .guide-card :focus-visible {
+    outline-color: #fff;
   }
 
-  /* 不適用: the title in the body grey, the circle pale (above); the words keep their contrast. */
-  .route-stop.is-na .route-title {
-    color: var(--color-body);
-    font-weight: 400;
-  }
-
-  /* #596 (ADR 0063, the #595 mockup's 甲): the folded 補助站, a line under the route, no stop:
-     a thin rule, then a sentence and a link level with the stops' titles (a number's width and
-     the gap beside it, plus the rows' own inset). At large text sizes, where the stops drop
-     under their numbers, it is not indented either. */
-  .route-fold {
-    container-type: inline-size;
-    margin-top: 0.25rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--color-line);
-  }
-
-  .route-fold p {
-    margin: 0;
-    padding-inline-start: calc(var(--route-size) + 1rem);
-  }
-
-  @container (max-width: 15rem) {
-    .route-fold p {
-      padding-inline-start: 0;
-    }
-  }
-
-  .route-fold .tap-link {
-    display: inline-flex;
+  .guide-card-top {
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 0.25rem;
-    min-height: var(--spacing-touch);
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+  }
+
+  .guide-card-step {
+    padding: 0.1rem 0.75rem;
+    border-radius: var(--radius-pill);
+    background-color: rgba(255, 255, 255, 0.18);
     font-weight: 700;
   }
 
-  .route-fold .route-chevron {
-    width: 1.25rem;
-    height: 1.25rem;
-  }
-
-  /* The 目前這一站: a pale blue card beside the line, as the home page's 現在這一步 (ADR 0043),
-     its circle level with the card's first line and the line above reaching down to it. */
-  .route-card {
-    padding: 0.875rem 1rem 1rem;
-    border-radius: var(--radius-large);
-    background-color: var(--color-brand-soft);
-  }
-
-  .route-stop.is-here .route-number {
-    margin-top: 0.875rem;
-  }
-
-  .route-stop.is-here:not(:last-child)::after {
-    top: calc(var(--route-size) + 1.25rem);
-  }
-
-  .route-stop:has(+ .is-here)::after {
-    bottom: -0.75rem;
-  }
-
-  .route-here-label {
+  /* ADR 0075's stamp, on white so its vermilion reads on the blue (6.5:1). */
+  .guide-card .done-stamp {
     margin: 0;
-    color: var(--color-muted);
-    font-size: 1rem;
-    font-weight: 700;
+    background-color: #fff;
   }
 
-  .route-card .route-title {
+  .guide-card-art svg {
+    display: block;
+    width: 4.5rem;
+    height: 4.5rem;
+    margin: 0.25rem auto;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .guide-card-title {
+    color: #fff;
+    font-size: var(--text-page-title);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  /* The button sits at the card's foot, level across the cards whatever their words. */
+  .guide-card-button {
+    width: 100%;
+    margin-top: auto;
+  }
+
+  /* #779: the 章節磚, two by two by three: an icon and the chapter's short name. A tile only
+     changes colour under a mouse or when pressed (ADR 0006). */
+  .chapter-tiles {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .chapter-tile {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    min-height: var(--spacing-touch);
-    font-size: var(--text-section-title);
+    height: 100%;
+    min-height: var(--spacing-button);
+    padding: 0.625rem 0.75rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-surface);
+    color: var(--color-heading);
+    font-weight: 700;
     text-decoration: none;
     overflow-wrap: anywhere;
   }
 
-  .route-card .route-title > span:first-child {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .route-chevron {
+  .chapter-tile svg {
     flex: none;
     width: 1.5rem;
     height: 1.5rem;
-    background-color: var(--color-primary);
-    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center / contain no-repeat;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 
   @media (hover: hover) and (pointer: fine) {
-    .route-card .route-title:hover > span:first-child {
-      text-decoration: underline;
+    .chapter-tile:hover {
+      background-color: var(--color-brand-soft);
     }
   }
 
+  .chapter-tile:active {
+    background-color: var(--color-brand-selected);
+  }
+
   /* A stop question's choices in the fields' edge, 4.7:1 on white (the owner's decision of
-     2026-11-12, #463's --choice-border), on the route and at a chapter's foot. */
+     2026-11-12, #463's --choice-border), at a chapter's foot. */
   .stop-question {
     --choice-border: var(--color-input-border);
   }
@@ -289,60 +265,6 @@
     stroke-width: 3;
     stroke-linecap: round;
     stroke-linejoin: round;
-  }
-
-  /* I2 (ADR 0028's 2026-11-12 exception): on a tab's first visit (guide.js), the done ticks draw
-     one by one, the blue line grows down to the 目前這一站 and its circle's ring lights once,
-     about 2 seconds wherever that stop is (--route-here is how far it is); held until that stop
-     is in view (ADR 0029). Otherwise, and with reduced motion, the end at once. Longhands, not
-     the animation shorthand: that would set the play state back to running and so outrank the
-     hold until in view. */
-  @media (prefers-reduced-motion: no-preference) {
-    /* #480: the 目前這一站's ring waits for its card's top, not the whole stop, which the to-dos
-       and the question under it made too tall to be in view on arrival. The walked ticks and blue
-       line wait only while both the first stop and the 目前這一站 are out of view, so visible done
-       stops draw right away instead of sitting as empty circles while the 目前這一站 is below the
-       fold. */
-    :root.play-in-view
-      .route-stop.is-here:has(.route-card-main[data-play-in-view]:not([data-in-view]))
-      .route-number,
-    :root.play-in-view
-      .route:has(.route-stop:first-child .route-box[data-play-in-view]:not([data-in-view])):has(
-        .route-card-main[data-play-in-view]:not([data-in-view])
-      )
-      .route-check path,
-    :root.play-in-view
-      .route:has(.route-stop:first-child .route-box[data-play-in-view]:not([data-in-view])):has(
-        .route-card-main[data-play-in-view]:not([data-in-view])
-      )
-      .route-stop::after {
-      animation-play-state: paused;
-    }
-
-    .route-plays .route-stop.is-walked .route-check path {
-      stroke-dasharray: 1;
-      animation-name: gauge-draw;
-      animation-duration: 0.35s;
-      animation-timing-function: ease-out;
-      animation-delay: calc(var(--route-step) * 1.5s / var(--route-here));
-      animation-fill-mode: both;
-    }
-
-    .route-plays .route-stop.is-walked::after {
-      animation-name: route-line;
-      animation-duration: calc(1.2s / var(--route-here));
-      animation-timing-function: linear;
-      animation-delay: calc((var(--route-step) + 0.2) * 1.5s / var(--route-here));
-      animation-fill-mode: both;
-    }
-
-    .route-plays .route-stop.is-here .route-number {
-      animation-name: route-ring;
-      animation-duration: 0.7s;
-      animation-timing-function: ease-in-out;
-      animation-delay: calc(var(--route-step) * 1.5s / var(--route-here));
-      animation-fill-mode: both;
-    }
   }
 
   /* What the latest audiogram says: one title, the old boxes' titles as bold subheads (the #466
