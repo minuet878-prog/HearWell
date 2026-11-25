@@ -3565,7 +3565,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             subsidy.click()
             expect(self.page).to_have_url(f"{guide}/subsidy")
 
-    def test_round_guide_arrows_at_the_card_edges_press_in_without_changing_color(self):
+    def test_guide_edge_buttons_press_in_without_changing_color(self):
         self.open(320, 640)
         self.page.emulate_media(reduced_motion="no-preference")
         with self.saving_artifacts():
@@ -3577,7 +3577,8 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             self.main().locator(".guide-cards").scroll_into_view_if_needed()
             self.page.wait_for_function("""() => document.querySelector(".guide-card")
                 .getAnimations().every(animation => animation.playState === "finished")""")
-            expect(following).to_have_css("border-radius", "50%")
+            expect(previous).to_have_css("border-top-left-radius", "0px")
+            expect(following).to_have_css("border-top-right-radius", "0px")
             for zoom in (False, True):
                 with self.subTest(double_text=zoom):
                     if zoom:
@@ -3586,10 +3587,9 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                         locator.bounding_box() for locator in (art, previous, following)
                     )
                     card_box = card.bounding_box()
+                    self.assertAlmostEqual(left["x"], card_box["x"], delta=1)
                     self.assertAlmostEqual(
-                        left["x"] - card_box["x"],
-                        card_box["x"] + card_box["width"] - right["x"] - right["width"],
-                        delta=1,
+                        right["x"] + right["width"], card_box["x"] + card_box["width"], delta=1
                     )
                     self.assertLessEqual(left["x"] + left["width"], art_box["x"])
                     self.assertGreaterEqual(right["x"], art_box["x"] + art_box["width"])
@@ -3598,7 +3598,8 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                         art_box["y"] + art_box["height"] / 2,
                         delta=1,
                     )
-                    self.assertEqual(right["width"], right["height"])
+                    self.assertGreaterEqual(right["width"], 44)
+                    self.assertGreater(right["height"], right["width"])
             following.scroll_into_view_if_needed()
             box = following.bounding_box()
             self.page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)

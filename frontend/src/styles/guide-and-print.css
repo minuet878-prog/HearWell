@@ -124,7 +124,6 @@
     right: max(0px, var(--guide-card-right));
     display: flex;
     justify-content: space-between;
-    padding-inline: 0.5rem;
     transform: translateY(-50%);
     pointer-events: none;
   }
@@ -132,15 +131,15 @@
   .guide-card-arrow {
     display: grid;
     place-items: center;
-    flex: 0 0 min(2.75rem, 56px);
-    height: min(2.75rem, 56px);
+    flex: 0 0 clamp(44px, var(--spacing-touch), 56px);
+    height: clamp(56px, 3.5rem, 72px);
     border: 1px solid var(--color-brand-soft-deep);
-    border-radius: 50%;
-    background-color: #fff;
+    background-color: var(--color-brand-soft);
     color: var(--color-primary);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+    box-shadow: 0 2px 5px rgba(18, 47, 85, 0.24);
     cursor: pointer;
     pointer-events: auto;
+    touch-action: manipulation;
   }
 
   .guide-card-arrow::before {
@@ -152,13 +151,26 @@
     transform: translateX(-0.125rem) rotate(45deg);
   }
 
+  .guide-card-prev {
+    border-inline-start: 0;
+    border-start-end-radius: var(--radius-button);
+    border-end-end-radius: var(--radius-button);
+  }
+
+  .guide-card-next {
+    border-inline-end: 0;
+    border-start-start-radius: var(--radius-button);
+    border-end-start-radius: var(--radius-button);
+  }
+
   .guide-card-prev::before {
     transform: translateX(0.125rem) rotate(-135deg);
   }
 
   .guide-card-arrow:disabled {
-    background-color: var(--color-brand-soft);
+    background-color: var(--color-brand-soft-deep);
     color: var(--color-muted);
+    box-shadow: none;
     cursor: default;
   }
 
@@ -173,8 +185,8 @@
   }
 
   .guide-card-arrow:focus-visible {
-    outline: 2px solid #fff;
-    outline-offset: 3px;
+    outline: 2px solid var(--color-primary);
+    outline-offset: -5px;
   }
 
   @media (pointer: fine) {
