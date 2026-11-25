@@ -31,6 +31,7 @@ export function openFoldsForJump(win = window) {
 
 export function setUpGuideCards(row) {
   const controls = row.parentElement;
+  const arrows = controls.querySelector(".guide-card-arrows");
   const previous = controls.querySelector(".guide-card-prev");
   const following = controls.querySelector(".guide-card-next");
   const cards = [...row.children];
@@ -41,6 +42,16 @@ export function setUpGuideCards(row) {
   const goTo = (left) => row.scrollTo({ left, behavior: reducedMotion.matches ? "auto" : "smooth" });
 
   function updateButtons() {
+    const offsets = positions();
+    const active = offsets.reduce((best, left, index) =>
+      Math.abs(left - row.scrollLeft) < Math.abs(offsets[best] - row.scrollLeft) ? index : best,
+    0);
+    const card = cards[active];
+    const cardBox = card.getBoundingClientRect();
+    const art = card.querySelector(".guide-card-art").getBoundingClientRect();
+    const rowBox = row.getBoundingClientRect();
+    arrows.style.setProperty("--guide-art-x", `${art.left + art.width / 2 - rowBox.left}px`);
+    arrows.style.setProperty("--guide-art-y", `${card.offsetTop + art.top - cardBox.top + art.height / 2}px`);
     previous.disabled = row.scrollLeft <= 1;
     following.disabled = row.scrollLeft >= maximum() - 1;
   }
@@ -54,8 +65,13 @@ export function setUpGuideCards(row) {
   row.addEventListener("scroll", updateButtons, { passive: true });
   window.addEventListener("resize", updateButtons);
   controls.setAttribute("data-guide-controls", "");
-  previous.hidden = following.hidden = false;
   updateButtons();
+  arrows.hidden = false;
+  if (window.ResizeObserver) {
+    const layout = new ResizeObserver(updateButtons);
+    layout.observe(row);
+    for (const card of cards) layout.observe(card.querySelector(".guide-card-top"));
+  }
 
   let start;
   row.addEventListener("pointerdown", (event) => {

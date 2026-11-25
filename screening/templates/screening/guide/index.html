@@ -32,7 +32,10 @@
 <section class="mt-6" data-jump-box aria-labelledby="contents-title">
     <h2 id="contents-title" class="h4">選配與補助，一步一步看</h2>
     <div class="guide-card-controls">
-    <button type="button" class="btn btn-outline-primary guide-card-prev" aria-label="上一張引導卡" aria-controls="guide-cards" hidden>&lt;</button>
+    <div class="guide-card-arrows" hidden>
+        <button type="button" class="guide-card-arrow guide-card-prev" aria-label="上一張引導卡" aria-controls="guide-cards"></button>
+        <button type="button" class="guide-card-arrow guide-card-next" aria-label="下一張引導卡" aria-controls="guide-cards"></button>
+    </div>
     <ol id="guide-cards" class="guide-cards" role="list" data-play-in-view>
         {% for card in cards %}
         <li class="guide-card play-once-slide-up" data-card="{{ card.slug }}">
@@ -47,7 +50,6 @@
         </li>
         {% endfor %}
     </ol>
-    <button type="button" class="btn btn-outline-primary guide-card-next" aria-label="下一張引導卡" aria-controls="guide-cards" hidden>&gt;</button>
     </div>
 </section>
 {# #779: the 章節磚, two by three in the route's reading order, each an icon and the chapter's short name. #}

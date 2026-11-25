@@ -112,35 +112,70 @@
      sideways and snaps to each card, with no JavaScript; nothing turns by itself. Each card
      is most of the row's width, so the next one peeks in at its edge; its scrollbar stays, so
      a mouse can scroll it too. The row scrolls within itself, so the page never widens. */
-  .guide-card-controls[data-guide-controls] {
+  .guide-card-controls {
+    position: relative;
+  }
+
+  .guide-card-arrows:not([hidden]) {
+    position: absolute;
+    z-index: 1;
+    top: var(--guide-art-y);
+    left: clamp(min(5.75rem, 50%), var(--guide-art-x), max(100% - 5.75rem, 50%));
+    display: flex;
+    justify-content: space-between;
+    width: 11.5rem;
+    max-width: 100%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .guide-card-arrow {
     display: grid;
-    grid-template-areas: "cards cards" "previous next";
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 0.5rem;
-    align-items: center;
+    place-items: center;
+    flex: 0 0 min(2.75rem, 56px);
+    height: min(2.75rem, 56px);
+    border: 1px solid var(--color-brand-soft-deep);
+    border-radius: 50%;
+    background-color: #fff;
+    color: var(--color-primary);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+    cursor: pointer;
+    pointer-events: auto;
   }
 
-  .guide-card-prev,
-  .guide-card-next {
-    min-width: 2.75rem;
-    min-height: 2.75rem;
+  .guide-card-arrow::before {
+    content: "";
+    width: 0.65rem;
+    height: 0.65rem;
+    border-top: 0.125rem solid currentColor;
+    border-right: 0.125rem solid currentColor;
+    transform: translateX(-0.125rem) rotate(45deg);
   }
 
-  .guide-card-prev {
-    grid-area: previous;
-    justify-self: start;
+  .guide-card-prev::before {
+    transform: translateX(0.125rem) rotate(-135deg);
   }
 
-  .guide-card-next {
-    grid-area: next;
-    justify-self: end;
+  .guide-card-arrow:disabled {
+    background-color: var(--color-brand-soft);
+    color: var(--color-muted);
+    cursor: default;
   }
 
-  @media (min-width: 48rem) {
-    .guide-card-controls[data-guide-controls] {
-      grid-template-areas: "previous cards next";
-      grid-template-columns: auto minmax(0, 1fr) auto;
+  @media (hover: hover) {
+    .guide-card-arrow:not(:disabled):hover {
+      background-color: var(--color-brand-soft);
     }
+  }
+
+  .guide-card-arrow:not(:disabled):active {
+    background-color: var(--color-primary);
+    color: #fff;
+  }
+
+  .guide-card-arrow:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 3px;
   }
 
   @media (pointer: fine) {
@@ -157,7 +192,6 @@
 
   .guide-cards {
     position: relative;
-    grid-area: cards;
     display: flex;
     gap: 0.75rem;
     margin: 0;
@@ -215,8 +249,8 @@
 
   .guide-card-art svg {
     display: block;
-    width: 4.5rem;
-    height: 4.5rem;
+    width: min(4.5rem, 36%);
+    height: auto;
     margin: 0.25rem auto;
     fill: none;
     stroke: currentColor;

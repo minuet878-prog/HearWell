@@ -3565,6 +3565,39 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             subsidy.click()
             expect(self.page).to_have_url(f"{guide}/subsidy")
 
+    def test_round_guide_arrows_flank_the_illustration_and_change_color_when_pressed(self):
+        self.open(320, 640)
+        self.page.emulate_media(reduced_motion="reduce")
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/guide")
+            previous = self.main().get_by_role("button", name="上一張引導卡")
+            following = self.main().get_by_role("button", name="下一張引導卡")
+            art = self.main().locator(".guide-card-art svg").first
+            expect(following).to_have_css("border-radius", "50%")
+            for zoom in (False, True):
+                with self.subTest(double_text=zoom):
+                    if zoom:
+                        self.assert_fits_a_phone_at_double_text_size("/guide arrows")
+                    art_box, left, right = (
+                        locator.bounding_box() for locator in (art, previous, following)
+                    )
+                    self.assertLessEqual(left["x"] + left["width"], art_box["x"])
+                    self.assertGreaterEqual(right["x"], art_box["x"] + art_box["width"])
+                    self.assertAlmostEqual(
+                        right["y"] + right["height"] / 2,
+                        art_box["y"] + art_box["height"] / 2,
+                        delta=1,
+                    )
+                    self.assertEqual(right["width"], right["height"])
+            following.scroll_into_view_if_needed()
+            box = following.bounding_box()
+            self.page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+            background = "button => getComputedStyle(button).backgroundColor"
+            resting = following.evaluate(background)
+            self.page.mouse.down()
+            self.assertNotEqual(following.evaluate(background), resting)
+            self.page.mouse.up()
+
     def test_visible_guide_stamp_plays_without_horizontal_scrolling(self):
         self.open(320, 640)
         self.page.emulate_media(reduced_motion="no-preference")
