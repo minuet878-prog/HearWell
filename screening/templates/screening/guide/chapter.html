@@ -21,6 +21,8 @@
     {% else %}
     <h2 id="stop-question-title" class="h4">看完了嗎？</h2>
     {% endif %}
+    {# #779 (the owner's pick, #774): what the route said under the stop, under the answer here. #}
+    {% for wording, href in notes %}<p class="mt-2 mb-0">{% if href %}<a href="{{ href }}">{{ wording }}</a>{% else %}{{ wording }}{% endif %}</p>{% endfor %}
     {% for question in foot.questions %}{% include "screening/guide/stop_question.html" with stop=chapter.slug next=chapter_url|add:"#stop-question" %}{% endfor %}
     {% if foot.editing %}
     <p class="mt-2 mb-0"><a href="{{ chapter_url }}#stop-question">不用改了</a></p>
@@ -44,6 +46,9 @@
     <a class="btn btn-primary btn-lg w-full mt-2" href="{% url 'guide' %}">回到助聽器選配與補助</a>
     {% endif %}
 </section>
+{% elif notes %}
+{# #779: a chapter with nothing to answer (種類與價格) says them at its foot on their own. #}
+{% for wording, href in notes %}<p class="mt-6 mb-0">{% if href %}<a href="{{ href }}">{{ wording }}</a>{% else %}{{ wording }}{% endif %}</p>{% endfor %}
 {% endif %}
 {# #579 (spec #576, the owner's A in the #577 mockup): the next chapter in reading order, a list row after the stop's question or its answer and never a second solid button; the last chapter has none. #}
 {% if next_chapter %}

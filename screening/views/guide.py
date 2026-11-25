@@ -444,6 +444,8 @@ def _chapter_page(request, chapter, sent=None):
     context = {"chapter": chapter, "next_chapter": _next_chapter(chapter, aid)}
     if chapter.extra_context:
         context.update(chapter.extra_context(request))
+    if user.is_authenticated:
+        context["notes"] = _foot_notes(chapter.slug, user, aid)
     asked = chapter.slug in STOP_QUESTIONS and user.is_authenticated and user.has_consented()
     declined = subsidy_declined(aid) and chapter.slug in SUBSIDY_STOPS
     if asked and not (chapter.slug in not_applicable_stops(aid) or declined):
@@ -462,6 +464,39 @@ def _chapter_page(request, chapter, sent=None):
         # Whether the question shows depends on this account's answers.
         add_never_cache_headers(response)
     return response
+
+
+# #779 (the owner's pick of 2026-11-24, #774's 實作中本人補充): what the 選配路線 said under its
+# stops, said at the chapter's foot under the answer now my guide no longer draws the route.
+PURCHASE_REMINDER = "收到核定通知後 6 個月內要買。"  # #294 (spec #291 Q12)
+
+
+def _foot_notes(slug, user, aid):
+    """The chapter's notes at its foot, each (wording, url or None): 沒有 leads on to the help
+    without a certificate (#597); 種類與價格 says the six months to buy in while the 補助站 are
+    shown (#294, #596); form 9 says when 身障補助 can be applied for again (#288), form 25 its
+    dates (#296, spec #291 acceptance 14). The rules are the route's."""
+    if slug == "assessment" and subsidy_declined(aid):
+        form_9 = reverse("guide_chapter", args=["form-9"])
+        return (("看沒有身障證明時", f"{form_9}#without-certificate"),)
+    if slug == TYPES_AND_PRICES and subsidy_stops_shown(aid):
+        return ((PURCHASE_REMINDER, None),)
+    if slug not in ("form-9", "form-25") or subsidy_declined(aid):
+        return ()
+    state = fitting_state(user, timezone.localdate())
+    if slug == "form-9":
+        reapply = state.reapply_on
+        return ((f"{reapply:%Y/%m/%d} 起可以再申請補助", None),) if reapply else ()
+    if state.form_25 is None:
+        return ()
+    # From when before it opens, by when while open, and once it has closed the deadline,
+    # never saying it is overdue.
+    opens, closes = state.form_25
+    if state.today < opens:
+        return ((f"{opens:%Y/%m/%d} 起可以做", None),)
+    if state.today <= closes:
+        return ((f"{closes:%Y/%m/%d} 前要做完", None),)
+    return ((f"期限是 {closes:%Y/%m/%d}", None),)
 
 
 def _foot(slug, aid, editing, sent):

@@ -923,23 +923,21 @@
     outline-offset: 2px;
   }
 
-  /* #343 (ADR 0029): the part a jump lands on (a titled part marked data-jump-box, a route stop,
-     or the target itself; jump-highlight.js) lights up: a brand-blue outline with a pale blue glow, never a
-     level colour (ADR 0007). A route stop lights its box, not its number. Held about 1.5
-     seconds, then fading for 1.5; with reduced motion it simply shows, and goes when the script
-     takes it off after 3 seconds. Only the look changes: the focus stays where it was.
-     :root puts it above a box's own look, which may come later with as many classes (the
-     family page's urgent card takes its shadow off: .card.family-urgent). */
-  :root .jump-highlight:not(.route-stop),
-  :root .route-stop.jump-highlight .route-box {
+  /* #343 (ADR 0029): the part a jump lands on (a titled part marked data-jump-box, or the
+     target itself; jump-highlight.js) lights up: a brand-blue outline with a pale blue glow,
+     never a level colour (ADR 0007). Held about 1.5 seconds, then fading for 1.5; with reduced
+     motion it simply shows, and goes when the script takes it off after 3 seconds. Only the
+     look changes: the focus stays where it was. :root and the class twice put it above a box's
+     own look, which may come later with as many classes (the family page's urgent card takes
+     its shadow off: .card.family-urgent); #779 took the route stop's selectors out. */
+  :root .jump-highlight.jump-highlight {
     outline: 0.1875rem solid var(--color-primary);
     outline-offset: 0.125rem;
     box-shadow: var(--shadow-jump-highlight);
   }
 
   @media (prefers-reduced-motion: no-preference) {
-    .jump-highlight:not(.route-stop),
-    .route-stop.jump-highlight .route-box {
+    .jump-highlight.jump-highlight {
       animation: jump-highlight 3s both;
     }
   }

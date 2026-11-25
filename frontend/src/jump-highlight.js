@@ -2,10 +2,9 @@
 import { isInView, tabBarInset } from "./in-view.js";
 
 // The part to light: the nearest titled part marked data-jump-box (a guide chapter's part, a
-// 並列區塊, a family topic) or route stop the target is in (a stop before the route's part around
-// it), else the target itself.
+// 並列區塊, a family topic) the target is in, else the target itself.
 export function jumpBox(target) {
-  return target.closest("[data-jump-box], .route-stop") ?? target;
+  return target.closest("[data-jump-box]") ?? target;
 }
 
 // Their links already mark the question in red (the answer page's, the 配戴比較 form's).
