@@ -34,48 +34,95 @@ export function setUpGuideCards(row) {
   const arrows = controls.querySelector(".guide-card-arrows");
   const previous = controls.querySelector(".guide-card-prev");
   const following = controls.querySelector(".guide-card-next");
-  const cards = [...row.children];
-  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  const maximum = () => row.scrollWidth - row.clientWidth;
-  // The last card may reach the end of the row before its left edge can align.
-  const positions = () => cards.map((card) => Math.min(maximum(), card.offsetLeft));
-  const goTo = (left) => row.scrollTo({ left, behavior: reducedMotion.matches ? "auto" : "smooth" });
+  const originals = [...row.children];
 
-  function updateButtons() {
-    const offsets = positions();
-    const active = offsets.reduce((best, left, index) =>
-      Math.abs(left - row.scrollLeft) < Math.abs(offsets[best] - row.scrollLeft) ? index : best,
-    0);
-    const card = cards[active];
-    const cardBox = card.getBoundingClientRect();
-    const art = card.querySelector(".guide-card-art").getBoundingClientRect();
-    const rowBox = row.getBoundingClientRect();
-    arrows.style.setProperty("--guide-card-left", `${cardBox.left - rowBox.left}px`);
-    arrows.style.setProperty("--guide-card-right", `${rowBox.right - cardBox.right}px`);
-    arrows.style.setProperty("--guide-art-y", `${card.offsetTop + art.top - cardBox.top + art.height / 2}px`);
-    previous.disabled = row.scrollLeft <= 1;
-    following.disabled = row.scrollLeft >= maximum() - 1;
+  function preview(card, buffer = false) {
+    const copy = card.cloneNode(true);
+    copy.classList.replace("guide-card", "guide-card-preview");
+    copy.setAttribute("aria-hidden", "true");
+    copy.setAttribute("inert", "");
+    if (buffer) copy.setAttribute("data-guide-buffer", "");
+    for (const node of copy.querySelectorAll("[id], [data-play-in-view], a")) {
+      node.removeAttribute("id");
+      node.removeAttribute("data-play-in-view");
+      node.removeAttribute("href");
+    }
+    return copy;
   }
 
-  previous.addEventListener("click", () => {
-    goTo(positions().reverse().find((left) => left < row.scrollLeft - 1) ?? 0);
-  });
-  following.addEventListener("click", () => {
-    goTo(positions().find((left) => left > row.scrollLeft + 1) ?? maximum());
-  });
-  row.addEventListener("scroll", updateButtons, { passive: true });
-  window.addEventListener("resize", updateButtons);
+  // A copy at each end handles the wrap. An extra copy beyond it keeps both sides visible.
+  const before = preview(originals[originals.length - 1]);
+  const after = preview(originals[0]);
+  row.prepend(preview(originals[originals.length - 2], true), before);
+  row.append(after, preview(originals[1], true));
+  const cards = [before, ...originals, after];
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const positions = () => cards.map((card) =>
+    card.offsetLeft - (row.clientWidth - card.offsetWidth) / 2);
+  const nearestIndex = (offsets) => {
+    const current = row.scrollLeft;
+    return offsets.reduce((best, left, index) =>
+      Math.abs(left - current) < Math.abs(offsets[best] - current) ? index : best,
+    0);
+  };
+
+  const queuedDirections = [];
+  let moving = false;
+  let scrollTimer;
+
+  function checkWhenSettled() {
+    arrows.setAttribute("data-guide-scrolling", "");
+    window.clearTimeout(scrollTimer);
+    scrollTimer = window.setTimeout(settle, 120);
+  }
+
+  function goTo(left) {
+    moving = true;
+    row.scrollTo({ left, behavior: reducedMotion.matches ? "auto" : "smooth" });
+    checkWhenSettled();
+  }
+
+  function settle() {
+    if (row.hasAttribute("data-dragging")) return;
+    const offsets = positions();
+    let index = nearestIndex(offsets);
+    // Continue on the corresponding real card after its look-alike comes to rest.
+    if (index === 0 || index === cards.length - 1) {
+      index = index === 0 ? originals.length : 1;
+      row.scrollTo({ left: offsets[index], behavior: "auto" });
+    }
+    moving = false;
+    if (queuedDirections.length) {
+      goTo(offsets[index + queuedDirections.shift()]);
+    } else {
+      arrows.removeAttribute("data-guide-scrolling");
+    }
+  }
+
+  function requestStep(direction) {
+    queuedDirections.push(direction);
+    if (!moving) settle();
+  }
+
+  previous.addEventListener("click", () => requestStep(-1));
+  following.addEventListener("click", () => requestStep(1));
+  row.addEventListener("scroll", checkWhenSettled, { passive: true });
   controls.setAttribute("data-guide-controls", "");
-  updateButtons();
+  row.scrollTo({ left: positions()[1], behavior: "auto" });
+  function placeArrows() {
+    arrows.style.setProperty("--guide-card-center-y", `${originals[0].offsetHeight / 2}px`);
+  }
+  placeArrows();
   arrows.hidden = false;
+  window.addEventListener("resize", placeArrows);
   if (window.ResizeObserver) {
-    const layout = new ResizeObserver(updateButtons);
+    const layout = new ResizeObserver(placeArrows);
     layout.observe(row);
-    for (const card of cards) layout.observe(card.querySelector(".guide-card-top"));
   }
 
   let start;
   row.addEventListener("pointerdown", (event) => {
+    queuedDirections.length = 0;
     if (event.pointerType !== "mouse" || event.button !== 0) return;
     start = { x: event.clientX, left: row.scrollLeft, pointerId: event.pointerId };
   });
@@ -96,10 +143,8 @@ export function setUpGuideCards(row) {
     if (event.pointerId !== start?.pointerId) return;
     start = undefined;
     if (!row.hasAttribute("data-dragging")) return;
-    const current = row.scrollLeft;
-    const nearest = positions().reduce((best, left) =>
-      Math.abs(left - current) < Math.abs(best - current) ? left : best,
-    );
+    const offsets = positions();
+    const nearest = offsets[nearestIndex(offsets)];
     row.removeAttribute("data-dragging");
     goTo(nearest);
   }

@@ -110,18 +110,20 @@
 @layer components {
   /* #779 (spec #774, ADR 0083, the owner's 版 1): the five 引導卡 in a row that scrolls
      sideways and snaps to each card, with no JavaScript; nothing turns by itself. Each card
-     is most of the row's width, so the next one peeks in at its edge; its scrollbar stays, so
-     a mouse can scroll it too. The row scrolls within itself, so the page never widens. */
+     is most of the row's width, so adjacent cards peek in at either edge. The row scrolls
+     within itself and keeps its scrollbar. */
   .guide-card-controls {
+    --guide-card-width: 84%;
+    --guide-card-edge: calc((100% - var(--guide-card-width)) / 2);
+    --guide-arrow-width: clamp(44px, var(--spacing-touch), 56px);
     position: relative;
   }
 
   .guide-card-arrows:not([hidden]) {
     position: absolute;
     z-index: 1;
-    top: var(--guide-art-y);
-    left: max(0px, var(--guide-card-left));
-    right: max(0px, var(--guide-card-right));
+    top: var(--guide-card-center-y);
+    inset-inline: var(--guide-card-edge);
     display: flex;
     justify-content: space-between;
     transform: translateY(-50%);
@@ -131,7 +133,7 @@
   .guide-card-arrow {
     display: grid;
     place-items: center;
-    flex: 0 0 clamp(44px, var(--spacing-touch), 56px);
+    flex: 0 0 var(--guide-arrow-width);
     height: clamp(56px, 3.5rem, 72px);
     border: 1px solid var(--color-brand-soft-deep);
     background-color: var(--color-brand-soft);
@@ -167,19 +169,20 @@
     transform: translateX(0.125rem) rotate(-135deg);
   }
 
-  .guide-card-arrow:disabled {
-    background-color: var(--color-brand-soft-deep);
-    color: var(--color-muted);
-    box-shadow: none;
-    cursor: default;
-  }
-
-  .guide-card-arrow:not(:disabled):active {
+  .guide-card-arrow:active {
     box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.24);
   }
 
   @media (prefers-reduced-motion: no-preference) {
-    .guide-card-arrow:not(:disabled):active {
+    .guide-card-arrow {
+      transition: opacity 100ms ease-out;
+    }
+
+    .guide-card-arrows[data-guide-scrolling] .guide-card-arrow:not(:active, :focus-visible) {
+      opacity: 0.38;
+    }
+
+    .guide-card-arrow:active {
       transform: translateY(2px) scale(0.94);
     }
   }
@@ -202,9 +205,10 @@
   }
 
   .guide-cards {
+    --guide-card-gap: min(0.75rem, 2.5vw);
     position: relative;
     display: flex;
-    gap: 0.75rem;
+    gap: var(--guide-card-gap);
     margin: 0;
     padding: 0 0 0.75rem;
     list-style: none;
@@ -213,8 +217,26 @@
     scroll-snap-type: x mandatory;
   }
 
-  .guide-card {
-    flex: 0 0 85%;
+  [data-guide-controls] .guide-cards {
+    mask-image: linear-gradient(
+      to right,
+      rgba(0, 0, 0, 0.28),
+      rgba(0, 0, 0, 0.52) calc(var(--guide-card-edge) - 4px),
+      #000 var(--guide-card-edge),
+      #000 calc(100% - var(--guide-card-edge)),
+      rgba(0, 0, 0, 0.52) calc(100% - var(--guide-card-edge) + 4px),
+      rgba(0, 0, 0, 0.28)
+    );
+  }
+
+  .guide-cards::before,
+  .guide-cards::after {
+    content: "";
+    flex: 0 0 calc((100% - var(--guide-card-width)) / 2 - var(--guide-card-gap));
+  }
+
+  :is(.guide-card, .guide-card-preview) {
+    flex: 0 0 var(--guide-card-width);
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -224,11 +246,19 @@
     background-image: linear-gradient(160deg, var(--color-primary), var(--color-primary-hover));
     color: #fff;
     text-align: center;
-    scroll-snap-align: start;
+    scroll-snap-align: center;
     overflow-wrap: anywhere;
   }
 
-  .guide-card > * {
+  .guide-card-preview[data-guide-buffer] {
+    scroll-snap-align: none;
+  }
+
+  .guide-card-preview .play-once-stamp {
+    animation: none;
+  }
+
+  :is(.guide-card, .guide-card-preview) > * {
     margin: 0;
   }
 
@@ -253,7 +283,7 @@
   }
 
   /* ADR 0075's stamp, on white so its vermilion reads on the blue (6.5:1). */
-  .guide-card .done-stamp {
+  :is(.guide-card, .guide-card-preview) .done-stamp {
     margin: 0;
     background-color: #fff;
   }
@@ -275,6 +305,10 @@
     font-size: var(--text-page-title);
     font-weight: 700;
     line-height: 1.3;
+  }
+
+  [data-guide-controls] :is(.guide-card-title, .guide-card-point) {
+    padding-inline: calc(var(--guide-arrow-width) - 0.625rem);
   }
 
   /* The button sits at the card's foot, level across the cards whatever their words. */
