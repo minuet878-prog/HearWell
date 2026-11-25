@@ -3532,6 +3532,50 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                         cut = card.locator(part).evaluate("el => el.scrollWidth - el.clientWidth")
                         self.assertLessEqual(cut, 0, part)
 
+    def test_mouse_drag_and_arrows_move_the_guide_cards(self):
+        self.open(1280)
+        self.page.emulate_media(reduced_motion="reduce")
+        with self.saving_artifacts():
+            guide = f"{self.live_server_url}/guide"
+            self.page.goto(guide)
+            row = self.main().locator(".guide-cards")
+            previous = self.main().get_by_role("button", name="上一張引導卡")
+            following = self.main().get_by_role("button", name="下一張引導卡")
+            expect(previous).to_be_disabled()
+            link = row.locator(".guide-card").first.get_by_role("link")
+            link.scroll_into_view_if_needed()
+            box = row.bounding_box()
+            link_box = link.bounding_box()
+            x = link_box["x"] + link_box["width"] * 0.9
+            y = link_box["y"] + link_box["height"] / 2
+            self.page.mouse.move(x, y)
+            self.page.mouse.down()
+            self.page.mouse.move(x - box["width"] * 0.55, y, steps=12)
+            self.page.mouse.up()
+            self.page.wait_for_function(
+                "document.querySelector('.guide-cards').scrollLeft > 0", timeout=1500
+            )
+            expect(self.page).to_have_url(guide)
+            previous.click()
+            self.page.wait_for_function("document.querySelector('.guide-cards').scrollLeft === 0")
+            following.click()
+            self.page.wait_for_function("document.querySelector('.guide-cards').scrollLeft > 0")
+            subsidy = row.locator(".guide-card").nth(1).get_by_role("link")
+            expect(subsidy).to_be_in_viewport()
+            subsidy.click()
+            expect(self.page).to_have_url(f"{guide}/subsidy")
+
+    def test_visible_guide_stamp_plays_without_horizontal_scrolling(self):
+        self.open(320, 640)
+        self.page.emulate_media(reduced_motion="no-preference")
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/guide")
+            row = self.main().locator(".guide-cards")
+            row.scroll_into_view_if_needed()
+            stamp = row.locator(".done-stamp")
+            expect(stamp).to_have_css("scale", "1", timeout=2500)
+            self.assertEqual(row.evaluate("row => row.scrollLeft"), 0)
+
     # #293 (spec #291 e2e, acceptance 6, 7, 18, 27; no JavaScript, story 40): answer the
     # certificate at the foot of its chapter and change it with 修改 there (#777); its button
     # leads back to my guide (#779). The question card fits 320px at 200% text.

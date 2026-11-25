@@ -1,6 +1,9 @@
 {% extends "screening/layout.html" %}
-{% load custom_filters %}
+{% load static custom_filters %}
 {% block title %}助聽器選配與補助｜聽伴{% endblock %}
+{% block extra_head %}
+<script type="module" src="{% static 'screening/frontend/guide.js' %}"></script>
+{% endblock %}
 {% block body %}
 {# Wording finalised in #220; change it only after review (ADR 0013). #}
 {% if audiogram %}
@@ -28,12 +31,14 @@
 {# #779 (spec #774, ADR 0083, the owner's 版 1 of the guided cards mockup): the five 引導卡 in a row that scrolls sideways and snaps to each card, without JavaScript; each a short title, one line and one button, 已完成 stamped by the 選配路線 stops behind it. They slide up once when in view (ADR 0077), not under reduced motion; nothing turns by itself. #}
 <section class="mt-6" data-jump-box aria-labelledby="contents-title">
     <h2 id="contents-title" class="h4">選配與補助，一步一步看</h2>
-    <ol class="guide-cards" role="list" data-play-in-view>
+    <div class="guide-card-controls">
+    <button type="button" class="btn btn-outline-primary guide-card-prev" aria-label="上一張引導卡" aria-controls="guide-cards" hidden>&lt;</button>
+    <ol id="guide-cards" class="guide-cards" role="list" data-play-in-view>
         {% for card in cards %}
         <li class="guide-card play-once-slide-up" data-card="{{ card.slug }}">
             <div class="guide-card-top">
                 <span class="guide-card-step">第 {{ forloop.counter }} 張，共 {{ cards|length }} 張</span>
-                {% if card.done %}{% include "screening/done_stamp.html" %}{% endif %}
+                {% if card.done %}<span data-play-in-view>{% include "screening/done_stamp.html" with parent_plays_stamp=True %}</span>{% endif %}
             </div>
             <span class="guide-card-art">{% include "screening/guide/card_icon.html" with icon=card.icon %}</span>
             <h3 id="card-{{ card.slug }}-title" class="guide-card-title">{{ card.title }}</h3>
@@ -42,6 +47,8 @@
         </li>
         {% endfor %}
     </ol>
+    <button type="button" class="btn btn-outline-primary guide-card-next" aria-label="下一張引導卡" aria-controls="guide-cards" hidden>&gt;</button>
+    </div>
 </section>
 {# #779: the 章節磚, two by three in the route's reading order, each an icon and the chapter's short name. #}
 <section class="mt-6" aria-labelledby="chapters-title">

@@ -1,4 +1,5 @@
-// #467: the guide chapters, loaded by their templates (#779: my guide itself no longer needs it).
-import { openFoldsForJump } from "./guide.js";
+import { openFoldsForJump, setUpGuideCards } from "./guide.js";
 
-openFoldsForJump();
+const row = document.querySelector(".guide-cards");
+if (row) setUpGuideCards(row);
+else openFoldsForJump();

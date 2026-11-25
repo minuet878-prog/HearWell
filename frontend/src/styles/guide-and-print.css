@@ -112,7 +112,52 @@
      sideways and snaps to each card, with no JavaScript; nothing turns by itself. Each card
      is most of the row's width, so the next one peeks in at its edge; its scrollbar stays, so
      a mouse can scroll it too. The row scrolls within itself, so the page never widens. */
+  .guide-card-controls[data-guide-controls] {
+    display: grid;
+    grid-template-areas: "cards cards" "previous next";
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .guide-card-prev,
+  .guide-card-next {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  .guide-card-prev {
+    grid-area: previous;
+    justify-self: start;
+  }
+
+  .guide-card-next {
+    grid-area: next;
+    justify-self: end;
+  }
+
+  @media (min-width: 48rem) {
+    .guide-card-controls[data-guide-controls] {
+      grid-template-areas: "previous cards next";
+      grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+  }
+
+  @media (pointer: fine) {
+    [data-guide-controls] .guide-cards {
+      cursor: grab;
+      user-select: none;
+    }
+  }
+
+  .guide-cards[data-dragging] {
+    cursor: grabbing;
+    scroll-snap-type: none;
+  }
+
   .guide-cards {
+    position: relative;
+    grid-area: cards;
     display: flex;
     gap: 0.75rem;
     margin: 0;

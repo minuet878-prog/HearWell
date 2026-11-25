@@ -28,3 +28,68 @@ export function openFoldsForJump(win = window) {
     if (fold) fold.open = true;
   });
 }
+
+export function setUpGuideCards(row) {
+  const controls = row.parentElement;
+  const previous = controls.querySelector(".guide-card-prev");
+  const following = controls.querySelector(".guide-card-next");
+  const cards = [...row.children];
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const maximum = () => row.scrollWidth - row.clientWidth;
+  // The last card may reach the end of the row before its left edge can align.
+  const positions = () => cards.map((card) => Math.min(maximum(), card.offsetLeft));
+  const goTo = (left) => row.scrollTo({ left, behavior: reducedMotion.matches ? "auto" : "smooth" });
+
+  function updateButtons() {
+    previous.disabled = row.scrollLeft <= 1;
+    following.disabled = row.scrollLeft >= maximum() - 1;
+  }
+
+  previous.addEventListener("click", () => {
+    goTo(positions().reverse().find((left) => left < row.scrollLeft - 1) ?? 0);
+  });
+  following.addEventListener("click", () => {
+    goTo(positions().find((left) => left > row.scrollLeft + 1) ?? maximum());
+  });
+  row.addEventListener("scroll", updateButtons, { passive: true });
+  window.addEventListener("resize", updateButtons);
+  controls.setAttribute("data-guide-controls", "");
+  previous.hidden = following.hidden = false;
+  updateButtons();
+
+  let start;
+  row.addEventListener("pointerdown", (event) => {
+    if (event.pointerType !== "mouse" || event.button !== 0) return;
+    start = { x: event.clientX, left: row.scrollLeft, pointerId: event.pointerId };
+  });
+  row.addEventListener("dragstart", (event) => {
+    if (start) event.preventDefault();
+  });
+  row.addEventListener("pointermove", (event) => {
+    if (event.pointerId !== start?.pointerId || (event.buttons & 1) === 0) return;
+    const delta = start.x - event.clientX;
+    if (!row.hasAttribute("data-dragging")) {
+      if (Math.abs(delta) <= 5) return;
+      row.setPointerCapture(event.pointerId);
+      row.setAttribute("data-dragging", "");
+    }
+    row.scrollLeft = start.left + delta;
+  });
+  function finish(event) {
+    if (event.pointerId !== start?.pointerId) return;
+    start = undefined;
+    if (!row.hasAttribute("data-dragging")) return;
+    const current = row.scrollLeft;
+    const nearest = positions().reduce((best, left) =>
+      Math.abs(left - current) < Math.abs(best - current) ? left : best,
+    );
+    row.removeAttribute("data-dragging");
+    goTo(nearest);
+  }
+  row.addEventListener("pointerup", finish);
+  row.addEventListener("pointercancel", finish);
+  row.addEventListener("lostpointercapture", finish);
+  row.addEventListener("pointerleave", (event) => {
+    if (!row.hasPointerCapture(event.pointerId)) finish(event);
+  });
+}
