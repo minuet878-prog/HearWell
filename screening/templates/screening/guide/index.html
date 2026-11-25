@@ -3,12 +3,21 @@
 {% block title %}助聽器選配與補助｜聽伴{% endblock %}
 {% block body %}
 {# Wording finalised in #220; change it only after review (ADR 0013). #}
+{% if audiogram %}
+{# #780 (spec #774, the owner's pick of 2026-11-24): with an audiogram the bird sums it up in two 結論標籤 under it, pale blue for something to do, pale grey for how things are; not links. What they sum up is in the fold under the 章節磚. #}
+{% capture said %}<p class="bird-said">依您 {{ audiogram.tested_on|date:"Y/m/d" }} 的聽力圖，整理出兩個重點。</p>{% endcapture %}
+{% include "screening/bird_dialogue.html" with lead="guide"|page_lead title="助聽器選配與補助" after=said %}
+<ul class="guide-tags" role="list">
+    {% for words, suggests in tags %}<li class="guide-tag{% if suggests %} is-suggestion{% endif %}">{{ words }}</li>{% endfor %}
+</ul>
+{% else %}
 {% include "screening/bird_dialogue.html" with lead="guide"|page_lead title="助聽器選配與補助" %}
+{% endif %}
 {% if not user.is_authenticated %}
 <p>登入後，這裡會依您的問卷和聽力圖，整理出要不要找聽力師評估，以及有沒有達到身障鑑定門檻。下面的章節不用登入也能看。</p>
 <p><a class="btn btn-primary btn-lg" href="{% url 'login' %}?next={{ request.path|urlencode }}">登入</a></p>
 {% else %}
-<p>依您在聽伴最新的紀錄，整理出現在的狀況，和接下來可以看的章節。</p>
+{% if not audiogram %}<p>依您在聽伴最新的紀錄，整理出現在的狀況，和接下來可以看的章節。</p>{% endif %}
 {% if not has_records %}
 <p>這裡要用您的問卷或聽力圖才能整理。可以先做一份問卷，或把醫院給的聽力圖記錄下來。</p>
 <p><a class="btn btn-primary btn-lg" href="{% url 'questionnaire_list' %}">開始篩檢</a></p>
@@ -60,8 +69,11 @@
 {% endif %}
 {% if audiogram %}
 {% with date=audiogram.tested_on|date:"Y/m/d" %}
+{# #780 (spec #774): what the two 結論標籤 sum up, word for word as it was, in a native fold under the 章節磚, shut until opened; it opens without JavaScript. #}
+<details class="dropdown-line guide-numbers mt-8" data-audiogram-numbers>
+<summary>看聽力圖數值與計算公式</summary>
 {# #467: one title over what the latest audiogram says (draft), the old boxes' titles as bold subheads. #}
-<section class="mt-8 guide-hearing" data-jump-box aria-labelledby="hearing-title">
+<section class="guide-hearing" data-jump-box aria-labelledby="hearing-title">
 <h2 id="hearing-title" class="h4">依您 {{ date }} 的聽力圖</h2>
 {% if life_impact %}
 <section aria-labelledby="questionnaire-title">
@@ -153,6 +165,7 @@
     {% endwith %}{% endif %}
 </section>
 </section>
+</details>
 {% endwith %}
 {% endif %}
 {% endblock %}

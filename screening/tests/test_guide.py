@@ -97,6 +97,38 @@ def part(response, title):
     raise AssertionError(f"No part titled {title}")
 
 
+NUMBERS_FOLD = re.compile(r"<details [^>]*data-audiogram-numbers[^>]*>")
+
+
+def numbers_fold(content):
+    """#780: my guide's 看聽力圖數值與計算公式 fold, as (its opening tag, its markup up to its
+    own </details>), or None; the folds nested in it (看完整說明) are counted, not taken for its
+    end."""
+    start = NUMBERS_FOLD.search(content)
+    if start is None:
+        return None
+    depth, at = 1, start.end()
+    for match in re.finditer(r"<(/?)details\b", content[at:]):
+        depth += -1 if match.group(1) else 1
+        if depth == 0:
+            return start.group(0), content[at : at + match.start()]
+    raise AssertionError("the fold is never closed")
+
+
+def inside_numbers_fold(testcase, response):
+    """The 看聽力圖數值與計算公式 fold's markup, after checking it is there and shut."""
+    found = numbers_fold(response.content.decode())
+    testcase.assertIsNotNone(found, "no 看聽力圖數值與計算公式 fold")
+    opening, inside = found
+    testcase.assertNotIn(" open", opening)
+    return inside
+
+
+def numbers_fold_text(testcase, response):
+    """inside_numbers_fold's text, tags removed, as text_of."""
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", inside_numbers_fold(testcase, response)))
+
+
 def heading_levels(response):
     """The level of every heading in <main>, in order."""
     content = response.content.decode()

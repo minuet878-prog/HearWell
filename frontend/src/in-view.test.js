@@ -188,6 +188,28 @@ describe("setUpPlayInView: entrance animations", () => {
     expect(drawing(behind).hasAttribute("data-in-view")).toBe(true);
   });
 
+  it("holds a drawing in a shut fold, whose would-be place is in view, until the fold opens", () => {
+    // #780: my guide's meters in 看聽力圖數值與計算公式. A shut <details> still lays its
+    // contents out when asked, so their box alone would say in view.
+    page(`<details><summary>看聽力圖數值與計算公式</summary><div class="meter" data-play-in-view></div></details>`);
+    const fold = document.querySelector("details");
+    const meter = document.querySelector("[data-play-in-view]");
+    const win = fakeWindow();
+    setUpPlayInView(win);
+    expect(meter.hasAttribute("data-in-view")).toBe(false);
+
+    fold.open = true;
+    win.dispatchEvent(new Event("resize")); // the page grows as it opens
+    expect(meter.hasAttribute("data-in-view")).toBe(true);
+  });
+
+  it("plays a drawing in a shut fold's summary, which shows", () => {
+    // The home's 照顧旅程: step 1's row is a fold's summary.
+    page(`<details><summary data-play-in-view>聽力對生活的影響</summary><p>說明</p></details>`);
+    setUpPlayInView(fakeWindow());
+    expect(document.querySelector("summary").hasAttribute("data-in-view")).toBe(true);
+  });
+
   it("disconnects ResizeObserver immediately when no animations are waiting on initial load (D4)", () => {
     page(`<p>沒有動畫的頁面</p>`);
     const win = fakeWindow();

@@ -35,7 +35,9 @@ from screening.scoring import (
     FITTING_ADVICE_OVER_MILD,
     FITTING_ADVICE_QUESTIONNAIRE_FIRST,
     FITTING_ADVICE_TRACK,
+    FITTING_TAGS,
     LIFE_IMPACT_BUTTON,
+    THRESHOLD_TAGS,
 )
 from screening.views.answering import list_order, wearing_follow_ups
 from screening.views.common import form_address, health_data_page, safe_next
@@ -169,6 +171,7 @@ def guide(request):
         if state.audiogram is not None:
             context |= _guide_audiogram(state)
             context["fitting_words"] = _fitting_words(state, request.user, today)
+            context["tags"] = _conclusion_tags(state)
     context["cards"] = _guide_cards(state)
     context["tiles"] = CHAPTER_TILES
     response = render(request, "screening/guide/index.html", context)
@@ -282,6 +285,14 @@ def _fitting_words(state, user, today):
     if state.advice == FittingAdvice.NORMAL:
         return FITTING_ADVICE_NORMAL, None
     return None
+
+
+def _conclusion_tags(state):
+    """#780 (spec #774): the two 結論標籤, (words, suggests something to do) each: what the fold's
+    要不要找聽力師評估 says, then its 身障鑑定門檻."""
+    fitting = "wearing" if state.wearing else state.advice
+    threshold = "self-test" if state.assessment is None else state.assessment["status"]
+    return FITTING_TAGS[fitting], THRESHOLD_TAGS[threshold]
 
 
 def _percent(ratio):

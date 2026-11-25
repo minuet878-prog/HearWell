@@ -219,6 +219,15 @@ def open_guide_folds(page):
     page.evaluate("document.querySelectorAll('[data-guide-fold]').forEach(d => d.open = true)")
 
 
+# #780 (spec #774): my guide's audiogram numbers fold, shut on arrival.
+AUDIOGRAM_NUMBERS = "details[data-audiogram-numbers]"
+
+
+def open_audiogram_numbers(page):
+    """#780: opens my guide's 看聽力圖數值與計算公式 fold where it is, without scrolling to it."""
+    page.locator(AUDIOGRAM_NUMBERS).evaluate("fold => { fold.open = true; }")
+
+
 class OnAPhone:
     """Finding things on a page and answering questions, shared by the main-flow routes."""
 
@@ -3429,6 +3438,12 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
 
             expect(self.page).to_have_url(f"{self.live_server_url}/guide")
             expect(self.main().get_by_role("heading", level=1)).to_have_text("助聽器選配與補助")
+            # #780: the numbers are in a shut fold under the 章節磚, two tags under the bird.
+            expect(self.main().locator(".guide-tag")).to_have_text(
+                ["建議找聽力師評估", "估算達到鑑定門檻"]
+            )
+            expect(self.main().locator("#hearing-title")).to_be_hidden()
+            self.main().get_by_text("看聽力圖數值與計算公式", exact=True).click()
             # #260: the audiogram's numbers open the 選配 meter; #467: its date is their title.
             expect(
                 self.main().get_by_role("heading", name="依您 2026/10/01 的聽力圖")
@@ -3460,6 +3475,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
 
             # #367: the chapter's end leads back too; this is the one at its top.
             self.main().get_by_role("link", name="回到助聽器選配與補助").first.click()
+            self.main().get_by_text("看聽力圖數值與計算公式", exact=True).click()
             self.main().get_by_role("region", name="身障鑑定門檻").get_by_text("看完整說明").click()
             self.main().get_by_role("link", name="看九號表的流程").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/guide/form-9")
@@ -3722,6 +3738,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                 points.update(db=20)
                 points.filter(ear="left", frequency=4000).delete()
                 self.page.goto(f"{self.live_server_url}/guide")
+                open_audiogram_numbers(self.page)  # #780
                 expect(self.main().get_by_role("link", name="修改這張聽力圖")).to_have_count(2)
                 self.assert_fits_a_phone_at_double_text_size("/guide too little data")
             with self.subTest(state="not reached"):
@@ -3731,6 +3748,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     frequency=4000, db=20,
                 )  # fmt: skip
                 self.page.goto(f"{self.live_server_url}/guide")
+                open_audiogram_numbers(self.page)  # #780
                 self.main().get_by_text("看完整說明").click()
                 # #779: in the fold only; the route's stop that linked it too is gone.
                 expect(self.main().get_by_role("link", name="看沒有身障證明時")).to_have_count(1)
@@ -3741,6 +3759,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                 points.filter(ear="left").update(db=80)
                 points.filter(ear="left", frequency=4000).update(db=DB_MAX["air"], no_response=True)
                 self.page.goto(f"{self.live_server_url}/guide")
+                open_audiogram_numbers(self.page)  # #780
                 threshold = self.main().get_by_role("region", name="身障鑑定門檻")
                 expect(threshold).to_contain_text("雙耳障礙比率（估算） 至少約 35.0%")
                 expect(threshold.locator(".meter-beyond")).to_have_count(1)
@@ -3785,6 +3804,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                             db=DB_MAX["air"], no_response=True
                         )
                     self.page.goto(f"{self.live_server_url}/guide")
+                    open_audiogram_numbers(self.page)  # #780: the meters' fold
                     threshold = self.main().get_by_role("region", name="身障鑑定門檻")
                     expect(threshold).to_contain_text(f"雙耳障礙比率（估算） {ratio}")
                     expect(threshold.locator(".meter-beyond")).to_have_count(int(no_response))
@@ -8115,6 +8135,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     def test_guide_parts_and_cards_are_titled_parts_with_their_links(self):
         with self.saving_artifacts():
             self.visit(True, lambda test: test.guide_with_records())
+            open_audiogram_numbers(self.page)  # #780: the parts are in its fold
             hearing = self.main().get_by_role("region", name="依您 2026/10/01 的聽力圖")
             expect(self.assert_titled_part(hearing)).to_have_text("依您 2026/10/01 的聽力圖")
             threshold = self.main().get_by_role("region", name="身障鑑定門檻")
@@ -8293,6 +8314,8 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 ),
             ):
                 self.visit(True, path)
+                if "要不要找聽力師評估" in names:  # #780: in the shut fold
+                    open_audiogram_numbers(self.page)
                 self.page.emulate_media(media="print")
                 for name in names:
                     self.assert_printed_unframed(self.main().get_by_role("region", name=name))
@@ -8342,6 +8365,8 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 wrapped = 0
                 with self.subTest(page=name):
                     self.visit(True, path, width=320)
+                    if name == "guide":  # #780: its parts are in the shut fold
+                        open_audiogram_numbers(self.page)
                     self.assert_fits_uncut(name)
                     for part in self.main().locator(parts).all():
                         title = part.get_by_role("heading").first
@@ -9766,6 +9791,7 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
     def test_meters_play_once_in_view(self):
         self.open("/guide")
         with self.saving_artifacts():
+            open_audiogram_numbers(self.page)  # #780: the meters are in its shut fold
             here = self.main().locator(self.STOP)
             expect(here).not_to_be_in_viewport()
             self.assertEqual(self.states(self.STOP), {"paused"})
@@ -9789,6 +9815,33 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
             self.bring_into_view(self.STOP)
             self.page.wait_for_timeout(300)
             self.assertEqual(self.animations(self.STOP), ended)
+
+    # #780 (spec #774): the meters wait in the shut 看聽力圖數值與計算公式 fold, longer than they
+    # take to fill, and fill once it is opened with them in view, not unseen before.
+    def test_meters_in_the_shut_fold_wait_until_it_is_opened(self):
+        self.open("/guide")
+        with self.saving_artifacts():
+            summary = self.main().locator(f"{AUDIOGRAM_NUMBERS} > summary")
+            expect(summary).to_have_text("看聽力圖數值與計算公式")
+            summary.evaluate("el => el.scrollIntoView({block: 'start', behavior: 'instant'})")
+            here = self.main().locator(self.STOP)
+            expect(here).to_be_hidden()
+            self.page.wait_for_timeout(1500)  # past the fill's 1.2 seconds
+            summary.click()
+            expect(here).to_be_in_viewport()
+            self.wait_until(self.STOP, "running")
+            self.wait_until(self.STOP, "finished")
+
+    # #780 (spec #774): without JavaScript the fold opens too, and its numbers are there to read.
+    def test_the_fold_opens_without_javascript(self):
+        self.open("/guide", javascript=False)
+        with self.saving_artifacts():
+            meter = self.main().locator(self.STOP)
+            expect(meter).to_be_hidden()
+            self.main().get_by_text("看聽力圖數值與計算公式", exact=True).click()
+            expect(meter).to_be_visible()
+            expect(meter).to_contain_text("右耳四頻平均 55 dB HL")
+            expect(meter).to_contain_text("正常上限 25")
 
     def test_walked_journey_ticks_and_line_play_before_current_step_is_in_view(self):
         self.open("/", width=390, height=560)
@@ -9830,6 +9883,7 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
     def test_without_javascript_animations_play_on_arrival(self):
         self.open("/guide", javascript=False)
         with self.saving_artifacts():
+            open_audiogram_numbers(self.page)  # #780: the meters are in its shut fold
             meter = 'section[aria-labelledby="fitting-title"] .meter'
             expect(self.main().locator(meter)).not_to_be_in_viewport()
             self.assert_plays_without_waiting(meter)
@@ -9882,6 +9936,7 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
             prepare=lambda context: context.route("**/site-shell.js", lambda r: r.abort()),
         )
         with self.saving_artifacts():
+            open_audiogram_numbers(self.page)  # #780: the meters are in its shut fold
             here = self.main().locator(self.STOP)
             expect(here).not_to_be_in_viewport()
             self.assertEqual(self.states(self.STOP), {"paused"})
@@ -9901,6 +9956,7 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
             prepare=lambda context: context.add_init_script("delete window.ResizeObserver"),
         )
         with self.saving_artifacts():
+            open_audiogram_numbers(self.page)  # #780: the meters are in its shut fold
             expect(self.main().locator(self.STOP)).not_to_be_in_viewport()
             # Past the 3 seconds after which the animations would stop waiting.
             self.page.wait_for_timeout(3500)
@@ -9979,6 +10035,8 @@ class GuideMeterFillTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiv
         self.page = self.context.new_page()
         self.addCleanup(self.context.close)
         self.page.goto(f"{self.live_server_url}{path}")
+        if path == "/guide":
+            open_audiogram_numbers(self.page)  # #780: the meters are in its shut fold
 
     def animations(self, meter):
         return self.page.locator(meter).evaluate(self.ANIMATIONS)
@@ -10277,7 +10335,9 @@ class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLive
                 self.open("/guide", motion=motion)
                 with self.saving_artifacts():
                     self.sample_next_page(self.CERTIFICATE)
-                    # #779: the route's stop that linked it is gone; the threshold's fold has it.
+                    # #779: the route's stop that linked it is gone; the threshold's fold has it,
+                    # in the 看聽力圖數值與計算公式 fold (#780).
+                    open_audiogram_numbers(self.page)
                     threshold = self.main().get_by_role("region", name="身障鑑定門檻")
                     threshold.get_by_text("看完整說明").click()
                     threshold.get_by_role("link", name="看沒有身障證明時").click()
@@ -11081,6 +11141,8 @@ class TypeSizesT357Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerT
                 self.visit(signed_in, path, width=320)
                 if name == "IOI-HA result":  # #461: behind 看完整說明
                     self.main().locator(".result-details > summary").click()
+                if name == "guide's meter":  # #780: behind 看聽力圖數值與計算公式
+                    open_audiogram_numbers(self.page)
                 for selector in selectors:
                     labels = self.main().locator(selector)
                     expect(labels.first).to_be_visible()
@@ -15110,6 +15172,7 @@ class GuideRedesign467Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         self.open()
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/guide")
+            open_audiogram_numbers(self.page)  # #780: its fold first
             threshold = self.main().get_by_role("region", name="身障鑑定門檻")
             certificate = threshold.get_by_text("身障補助要先有身心障礙證明", exact=False)
             expect(certificate).to_be_hidden()

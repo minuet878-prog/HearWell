@@ -52,7 +52,8 @@ function countUp(element, win) {
 // inert (a stacked card behind the front one, #754) is not seen yet: it waits until card-stack.js
 // says, with a card-stack-show event, that its card came to the front. One put in later (the
 // guest result page's result, fetched first: Codex cross review of #741) is watched from then on;
-// one that played already stays played.
+// one that played already stays played. One in a shut fold waits until the fold is opened.
+const SHUT_FOLD = "details:not([open]) > :not(summary), details:not([open]) > :not(summary) *";
 const MARKED = "[data-play-in-view]:not([data-in-view]), [data-count-up]:not([data-count-done]):not([data-in-view])";
 
 export function setUpPlayInView(win = window) {
@@ -76,6 +77,10 @@ export function setUpPlayInView(win = window) {
     const inset = tabBarInset(win);
     waiting = waiting.filter((element) => {
       if (element.closest("[inert]")) return true;
+      // In a shut fold, past its summary (my guide's meters, #780), it is not seen, though a
+      // shut <details> still lays it out when asked, so its box alone would say in view. Opening
+      // it grows the page.
+      if (element.matches(SHUT_FOLD)) return true;
       if (!isInView(element.getBoundingClientRect(), win.innerHeight, inset)) return true;
       element.setAttribute("data-in-view", "");
       if (element.hasAttribute("data-count-up")) countUp(element, win);

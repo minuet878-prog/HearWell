@@ -32,16 +32,24 @@ class MyGuideRedesignTests(TestCase):
         return self.client.get(reverse("guide") + query).content.decode()
 
     def test_the_cards_come_first_and_the_jump_down_to_them_is_gone(self):
+        """#780: then the 章節磚, and what the audiogram says in the fold under them."""
         self.make(PTA_55, PTA_55)
         page = self.page()
         cards = page.index('id="contents-title"')
+        tiles = page.index('id="chapters-title"')
+        numbers = test_guide.NUMBERS_FOLD.search(page).start()
         summary = page.index(">依您 2026/10/01 的聽力圖</h2>")
-        self.assertLess(cards, summary)
+        self.assertEqual([cards, tiles, numbers, summary], sorted([cards, tiles, numbers, summary]))
+        response = self.client.get(reverse("guide"))
+        self.assertIn(
+            ">依您 2026/10/01 的聽力圖</h2>", test_guide.inside_numbers_fold(self, response)
+        )
         self.assertNotIn("看我的路線", page)
 
     def test_the_long_paragraphs_wait_behind_the_full_explanation(self):
         self.make(PTA_55, PTA_55)
-        page = self.page()
+        # #780: all of it in the 看聽力圖數值與計算公式 fold, 看完整說明 a fold in it.
+        page = test_guide.inside_numbers_fold(self, self.client.get(reverse("guide")))
         fold = page.index(FOLD)
         # The judgement stays out; what to do about it and how it is worked out fold away.
         self.assertLess(page.index("達到身障鑑定門檻（45%）。實際以鑑定醫院為準。"), fold)

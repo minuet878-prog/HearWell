@@ -83,10 +83,14 @@ class GuideMetersTests(TestCase):
     def page(self):
         return self.client.get(reverse("guide")).content.decode()
 
+    def fold(self):
+        """#780: the meters' place, the shut 看聽力圖數值與計算公式 fold under the 章節磚."""
+        return test_guide.inside_numbers_fold(self, self.client.get(reverse("guide")))
+
     def section(self, title_id):
-        """The markup of the card a heading id labels."""
+        """The markup of the card a heading id labels, in the fold."""
         found = re.search(
-            rf'<section [^>]*aria-labelledby="{title_id}">(.*?)</section>', self.page(), re.S
+            rf'<section [^>]*aria-labelledby="{title_id}">(.*?)</section>', self.fold(), re.S
         )
         self.assertIsNotNone(found, title_id)
         return found.group(1)
@@ -101,16 +105,17 @@ class GuideMetersTests(TestCase):
         return re.findall(r'<[a-z]+ class="meter-bar[^"]*"[^>]*>', markup)
 
     # #467 (the #466 mockup A): the route first, then the questionnaire and the meters; the jump
-    # down to the route went with it.
+    # down to the route went with it. #780: the 章節磚 between, and the rest in the fold.
     def test_the_route_comes_before_the_questionnaire_and_the_meters(self):
         self.answer()
         self.make(RIGHT_48_75, LEFT_36_25)
         text = test_guide.text_of(self.client.get(reverse("guide")))
-        # Each found after the one before: the route's first stop says 要不要找聽力師評估 too.
+        # Each found after the one before.
         at = 0
         for part in [
             ROUTE_TITLE,
-            "依您 2026/10/01 的聽力圖 問卷結果",
+            "直接看章節",
+            "看聽力圖數值與計算公式 依您 2026/10/01 的聽力圖 問卷結果",
             "要不要找聽力師評估",
             "身障鑑定門檻",
         ]:
@@ -187,8 +192,7 @@ class GuideMetersTests(TestCase):
 
     def test_bars_are_hidden_from_screen_readers(self):
         self.make(PTA_55, PTA_55, no_response_at=("right", 2000))
-        page = self.page()
-        meters = re.findall(r'<div class="meter-drawing[^"]*"[^>]*>', page)
+        meters = re.findall(r'<div class="meter-drawing[^"]*"[^>]*>', self.fold())
         self.assertEqual(len(meters), 3)
         for meter in meters:
             with self.subTest(meter=meter):
@@ -198,7 +202,7 @@ class GuideMetersTests(TestCase):
         # Self-review of #260: with a hearing aid or a missing frequency the sentence never
         # says 25, so the labels beside the lines must reach screen readers.
         self.make(PTA_55, PTA_55, no_response_at=("right", 2000))
-        spoken = read_aloud(self.page())
+        spoken = read_aloud(self.fold())
         self.assertIn("正常上限 25", spoken)
         self.assertIn("門檻 45%", spoken)
 
@@ -229,6 +233,6 @@ class GuideMetersTests(TestCase):
         self.make(PTA_55, PTA_55, tested_on=date(2026, 3, 1))
         self.make(RIGHT_48_75, LEFT_36_25)
         self.assertIn(
-            '<h2 id="hearing-title" class="h4">依您 2026/10/01 的聽力圖</h2>', self.page()
+            '<h2 id="hearing-title" class="h4">依您 2026/10/01 的聽力圖</h2>', self.fold()
         )
         self.assertNotIn("2026/03/01", self.page())
