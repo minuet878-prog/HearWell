@@ -3513,7 +3513,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
 
             self.assert_fits_a_phone_at_double_text_size("/guide cards")
             # Only the keyboard: Tab reaches each card's button in turn.
-            buttons = self.main().locator(".guide-card-button")
+            buttons = self.main().locator(".guide-card .guide-card-button")
             buttons.first.focus()
             for index in range(5):
                 with self.subTest(card=index + 1):
@@ -3531,6 +3531,211 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                         self.assertLessEqual(box["x"] + box["width"], 320, part)
                         cut = card.locator(part).evaluate("el => el.scrollWidth - el.clientWidth")
                         self.assertLessEqual(cut, 0, part)
+
+    def test_mouse_drag_and_arrows_move_the_guide_cards(self):
+        self.open(1280)
+        self.page.emulate_media(reduced_motion="reduce")
+        with self.saving_artifacts():
+            guide = f"{self.live_server_url}/guide"
+            self.page.goto(guide)
+            row = self.main().locator(".guide-cards")
+            previous = self.main().get_by_role("button", name="上一張引導卡")
+            following = self.main().get_by_role("button", name="下一張引導卡")
+            expect(previous).to_be_enabled()
+            link = row.locator(".guide-card").first.get_by_role("link")
+            link.scroll_into_view_if_needed()
+            initial_scroll = row.evaluate("row => row.scrollLeft")
+            box = row.bounding_box()
+            link_box = link.bounding_box()
+            x = link_box["x"] + link_box["width"] * 0.9
+            y = link_box["y"] + link_box["height"] / 2
+            self.page.mouse.move(x, y)
+            self.page.mouse.down()
+            self.page.mouse.move(x - box["width"] * 0.55, y, steps=12)
+            self.page.mouse.up()
+            self.page.wait_for_function(
+                "start => document.querySelector('.guide-cards').scrollLeft > start + 1",
+                arg=initial_scroll,
+                timeout=1500,
+            )
+            expect(self.page).to_have_url(guide)
+            previous.click()
+            self.page.wait_for_function(
+                "start => Math.abs(document.querySelector('.guide-cards').scrollLeft - start) <= 1",
+                arg=initial_scroll,
+            )
+            following.click()
+            self.page.wait_for_function(
+                "start => document.querySelector('.guide-cards').scrollLeft > start + 1",
+                arg=initial_scroll,
+            )
+            subsidy = row.locator(".guide-card").nth(1).get_by_role("link")
+            expect(subsidy).to_be_in_viewport()
+            subsidy.click()
+            expect(self.page).to_have_url(f"{guide}/subsidy")
+
+    def test_guide_edge_buttons_press_in_without_changing_color(self):
+        self.open(320, 640)
+        self.page.emulate_media(reduced_motion="no-preference")
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/guide")
+            previous = self.main().get_by_role("button", name="上一張引導卡")
+            following = self.main().get_by_role("button", name="下一張引導卡")
+            card = self.main().locator(".guide-card").first
+            self.main().locator(".guide-cards").scroll_into_view_if_needed()
+            self.page.wait_for_function("""() => document.querySelector(".guide-card")
+                .getAnimations().every(animation => animation.playState === "finished")""")
+            expect(previous).to_have_css("border-top-left-radius", "0px")
+            expect(following).to_have_css("border-top-right-radius", "0px")
+            for zoom in (False, True):
+                with self.subTest(double_text=zoom):
+                    if zoom:
+                        self.assert_fits_a_phone_at_double_text_size("/guide arrows")
+                    self.page.wait_for_function("""() => {
+                        const card = document.querySelector(".guide-card").getBoundingClientRect();
+                        const arrow = document.querySelector(".guide-card-next");
+                        const bounds = arrow.getBoundingClientRect();
+                        const center = bounds.y + bounds.height / 2;
+                        return Math.abs(card.y + card.height / 2 - center) <= 1;
+                    }""")
+                    left, right = previous.bounding_box(), following.bounding_box()
+                    card_box = card.bounding_box()
+                    self.assertAlmostEqual(left["x"], card_box["x"], delta=1)
+                    self.assertAlmostEqual(
+                        right["x"] + right["width"], card_box["x"] + card_box["width"], delta=1
+                    )
+                    for arrow in (left, right):
+                        self.assertAlmostEqual(
+                            arrow["y"] + arrow["height"] / 2,
+                            card_box["y"] + card_box["height"] / 2,
+                            delta=1,
+                        )
+                    self.assertGreaterEqual(right["width"], 44)
+                    self.assertGreater(right["height"], right["width"])
+                    text_edges = card.locator(".guide-card-title, .guide-card-point").evaluate_all(
+                        """elements => elements.flatMap(element => {
+                            const range = document.createRange();
+                            range.selectNodeContents(element);
+                            return Array.from(range.getClientRects(), rect => [
+                                rect.left, rect.right
+                            ]);
+                        })"""
+                    )
+                    for start, end in text_edges:
+                        self.assertGreaterEqual(start, left["x"] + left["width"] - 1)
+                        self.assertLessEqual(end, right["x"] + 1)
+            following.scroll_into_view_if_needed()
+            box = following.bounding_box()
+            self.page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+            background = "button => getComputedStyle(button).backgroundColor"
+            resting = following.evaluate(background)
+            self.page.mouse.down()
+            self.assertEqual(following.evaluate(background), resting)
+            expect(following).to_have_css("transform", "matrix(0.94, 0, 0, 0.94, 0, 2)")
+            self.assertIn(
+                "inset", following.evaluate("button => getComputedStyle(button).boxShadow")
+            )
+            self.page.mouse.up()
+
+    def test_guide_wraps_and_keeps_both_neighbors_and_arrows_in_place(self):
+        self.open(320, 640)
+        self.page.emulate_media(reduced_motion="no-preference")
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/guide")
+            row = self.main().locator(".guide-cards")
+            row.scroll_into_view_if_needed()
+            previous = self.main().get_by_role("button", name="上一張引導卡")
+            following = self.main().get_by_role("button", name="下一張引導卡")
+            expect(following).to_be_visible()
+            self.assertIn("0.28", row.evaluate("row => getComputedStyle(row).maskImage"))
+            self.page.wait_for_function("""() => document.querySelector(".guide-card")
+                .getAnimations().every(animation => animation.playState === "finished")""")
+            previous.scroll_into_view_if_needed()
+            boxes = [previous.bounding_box(), following.bounding_box()]
+
+            def check_card(index, before, after):
+                self.page.wait_for_function(
+                    """index => {
+                        const row = document.querySelector(".guide-cards").getBoundingClientRect();
+                        const card = document.querySelectorAll(".guide-card")[index];
+                        const box = card.getBoundingClientRect();
+                        return Math.abs(box.x + box.width / 2 - row.x - row.width / 2) <= 1;
+                    }""",
+                    arg=index,
+                )
+                neighbors = row.evaluate(
+                    """(row, index) => {
+                        const active = row.querySelectorAll(".guide-card")[index];
+                        const bounds = row.getBoundingClientRect();
+                        const before = active.previousElementSibling;
+                        const after = active.nextElementSibling;
+                        return [
+                            before.getBoundingClientRect().right > bounds.left,
+                            after.getBoundingClientRect().left < bounds.right,
+                            before.querySelector("h3").textContent.trim(),
+                            after.querySelector("h3").textContent.trim(),
+                        ];
+                    }""",
+                    index,
+                )
+                self.assertEqual(neighbors, [True, True, before, after])
+                self.assertEqual([previous.bounding_box(), following.bounding_box()], boxes)
+
+            check_card(0, "配戴與核銷", "申請助聽器補助")
+            previous.click()
+            check_card(4, "助聽器的種類與價格", "記錄聽力圖")
+            x = boxes[1]["x"] + boxes[1]["width"] / 2
+            y = boxes[1]["y"] + boxes[1]["height"] / 2
+            # The same screen position works even while the previous click is still moving a card.
+            self.page.mouse.click(x, y)
+            self.page.mouse.click(x, y)
+            self.page.wait_for_function("""() => {
+                const arrow = document.querySelector(".guide-card-next");
+                return Number(getComputedStyle(arrow).opacity) < 1;
+            }""")
+            check_card(1, "記錄聽力圖", "去找聽力師之前")
+            expect(following).to_be_focused()
+            expect(following).to_have_css("opacity", "1")
+
+    def test_guide_arrow_brightness_returns_when_the_next_card_stops(self):
+        self.open(320, 640)
+        self.page.emulate_media(reduced_motion="no-preference")
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/guide")
+            row = self.main().locator(".guide-cards")
+            arrow = self.main().get_by_role("button", name="下一張引導卡")
+            arrow.scroll_into_view_if_needed()
+            expect(arrow).to_have_css("opacity", "1")
+            row.evaluate("""row => {
+                function atEnd() {
+                    if (row.hasAttribute("data-guide-sliding")) return;
+                    const arrow = document.querySelector(".guide-card-next");
+                    const next = row.querySelectorAll(".guide-card")[1].getBoundingClientRect();
+                    const box = row.getBoundingClientRect();
+                    const centered = Math.abs(next.x + next.width / 2 - box.x - box.width / 2);
+                    const opacity = getComputedStyle(arrow).opacity;
+                    window.guideArrowAtScrollEnd = {centered, opacity};
+                    row.removeEventListener("scrollend", atEnd);
+                }
+                row.addEventListener("scrollend", atEnd);
+            }""")
+            arrow.click()
+            self.page.wait_for_function("() => window.guideArrowAtScrollEnd")
+            result = self.page.evaluate("window.guideArrowAtScrollEnd")
+            self.assertLessEqual(result["centered"], 1)
+            self.assertEqual(result["opacity"], "1")
+
+    def test_visible_guide_stamp_plays_without_horizontal_scrolling(self):
+        self.open(320, 640)
+        self.page.emulate_media(reduced_motion="no-preference")
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/guide")
+            row = self.main().locator(".guide-cards")
+            row.scroll_into_view_if_needed()
+            initial_scroll = row.evaluate("row => row.scrollLeft")
+            stamp = row.locator(".guide-card .done-stamp")
+            expect(stamp).to_have_css("scale", "1", timeout=2500)
+            self.assertEqual(row.evaluate("row => row.scrollLeft"), initial_scroll)
 
     # #293 (spec #291 e2e, acceptance 6, 7, 18, 27; no JavaScript, story 40): answer the
     # certificate at the foot of its chapter and change it with 修改 there (#777); its button
@@ -3996,9 +4201,9 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     expect(cards).to_have_attribute("data-in-view", "")
                     first = self.main().locator(".guide-card").first
                     expect(first).to_have_css("animation-name", animation)
-                    self.assertEqual(cards.evaluate("el => el.scrollLeft"), 0)
+                    initial_scroll = cards.evaluate("el => el.scrollLeft")
                     self.page.wait_for_timeout(1500)
-                    self.assertEqual(cards.evaluate("el => el.scrollLeft"), 0)
+                    self.assertEqual(cards.evaluate("el => el.scrollLeft"), initial_scroll)
 
     # #218 acceptance 章節頁 5: my guide's links into form 9 land on their sections.
     def test_form_9_anchors_jump_to_their_sections(self):
@@ -8169,7 +8374,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         cards = self.main().get_by_role("region", name="選配與補助，一步一步看")
         expect(self.assert_titled_part(cards)).to_have_text("選配與補助，一步一步看")
         expect(cards.locator(".guide-card")).to_have_count(5)
-        for button in cards.locator(".guide-card-button").all():
+        for button in cards.locator(".guide-card .guide-card-button").all():
             with self.subTest(button=button.inner_text()):
                 self.assertEqual(self.style(button, "backgroundColor"), self.WHITE)
                 self.assertEqual(self.style(button, "color"), self.PRIMARY)
@@ -8343,7 +8548,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             # #467: the 記錄聽力圖 引導卡 (#779) has the button, so this one is a link on white.
             record = audiogram.get_by_role("link", name="記錄聽力圖", exact=True)
             self.assert_on_white(record)
-            button = self.main().locator(".guide-card-button", has_text="記錄聽力圖")
+            button = self.main().locator(".guide-card .guide-card-button", has_text="記錄聽力圖")
             self.assertEqual(self.style(button, "backgroundColor"), self.WHITE)
 
     # #319, #320, #321 (#318 acceptance 13): on a phone at 200% text a long part title wraps
