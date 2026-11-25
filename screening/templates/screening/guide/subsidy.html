@@ -14,10 +14,14 @@
     {% endfor %}
 {% if result %}
     <section class="hero-card" aria-labelledby="result-title">
+        {% if result.amount is not None %}
         <h2 id="result-title" class="hero-card-label" tabindex="-1"{% if moved %} autofocus{% endif %}>{{ amount_label }}</h2>
         <p class="hero-card-title">{{ result.amount_words }}</p>
         <p>{{ amount_note }}</p>
         <h3 class="hero-card-label mt-2">{{ next_step_label }}</h3>
+        {% else %}{# #776: no certificate and not a low-income elder, so no amount to estimate. #}
+        <h2 id="result-title" class="hero-card-label" tabindex="-1"{% if moved %} autofocus{% endif %}>{{ next_step_label }}</h2>
+        {% endif %}
         <p class="font-bold text-xl/normal">{{ result.next_step.title }}</p>
         <p>{{ result.next_step.words }}</p>
         {% for item in result.reminders %}

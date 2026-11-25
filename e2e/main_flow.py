@@ -13658,11 +13658,43 @@ class SubsidyEstimateTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
         with self.saving_artifacts():
             self.open(self.PATH, signed_in=False)
             self.answer(self.ANSWERS[0][0], "打算申請或正在申請鑑定")
-            for title, words in self.ANSWERS[1:]:
+            # The owner's pick after #775: not asked how far the application has got.
+            for title, words in self.ANSWERS[2:]:
                 self.answer(title, words)
             self.main().get_by_role("link", name="看各縣市的鑑定醫院").click()
             expect(self.page).to_have_url(
                 f"{self.live_server_url}/guide/assessment#hospitals-title"
+            )
+
+    # Spec #774 acceptance 14 (#776): 進階型 is asked one more question, and 是 caps the total.
+    def test_advanced_mild_at_65_caps_the_total(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            for title, words in (
+                *self.ANSWERS[:2],
+                ("預計買哪一級的助聽器？", "進階型"),
+                *self.ANSWERS[3:],
+                ("是不是滿 65 歲以後才第一次鑑定為輕度？", "是"),
+            ):
+                self.answer(title, words)
+            expect(self.page.locator("#result-title")).to_be_focused()
+            card = self.main().locator(".hero-card")
+            expect(card).to_contain_text("10,000 元")
+            expect(card).not_to_contain_text("20,000 元")
+
+    # Spec #774 acceptance 16 (#776): without a certificate, one question and then the result.
+    def test_no_certificate_leads_to_booking_a_fitting(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.answer(self.ANSWERS[0][0], "沒有")
+            self.answer("是不是 65 歲以上（原住民 55 歲以上）的低收入戶？", "不是")
+            expect(self.page.locator("#result-title")).to_be_focused()
+            card = self.main().locator(".hero-card")
+            expect(card).to_contain_text("直接預約聽力師試戴")
+            expect(card).not_to_contain_text("預估最高補助")
+            card.get_by_role("link", name="看沒有身障證明時").click()
+            expect(self.page).to_have_url(
+                f"{self.live_server_url}/guide/form-9#without-certificate"
             )
 
     # #775: readable at 320px and 200% text, a question and the result.
