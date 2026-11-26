@@ -39,8 +39,9 @@ echo "==> load data fixture and seed questionnaires:"
 "$PY" manage.py loaddata questions_fixture.json
 "$PY" manage.py seed_questionnaires
 
-echo "==> restart service and check if deploy successful:"
-sudo systemctl restart hearwell
+echo "==> reload service and check if deploy successful:"
+sudo systemctl reload hearwell
+sleep 5
 systemctl status hearwell --no-pager
 curl -sS -o /dev/null --fail --retry 10 --retry-delay 1 --retry-connrefused https://tingpal.tw/
 
