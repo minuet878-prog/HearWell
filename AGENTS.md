@@ -89,7 +89,7 @@ Claude Code 與 Codex 共用這份指引（Claude Code 經 `CLAUDE.md` 匯入）
 - 名稱：產品叫「聽伴」，英文 tingpal，舊名 HearWell。repo、資料庫、服務、`hearwell-frontend`、作答草稿的鍵名 `hearwell:answer-draft:` 和聯絡信箱都沿用舊名，不要順手改（ADR 0039）。
 - 用途：聽力健康自我照護工具。註冊 → 登入 → 選問卷 → 作答 → 計分 → 結果（分級＋行動建議）→ 歷史紀錄。
 - 使用者：台灣聽損患者與家屬，多為 65 歲以上，繁體中文介面。**無障礙是必需品，不是加分項。**
-- 技術：Django 5.2、Python 3.13、PostgreSQL（正式環境跟網站在同一台 VPS，本機用 Docker）、Tailwind CSS v4（官方 Vite 外掛），樣式來源 `frontend/src/site.css` 與 `frontend/src/styles/`，建置輸出 `screening/static/screening/frontend/site.css`（主色 #1f4e8c、基礎字級 18px）；部署在 Vultr 東京的 VPS（Nginx＋Gunicorn＋systemd、whitenoise，ADR 0041），由我照 `build.sh` 的順序手動部署，每次會 `loaddata` 問卷 fixture；Render 關掉自動部署、只當退路。正式網址 `https://tingpal.tw`。專案名 `config`，app 名 `screening`。
+- 技術：Django 5.2、Python 3.13、PostgreSQL（正式環境跟網站在同一台 VPS，本機用 Docker）、Tailwind CSS v4（官方 Vite 外掛），樣式來源 `frontend/src/site.css` 與 `frontend/src/styles/`，建置輸出 `screening/static/screening/frontend/site.css`（主色 #1f4e8c、基礎字級 18px）；部署在 Vultr 東京的 VPS（Nginx＋Gunicorn＋systemd、whitenoise，ADR 0041），`main` 的 CI 通過後由 `.github/workflows/deploy.yml` 自動執行 `scripts/deploy.sh` 部署，每次會 `loaddata` 問卷 fixture；Render 已關閉（ADR 0084）。正式網址 `https://tingpal.tw`。專案名 `config`，app 名 `screening`。
 - 資料敏感度：有健康資料（篩檢作答與分數）和個資（帳號、生日），存在 PostgreSQL。適用個資法。
 
 ### 結構
@@ -134,7 +134,7 @@ Claude Code 與 Codex 共用這份指引（Claude Code 經 `CLAUDE.md` 匯入）
 - 問卷、題目、Submission／Answer 在 admin 都只能看，不能新增、修改、刪除；問卷內容由問卷定義（`screening/questionnaires/`）決定。要改題目就新增一個問卷定義（新 code），不要改舊的。
 - 已上線的問卷不能加題：`seed_questionnaires` 只建立不存在的問卷，改定義檔的 `questions` 不會動到已上線的版本；從 shell 或 fixture 硬加的話，新作答的滿分會超過門檻表，變成「無法判讀」。要加題就新增一個問卷定義（新 code）。
 - 刪除帳號要走 `User.delete_with_data()`（交易內由下往上刪），不要直接 `user.delete()`：`Submission`、`Audiogram`、`Consent` 對 User 都是 `PROTECT`，會被擋下。
-- `build.sh` 每次部署都會 `loaddata`（HHIE-S、IOI-HA），直接照 fixture 寫進資料庫：fixture 裡已上線的題目不能改，要改就新增一個問卷定義（新 code）。
+- `scripts/deploy.sh` 每次部署都會 `loaddata`（HHIE-S、IOI-HA），直接照 fixture 寫進資料庫：fixture 裡已上線的題目不能改，要改就新增一個問卷定義（新 code）。
 - 門檻（問卷定義的 `thresholds`）第一次要改之前，先做規則版本號，不要直接改數字，否則歷史分級會被回溯改寫。
 - Django shell 是 autocommit，沒有 rollback。
 - `Sum` 沒有 `default=0` 時，沒資料會回 `None` 而不是 0（踩過三次）。

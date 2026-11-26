@@ -53,14 +53,13 @@ allowed_hosts = os.environ.get("ALLOWED_HOSTS")
 if allowed_hosts is None:
     if not DEBUG:
         raise ImproperlyConfigured(
-            "正式環境缺少 ALLOWED_HOSTS 環境變數，請在部署平台設定，以逗號分隔，"
-            "例如 hearwell.onrender.com"
+            "正式環境缺少 ALLOWED_HOSTS 環境變數，請在部署平台設定，以逗號分隔，例如 tingpal.tw"
         )
     allowed_hosts = "127.0.0.1,localhost"
 ALLOWED_HOSTS = [host.strip() for host in allowed_hosts.split(",") if host.strip()]
 if not ALLOWED_HOSTS:
     raise ImproperlyConfigured(
-        "ALLOWED_HOSTS 環境變數是空的，請填入網址，以逗號分隔，例如 hearwell.onrender.com"
+        "ALLOWED_HOSTS 環境變數是空的，請填入網址，以逗號分隔，例如 tingpal.tw"
     )
 
 
@@ -224,7 +223,8 @@ DEFAULT_FROM_EMAIL = f"聽伴 <{from_address}>"
 RETEST_REMINDER_DAILY_LIMIT = 60
 
 # The forgot-password page's attempt counts (#528) are shared by every Gunicorn process, so they
-# live in a database table (build.sh creates it); each lasts an hour from its first attempt.
+# live in a database table (scripts/deploy.sh creates it); each lasts an hour from its first
+# attempt.
 # The default cache stays in each process's memory: the guest scoring limit (spec #492) never
 # writes to the database. Each Gunicorn worker counts on its own (2 workers on the VPS = up to
 # roughly 2x the per-worker rate per IP, and cleared on restart).

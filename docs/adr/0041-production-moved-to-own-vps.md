@@ -2,6 +2,8 @@
 
 日期：2026-11-12（本人審定）
 
+2026-11-26 Render 退路已關閉，見 [ADR 0084](0084-shut-down-render-fallback.md)。
+
 ## 情境
 
 正式站原本在 Render（網站）和 Neon（資料庫），都在美國。2026-11-02 決定搬到自己租的 Vultr 東京 VPS，2026-11-12 網域 `tingpal.tw` 和 HTTPS 設好。目前沒有真實使用者，不用搬資料。HSTS 原本寫死 1 天，W021 的註解寫著「`*.onrender.com` 是共用網域、不能 preload」，搬家後兩個都要重想。

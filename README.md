@@ -374,20 +374,18 @@ python manage.py check --deploy                        # 部署前安全檢查�
 
 ## 部署
 
-正式站 <https://tingpal.tw/> 在 Vultr 東京的 VPS 上，網站和 PostgreSQL 在同一台（[ADR 0041](docs/adr/0041-production-moved-to-own-vps.md)）。本人手動部署，順序照 `build.sh`，前後多幾步：
+正式站 <https://tingpal.tw/> 在 Vultr 東京的 VPS 上，網站和 PostgreSQL 在同一台（[ADR 0041](docs/adr/0041-production-moved-to-own-vps.md)）。`main` 的 CI 通過後，`.github/workflows/deploy.yml` 用 SSH 連到 VPS 執行 `scripts/deploy.sh`，任何一步失敗就停止：
 
-1. 跑 migration 之前先備份資料庫（`pg_dump`）
-2. `git pull` 拉最新的 `main`
-3. `pip install -r requirements.txt`
-4. `check --deploy --fail-level WARNING`：安全設定有任何警告就停止
-5. `npm ci`、`npm run build`：建置前端
-6. `collectstatic`
-7. `migrate`（先用 `migrate --plan` 預覽）
-8. `createcachetable`：忘記密碼頁限制次數用的快取表，已經有就什麼都不做
-9. `purge_question_log`：清除 90 天前的提問紀錄
-10. `loaddata questions_fixture.json`：載入 HHIE-S、IOI-HA 題目
-11. `seed_questionnaires`：依問卷定義載入 HHIA-S、SSQ12-TW、THI、SADL 題目（不指定 id，不會蓋掉舊題目）
-12. `sudo systemctl restart hearwell`，確認服務的啟動時間是剛剛
+1. `git pull --ff-only` 拉最新的 `main`
+2. `pip install -r requirements.txt`
+3. `check --deploy --fail-level WARNING`：安全設定有任何警告就停止
+4. 用 fnm 切到 `.node-version` 的 Node，`npm ci`、`npm run build`：建置前端
+5. `collectstatic`
+6. `migrate --plan` 印出要跑的 migration，再 `migrate`
+7. `createcachetable`：忘記密碼頁限制次數用的快取表，已經有就什麼都不做
+8. `loaddata questions_fixture.json`：載入 HHIE-S、IOI-HA 題目
+9. `seed_questionnaires`：依問卷定義載入 HHIA-S、SSQ12-TW、THI、SADL 題目（不指定 id，不會蓋掉舊題目）
+10. `sudo systemctl restart hearwell`，再連一次 `https://tingpal.tw/` 確認網站有回應
 
 因為每次部署都會重新載入題目，已經上線的題目不能直接修改，要改題目就新增一個問卷定義（新 code）。
 
@@ -399,7 +397,7 @@ VPS 上的排程（systemd timer）：
 | 每天 03:00 | 備份資料庫，VPS 留一份；Mac 每天拉回一份，刪除的資料在備份裡最多再留 10 天（[ADR 0042](docs/adr/0042-backups-keep-deleted-data-10-days.md)） |
 | 每天 09:00 | 寄當天到期的重測提醒信（`send_retest_reminders`，一天最多 60 封；排程等 #666 設定） |
 
-Render 上的舊站已關掉自動部署，停在搬家前的版本，留著當退路。備份還原、排程設定、Search Console 的步驟見 [`docs/deployment/`](docs/deployment/README.md)。
+Render 上的舊站和 Neon 資料庫已在 2026-11-26 關閉（[ADR 0084](docs/adr/0084-shut-down-render-fallback.md)）。備份還原、排程設定、Search Console 的步驟見 [`docs/deployment/`](docs/deployment/README.md)。
 
 ## 文件
 
