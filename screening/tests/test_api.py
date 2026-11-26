@@ -100,7 +100,8 @@ class ApiFoundationTests(TestCase):
         )
 
     def test_drawing_the_schema_reads_no_database(self):
-        # `check --deploy` draws it before any table exists (CI, build.sh): a query fails it there.
+        # `check --deploy` draws it before any table exists (CI, scripts/deploy.sh): a query fails
+        # it there.
         with self.assertNumQueries(0):
             call_command("spectacular", stdout=StringIO())
 

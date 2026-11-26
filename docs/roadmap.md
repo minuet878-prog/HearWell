@@ -5,7 +5,7 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 
 ---
 
-## 目前進度（2026-11-24）
+## 目前進度（2026-11-26）
 
 - 已完成：Phase 0–10、無障礙修正（#70–#74）、成人問卷第一批（#76–#84、#90）、設計系統更新第 1 階段（#108：共用
   token——Noto Sans TC 字體、`.link-card` 等共用 class 的圓角／陰影／間距微調；不換主色、不動版面）、第二批前置重構
@@ -130,6 +130,7 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   照顧旅程七步與全站頁面改版（母規格 #741，#742–#758，另含 #759、#760；ADR 0073–0079；[照顧旅程拷問決定](planning/redesign/journey-redesign-grill-decisions.md)、[頁面改版拷問決定](planning/redesign/page-redesign-grill-decisions.md)：照顧旅程從五步改七步——生活影響問卷、到醫院做聽力檢查（點過查詢醫療院所或有任何聽力圖）、記錄聽力圖、了解選配與補助（三種情況）、申請補助與配戴（身障證明、九號表、核定公文改首頁問答卡）、戴滿 3 個月做第二份效益問卷、半年後再篩檢；拿掉待辦打勾和「第幾台」（migration 0045，回不來）；全站換成小鳥對話、每頁一張藍色大卡、只播一次的進場動畫、頁首「‹ 聽伴 … 頭像選單」、分頁列「首頁｜問卷｜紀錄｜了解」膠囊滑動；結果頁分數卡置中、「這個分數怎麼算」移到中間、刪「看完整建議」；標籤不要外框；隱私權說明小改、同意書維持第 9 版；本人驗收時逐頁點選約 40 條決定，寫回規格；Codex 交叉審查修 5 項、複核通過；PR #761，驗證見 `docs/verification/issue-741.md`；**部署前本人要跑驗證紀錄裡的唯讀查詢，看會刪多少打勾紀錄**）。
   全站健檢改善四批次（2026-11-23，ADR 0080；PR #763、#764、#765、#767，驗證見 `docs/verification/batch1-trend-filter-hhia-s-and-timezone.md`–`batch4-e2e-gate-and-audit.md`）：`/api/submissions/` 新增 `?questionnaire=` 篩選並跳過非子量表答案預載、開啟 HHIA-S 趨勢圖、統一台灣時區日期；舊聽力圖對比度調至 ≥ 3:1（方案 A）、註冊錯欄自動移焦、輸入框與指引返回連結達 44px、`/report` 納入 320px＋200% e2e 並補記 `#741` 後 20 頁無障礙稽核；`site.css` 拆成 `frontend/src/styles/` 10 檔並清 5 個死 class、Noto Sans TC 精簡為 `400`/`700`、4 支共版腳本併為 `site-shell.js`、恢復 CSS 壓縮（gzip -42.7%）；CI 新增 `e2e-gate` 單一閘道工作並確認前端套件 `npm audit` 0 弱點。
   UI/UX Design Review 第三＋第四批（2026-11-24，小改動、不需交叉審查；[拷問決定](planning/redesign/ui-ux-batch3-4-grill-decisions.md)，驗證見 `docs/verification/ui-ux-batch3-4-flow-and-visual-polish.md`）：聽力圖第 1 步即時驗證來源與日期（加 `aria-invalid`）、回頭修改時提供「改好了，回確認存檔」捷徑、三種刪除點位途徑都由 `role="status"` 報讀「已清除 ○○」；分級結果頁回看歷史時在分數卡上方顯示 `YYYY/MM/DD・沒戴／有戴助聽器`；語言香蕉區「用清單選」點選後捲回圖表、選中耳別深藍底白字並報讀切耳狀態、圖說補紅／藍線說明；趨勢圖分數加白外描邊、開啟帶外圈的 `activeDot`、失敗訊息補 `role="status"`；健康報告與分享報告加「全部展開／全部收合」按鈕；意見回饋頁首屏精簡（移除來源句、匿名保存改單行淡字、緊急就醫移至送出下方）並補 `已輸入 N / 1,000 字` 即時字數；輪播卡片切卡報讀新標題、`questionnaire.html` 非首張卡補 `inert`；觸控 `:hover` 包入 `@media (hover: hover)`、`.btn:hover` 與 `:focus-visible` 拆開、`tab-bar.js` 加 14px 捲動門檻防抖動；帳號設定統一稱 `email`、模擬器句子補 `aria-live="polite"`、作答接續標題改 `<h2>`；全站分數／讀數／表格／字數補 `tabular-nums`、同心圓角精算與 `--radius-*` 收斂、標題補 `text-wrap: balance`、頁尾底部預留 `56px` 與手機連結間距 `0.5rem`、修正 `in-view.js`／`scroll-hint.js`／`switch-slide.js` 邊界。
+  關閉 Render 退路（2026-11-26，ADR 0084）：本人刪掉 Render 服務、Neon 專案並解除 Render 的 GitHub App；刪掉 `build.sh`，部署改由 `.github/workflows/deploy.yml` 在 `main` 的 CI 通過後執行 `scripts/deploy.sh`，部署順序測試改讀 `scripts/deploy.sh`；README、`AGENTS.md`、GLOSSARY、CI 註解與設定錯誤訊息拿掉 Render。
 - 進行中：
   - SADL 助聽器滿意度（母規格 #166，ADR 0011）：#167–#169 已合併（網頁表單作答、整體與四個子量表計分、
     子量表白話說明）；#170–#174（React 作答頁與送出 API、我的紀錄、聽力報告與分享報告、資料匯出、推薦精靈與
@@ -152,7 +153,6 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 - **商標確認**（開始收費、上架 app 或申請商標之前）：本人決定先跳過，文字和圖形商標都要向智慧局或代理人確認，見 ADR 0039。
 - **HSTS 逐步拉長**（環境變數 `SECURE_HSTS_SECONDS`，改 `.env` 後重啟服務，不用部署，見 ADR 0041）：
   VPS（`tingpal.tw`）從 3600（1 小時）起，每穩定 1 週升一階：86400（1 天）→ 604800（1 週）→ 31536000（1 年）。
-  Render 關掉自動部署，停在搬家前的版本（86400），不再拉長。
 - **e2e 列為必要檢查**：觀察到 2026-10-30 左右沒有偶發失敗，就把 `e2e` 加進 GitHub ruleset 的必要檢查。
   2026-10-23 `main` 偶發一次（PR #264 合併後，首頁測試等 `networkidle` 逾時，重跑通過），PR #267 已改成等畫面元素；
   觀察期從 PR #267 合併後重新算。
@@ -246,7 +246,6 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 - **有人寄信要求刪除帳號時**：真的有人寄信再做管理指令，直接呼叫 `User.delete_with_data()`。
 - **助聽器選配指引的廣告法規諮詢**：醫療器材管理法第 40 條、施行細則第 2–4 條要不要問食藥署或律師。
   本人 2026-10-23 決定先結案 #218、之後再諮詢；研究代理的判讀只是推論，不是法律意見（見[法規與補助研究](planning/hearing-aid-guide/research.md)）。
-- **待確認**：Render build log 的 Node 版本是不是 `.node-version` 的 24.21.0。
 - **動線走查留下、要先寫規格的三件**（[走查筆記](planning/flow-walkthrough-2026-11-14.md)）：
   第 4 項分數低（無／極輕微）的人照顧旅程照樣帶去聽力檢查與選配，要不要依分級改說法或把第 3、4 步標「目前不需要」（動到 ADR 0044，先拷問）；第 9 項出生年、email 只能寫信改，要不要讓本人在帳號設定自己改；HHIA-S 沒有趨勢圖，65 歲以下的人看不到分數變化。
 

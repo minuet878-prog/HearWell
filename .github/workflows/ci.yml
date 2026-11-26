@@ -9,15 +9,17 @@ permissions:
   contents: read
 
 # A newer push to the same PR cancels the older run. On main each commit gets its own group,
-# so no run is ever cancelled or dropped: Render deploys a main commit only after its checks pass.
+# so no run is ever cancelled or dropped: deploy.yml deploys a main commit to the VPS only after
+# its CI run passes.
 concurrency:
   group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # A change to docs/ or GLOSSARY.md alone skips backend and e2e: no test reads those files except
-  # docs/api/ (test_api checks the schema there). GitHub and Render both count a skipped job as
-  # passed, so a docs PR still merges and deploys. Anything that cannot be compared runs them all.
+  # docs/api/ (test_api checks the schema there). GitHub counts a skipped job as passed, so a docs
+  # PR still merges and its main run still passes for deploy.yml. Anything that cannot be
+  # compared runs them all.
   changes:
     runs-on: ubuntu-latest
     outputs:
@@ -85,9 +87,9 @@ jobs:
         if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
         run: python manage.py test --settings=config.test_settings --parallel 4
       # The steps above install the dev list, which includes the production one, so a package
-      # missing from requirements.txt would go unnoticed until Render. A fresh environment with
-      # the production list only runs build.sh's check, then loads the app the way Render's
-      # start command does: check --deploy alone never imports middleware such as whitenoise.
+      # missing from requirements.txt would go unnoticed until the VPS. A fresh environment with
+      # the production list only runs scripts/deploy.sh's check, then loads the app the way
+      # Gunicorn on the VPS does: check --deploy alone never imports middleware such as whitenoise.
       - name: Production dependencies
         if: ${{ !cancelled() }}
         env:

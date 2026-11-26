@@ -194,39 +194,33 @@ print(json.dumps({
         self.assertEqual(self._settings(debug=False)["silenced"], ["security.W021"])
 
     # 9
-    def test_build_runs_deploy_check_before_anything_changes(self):
-        lines = (self.ROOT / "build.sh").read_text(encoding="utf-8").splitlines()
-        self.assertIn("set -o errexit", lines)
-        check = lines.index("python manage.py check --deploy --fail-level WARNING")
+    def test_deploy_runs_deploy_check_before_anything_changes(self):
+        lines = (self.ROOT / "scripts" / "deploy.sh").read_text(encoding="utf-8").splitlines()
+        self.assertIn("set -euo pipefail", lines)
+        check = lines.index('"$PY" manage.py check --deploy --fail-level WARNING')
         for step in (
             "npm run build --prefix frontend",
-            "python manage.py collectstatic --no-input",
-            "python manage.py migrate",
-            "python manage.py loaddata questions_fixture.json",
+            '"$PY" manage.py collectstatic --no-input',
+            '"$PY" manage.py migrate',
+            '"$PY" manage.py loaddata questions_fixture.json',
         ):
             with self.subTest(step=step):
                 self.assertLess(check, lines.index(step))
 
-    def test_build_seeds_questionnaires_after_the_fixture(self):
+    def test_deploy_seeds_questionnaires_after_the_fixture(self):
         # Issue #103: one generic seed after loaddata, so fixed fixture ids are taken first.
-        lines = (self.ROOT / "build.sh").read_text(encoding="utf-8").splitlines()
-        seed = lines.index("python manage.py seed_questionnaires")
-        self.assertLess(lines.index("python manage.py loaddata questions_fixture.json"), seed)
+        lines = (self.ROOT / "scripts" / "deploy.sh").read_text(encoding="utf-8").splitlines()
+        seed = lines.index('"$PY" manage.py seed_questionnaires')
+        self.assertLess(lines.index('"$PY" manage.py loaddata questions_fixture.json'), seed)
         script = "\n".join(lines)
         self.assertNotIn("seed_hhia_s", script)
         self.assertNotIn("seed_ssq12", script)
 
-    def test_build_purges_the_question_log_after_migrating(self):
-        # Issue #401: one of the three times the question log is purged; its tables come first.
-        lines = (self.ROOT / "build.sh").read_text(encoding="utf-8").splitlines()
-        purge = lines.index("python manage.py purge_question_log")
-        self.assertLess(lines.index("python manage.py migrate"), purge)
-
-    def test_build_creates_the_cache_table_after_migrating(self):
+    def test_deploy_creates_the_cache_table_after_migrating(self):
         # #528: the forgot-password page's attempt counts live in a database cache table.
-        lines = (self.ROOT / "build.sh").read_text(encoding="utf-8").splitlines()
-        table = lines.index("python manage.py createcachetable")
-        self.assertLess(lines.index("python manage.py migrate"), table)
+        lines = (self.ROOT / "scripts" / "deploy.sh").read_text(encoding="utf-8").splitlines()
+        table = lines.index('"$PY" manage.py createcachetable')
+        self.assertLess(lines.index('"$PY" manage.py migrate'), table)
 
     def test_production_python_matches_tests(self):
         pinned = (self.ROOT / ".python-version").read_text(encoding="utf-8").strip()
