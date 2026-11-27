@@ -91,7 +91,7 @@ class PageHeadingTests(TestCase):
         headings = {
             # Spec #655 (#673): the visitor's home is two doors; #749 (the canvas's ProGuest)
             # put its heading in the bird's bubble.
-            "/": "聽力變化常常容易被忽略",
+            "/": "您是否有聽覺困擾？",
             "/learn": "了解",
             "/learn/simulator": "聽損模擬",
             "/privacy": "隱私權說明",

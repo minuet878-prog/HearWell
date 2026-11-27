@@ -101,11 +101,13 @@ class NewUserHomeTests(VisitorHomeTestCase):
         # three steps, 開始篩檢 and 我是家人 (test_home_doors has the doors themselves).
         main = self._main()
         # #749 (the canvas's ProGuest): the bird's bubble is the page's heading.
-        self.assertIn('<h1 class="bird-title">聽力變化常常容易被忽略</h1>', main)
+        self.assertIn('<h1 class="bird-title">您是否有聽覺困擾？</h1>', main)
         for gone in ("從一份問卷開始", "empty-preview"):
             with self.subTest(gone=gone):
                 self.assertNotIn(gone, main)
-        links = re.search(r'<ul class="home-links" role="list">(.*?)</ul>', main, re.S).group(1)
+        links = re.search(
+            r'<ul class="home-links justify-center" role="list">(.*?)</ul>', main, re.S
+        ).group(1)
         # Spec #741 (#752): 了解助聽器選配與補助 became the door 想了解助聽器; P13 keeps this.
         self.assertEqual(
             re.findall(r'<li([^>]*)><a href="([^"]+)">([^<]+)</a></li>', links),

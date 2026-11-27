@@ -984,8 +984,10 @@
   .empty-credit {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
     color: var(--color-muted);
+    text-align: center;
   }
 
   /* Spec #741's 實作中本人補充: the canvas's shield and tick, in the brand blue. */

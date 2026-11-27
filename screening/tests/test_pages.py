@@ -550,7 +550,7 @@ class PageFlowTests(TestCase):
     # Spec #655 (#673): a visitor's home is the two doors, then what stays below them. Spec #741
     # (#752, the canvas's ProGuest): the blue hero card starts, two doors under it, no login link.
     HOME_ORDER = (
-        "聽力變化常常容易被忽略",
+        "您是否有聽覺困擾？",
         "想了解自己的聽力？",
         "大約 3 分鐘",
         "不用註冊",

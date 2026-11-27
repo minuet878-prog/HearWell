@@ -143,7 +143,9 @@ class NewUserHomePromptTests(TestCase):
         # #471 (mockup #458 ⑪): in the visitor's row of text links, under the two doors since
         # spec #655 (#673); pwa-nav.js hides it inside the home-screen app.
         content = self._home()
-        links = re.search(r'<ul class="home-links" role="list">(.*?)</ul>', content, re.S)
+        links = re.search(
+            r'<ul class="home-links justify-center" role="list">(.*?)</ul>', content, re.S
+        )
         self.assertIn(
             f'<li data-hide-in-app><a href="{reverse("add_to_home")}">加到手機主畫面</a></li>',
             links.group(1),
