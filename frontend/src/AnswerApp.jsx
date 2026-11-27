@@ -420,10 +420,13 @@ export default function AnswerApp({
         {!isHearingAid && question.scale ? (
           <div className="ssq-scale" data-na={current === null ? "true" : undefined}>
             <p className="text-[calc(1.3rem+0.6vw)] min-[1200px]:text-[1.75rem] font-bold" role="status">{current === undefined ? "未作答" : current === null ? "不適用" : `${current} 分`}</p>
-            <label className="form-label" htmlFor={`ssq-score-${step}`}>選擇分數（0–10）</label>
+            <label className="visually-hidden" htmlFor={`ssq-score-${step}`}>選擇分數（0–10）</label>
+            {/* The owner's pick A (2026-11-27): a thick track filled up to the score, a 44px thumb
+                and the numbers 0–10 under it; empty while unanswered or 不適用. */}
             <input
               id={`ssq-score-${step}`} type="range" min="0" max="10" step="1"
               value={current ?? 5}
+              style={typeof current === "number" ? { "--ssq-fill": `calc(var(--ssq-thumb) / 2 + (100% - var(--ssq-thumb)) * ${current / 10})` } : undefined}
               aria-valuetext={current === undefined ? "未作答" : current === null ? "不適用" : `${current} 分`}
               onChange={(event) => choose(Number(event.target.value))}
               onPointerUp={(event) => choose(Number(event.currentTarget.value))}
@@ -434,7 +437,16 @@ export default function AnswerApp({
                 }
               }}
             />
-            <div className="flex justify-between gap-2 mb-4"><span>0：{question.scale.min_label}</span><span>10：{question.scale.max_label}</span></div>
+            <div className="ssq-ticks" aria-hidden="true">
+              {Array.from({ length: 11 }, (_, n) => (
+                <span key={n} className={n === current ? "is-chosen" : undefined} style={{ "--n": n }}>{n}</span>
+              ))}
+            </div>
+            {/* The numbers show above, so 0 and 10 are said only to screen readers here. */}
+            <div className="flex justify-between gap-2 mb-4">
+              <span><span className="visually-hidden">0：</span>{question.scale.min_label}</span>
+              <span><span className="visually-hidden">10：</span>{question.scale.max_label}</span>
+            </div>
             <div className="flex flex-wrap gap-2 mb-4">
               <button type="button" className="btn btn-outline-primary btn-lg" disabled={current === 0} onClick={() => choose(Math.max(0, (current ?? 5) - 1))}>減少 1 分</button>
               <button type="button" className="btn btn-outline-primary btn-lg" disabled={current === 10} onClick={() => choose(Math.min(10, (current ?? 5) + 1))}>增加 1 分</button>

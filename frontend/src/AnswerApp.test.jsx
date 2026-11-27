@@ -1098,6 +1098,24 @@ describe("SSQ12-TW", () => {
     choose("不適用");
     expect(document.querySelector(".ssq-scale").getAttribute("data-na")).toBe("true");
   });
+
+  // The owner's pick A (2026-11-27): 0–10 under the slider, the chosen one marked; the slider
+  // already says its value, so the numbers are not read aloud.
+  it("shows 0–10 under the slider and marks the chosen score", async () => {
+    mockApi(undefined, ssq);
+    await renderApp();
+    choose("有戴");
+    next();
+    const ticks = document.querySelector(".ssq-ticks");
+    expect(ticks.getAttribute("aria-hidden")).toBe("true");
+    expect([...ticks.children].map((t) => t.textContent)).toEqual(["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]);
+    expect(ticks.querySelector(".is-chosen")).toBeNull();
+    fireEvent.change(screen.getByRole("slider"), { target: { value: "7" } });
+    expect(ticks.querySelector(".is-chosen").textContent).toBe("7");
+    expect(screen.getByRole("slider", { name: "選擇分數（0–10）" })).toBeTruthy();
+    choose("不適用");
+    expect(ticks.querySelector(".is-chosen")).toBeNull();
+  });
 });
 
 describe("always-aided (#170)", () => {
