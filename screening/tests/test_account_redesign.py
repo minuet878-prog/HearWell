@@ -116,7 +116,7 @@ class SignInPagesTests(TestCase):
         for name, title, user in (
             ("login", "登入", None),
             ("register", "註冊", None),
-            ("consent", "開始使用之前", new_user),
+            ("consent", "使用之前，請先看看這些說明", new_user),
         ):
             if user:
                 self.client.force_login(user)

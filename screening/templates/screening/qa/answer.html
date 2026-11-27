@@ -4,14 +4,9 @@
 
 {% block body %}
 {# #397 (spec #396, prototype #373 Y): one question a page, its address shared with family. #}
-{# #398: back to its topic; the urgent answer, on no topic page, back to the home page. #}
-{% if topic %}
-<p class="mt-2"><a href="{% url 'qa_topic' topic %}"><span aria-hidden="true">‹</span> 回「{{ topic_name }}」</a></p>
-{% else %}
-<p class="mt-2"><a href="{% url 'qa_home' %}"><span aria-hidden="true">‹</span> 回問答小助手</a></p>
-{% endif %}
+{# #398's link back to its topic went in the owner's 2026-11-27 walkthrough: the header's ‹ goes back. #}
 <article class="wrap-anywhere">
-{% include "screening/bird_dialogue.html" with lead="qa_answer"|page_lead title=faq.question %}
+{% include "screening/bird_dialogue.html" with title=faq.question %}
 {# The owner reviews every answer in content.py (ADR 0033): written as HTML there. #}
 {{ faq.answer|safe }}
 {# The owner's pick (2026-10-27, B): the answer stays on the page, only this reminder in the tip box (pale grey since ADR 0043). #}

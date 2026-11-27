@@ -304,7 +304,8 @@ class SavePageTests(GuestSaveTestCase):
         self.assertRegex(box, r"^data-guest-done hidden>")
         self.assertRegex(box, r'<h1 [^>]*tabindex="-1"[^>]*data-guest-done-title[^>]*>')
         self.assertIn("結果已經保存", box)
-        self.assertIn("<strong>接下來</strong>　首頁會告訴您現在該做哪一步。", box)
+        # Its 接下來 line went in the owner's 2026-11-27 walkthrough.
+        self.assertNotIn("<strong>接下來</strong>", box)
         self.assertIn(f'href="{reverse("index")}">看我的下一步</a>', box)
         self.assertIn(f'href="{reverse("my_hearing")}">看這次的紀錄</a>', box)
         self.assertNotIn("帳號也建好了", box)  # the owner's call: the same for all

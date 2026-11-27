@@ -364,12 +364,6 @@
     margin: 0.75rem 0 0;
   }
 
-  /* #756 (canvas TrendA): how to read the scores, last under the chart. */
-  .trend-note {
-    margin: 0.5rem 0 0;
-    color: var(--color-muted);
-  }
-
   /* #332 (spec #326 B3): the copy button says ✓ 已複製 in success green (ADR 0007) for 2
      seconds, whether pressed, hovered or not.
      #330 (B1): the same green for ✓ 已送出 and ✓ 已存檔, held 0.6 seconds while the button

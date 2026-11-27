@@ -14,7 +14,7 @@
 {% block body %}
 {# #471 (mockup #470 D1 B): the title on the white page; the step bar on white as on the answer page. #}
 <div class="narrow-form">
-    {% include "screening/bird_dialogue.html" with lead="register"|page_lead title="註冊" %}
+    {% include "screening/bird_dialogue.html" with title="註冊" %}
     {# Issue #151: register and consent are steps 1 and 2 of 2, numbered apart from the wizard. #}
     {% include "screening/step_progress.html" with step=1 total=2 label="建立帳號" %}
     <div class="auth-form">
@@ -74,7 +74,6 @@
                 <p class="visually-hidden" role="status"></p>
                 {% include "screening/field_messages.html" with field=form.roc_birth_year help_class="field-help" %}
             </div>
-            <p>註冊後，會請您閱讀並同意<a class="inline-link" href="{% url 'privacy' %}">隱私權說明</a>，才能開始使用。</p>
             <button class="w-full btn btn-lg btn-primary" type="submit">註冊</button>
         </form>
         {# Spec #506 (the #539 mockup D3): inside LINE, where Google is blocked, the way out to Safari or Chrome under the form. #}

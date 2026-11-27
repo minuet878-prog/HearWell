@@ -11643,7 +11643,9 @@ class HomeConsentT360Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             with self.subTest(width=width), self.saving_artifacts():
                 self.visit(True, lambda test: test.undecided(), width=width)
                 expect(self.main().locator(".auth-hero")).to_have_count(0)
-                title = self.main().get_by_role("heading", level=1, name="開始使用之前")
+                title = self.main().get_by_role(
+                    "heading", level=1, name="使用之前，請先看看這些說明"
+                )
                 step = self.main().get_by_text("第 2 步／共 2 步：同意隱私權")
                 intro = self.main().get_by_text("聽伴會保存您的篩檢作答")
                 self.assertLess(title.bounding_box()["y"], step.bounding_box()["y"])

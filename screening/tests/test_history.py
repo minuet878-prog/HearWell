@@ -670,8 +670,9 @@ class HistoryTabsTests(TestCase):
             "<h2",
             'class="chart-canvas"',
             'id="trend-plot"',
-            self.NOTE,
         ]
+        # The note under the chart went in the owner's 2026-11-27 walkthrough.
+        self.assertNotIn(self.NOTE, trend)
         positions = [trend.index(part) for part in order]
         self.assertEqual(positions, sorted(positions))
         # React draws only inside the box; it says it is loading until then. Screen readers skip
@@ -1037,13 +1038,14 @@ class MyRecordsTidyT364Tests(TestCase):
         return content[content.index("<main") : content.index("</main>")]
 
     def test_every_tab_titles_its_record_cards(self):
-        # Acceptance 1: 「每次的紀錄」 right before the first record card, below the charts.
+        # Acceptance 1: 「每次的紀錄」 (「歷史」 since the owner's 2026-11-27 walkthrough) right
+        # before the first record card, below the charts.
         self._submit_one_of_each()
         for code in ("hhie-s", "hhia-s", "ssq12-tw", "ioi-ha"):
             with self.subTest(code):
                 main = self._main(code)
-                title = main.index('<h2 id="records-title" class="h4">每次的紀錄</h2>')
-                self.assertEqual(main.count("每次的紀錄"), 1)
+                title = main.index('<h2 id="records-title" class="h4">歷史</h2>')
+                self.assertNotIn("每次的紀錄", main)
                 self.assertLess(title, main.index('class="link-card"'))
                 for chart in ('id="trend-chart"', 'aria-labelledby="ioi-chart-title"'):
                     if chart in main:
@@ -1055,7 +1057,7 @@ class MyRecordsTidyT364Tests(TestCase):
         self._submit_one_of_each()
         note = "整體平均 0 到 10 分，分數越高，代表您回報的聆聽能力越好。"
         main = self._main("ssq12-tw")
-        self.assertRegex(main, rf'每次的紀錄</h2>\s*<p>{note}</p>\s*<a class="link-card"')
+        self.assertRegex(main, rf'歷史</h2>\s*<p>{note}</p>\s*<a class="link-card"')
         for code in ("hhie-s", "hhia-s", "ioi-ha"):
             with self.subTest(code):
                 self.assertNotIn(note, self._main(code))

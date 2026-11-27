@@ -11,7 +11,7 @@
 {# wrap-anywhere: at 200% text on a phone the date cannot break and would widen the page (#204). #}
 {# Spec #702 (#703 mockup 6A): a self test is a test, not an exam, and says so in a grey tag. #}
 {% capture bird_title %}{{ audiogram.tested_on|date:"Y/m/d" }} {% if audiogram.is_self_test %}測試的聽力圖 {% include "screening/audiogram_source_tag.html" %}{% else %}檢查的聽力圖{% endif %}{% endcapture %}
-{% include "screening/bird_dialogue.html" with lead="audiogram_detail"|page_lead title=bird_title %}
+{% include "screening/bird_dialogue.html" with title=bird_title %}
 {# #465 (the #464 mockup 3A): each ear a block in its degree's colour (L1, DEGREE_LEVELS) above the chart, with its four-frequency average; the rest waits in 看完整說明. #}
 <section class="audiogram-ear-blocks" aria-label="兩耳程度">
     {% for ear, label, result in ears %}

@@ -17,14 +17,10 @@ LEADS = {
     # The same result opened again later (上次結果, 我的紀錄, a reload): views.common.JUST_SAVED.
     "result_reopened": "這是您這一次的結果",
     "guest_save": "這次的結果還在這支手機上。",
-    "guest_saved": "存好了。",
     "hhi_comparison": "戴上助聽器，差多少？",
     # 紀錄
-    "my_hearing": "這裡是您每一次的紀錄。",
-    "audiogram_new": "照檢查報告上的數字填就好。",
     "audiogram_import": "用 iPhone 做過聽力測試嗎？",
     "audiogram_import_preview": "存起來之前，先看一眼。",
-    "audiogram_detail": "這是您記下的聽力圖。",
     "audiogram_compare": "看看前後有沒有變化。",
     "audiogram_delete": "刪除之前，請再確認一次。",
     "audiogram_speech_banana": "看看哪些說話的聲音聽得到。",
@@ -50,7 +46,6 @@ LEADS = {
     "hearing_loss_simulator": "聽聽看，聽力不好的人聽到什麼。",
     "qa_home": "有問題，可以問我。",
     "qa_topic": "這是這個主題常見的問題。",
-    "qa_answer": "這一題的回答在這裡。",
     "qa_results": "這是我找到的回答。",
     "about": "想知道是誰做的嗎？",
     "privacy": "您的資料怎麼保管，都寫在這裡。",
@@ -59,8 +54,6 @@ LEADS = {
     "add_to_home": "放在主畫面，下次一點就打開。",
     # 帳號
     "login": "歡迎回來。",
-    "register": "建立帳號，篩檢結果會幫您存起來。",
-    "consent": "使用之前，請先看看這些說明。",
     "account_settings": "{name}，這裡可以管理您的帳號。",
     "delete_account": "刪除之前，請先看清楚。",
     "confirm_identity": "為了保護您的資料。",

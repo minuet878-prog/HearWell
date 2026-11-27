@@ -24,7 +24,8 @@ logger = logging.getLogger(__name__)
 SALT = "screening.email_confirmation"
 GOOD_FOR = 3 * 24 * 60 * 60  # 3 days (the owner's pick)
 RESENDS_PER_HOUR = 3
-SENT = "已寄確認信到 {email}。請在 3 天內打開信，按「確認信箱」。沒收到的話，可以到帳號設定重寄。"
+# The owner's 2026-11-27 walkthrough: the address alone; system_message.html adds 重寄 under it.
+SENT = "已寄確認信到 {email}。"
 NOT_SENT = "確認信寄不出去，請稍後到帳號設定重寄。"
 TOO_MANY = "試太多次了，請一小時後再試"
 
@@ -64,7 +65,7 @@ def send(request, user):
         logger.exception("An email confirmation could not be sent")
         messages.error(request, NOT_SENT)
     else:
-        messages.info(request, SENT.format(email=user.email))
+        messages.info(request, SENT.format(email=user.email), extra_tags="email-resend")
 
 
 def resend(request):

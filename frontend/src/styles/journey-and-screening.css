@@ -3,9 +3,10 @@
    text links, and the 空狀態首頁's dashed preview. */
 @layer components {
   /* Side by side on a phone, one under the other once the text is large (#458 D1). */
-  /* The 2026-11-14 walkthrough (mockup 10): 我的紀錄's one questionnaire, where its tabs would be. */
+  /* The 2026-11-14 walkthrough (mockup 10): 我的紀錄's one questionnaire, where its tabs would be;
+     as far from its box as 分數趨勢 from its chart (the owner's 2026-11-27 walkthrough). */
   .records-questionnaire {
-    margin: 1rem 0 0;
+    margin: 1rem 0 0.5rem;
   }
 
   .journey-tiles {

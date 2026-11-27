@@ -99,16 +99,10 @@ def qa_answer(request, code):
     if code == WHERE_TO_TEST:
         # The 照顧旅程's step 2 done once 查詢醫療院所 is opened (spec #741's 實作中本人補充).
         keep_view(request.user, HOSPITAL_SEARCH)
-    topic = _listed_topic(faq)
     return render(
         request,
         "screening/qa/answer.html",
-        {
-            "faq": faq,
-            "topic": topic,
-            "topic_name": TOPIC_NAMES.get(topic),
-            "related": [content.BY_CODE[code] for code in faq.related],
-        },
+        {"faq": faq, "related": [content.BY_CODE[code] for code in faq.related]},
     )
 
 

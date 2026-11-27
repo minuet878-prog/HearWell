@@ -6,7 +6,8 @@
 {% block body %}
 <div class="narrow-form">
     {# #471 (mockup #470 D1 B): the register page's plain title, carried on to its step 2. #}
-    {% include "screening/bird_dialogue.html" with lead="consent"|page_lead title="開始使用之前" %}
+    {# The owner's 2026-11-27 walkthrough: the lead became the title, 開始使用之前 went. #}
+    {% include "screening/bird_dialogue.html" with title="使用之前，請先看看這些說明" %}
     {# Issue #151: step 2 of the 2 that start on the register page. #}
     {% include "screening/step_progress.html" with step=2 total=2 label="同意隱私權" %}
     <p>聽伴會保存您的篩檢作答、分數和聽力圖，這些是健康資料，需要您同意才能使用。</p>

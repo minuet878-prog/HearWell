@@ -79,6 +79,22 @@ class BirdDialogueTests(TestCase):
                 self.assertFalse("<h1" in path.read_text())
 
 
+ONE_LINE = {
+    "index",
+    "screening",
+    "result",
+    "guest_result",
+    "register",
+    "consent",
+    "my_hearing",
+    "audiogram_list",
+    "audiogram_new",
+    "audiogram_edit",
+    "audiogram_detail",
+    "qa_answer",
+}
+
+
 class EveryPageTests(TestCase):
     """Walks the pages a GET reaches, signed in and not."""
 
@@ -167,14 +183,15 @@ class EveryPageTests(TestCase):
         self.assertIsNotNone(found, "no bird dialogue")
         lead, title = found
         # The two home pages' bubbles are one line, as the canvas (spec #741's 實作中本人補充);
-        # since the owner's 2026-11-27 walkthrough so are the wizard's, the answer page's and
-        # the result pages'.
+        # since the owner's 2026-11-27 walkthrough so are the wizard's, the answer page's, the
+        # result pages', the register and consent pages', 我的紀錄's, the audiogram pages' and a
+        # Q&A answer's.
         try:
             name = resolve(response.request["PATH_INFO"]).url_name
         except Resolver404:
             name = None
         wizard = name == "questionnaire_list" and "wizard" in response.request["QUERY_STRING"]
-        one_line = wizard or name in {"index", "screening", "result", "guest_result"}
+        one_line = wizard or name in ONE_LINE
         self.assertTrue(title, found)
         self.assertEqual(lead is None, one_line, found)
         main = _main(response)
