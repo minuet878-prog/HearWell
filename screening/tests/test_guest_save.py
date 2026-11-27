@@ -23,11 +23,13 @@ SUBMISSIONS = "/api/submissions/"
 SAVE_FROM_CARD = "/guest/save?from=card"
 PASSWORD = "Fake-pass-2468"
 SAVE_TITLE = '<h2 class="result-next-title">註冊保存</h2>'
+# Gone in the owner's 2026-11-27 walkthrough.
 MORE = "註冊後還有耳鳴、在吵雜環境聽不聽得清楚等問卷可以做。"
 # Spec #693 acceptance 4: the two that lead on to the audiogram promise no fitting.
 REASONS = {
     "normal": "註冊保存後，半年後會提醒您再做一次，跟這次的結果比一比。",
-    "mild_to_moderate": "註冊保存後，看完醫師可以接著記下聽力圖，網站會依聽力圖幫您整理下一步。",
+    # The owner's 2026-11-27 walkthrough.
+    "mild_to_moderate": "註冊後可記下您的聽力圖，網站會根據您的檢查結果幫您整理下一步。",
     "severe": "註冊保存後，就醫拿到聽力圖可以記下來，網站會依聽力圖幫您整理下一步。",
 }
 
@@ -100,7 +102,7 @@ class SaveCardTests(GuestSaveTestCase):
                 self.assertIn(REASONS[level], html)
                 for other in set(REASONS) - {level}:
                     self.assertNotIn(REASONS[other], html)
-                self.assertIn(MORE, html)
+                self.assertNotIn(MORE, html)
 
     def test_its_two_buttons_go_to_the_save_page_from_the_card(self):
         next_part = "?next=%2Fguest%2Fsave%3Ffrom%3Dcard"
@@ -125,14 +127,12 @@ class SaveCardTests(GuestSaveTestCase):
                 # A press inside it is what lets the save page save straight away (Spec 1).
                 self.assertIn('<div class="result-next" data-guest-save-card>', html)
 
-    def test_at_its_bottom_how_long_it_stays_and_where(self):
-        # The days are the browser's to fill (it alone knows when the result was finished).
+    def test_it_no_longer_says_how_long_it_stays_or_where(self):
+        # The owner's 2026-11-27 walkthrough took both lines out; the privacy page keeps it.
         html = self.guest_html([0] * 10)
-        self.assertIn("這次結果只存在這支手機上，還留 <span data-guest-days-left></span> 天", html)
-        self.assertIn("換手機或換瀏覽器就看不到這次結果。", html)
-        buttons = html.index("登入保存</a>")
-        self.assertLess(buttons, html.index("data-guest-days-left"))
-        self.assertLess(buttons, html.index("換手機或換瀏覽器就看不到這次結果。"))
+        self.assertNotIn("data-guest-days-left", html)
+        self.assertNotIn("這次結果只存在這支手機上", html)
+        self.assertNotIn("換手機或換瀏覽器就看不到這次結果。", html)
 
     def test_after_the_one_sentence_where_the_journey_card_is(self):
         # B1: in the 照顧旅程 card's place, after the level's one sentence (since 2026-11-21 in
@@ -176,6 +176,13 @@ class GuestAdviceTests(GuestSaveTestCase):
                 self.assertLess(box, html.index(advice))
                 self.assertLess(html.index(advice), html.index(SAVE_TITLE))
 
+    def test_hhie_s_mild_to_moderate_advice_is_the_owners_2026_11_27_words(self):
+        html = self.guest_html(self.LEVELS["mild_to_moderate"], self.hhie_s)
+        box = html[html.index('class="result-advice') : html.index('class="result-next"')]
+        self.assertIn(
+            "篩檢顯示聽力問題已經影響到您的生活，建議前往醫院或診所耳鼻喉科進行聽力檢查。", box
+        )
+
     def test_its_link_is_where_to_have_the_hearing_checked_only(self):
         # 記錄聽力圖 and 看／印聽力報告 need an account; the save card is the way to one.
         # #694 mockup A: the Q&A answer on where to have the hearing checked, not the guide.
@@ -190,9 +197,10 @@ class GuestAdviceTests(GuestSaveTestCase):
                 for name in ("audiogram_new", "health_report"):
                     self.assertNotIn(f'href="{reverse(name)}"', html)
 
-    def test_the_save_card_is_asked_not_advised(self):
+    def test_the_save_card_is_not_advised(self):
+        # Its question 想留下這次結果？ went in the owner's 2026-11-27 walkthrough.
         html = self.guest_html([0] * 10)
-        self.assertIn('<p class="result-next-label">想留下這次結果？</p>', html)
+        self.assertNotIn("想留下這次結果？", html)
         self.assertNotIn("建議您下一步", html)
 
 
@@ -303,7 +311,8 @@ class SavePageTests(GuestSaveTestCase):
         self.assertRegex(box, r"^data-guest-done hidden>")
         self.assertRegex(box, r'<h1 [^>]*tabindex="-1"[^>]*data-guest-done-title[^>]*>')
         self.assertIn("結果已經保存", box)
-        self.assertIn("<strong>接下來</strong>　首頁會告訴您現在該做哪一步。", box)
+        # Its 接下來 line went in the owner's 2026-11-27 walkthrough.
+        self.assertNotIn("<strong>接下來</strong>", box)
         self.assertIn(f'href="{reverse("index")}">看我的下一步</a>', box)
         self.assertIn(f'href="{reverse("my_hearing")}">看這次的紀錄</a>', box)
         self.assertNotIn("帳號也建好了", box)  # the owner's call: the same for all

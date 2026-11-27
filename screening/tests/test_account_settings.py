@@ -145,7 +145,7 @@ class AccountSettingsTests(TestCase):
     def test_home_order_and_text(self):
         # Spec #741 (#752, the canvas's ProGuest): the bird, the blue hero card, then two doors.
         expected = (
-            "聽力變化常常容易被忽略",
+            "您是否有聽覺困擾？",
             "想了解自己的聽力？",
             "大約 3 分鐘",
             "不用註冊",

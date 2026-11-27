@@ -428,7 +428,6 @@ class RegisterFormTests(TestCase):
         for name in ("username", "email", "password1", "password2", "roc_birth_year"):
             self.assertContains(response, f'name="{name}"')
         self.assertContains(response, "民國")
-        self.assertContains(response, self.NOTE)
         self.assertContains(response, "<li>至少 8 個字</li>", html=True)
 
     def test_register_without_birth_year(self):
@@ -590,13 +589,11 @@ class RegisterFormTests(TestCase):
             self.assertEqual(User(birth_year=1955).age, 2027 - 1955)
             self.assertEqual(this_roc_year(), 2027 - 1911)
 
-    def test_note_uses_readable_style(self):
-        self.assertContains(
-            self.client.get(self.url),
-            # Pages tidy-up: the body grey (7.6:1 on the page), one step smaller than the label.
-            f'<div id="id_roc_birth_year_helptext" class="field-help mt-1">{self.NOTE}</div>',
-            html=True,
-        )
+    def test_the_birth_year_has_no_note(self):
+        # The owner's 2026-11-27 walkthrough took out why it is asked.
+        response = self.client.get(self.url)
+        self.assertNotContains(response, "id_roc_birth_year_helptext")
+        self.assertNotContains(response, self.NOTE)
 
     def test_password_rules_use_rem_size(self):
         response = self.client.get(self.url)
@@ -664,8 +661,9 @@ class RegisterPageGuidanceTests(TestCase):
     def test_the_top_holds_the_title_the_line_and_the_step(self):
         top = page_top(self.client.get(self.url).content.decode())
         self.assertIn('<h1 class="bird-title">註冊</h1>', top)
-        # #749: the line under the title became the bird's lead, above it.
-        self.assertIn('<p class="bird-lead">建立帳號，篩檢結果會幫您存起來。</p>', top)
+        # #749 made the line under the title the bird's lead; it went in the owner's 2026-11-27
+        # walkthrough.
+        self.assertNotIn("bird-lead", top)
         self.assertIn("第 1 步／共 2 步：建立帳號", top)
 
     # #360 (spec #354): 出生年 says it is optional in its name; 電子郵件 says what it is for and

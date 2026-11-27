@@ -3,7 +3,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from screening import email_confirmation
-from screening.views.common import email_link_page, form_address
+from screening.views.common import email_link_page, form_address, safe_next
 
 PAGE = "screening/email_confirm.html"
 
@@ -28,8 +28,9 @@ def email_confirm(request, token):
 
 @form_address
 def email_confirm_resend(request):
-    """The account settings' 重寄確認信 (mockup 4), for request.user's own email."""
+    """The account settings' 重寄確認信 (mockup 4), for request.user's own email; also under the
+    確認信's notice (the owner's 2026-11-27 walkthrough), which comes back to its page."""
     user = request.user
     if user.email and not user.email_confirmed:
         email_confirmation.resend(request)
-    return HttpResponseRedirect(reverse("account_settings"))
+    return HttpResponseRedirect(safe_next(request) or reverse("account_settings"))

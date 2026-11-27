@@ -60,7 +60,7 @@ class RecordsPageTests(TestCase):
         main = self.records()
         latest = main.index("records-score")
         trend = main.index('id="trend-chart"')
-        each = main.index('<h2 id="records-title" class="h4">每次的紀錄</h2>')
+        each = main.index('<h2 id="records-title" class="h4">歷史</h2>')
         self.assertLess(latest, trend)
         self.assertLess(trend, each)
         chart = main[trend:each]
@@ -78,15 +78,13 @@ class RecordsPageTests(TestCase):
                 self.assertNotIn(absent, main)
 
     def test_the_level_names_are_inside_the_chart_not_a_list_under_it(self):
-        # Canvas TrendA: the bands carry their names; 分數越低 is under the chart.
+        # Canvas TrendA: the bands carry their names; 分數越低 under the chart went in the owner's
+        # 2026-11-27 walkthrough.
         self.three_records()
         chart = re.search(r'<div id="trend-chart">(.*?)</section>', self.records(), re.S)
         self.assertNotIn("trend-bands", chart.group(1))
-        self.assertRegex(
-            chart.group(1),
-            r'<p class="trend-fitted">[^<]*</p>\s*<p class="trend-note">'
-            r"分數越低，聽力對生活的影響越小。</p>\s*$",
-        )
+        self.assertRegex(chart.group(1), r'<p class="trend-fitted">[^<]*</p>\s*$')
+        self.assertNotIn("trend-note", chart.group(1))
 
     def test_the_latest_is_large_in_its_short_name_and_read_in_its_full_one(self):
         self.three_records()

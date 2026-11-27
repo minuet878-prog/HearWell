@@ -1,12 +1,9 @@
-{# A guest result's 保存卡 (spec #492, the #493 mockup's B1, C1, D1): in the 照顧旅程 card's place and look, what saving brings at this level, then 註冊保存 and 登入保存, which come back to the save page from the card. The days left are filled in by guest-results.js, which alone knows when the result was finished. #}
+{# A guest result's 保存卡 (spec #492, the #493 mockup's B1, C1, D1): in the 照顧旅程 card's place and look, what saving brings at this level, then 註冊保存 and 登入保存, which come back to the save page from the card. The owner's 2026-11-27 walkthrough took out the question over its title, the other questionnaires, and the days the result is kept on this phone. #}
 {% url 'guest_save' as save_url %}
 {% with next=save_url|add:"?from=card"|urlencode:"" %}
 <div class="result-next" data-guest-save-card>
-    {# The 2026-11-14 walkthrough (mockup 3A): asked, not advised; the advice is above it. #}
-    <p class="result-next-label">想留下這次結果？</p>
     <h2 class="result-next-title">註冊保存</h2>
-    {% if save_reason %}<p class="mb-2">{{ save_reason }}</p>{% endif %}
-    <p class="mb-3">註冊後還有耳鳴、在吵雜環境聽不聽得清楚等問卷可以做。</p>
+    {% if save_reason %}<p class="mb-3">{{ save_reason }}</p>{% endif %}
     <div class="flex flex-col gap-2">
         <a class="btn btn-primary btn-lg w-full" href="{% url 'register' %}?next={{ next }}">註冊保存</a>
         {# #513, #543 (the #507 mockup 7, the #539 mockup 7): each its own trip, which comes back to the save page; LINE above Google, as on the login page; Google not inside LINE, where it is blocked. #}
@@ -14,7 +11,5 @@
         {% if google_save %}{% include "screening/google_button.html" with label="繼續" start="google_save_card" next="" %}{% endif %}
         <a class="btn btn-outline-primary btn-lg w-full" href="{% url 'login' %}?next={{ next }}">登入保存</a>
     </div>
-    <p class="mt-3 mb-1 text-(--color-muted)">這次結果只存在這支手機上，還留 <span data-guest-days-left></span> 天，之後自動刪除。</p>
-    <p class="mb-0 text-(--color-muted)">換手機或換瀏覽器就看不到這次結果。</p>
 </div>
 {% endwith %}

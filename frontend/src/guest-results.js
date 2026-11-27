@@ -204,13 +204,10 @@ export async function showGuestResult({
   const body = response ? await response.json().catch(() => ({})) : {};
   if (response?.ok) {
     root.querySelector("[data-guest-section]").innerHTML = body.html;
-    // The save card's days left (save_card.html): only this browser knows when it was finished.
-    const days = root.querySelector("[data-guest-days-left]");
-    if (days) days.textContent = String(daysLeft(result.finishedAt, now));
     offerClearing(root, navigate, result.key);
     rememberSaveCardPress(root, clock);
-    const { justFinishedLead, reopenedLead } = root.dataset;
-    root.querySelector(".bird-lead").textContent = takeJustFinished(result.key) ? justFinishedLead : reopenedLead;
+    const { justFinishedTitle, reopenedTitle } = root.dataset;
+    root.querySelector(".bird-title").textContent = takeJustFinished(result.key) ? justFinishedTitle : reopenedTitle;
     root.querySelector("[data-guest-shown]").hidden = false;
     error.textContent = "";
   } else if (response?.status === 400) {

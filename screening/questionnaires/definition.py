@@ -28,7 +28,8 @@ LIFE_IMPACT_LIMITS = (
 # the next step by the audiogram, no fitting promised by a questionnaire.
 SAVE_REASONS = {
     "normal": "註冊保存後，半年後會提醒您再做一次，跟這次的結果比一比。",
-    "mild_to_moderate": "註冊保存後，看完醫師可以接著記下聽力圖，網站會依聽力圖幫您整理下一步。",
+    # The owner's 2026-11-27 walkthrough.
+    "mild_to_moderate": "註冊後可記下您的聽力圖，網站會根據您的檢查結果幫您整理下一步。",
     "severe": "註冊保存後，就醫拿到聽力圖可以記下來，網站會依聽力圖幫您整理下一步。",
 }
 

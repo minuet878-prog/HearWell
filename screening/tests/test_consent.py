@@ -122,10 +122,12 @@ class PrivacyPageTests(TestCase):
             with self.subTest(page=name, logged_in=True):
                 self._assert_footer_link(self.client.get(reverse(name)))
 
-    def test_register_page_also_links_near_the_button(self):
+    def test_register_page_no_longer_links_near_the_button(self):
+        # Its line on agreeing after registering went in the owner's 2026-11-27 walkthrough; the
+        # footer still links it (test_footer_links_privacy_everywhere), and the consent page next.
         response = self.client.get(reverse("register"))
         form_part = response.content.decode().split("<footer")[0]
-        self.assertIn(f'href="{reverse("privacy")}"', form_part)
+        self.assertNotIn("註冊後，會請您閱讀並同意", form_part)
 
     def _assert_footer_link(self, response):
         footer = response.content.decode().split("<footer", 1)[1]
@@ -299,7 +301,9 @@ class ConsentPageTests(TestCase):
         # The bird and the step bar, then the rest.
         cut = main.index("<p>聽伴會保存您的篩檢作答")
         top, below = main[:cut], main[cut:]
-        self.assertIn('<h1 class="bird-title">開始使用之前</h1>', top)
+        # The owner's 2026-11-27 walkthrough: the lead became the title.
+        self.assertIn('<h1 class="bird-title">使用之前，請先看看這些說明</h1>', top)
+        self.assertNotIn("bird-lead", top)
         self.assertIn("第 2 步／共 2 步：同意隱私權", top)
         self.assertNotIn("auth-hero", main)
         self.assertIn("聽伴會保存您的篩檢作答", below)

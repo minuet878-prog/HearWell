@@ -508,8 +508,6 @@ export default function AnswerApp({
           </button>
         )}
       </div>
-      {/* #362: why the button does nothing yet; its look stays as it is (#136 C). */}
-      {!answered && <p className="mt-4">先選一個答案，才能按「{isLast ? "送出" : "下一題"}」。</p>}
       {/* Always here, so a screen reader says 已送出 when it is written in (#330). */}
       <p className="visually-hidden" role="status">{isSent ? "已送出" : ""}</p>
       {/* #462: the page's own intro (the definition's intro_template) folded on every page, the first

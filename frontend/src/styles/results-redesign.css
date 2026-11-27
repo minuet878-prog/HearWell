@@ -252,16 +252,6 @@
     overflow-wrap: anywhere;
   }
 
-  .score-explain-title {
-    margin: 0 0 0.25rem;
-    font-size: var(--text-section-title);
-    font-weight: 700;
-  }
-
-  .score-explain-title + p {
-    margin: 0;
-  }
-
   .score-explain > .score-explain-advice {
     margin-top: 1rem;
   }

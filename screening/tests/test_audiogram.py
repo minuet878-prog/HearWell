@@ -1643,13 +1643,10 @@ class AudiogramPagesT365Test(TestCase):
     def _link(self, main, text):
         return re.search(rf'<a [^>]*href="([^"]+)"[^>]*>{text}</a>', main)
 
-    def test_new_page_says_to_have_the_report_ready_and_how_to_go_back(self):
+    def test_new_page_says_how_to_go_back(self):
         main = self._main(self.client.get(reverse("audiogram_new")))
-        self.assertTrue(
-            self._after_title(main).startswith(
-                "準備好醫院給的聽力檢查報告，照著報告上的日期和 O、X 記號描進來。"
-            )
-        )
+        # Its line on having the report ready went in the owner's 2026-11-27 walkthrough.
+        self.assertNotIn("準備好醫院給的聽力檢查報告", main)
         back = self._link(main, "不新增了，回聽力圖清單")
         self.assertEqual(back.group(1), reverse("audiogram_list"))
         self.assertLess(main.index('id="audiogram-app"'), back.start())

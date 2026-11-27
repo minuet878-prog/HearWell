@@ -120,18 +120,15 @@ class QaTopicForEveryoneTests(TestCase):
 class QaAnswerWayOnTests(TestCase):
     """#398 (spec #396, prototype #373 Y): an answer leads back to its topic and on to more."""
 
-    def test_leads_back_to_its_topic(self):
-        main = main_of(self.client.get(reverse("qa_answer", args=["brands-and-shops"])))
-        topic = reverse("qa_topic", args=["hearing-aids"])
-        back = f'<a href="{topic}">{BACK}回「助聽器選配與補助」</a>'
-        self.assertIn(back, main[: main.index("<h1")])
-
-    def test_the_urgent_answer_leads_back_to_the_assistant_home(self):
-        # It is on no topic page, so 回「聽力保健常識」 would lead where it is not.
-        main = main_of(self.client.get(reverse("qa_answer", args=["sudden-hearing-loss"])))
-        before_question = main[: main.index("<h1")]
-        self.assertIn(f'<a href="{reverse("qa_home")}">{BACK}回問答小助手</a>', before_question)
-        self.assertNotIn("/qa/topic/", before_question)
+    # The links back above the question went in the owner's 2026-11-27 walkthrough: the header's
+    # back button goes back.
+    def test_no_link_back_above_the_question(self):
+        for code in ("brands-and-shops", "sudden-hearing-loss"):
+            with self.subTest(code=code):
+                main = main_of(self.client.get(reverse("qa_answer", args=[code])))
+                before_question = main[: main.index("<h1")]
+                self.assertNotIn(BACK, before_question)
+                self.assertNotIn("<a ", before_question)
 
     def test_shows_the_related_questions_the_definition_names(self):
         brands = faq_with("brands-and-shops", related=("my-results", "sudden-hearing-loss"))

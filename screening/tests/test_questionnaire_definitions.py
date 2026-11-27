@@ -200,11 +200,12 @@ class RealDefinitionsTests(TestCase):
                 self.assertIn(f"約 {minutes} 分鐘", test_layout._text(card))
 
     def test_answer_page_intro(self):
-        for code, (_, minutes, _, sentences) in PUBLISHED.items():
+        for code, (_, _, _, sentences) in PUBLISHED.items():
             with self.subTest(code=code):
                 url = reverse("screening", args=[self.questionnaires[code].pk])
                 content = self.client.get(url).content.decode()
-                self.assertIn(f"共 1 題・大約 {minutes} 分鐘", content)
+                # The minutes went in the owner's 2026-11-27 walkthrough.
+                self.assertIn("・共 1 題</p>", content)
                 for sentence in sentences:
                     self.assertIn(sentence, content)
 

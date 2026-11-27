@@ -275,7 +275,8 @@ class Ssq12ResultRedesignTests(TestCase):
     def test_page_reads_topic_status_average_then_folded_answers_and_disclaimer_last(self):
         latest = self.record((2026, 10, 15), total=78, wearing=True)
         main = self.main(latest)
-        self.assertIn('<h1 class="bird-title">看看日常聆聽能力</h1>', main)
+        # The bird's one line since the owner's 2026-11-27 walkthrough.
+        self.assertIn('<h1 class="bird-title">這是您這一次的結果</h1>', main)
         text = self.text(main)
         order = [
             "整體平均 6.5 分（滿分 10）",

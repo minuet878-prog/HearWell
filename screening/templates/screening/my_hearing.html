@@ -16,7 +16,7 @@
 {% endblock %}
 
 {% block body %}
-{% include "screening/bird_dialogue.html" with lead="my_hearing"|page_lead title="我的紀錄" %}
+{% include "screening/bird_dialogue.html" with title="我的紀錄" %}
 {% include "screening/records_switch.html" with side="questionnaires" %}
 {% if questionnaires|length > 1 %}
 {# Each tab is its own URL, so reload and the back button keep the tab. #}
@@ -72,7 +72,7 @@
 {% include "screening/trend_chart.html" with chart=trend_chart questionnaire=current %}
 {% endif %}
 {% if submissions %}
-<h2 id="records-title" class="h4">每次的紀錄</h2>
+<h2 id="records-title" class="h4">歷史</h2>
 {% if current.definition.records_note %}<p>{{ current.definition.records_note }}</p>{% endif %}
 {% for submission in submissions %}{% include "screening/records_submission_row.html" %}{% endfor %}
 {% if older %}
@@ -92,7 +92,6 @@
         {% include "screening/action_icon.html" with icon="share" %}
         <span class="link-card-body">
             <span class="link-card-title">傳給家人看</span>
-            <span>家人不用登入就能看</span>
         </span>
         <span class="link-card-arrow" aria-hidden="true">›</span>
     </a>

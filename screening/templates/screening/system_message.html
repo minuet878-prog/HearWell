@@ -3,7 +3,19 @@
 {% for message in messages %}{% if forloop.last %}
 <div class="system-message system-message-{{ message.level_tag }}" role="{% if message.level_tag == "error" %}alert{% else %}status{% endif %}" tabindex="-1">
     <span class="system-message-mark" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="{% if message.level_tag == "success" %}M5 12.5l4.5 4.5L19 7.5{% elif message.level_tag == "error" %}M12 6v8M12 18v.5{% else %}M12 10.5v7.5M12 6v.5{% endif %}"/></svg></span>
+    {% if "email-resend" in message.extra_tags %}
+    {# The 確認信's notice (the owner's 2026-11-27 walkthrough): the address, then 重寄 under it, back to this page. #}
+    <div class="min-w-0">
+        <p>{{ message }}</p>
+        <form method="post" action="{% url 'email_confirm_resend' %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button class="inline-link cursor-pointer border-0 bg-transparent" type="submit">沒收到？重寄確認信</button>
+        </form>
+    </div>
+    {% else %}
     <p>{{ message }}</p>
+    {% endif %}
 </div>
 <script defer src="{% static 'screening/system-message.js' %}"></script>
 {% endif %}{% endfor %}

@@ -12,8 +12,7 @@
 
 {% block body %}
 {% capture bird_title %}{% if audiogram %}修改 {{ audiogram.tested_on|date:"Y/m/d" }} 的聽力圖{% else %}記錄聽力圖{% endif %}{% endcapture %}
-{% include "screening/bird_dialogue.html" with lead="audiogram_new"|page_lead title=bird_title %}
-{% if not audiogram %}<p>準備好醫院給的聽力檢查報告，照著報告上的日期和 O、X 記號描進來。</p>{% endif %}
+{% include "screening/bird_dialogue.html" with title=bird_title %}
 {# #199: how to mark lives in each ear's step card (AudiogramApp.jsx). #}
 <div id="audiogram-app" data-today="{{ today|date:'Y-m-d' }}" data-csrf-token="{{ csrf_token }}"{% if audiogram %} data-audiogram-id="{{ audiogram.id }}"{% endif %}></div>
 {% if audiogram %}{{ initial|json_script:"audiogram-initial" }}{% endif %}

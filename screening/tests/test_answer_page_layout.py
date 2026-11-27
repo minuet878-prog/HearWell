@@ -36,8 +36,9 @@ class AnswerPageLayoutTests(TestCase):
         return self.client.get(reverse("screening", args=[pk])).content.decode()
 
     # P21: 離開 at the top left all the time, in place of 聽伴 and the floating back button, which
-    # on this page would go back a question rather than out; the questionnaire's topic on the right.
-    def test_the_header_says_leave_at_the_top_left_and_the_topic_on_the_right(self):
+    # on this page would go back a question rather than out. The topic on the right went in the
+    # owner's 2026-11-27 walkthrough: nothing on the right.
+    def test_the_header_says_leave_at_the_top_left_and_nothing_on_the_right(self):
         for code, signed_in in [(code, True) for code in self.CODES] + [("hhie-s", False)]:
             with self.subTest(code=code, signed_in=signed_in):
                 top = header(self.page(code, signed_in))
@@ -51,8 +52,7 @@ class AnswerPageLayoutTests(TestCase):
                 self.assertEqual(re.sub(r"<[^>]+>|\s", "", leave.group(2)), LEAVE)
                 self.assertNotIn("data-site-back", top)
                 self.assertNotIn("site-brand", top)
-                topic = Questionnaire.objects.get(code=code).definition.topic
-                self.assertIn(f'<p class="site-header-title">{topic}</p>', top)
+                self.assertNotIn("site-header-title", top)
                 self.assertNotIn("site-avatar", top)
                 self.assertNotIn("site-login", top)
 

@@ -23,7 +23,7 @@ from screening.models import (
 )
 from screening.questionnaires.ioi_ha import ITEM_CHOICES as IOI_HA_CHOICES
 from screening.scoring import IOI_HA_BELOW_NORM_NOTES
-from screening.tests.helpers import action_cards, consented_user
+from screening.tests.helpers import consented_user
 
 # Unaided 4x5 + 2x3 + 0x2 = 26 (顯著影響, emotional 20, social 6); aided all 2 = 20.
 UNAIDED = [4, 4, 4, 4, 4, 2, 2, 2, 0, 0]
@@ -314,9 +314,13 @@ class HealthReportTests(TestCase):
         self.assertIn(
             f'class="btn btn-primary btn-lg w-full mt-4 mb-4" href="{self.url}">', content
         )
-        self.assertIn(
-            (reverse("share_report"), "傳給家人看", "家人不用登入就能看"), action_cards(content)
+        # Its line 家人不用登入就能看 went in the owner's 2026-11-27 walkthrough.
+        self.assertRegex(
+            content,
+            rf'(?s)<a class="link-card action-card" href="{reverse("share_report")}">.*?'
+            r'<span class="link-card-title">傳給家人看</span>\s*</span>',
         )
+        self.assertNotIn("家人不用登入就能看", content)
 
     # 11
     def test_history_table_lists_latest_five(self):

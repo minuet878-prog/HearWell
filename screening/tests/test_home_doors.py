@@ -40,11 +40,11 @@ class SignedOutHomeTests(TestCase):
         content = self.client.get("/").content.decode()
         self.main = content[content.index("<main") : content.index("</main>")]
 
-    def test_the_bird_says_changes_in_hearing_are_easily_missed(self):
+    def test_the_bird_asks_about_hearing_trouble(self):
         # As the canvas, one line with no lead (spec #741's 實作中本人補充).
         bird = re.search(r'<div class="bird-dialogue">.*?</h1>', self.main, re.S).group(0)
         self.assertNotIn("bird-lead", bird)
-        self.assertIn('<h1 class="bird-title">聽力變化常常容易被忽略</h1>', bird)
+        self.assertIn('<h1 class="bird-title">您是否有聽覺困擾？</h1>', bird)
 
     def test_the_audiologist_line_opens_with_a_blue_shield_tick(self):
         # Spec #741's 實作中本人補充: decorative, in the brand blue (the canvas drew it green).
@@ -62,7 +62,7 @@ class SignedOutHomeTests(TestCase):
 
     def test_the_hero_card_asks_and_starts_a_questionnaire_without_an_account(self):
         card = hero_card(self.main)
-        self.assertIn('<h2 class="hero-card-title">想了解自己的聽力？</h2>', card)
+        self.assertIn('<h2 class="hero-card-title text-center">想了解自己的聽力？</h2>', card)
         chips = re.findall(r'<span class="hero-chip">(.*?)</span>', card, re.S)
         self.assertEqual([words(chip) for chip in chips], ["大約 3 分鐘", "不用註冊"])
         start = re.findall(

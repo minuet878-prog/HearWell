@@ -219,7 +219,7 @@ class GradedResult(Result):
         from screening.care_journey import WHERE_TO_TEST
         from screening.models import Questionnaire
         from screening.questionnaires import hhia_s, hhie_s, ssq12_tw
-        from screening.scoring import SCORE_SUM_TEXT, get_advice, max_score
+        from screening.scoring import get_advice, max_score
 
         submission = self.submission
         definition = submission.questionnaire.definition
@@ -251,7 +251,6 @@ class GradedResult(Result):
             "first_step": (
                 next_steps[0] if next_steps and next_steps[0] is not advice_step else None
             ),
-            "score_sum_text": SCORE_SUM_TEXT,
             "level_ranges": level_ranges(definition),
             # A guest's save card (spec #492); "" for a level it has no sentence for.
             "save_reason": definition.save_reasons.get(level, ""),

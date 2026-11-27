@@ -6,9 +6,9 @@
 {# #462: no tab bar on a phone while answering, so 下一題 stays in the first screen; 離開 at the top left leads out, and the answers wait in this browser. #}
 {% block nav_class %} site-nav-tucked{% endblock %}
 
-{# #755 (spec #741 P21): 離開 at the top left all the time, out to the questionnaires. Not the header's ‹, which here would go back a question (each question is a history entry), and not 聽伴 or the avatar, so nothing else leads away; the topic says what is being answered. #}
+{# #755 (spec #741 P21): 離開 at the top left all the time, out to the questionnaires. Not the header's ‹, which here would go back a question (each question is a history entry), and not 聽伴 or the avatar, so nothing else leads away. The topic beside it went in the owner's 2026-11-27 walkthrough: the bird already says it. #}
 {% block header_start %}<a class="site-leave" href="{% url 'questionnaire_list' %}"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>離開</a>{% endblock %}
-{% block header_end %}<p class="site-header-title">{{ questionnaire.definition.topic }}</p>{% endblock %}
+{% block header_end %}{% endblock %}
 
 {% block extra_head %}
 {% if use_react %}
@@ -39,13 +39,13 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
 <div>
     {# Readability batch 1 (the owner's A): React folds this head away past the first screen (answer-main.jsx); the title and count stay for screen readers. #}
     <div id="answer-head">
-    {% include "screening/bird_dialogue.html" with lead="screening"|page_lead title=questionnaire.definition.topic %}
-    <p class="answer-meta">{{ questionnaire.questionnaire_name }}・共 {{ question_count }} 題・大約 {{ questionnaire.definition.minutes }} 分鐘</p>
+    {% include "screening/bird_dialogue.html" with title=questionnaire.definition.topic %}
+    <p class="answer-meta">{{ questionnaire.questionnaire_name }}・共 {{ question_count }} 題</p>
     {# Spec #611 Q2: the sentence only where answers are kept; React shows it once it takes over, so the form and a guest (no draft, ADR 0055) say nothing. Its first sentence, 這不是考試，沒有對錯。, went in #755 (spec #741 P21). #}
     {% if use_react and not guest %}<p class="answer-reassure"><span data-draft-line hidden>答到一半離開，答案會留在這支手機，7 天內回來可以接著答。</span></p>{% endif %}
     {% if guest %}
-    {# Spec #492 (the #493 mockup G2): a guest's answers are scored, not saved. #}
-    <p class="answer-guest-line"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span>沒註冊時只計算、不儲存。<a class="inline-link" href="{% url 'privacy' %}">隱私權說明</a></span></p>
+    {# Spec #492 (the #493 mockup G2): how a guest's answers are kept is on the privacy page; the owner's 2026-11-27 walkthrough left the link alone. #}
+    <p class="answer-guest-line"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span><a class="inline-link" href="{% url 'privacy' %}">隱私權說明</a></span></p>
     {% endif %}
     </div>
     {% if is_ioi_ha %}

@@ -158,13 +158,13 @@
 </ul>
 {% else %}
 {# Spec #741 (#752, the canvas's ProGuest, grill P14, P15): the bird, the blue hero card that starts a questionnaire with no account first, and two doors under it. The card's 開始 and both doors are plain links; door-count.js counts a press of each (P15). #}
-{% include "screening/bird_dialogue.html" with title="聽力變化常常容易被忽略" %}
+{% include "screening/bird_dialogue.html" with title="您是否有聽覺困擾？" %}
 {# P14: a guest result kept in this browser for 7 days, drawn by guest-home.js above the card. #}
 <div id="guest-home" class="grid gap-3" hidden></div>
 {% capture hero %}
     {% include "screening/hero_wave.html" %}
-    <h2 class="hero-card-title">想了解自己的聽力？</h2>
-    <p class="hero-chips">
+    <h2 class="hero-card-title text-center">想了解自己的聽力？</h2>
+    <p class="hero-chips justify-center">
         <span class="hero-chip"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3a9 9 0 100 18 9 9 0 000-18zM12 7v5l3 2"/></svg>大約 3 分鐘</span>
         <span class="hero-chip"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>不用註冊</span>
     </p>
@@ -181,8 +181,8 @@
         <span class="link-card-title">想了解助聽器</span>
     </a></li>
 </ul>
-{# P13: 加到手機主畫面 stays, a small line at the bottom. #}
-<ul class="home-links" role="list">
+{# P13: 加到手機主畫面 stays, a small line at the bottom, centred. #}
+<ul class="home-links justify-center" role="list">
     <li data-hide-in-app><a href="{% url 'add_to_home' %}">加到手機主畫面</a></li>
 </ul>
 {% endif %}

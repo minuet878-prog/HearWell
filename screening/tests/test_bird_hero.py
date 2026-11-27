@@ -10,7 +10,7 @@ from pathlib import Path
 from django.conf import settings
 from django.core.management import call_command
 from django.test import TestCase
-from django.urls import reverse
+from django.urls import Resolver404, resolve, reverse
 from django.utils import timezone
 
 from screening.models import Audiogram, Questionnaire, ReportShare, RetestReminder
@@ -77,6 +77,22 @@ class BirdDialogueTests(TestCase):
                 continue
             with self.subTest(template=str(path.relative_to(TEMPLATES))):
                 self.assertFalse("<h1" in path.read_text())
+
+
+ONE_LINE = {
+    "index",
+    "screening",
+    "result",
+    "guest_result",
+    "register",
+    "consent",
+    "my_hearing",
+    "audiogram_list",
+    "audiogram_new",
+    "audiogram_edit",
+    "audiogram_detail",
+    "qa_answer",
+}
 
 
 class EveryPageTests(TestCase):
@@ -166,10 +182,18 @@ class EveryPageTests(TestCase):
         found = bird(response)
         self.assertIsNotNone(found, "no bird dialogue")
         lead, title = found
-        # The two home pages' bubbles are one line, as the canvas (spec #741's 實作中本人補充).
-        home = response.request["PATH_INFO"] == reverse("index")
+        # The two home pages' bubbles are one line, as the canvas (spec #741's 實作中本人補充);
+        # since the owner's 2026-11-27 walkthrough so are the wizard's, the answer page's, the
+        # result pages', the register and consent pages', 我的紀錄's, the audiogram pages' and a
+        # Q&A answer's.
+        try:
+            name = resolve(response.request["PATH_INFO"]).url_name
+        except Resolver404:
+            name = None
+        wizard = name == "questionnaire_list" and "wizard" in response.request["QUERY_STRING"]
+        one_line = wizard or name in ONE_LINE
         self.assertTrue(title, found)
-        self.assertEqual(lead is None, home, found)
+        self.assertEqual(lead is None, one_line, found)
         main = _main(response)
         # The bubble's title is the page's one h1, and nothing above it is a heading.
         self.assertEqual(len(re.findall(r"<h1\b", main)), 1)

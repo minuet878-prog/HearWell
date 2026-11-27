@@ -584,32 +584,22 @@ describe("next and previous", () => {
   });
 });
 
+// #362's line under the buttons went in the owner's 2026-11-27 walkthrough: pressing still says
+// 請先選一個答案 (CHOOSE_FIRST).
 describe("what the buttons need (#362)", () => {
-  const needs = (button) => `先選一個答案，才能按「${button}」。`;
-  const line = (button) => screen.queryByText(needs(button));
+  const line = () => screen.queryByText(/先選一個答案，才能按/);
 
-  it("says under the buttons that 下一題 needs an answer, until one is chosen", async () => {
+  it("no longer says under the buttons what they need, on any question", async () => {
     await renderApp();
-    const row = screen.getByRole("button", { name: "下一題" }).parentElement;
-    expect(line("下一題").previousElementSibling).toBe(row);
-    choose("沒戴");
-    expect(line("下一題")).toBeNull();
-    next();
-    expect(line("下一題").previousElementSibling).toBe(row);
-    choose("有時");
-    expect(line("下一題")).toBeNull();
-  });
-
-  it("names 送出 on the last question", async () => {
-    await renderApp();
+    expect(line()).toBeNull();
     choose("沒戴");
     next();
     QUESTIONS.slice(0, -1).forEach(() => {
+      expect(line()).toBeNull();
       choose("常常");
       next();
     });
-    expect(line("送出")).not.toBeNull();
-    expect(line("下一題")).toBeNull();
+    expect(line()).toBeNull();
     choose("常常");
     expect(line("送出")).toBeNull();
   });

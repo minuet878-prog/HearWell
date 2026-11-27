@@ -830,10 +830,10 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         # Spec #741's 實作中本人補充: just sent, the green line and 做完了; opened again, neither.
         saved = self.main().locator(".result-saved")
         expect(saved).to_have_text("做完了，已存到我的紀錄。")
-        expect(self.main().locator(".bird-dialogue")).to_contain_text("做完了，辛苦了。")
+        expect(self.main().locator(".bird-dialogue")).to_contain_text("辛苦了，看看結果")
         self.page.reload()
         expect(saved).to_have_count(0)
-        expect(self.main().locator(".bird-dialogue")).to_contain_text("這是您這一次的結果。")
+        expect(self.main().locator(".bird-dialogue")).to_contain_text("這是您這一次的結果")
 
     def step6_history(self):
         nav = self.page.get_by_role("navigation", name="主要導覽")
@@ -846,7 +846,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         expect(card.get_by_text("輕度到中度影響")).to_be_visible()
         # Opened from 我的紀錄, it is a result seen later.
         card.click()
-        expect(self.main().locator(".bird-dialogue")).to_contain_text("這是您這一次的結果。")
+        expect(self.main().locator(".bird-dialogue")).to_contain_text("這是您這一次的結果")
         expect(self.main().locator(".result-saved")).to_have_count(0)
         nav.get_by_role("link", name="紀錄").click()
 
@@ -1750,13 +1750,15 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         # check or the retest. The report is left to the list rows (result page tidy-up); since
         # spec #693 no link to the hearing-aid guide.
         how = self.main().locator(".score-explain")
-        expect(how.get_by_role("heading", name="這個分數怎麼算")).to_be_visible()
+        # Its heading went in the owner's 2026-11-27 walkthrough; the ruler opens it.
+        expect(how.get_by_role("heading", name="這個分數怎麼算")).to_have_count(0)
+        expect(how.locator(".score-ruler")).to_be_visible()
         expect(how.locator(".score-explain-advice")).to_contain_text(
             "聽力問題已經慢慢影響您的社交活動與情緒"
         )
         expect(how.locator("details.dropdown-line > summary")).to_have_text(["看各級的分數"])
         expect(self.main()).not_to_contain_text("看完整建議")
-        expect(self.main()).not_to_contain_text("建議前往醫院耳鼻喉科進行聽力相關檢查")
+        expect(self.main()).not_to_contain_text("建議前往醫院或診所耳鼻喉科進行聽力檢查")
         expect(self.main()).not_to_contain_text("半年後再做一次，時間到了首頁會提醒您。")
         # The gauge in sight in the result box, not in 這個分數怎麼算.
         expect(self.main().locator(".result-banner .gauge")).to_be_visible()
@@ -11641,7 +11643,9 @@ class HomeConsentT360Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             with self.subTest(width=width), self.saving_artifacts():
                 self.visit(True, lambda test: test.undecided(), width=width)
                 expect(self.main().locator(".auth-hero")).to_have_count(0)
-                title = self.main().get_by_role("heading", level=1, name="開始使用之前")
+                title = self.main().get_by_role(
+                    "heading", level=1, name="使用之前，請先看看這些說明"
+                )
                 step = self.main().get_by_text("第 2 步／共 2 步：同意隱私權")
                 intro = self.main().get_by_text("聽伴會保存您的篩檢作答")
                 self.assertLess(title.bounding_box()["y"], step.bounding_box()["y"])
@@ -15976,7 +15980,8 @@ class GuestSaveFromCardTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTes
     def register_from_the_card(self):
         card = self.main().locator(".result-next")
         expect(card.get_by_role("heading", name="註冊保存", exact=True)).to_be_visible()
-        expect(card).to_contain_text("還留 7 天")
+        # The days left went in the owner's 2026-11-27 walkthrough.
+        expect(card).not_to_contain_text("還留")
         card.get_by_role("link", name="註冊保存").click()
         self.page.get_by_label("使用者名稱").fill("e2e_guest")
         self.page.get_by_label("電子郵件").fill("e2e_guest@example.com")
@@ -16005,22 +16010,22 @@ class GuestSaveFromCardTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTes
             self.assertEqual(self.guest_results(), [])
 
     def test_the_bird_says_done_only_right_after_sending(self):
-        """The owner, 2026-11-21, as on a signed-in result page: just sent, 做完了，辛苦了。;
-        opened again from the home page's tile or reloaded, 這是您這一次的結果。. A guest has
-        no green line either way."""
+        """The owner, 2026-11-21, as on a signed-in result page: just sent, 辛苦了，看看結果;
+        opened again from the home page's tile or reloaded, 這是您這一次的結果 (the bubble's one
+        line since the owner's 2026-11-27 walkthrough). A guest has no green line either way."""
         bird = self.main().locator(".bird-dialogue")
         with self.saving_artifacts():
             self.guest_answers_hhie_s()
-            expect(bird.locator(".bird-lead")).to_have_text("做完了，辛苦了。")
+            expect(bird.locator(".bird-title")).to_have_text("辛苦了，看看結果")
             expect(self.main().locator(".result-saved")).to_have_count(0)
             self.page.goto(f"{self.live_server_url}/")
             self.main().locator("#guest-home").get_by_role("link").first.click()
             expect(self.page).to_have_url(re.compile(r"/guest/result/hhie-s$"))
             expect(self.main().locator("#result-score")).to_contain_text("總分 12 分")
-            expect(bird.locator(".bird-lead")).to_have_text("這是您這一次的結果。")
+            expect(bird.locator(".bird-title")).to_have_text("這是您這一次的結果")
             self.page.reload()
             expect(self.main().locator("#result-score")).to_contain_text("總分 12 分")
-            expect(bird.locator(".bird-lead")).to_have_text("這是您這一次的結果。")
+            expect(bird.locator(".bird-title")).to_have_text("這是您這一次的結果")
             expect(self.main().locator(".result-saved")).to_have_count(0)
 
     def test_declining_the_consent_keeps_the_guest_result(self):
@@ -17783,7 +17788,7 @@ class ResultFirstScreenT647Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiv
                     self.open(f"/submission/{record.pk}")
                     block = self.main().locator(".result-banner").bounding_box()
                     how = self.main().locator(".score-explain")
-                    expect(how.get_by_role("heading", name="這個分數怎麼算")).to_be_visible()
+                    expect(how.locator(".score-ruler")).to_be_visible()
                     counted = how.bounding_box()
                     # #749: the blue hero card, its button white.
                     card = self.main().locator(".hero-card").bounding_box()

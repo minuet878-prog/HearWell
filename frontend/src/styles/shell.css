@@ -474,19 +474,6 @@
     box-shadow: 0 0.375rem 1rem rgba(33, 37, 41, 0.18);
   }
 
-  .site-header-title {
-    min-width: 0;
-    margin: 0;
-    color: var(--color-heading);
-    font-weight: 700;
-    text-align: right;
-    overflow-wrap: anywhere;
-  }
-
-  .site-header[data-scrolled] .site-header-title {
-    opacity: 0;
-    visibility: hidden;
-  }
 
   /* Scrolled: frosted glass as the tab bar (ADR 0045, 0079), 88% white, solid where the browser
      cannot blur or with reduced transparency. */

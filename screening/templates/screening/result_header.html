@@ -1,8 +1,8 @@
 {% load custom_filters %}
-{# Every result page's top: #750 (spec #741 acceptance 48, canvas ProResult) the green line that it is saved (only just sent, views.common.JUST_SAVED), then the bird and 看看 the topic (spec #741's 實作中本人補充: no line with the questionnaire, the date, the wearing or which time this is under it). #}
+{# Every result page's top: #750 (spec #741 acceptance 48, canvas ProResult) the green line that it is saved (only just sent, views.common.JUST_SAVED), then the bird (spec #741's 實作中本人補充: no line with the questionnaire, the date, the wearing or which time this is under it), one line since the owner's 2026-11-27 walkthrough. #}
 {% if just_saved %}
 {% include "screening/success_strip.html" with text="做完了，已存到我的紀錄。" %}
-{% include "screening/bird_dialogue.html" with lead="result"|page_lead title="看看"|add:submission.questionnaire.definition.topic %}
+{% include "screening/bird_dialogue.html" with title="result"|page_lead %}
 {% else %}
-{% include "screening/bird_dialogue.html" with lead="result_reopened"|page_lead title="看看"|add:submission.questionnaire.definition.topic %}
+{% include "screening/bird_dialogue.html" with title="result_reopened"|page_lead %}
 {% endif %}

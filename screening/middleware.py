@@ -30,7 +30,9 @@ from screening.views.common import form_page
 # which the gate then guards as it would anyway, and the cards' print page shows only the cards
 # (spec #677). Cancelling the email 重測提醒 from an email's link stops processing, and opens
 # without signing in (spec #656 acceptance 39). So does a 確認信's link (security check 2026-11-19),
-# which only confirms the email it was sent to.
+# which only confirms the email it was sent to. Sending that 確認信 again, from the notice the
+# consent page shows right after registering (the owner's 2026-11-27 walkthrough), sends what
+# registering already sent, to the same address, at most 3 an hour.
 OPEN_PAGES = {
     "index",
     "privacy",
@@ -79,6 +81,7 @@ OPEN_PAGES = {
     "reminder_cancel",
     "reminder_cancelled",
     "email_confirm",
+    "email_confirm_resend",
 }
 
 

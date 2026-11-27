@@ -48,9 +48,6 @@ def level_change_text(previous_level, level):
     return f"分級從「{previous_level}」變成「{level}」"
 
 
-# A graded result page's 這個分數怎麼算 (#750), above the levels' ranges.
-SCORE_SUM_TEXT = "每一題的分數加起來就是總分，分數越高，影響越大。"
-
 UNKNOWN = {"text": "無法判讀", "short": "無法判讀", "level": "unknown", "color": "unknown"}
 UNKNOWN_ADVICE = (
     "這次的作答結果無法判讀分級，可能是資料有誤。建議重新作答一次；"

@@ -30,7 +30,9 @@ from screening.tests.helpers import (
 )
 
 PASSWORD = "Xk9#mPq2vLw"
-SENT = "已寄確認信到 {}。請在 3 天內打開信，按「確認信箱」。沒收到的話，可以到帳號設定重寄。"
+# The owner's 2026-11-27 walkthrough: the address alone, then a resend button in the message.
+SENT = "已寄確認信到 {}。"
+RESEND = "沒收到？重寄確認信"
 UNCONFIRMED = f"這個信箱還沒確認，沒辦法寄重設密碼信。請寫信到 {HELP_ADDRESS}，我們幫您處理。"
 
 
@@ -76,6 +78,33 @@ class SendingTests(TestCase):
             with self.subTest(words=words):
                 self.assertIn(words, message.body + html)
         self.assertFalse(User.objects.get(username="wang_ming").email_confirmed)
+
+    def test_the_sent_message_offers_a_resend_that_comes_back_to_its_page(self):
+        # Shown on the consent page right after registering, the second step of signing up.
+        response = self.client.post(
+            reverse("register"),
+            {
+                "username": "wang_ming",
+                "email": "wang@example.com",
+                "password1": PASSWORD,
+                "password2": PASSWORD,
+            },
+            follow=True,
+        )
+        page = response.request["PATH_INFO"]
+        query = response.request["QUERY_STRING"]
+        here = f"{page}?{query}" if query else page
+        message = re.search(r'<div class="system-message.*?</div>', response.content.decode(), re.S)
+        form = re.search(
+            r'<form method="post" action="([^"]+)">(.*?)</form>', message.group(), re.S
+        )
+        self.assertEqual(form.group(1), reverse("email_confirm_resend"))
+        self.assertIn(f'<input type="hidden" name="next" value="{here}">', form.group(2))
+        self.assertIn(f">{RESEND}</button>", form.group(2))
+        # Pressed before agreeing to the privacy notice, it sends and stays on the page.
+        resent = self.client.post(reverse("email_confirm_resend"), {"next": here})
+        self.assertRedirects(resent, here, fetch_redirect_response=False)
+        self.assertEqual(len(mail.outbox), 2)
 
     def test_adding_an_email_sends_the_confirmation(self):
         user = consented_user(username="no_email", password=PASSWORD)
@@ -254,6 +283,12 @@ class AccountSettingsTests(TestCase):
         self.client.force_login(unconfirmed_user(username="li_hua", email="li@example.com"))
         self.client.post(reverse("email_confirm_resend"))
         self.assertEqual(mail.outbox[-1].to, ["li@example.com"])
+
+    def test_without_a_page_to_come_back_to_it_goes_to_account_settings(self):
+        response = self.client.post(reverse("email_confirm_resend"))
+        self.assertRedirects(response, reverse("account_settings"), fetch_redirect_response=False)
+        response = self.client.post(reverse("email_confirm_resend"), {"next": "https://evil.test/"})
+        self.assertRedirects(response, reverse("account_settings"), fetch_redirect_response=False)
 
     def test_a_confirmed_email_is_not_sent_again(self):
         User.objects.filter(pk=self.user.pk).update(confirmed_email="wang@example.com")

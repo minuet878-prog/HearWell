@@ -11,7 +11,7 @@
 {% endblock %}
 
 {% block body %}
-{% include "screening/bird_dialogue.html" with lead="my_hearing"|page_lead title="我的紀錄" %}
+{% include "screening/bird_dialogue.html" with title="我的紀錄" %}
 {% include "screening/records_switch.html" with side="audiograms" %}
 {# #465 (the #464 mockup 2A): adding is the page's one solid button, comparing the outlined one under it. #}
 <a class="btn btn-primary btn-lg w-full" href="{% url 'audiogram_new' %}">記錄聽力圖</a>

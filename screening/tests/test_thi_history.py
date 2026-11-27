@@ -164,7 +164,8 @@ class ThiHistoryTests(test_thi.ThiTestCase):
     def test_trend_note_is_about_tinnitus(self):
         self._record(52, False, (2026, 1, 15))
         trend = self._trend(self._main())
-        self.assertIn("分數越低，耳鳴對生活的影響越小。", trend)
+        # The note under the chart went in the owner's 2026-11-27 walkthrough.
+        self.assertNotIn("分數越低", trend)
         self.assertNotIn("聽力對生活的影響", trend)
 
     def test_trend_chart_levels_from_the_api_top_out_at_100(self):
