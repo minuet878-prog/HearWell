@@ -40,18 +40,14 @@ const FOLD = `
     <summary><span>這份問卷在問什麼？</span></summary>
     <div id="answer-intro"><p>本問卷的目的在幫助您了解自己的聽力。</p></div>
   </details>`;
-// Spec #611 Q2: the reassurance under the count, its sentence drawn hidden. Its first sentence,
-// 這不是考試，沒有對錯。, went in #755 (spec #741 P21).
+// Spec #611 Q2's reassurance under the count went in the owner's 2026-11-27 walkthrough.
 const SECOND = "答到一半離開，答案會留在這支手機，7 天內回來可以接著答。";
-const reassure = () => document.querySelector("#answer-head .answer-reassure");
-const secondSentence = () => reassure().querySelector("[data-draft-line]");
 
 function page() {
   document.body.innerHTML = `
     <div id="answer-head">
       <div class="bird-dialogue"><div class="bird-bubble"><p class="bird-lead">慢慢來，不用急。</p><h1 class="bird-title">聽力對生活的影響</h1></div></div>
       <p class="answer-meta">HHIE-S・共 10 題・大約 3 分鐘</p>
-      <p class="answer-reassure"><span data-draft-line hidden>${SECOND}</span></p>
       <p class="answer-guest-line">沒註冊時只計算、不儲存。<a href="/privacy">隱私權說明</a></p>
     </div>
     <p id="answer-loading" role="status"></p>
@@ -170,20 +166,18 @@ describe("React entry", () => {
     expect(JSON.parse(post.body).norm_token).toBe("signed-token");
   });
 
-  it("hands IOI-HA's norm basis over for item 1, and the intro without it (#463)", async () => {
+  // ADR 0085 (the owner's 2026-11-27 walkthrough): the whole intro, norm basis and all, for the fold.
+  it("hands IOI-HA's whole intro over, the norm basis in it (#463)", async () => {
     app().dataset.skipWearing = "";
-    intro().innerHTML = '<p>本量表適合已配戴助聽器的人。</p><section data-intro-norm><p>本次常模依據：HHIE-S。</p></section>';
-    intro().insertAdjacentHTML("afterend", '<template id="answer-norm"><p>本次常模依據：HHIE-S。</p></template>');
+    intro().innerHTML = '<p>本量表適合已配戴助聽器的人。</p><section><p>本次常模依據：HHIE-S。</p></section>';
     runInline();
     respondWith(ok);
     await startReact();
     await waitFor(() => expect(app().textContent).toContain("第1題的完整題目文字"));
-    expect(app().querySelector(".answer-norm").textContent).toBe("本次常模依據：HHIE-S。");
+    expect(app().querySelector(".answer-norm")).toBeNull();
     act(() => [...app().querySelectorAll("button")].find((b) => b.textContent === "這份問卷在問什麼？").click());
     const fold = document.getElementById("answer-intro-text");
-    expect(fold.textContent).toBe("本量表適合已配戴助聽器的人。");
-    // The page's own copy keeps its norm section, for the fold from item 2 on.
-    expect(intro().querySelector("[data-intro-norm]")).not.toBeNull();
+    expect(fold.textContent).toBe("本量表適合已配戴助聽器的人。本次常模依據：HHIE-S。");
   });
 
   // Back to the first screen is AnswerApp.test.jsx's and e2e's: 上一題 goes through the history,
@@ -204,61 +198,13 @@ describe("React entry", () => {
     expect([screenReaderOnly(".bird-dialogue"), screenReaderOnly(".answer-meta"), part(".answer-guest-line").hidden]).toEqual([true, true, true]);
   });
 
-  it("says the sentence once React takes over and keeps a draft (#611 Q2, acceptance 61)", async () => {
-    runInline();
-    respondWith(ok);
-    await startReact();
-    await waitFor(() => expect(app().textContent).toContain("這次填答時，您有沒有戴助聽器？"));
-    expect(reassure().hidden).toBe(false);
-    expect(secondSentence().hidden).toBe(false);
-    expect(reassure().textContent).toBe(SECOND);
-  });
-
-  it("says nothing when the form comes back (#611 Q2, acceptance 63)", async () => {
-    runInline();
-    respondWith({ ok: false, status: 500, json: () => Promise.resolve({}) });
-    await startReact();
-    await waitFor(() => expect(form().hidden).toBe(false));
-    expect(secondSentence().hidden).toBe(true);
-  });
-
-  it("says nothing when React is too late (#611 Q2, acceptance 63)", async () => {
-    vi.useFakeTimers();
-    runInline();
-    vi.advanceTimersByTime(5000);
-    vi.useRealTimers();
-    let arrive;
-    globalThis.fetch = vi.fn(() => new Promise((resolve) => (arrive = resolve)));
-    await startReact();
-    await act(async () => arrive(ok));
-    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
-    expect(form().hidden).toBe(false);
-    expect(secondSentence().hidden).toBe(true);
-  });
-
-  it("takes the reassurance away, for screen readers too, past the first screen (#611 Q2, acceptance 64)", async () => {
-    runInline();
-    respondWith(ok);
-    await startReact();
-    await waitFor(() => expect(app().textContent).toContain("這次填答時，您有沒有戴助聽器？"));
-    act(() => app().querySelector("input[type=radio]").click());
-    act(() => [...app().querySelectorAll("button")].find((b) => b.textContent.includes("下一題")).click());
-    await waitFor(() => expect(app().textContent).toContain("第1題的完整題目文字"));
-    // hidden, not visually-hidden: nothing left to read out again on each question.
-    expect(reassure().hidden).toBe(true);
-  });
-
-  it("says it with the question whether to carry on, then folds it (#611 Q2, acceptance 65)", async () => {
+  it("says nothing about the draft under the count, even with one to carry on (the owner, 2026-11-27)", async () => {
     saveDraft({ userId: 7, questionnaireId: 1, key: crypto.randomUUID(), wearing: false, answers: {}, step: 1, savedAt: Date.now() });
     runInline();
     respondWith(ok);
     await startReact();
     await waitFor(() => expect(app().textContent).toContain("您上次答到第 1 題，要接著答嗎？"));
-    expect(reassure().hidden).toBe(false);
-    expect(secondSentence().hidden).toBe(false);
-    act(() => [...app().querySelectorAll("button")].find((b) => b.textContent === "接著答").click());
-    await waitFor(() => expect(app().textContent).toContain("第1題的完整題目文字"));
-    expect(reassure().hidden).toBe(true);
+    expect(document.getElementById("answer-head").textContent).not.toContain(SECOND);
   });
 
   it("brings the form back at once when loading fails (acceptance 3)", async () => {

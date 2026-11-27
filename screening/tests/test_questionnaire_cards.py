@@ -207,8 +207,9 @@ class LastResultTests(TestCase):
             self.facts("hhie-s"), "10 題・約 3 分鐘・" + LAST.format("2026/09/26・無／極輕微影響")
         )
 
-    # 35: on the stacked cards' first, the recommended one (#753).
-    def test_the_recommendation_says_it_too(self):
+    # 35: on the stacked cards' first, the recommended one (#753); since the owner's 2026-11-27
+    # walkthrough the blue card leaves it to the catalogue card below.
+    def test_the_recommendation_leaves_it_to_the_catalogue_card(self):
         day = date.today() - timedelta(days=200)
         self.record("hhie-s", [4, 4, 2, 2, 0, 0, 0, 0, 0, 0], day, wearing_hearing_aid=False)
         recommended = re.search(
@@ -216,7 +217,8 @@ class LastResultTests(TestCase):
         ).group(1)
         self.assertIn("推薦您做這一份", recommended)
         last = LAST.format(f"{day:%Y/%m/%d}・輕度到中度影響")
-        self.assertIn(f'<p class="recommended-facts">10 題・約 3 分鐘・{last}</p>', recommended)
+        self.assertNotIn(last, recommended)
+        self.assertIn(last, self.main()[self.main().index("</article>") :])
 
     # 36
     def test_a_card_never_answered_stays_as_it_was(self):

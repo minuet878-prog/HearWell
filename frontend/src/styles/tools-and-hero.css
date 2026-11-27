@@ -717,7 +717,7 @@
 
   /* A recommended questionnaire in the card (questionnaire page): its words white, its icon's
      circle white so it stays apart. */
-  .hero-card :is(.recommended-title, .recommended-code, .recommended-facts) {
+  .hero-card :is(.recommended-title, .recommended-code) {
     color: #fff;
   }
 
@@ -855,10 +855,6 @@
     max-width: 100%;
     height: 2.6667rem;
     margin-inline: auto;
-  }
-
-  .hero-card .recommended-audience {
-    color: #fff;
   }
 
   /* Without JavaScript, or before it runs, the first card alone (spec #741 acceptance 58). */

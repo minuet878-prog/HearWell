@@ -41,7 +41,7 @@ from screening.questionnaires.definition import (
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.questionnaires.results import SubscaleResult
 from screening.questionnaires.ssq12_tw import CODE as SSQ12
-from screening.scoring import AIDED_RETAKE_NOTE, AIDED_RETAKE_TITLE, RECOMMENDATION_REASONS
+from screening.scoring import AIDED_RETAKE_NOTE, AIDED_RETAKE_TITLE
 from screening.views.common import JUST_SAVED, health_data_page
 
 
@@ -276,7 +276,6 @@ def questionnaire_list(request):
         questionnaires,
         recommended=recommended,
         reason=reason,
-        why=RECOMMENDATION_REASONS[reason],
         start_url=start_url,
         also=also,
         retake=retake,

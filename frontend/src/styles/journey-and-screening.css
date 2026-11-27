@@ -1040,15 +1040,6 @@
     font-weight: 400;
   }
 
-  .recommended-facts {
-    margin: 0.5rem 0 0;
-    color: var(--color-muted);
-  }
-
-  .recommended-why {
-    margin: 0.625rem 0 0;
-  }
-
   /* The 2026-11-14 walkthrough (mockup 8A): each group's title, as 全部問卷's was. */
   .catalogue-group {
     margin-top: 2rem;
@@ -1172,36 +1163,12 @@
     padding: 0 0.25rem 1rem;
   }
 
-  /* Its sentence is drawn hidden and shown only once React keeps a draft (spec #611 Q2): till
-     then, or when the form comes back, the empty line takes no room. */
-  .answer-reassure:has(> [hidden]:only-child) {
-    display: none;
-  }
-
-  /* The answer page's line under its title: the code, count and minutes in the muted grey; the
-     reassurance under it the same (spec #611 Q2, the #613 mockup's A). */
-  .answer-meta,
-  .answer-reassure {
+  /* The answer page's line under its title: the code and count in the muted grey (spec #611 Q2,
+     the #613 mockup's A). */
+  .answer-meta {
     color: var(--color-muted);
   }
 
-
-  /* IOI-HA's norm basis on item 1: a 提示框 (P3), the question straight after it (#362). */
-  .answer-norm {
-    margin-bottom: 1rem;
-    padding: 0.75rem 1rem;
-    border-radius: var(--radius-medium);
-    background-color: var(--color-surface);
-    color: var(--color-heading);
-  }
-
-  .answer-norm > p {
-    margin: 0;
-  }
-
-  .answer-norm > p + p {
-    margin-top: 0.25rem;
-  }
 
   /* 接著答 and 重新開始, one above the other, each the whole width. */
   .answer-resume-title {

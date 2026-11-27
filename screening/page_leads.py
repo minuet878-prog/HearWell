@@ -9,7 +9,6 @@ A lead with {name} takes the account's name.
 LEADS = {
     # 首頁 has none: its bubble is one line, as the canvas (spec #741's 實作中本人補充).
     # 問卷
-    "questionnaire_list": "不確定做哪一份？我可以幫您選。",
     # The wizard and the answer page have no lead (the owner's 2026-11-27 walkthrough).
     "questionnaire_recommended": "照您的回答，這一份最適合。",
     # A result page's bubble is this one line, its title, with no lead (the owner, 2026-11-27).
