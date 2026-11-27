@@ -176,6 +176,13 @@ class GuestAdviceTests(GuestSaveTestCase):
                 self.assertLess(box, html.index(advice))
                 self.assertLess(html.index(advice), html.index(SAVE_TITLE))
 
+    def test_hhie_s_mild_to_moderate_advice_is_the_owners_2026_11_27_words(self):
+        html = self.guest_html(self.LEVELS["mild_to_moderate"], self.hhie_s)
+        box = html[html.index('class="result-advice') : html.index('class="result-next"')]
+        self.assertIn(
+            "篩檢顯示聽力問題已經影響到您的生活，建議前往醫院或診所耳鼻喉科進行聽力檢查。", box
+        )
+
     def test_its_link_is_where_to_have_the_hearing_checked_only(self):
         # 記錄聽力圖 and 看／印聽力報告 need an account; the save card is the way to one.
         # #694 mockup A: the Q&A answer on where to have the hearing checked, not the guide.
