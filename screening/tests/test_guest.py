@@ -20,7 +20,8 @@ from screening.tests.helpers import consented_user
 
 GUEST_SCORE = "/api/guest-scores/"
 LIMIT = "剛才做了很多次，請過一小時再試。您的作答沒有不見。"
-GUEST_LINE = "沒註冊時只計算、不儲存。"
+# The owner's 2026-11-27 walkthrough: the line keeps its privacy link alone.
+GUEST_LINE = 'class="answer-guest-line"'
 
 
 class GuestTestCase(TestCase):
@@ -135,8 +136,10 @@ class AnswerPageTests(GuestTestCase):
                 meta = content.index('class="answer-meta"')
                 line = content.index(GUEST_LINE)
                 self.assertLess(meta, line)  # the line under the questionnaire's name (G2)
-                privacy = f'<a class="inline-link" href="{reverse("privacy")}">隱私權說明</a>'
-                self.assertTrue(content[line:].startswith(GUEST_LINE + privacy))
+                link = f'<a class="inline-link" href="{reverse("privacy")}">隱私權說明</a>'
+                privacy = f"<span>{link}</span>"
+                self.assertIn(privacy, content[line : content.index("</p>", line)])
+                self.assertNotIn("只計算、不儲存", content)
                 self.assertContains(response, "data-guest")
                 self.assertContains(response, f'data-questionnaire-code="{questionnaire.code}"')
                 # The wearing question is asked as for an account (no skip, nothing preset).
@@ -346,9 +349,7 @@ class GuestResultPageTests(GuestTestCase):
                 response = self.client.get(reverse("guest_result", args=[questionnaire.code]))
                 self.assertEqual(response.status_code, 200)
                 self.assertIn("no-store", response["Cache-Control"])
-                self.assertContains(
-                    response, f'<h1 class="bird-title">看看{questionnaire.definition.topic}</h1>'
-                )
+                self.assertContains(response, '<h1 class="bird-title">這是您這一次的結果</h1>')
                 self.assertContains(response, f'data-code="{questionnaire.code}"')
                 self.assertContains(response, f'data-score-url="{GUEST_SCORE}"')
                 self.assertContains(response, f'data-home-url="{reverse("index")}"')

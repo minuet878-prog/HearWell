@@ -53,7 +53,7 @@
     {% for questionnaire in questionnaires %}{% include "screening/questionnaire_card.html" %}{% endfor %}
 </details>
 {% else %}
-{% include "screening/bird_dialogue.html" with lead="questionnaire_wizard"|page_lead title="幫您找適合的問卷" %}
+{% include "screening/bird_dialogue.html" with title="幫您找適合的問卷" %}
 <form class="wizard-form" method="get" action="{% url 'questionnaire_list' %}">
     {% if concern %}<input type="hidden" name="concern" value="{{ concern }}">{% endif %}
     <fieldset>

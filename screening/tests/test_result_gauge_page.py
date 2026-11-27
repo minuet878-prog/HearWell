@@ -67,7 +67,7 @@ class ResultGaugePageTests(TestCase):
         saved = main.index('<p class="result-saved" role="status">')
         self.assertIn("做完了，已存到我的紀錄。", main[saved : main.index("</p>", saved)])
         self.assertLess(saved, main.index('class="bird-dialogue"'))
-        self.assertIn('<h1 class="bird-title">看看聽力對生活的影響</h1>', main)
+        self.assertIn('<h1 class="bird-title">辛苦了，看看結果</h1>', main)
 
     def test_the_gauge_draws_every_level_and_the_latest_once_in_view(self):
         main = self.main(self.record(hhie_s.CODE, [4, 4, 2, 2] + [0] * 6, (2026, 11, 12)))  # 12
@@ -147,7 +147,8 @@ class ResultGaugePageTests(TestCase):
         # the owner's acceptance that day): step 1 only.
         counted = main[main.index('<section class="score-explain"') :]
         counted = text(counted[: counted.index("</section>")])
-        self.assertIn("每一題的分數加起來就是總分", counted)
+        # How the total is counted went in the owner's 2026-11-27 walkthrough.
+        self.assertNotIn("每一題的分數加起來就是總分", counted)
         # The levels by their full names, with their ranges, from the thresholds (看各級的分數).
         for line in ("0–8 分：無／極輕微影響", "9–24 分：輕度到中度影響", "25–40 分：顯著影響"):
             self.assertIn(line, counted)

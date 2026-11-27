@@ -186,7 +186,7 @@ describe("showGuestResult (the guest result page)", () => {
   beforeEach(() => {
     document.body.innerHTML = `
       <div id="guest-result" data-code="hhie-s" data-score-url="/api/guest-scores/" data-home-url="/">
-        <div data-guest-shown hidden><p class="bird-lead"></p>
+        <div data-guest-shown hidden><h1 class="bird-title"></h1>
           <div data-guest-section></div>
         </div>
         <p role="alert" data-guest-error></p>
@@ -276,38 +276,28 @@ describe("showGuestResult (the guest result page)", () => {
     );
     expect(localStorage.getItem(SAVE_INTENT)).toBeNull(); // not kept beyond this tab
   });
-
-  // #492 acceptance 15, on the save card (the #493 mockup's D1): 2 days after, 5 days left.
-  it("says on the save card how many days the result has left", async () => {
-    const withCard = { ...SCORED, html: `<p>還留 <span data-guest-days-left></span> 天</p>${CLEAR_ROW}` };
-    for (const [finishedAt, left] of [[NOW - 2 * DAY, "5"], [NOW, "7"], [NOW - 6.5 * DAY, "1"]]) {
-      localStorage.clear();
-      saveGuestResult(guestResult({ finishedAt }));
-      await showGuestResult({ root, now: NOW, clock: () => NOW, fetchScore: reply(200, withCard), navigate });
-      expect(root.querySelector("[data-guest-days-left]").textContent).toBe(left);
-    }
-  });
 });
 
-// The owner, 2026-11-21: the bird says 做完了，辛苦了。 only right after the answers were sent, as
+// The owner, 2026-11-21: the bird says it is done only right after the answers were sent, as
 // on a signed-in result page; opened again later (the home page's 上次的結果) it says
-// 這是您這一次的結果。. The server cannot tell for a guest: the answer page leaves this tab a
+// 這是您這一次的結果. The server cannot tell for a guest: the answer page leaves this tab a
 // one-shot mark with the receipt number, which the result page takes once it shows the result.
+// Since the owner's 2026-11-27 walkthrough the bubble is that one line, its title.
 describe("the bird's words on the guest result page", () => {
   const SCORED = { html: `<div class="result-banner">總分 16 分</div>${CLEAR_ROW}` };
-  const JUST = "做完了，辛苦了。";
-  const AGAIN = "這是您這一次的結果。";
+  const JUST = "辛苦了，看看結果";
+  const AGAIN = "這是您這一次的結果";
   let root;
-  const lead = () => root.querySelector(".bird-lead").textContent;
+  const lead = () => root.querySelector(".bird-title").textContent;
   const reply = (status, body) => vi.fn(() => Promise.resolve({ ok: status < 300, status, json: () => Promise.resolve(body) }));
   const show = (fetchScore = reply(200, SCORED)) =>
     showGuestResult({ root, now: NOW, clock: () => NOW, fetchScore, navigate: vi.fn() });
 
   beforeEach(() => {
     document.body.innerHTML = `
-      <div id="guest-result" data-code="hhie-s" data-score-url="/api/guest-scores/" data-home-url="/" data-just-finished-lead="${JUST}" data-reopened-lead="${AGAIN}">
+      <div id="guest-result" data-code="hhie-s" data-score-url="/api/guest-scores/" data-home-url="/" data-just-finished-title="${JUST}" data-reopened-title="${AGAIN}">
         <div data-guest-shown hidden>
-          <div class="bird-dialogue"><div class="bird-bubble"><p class="bird-lead">${AGAIN}</p><h1 class="bird-title">看看聽力對生活的影響</h1></div></div>
+          <div class="bird-dialogue"><div class="bird-bubble"><h1 class="bird-title">${AGAIN}</h1></div></div>
           <div data-guest-section></div>
         </div>
         <p role="alert" data-guest-error></p>
@@ -316,7 +306,7 @@ describe("the bird's words on the guest result page", () => {
     saveGuestResult(guestResult());
   });
 
-  it("right after sending, 做完了，辛苦了。; opened again, 這是您這一次的結果。", async () => {
+  it("right after sending, 辛苦了，看看結果; opened again, 這是您這一次的結果", async () => {
     rememberJustFinished(guestResult().key);
     await show();
     expect(lead()).toBe(JUST);
@@ -324,7 +314,7 @@ describe("the bird's words on the guest result page", () => {
     expect(lead()).toBe(AGAIN);
   });
 
-  it("opened from the home page with no mark: 這是您這一次的結果。", async () => {
+  it("opened from the home page with no mark: 這是您這一次的結果", async () => {
     await show();
     expect(lead()).toBe(AGAIN);
   });
@@ -342,7 +332,7 @@ describe("the bird's words on the guest result page", () => {
     expect(lead()).toBe(JUST);
   });
 
-  it("with the tab's storage blocked, 這是您這一次的結果。", async () => {
+  it("with the tab's storage blocked, 這是您這一次的結果", async () => {
     for (const method of ["getItem", "setItem", "removeItem"]) {
       const original = Storage.prototype[method];
       vi.spyOn(Storage.prototype, method).mockImplementation(function blocked(...args) {
@@ -542,7 +532,7 @@ describe("清除這次結果 (the guest result page)", () => {
   beforeEach(async () => {
     document.body.innerHTML = `
       <div id="guest-result" data-code="hhie-s" data-score-url="/api/guest-scores/" data-home-url="/">
-        <div data-guest-shown hidden><p class="bird-lead"></p>
+        <div data-guest-shown hidden><h1 class="bird-title"></h1>
           <div data-guest-section></div>
         </div>
         <p role="alert" data-guest-error></p>
@@ -623,7 +613,7 @@ describe("a guest result 7 days on (the guest result page)", () => {
   it("is not shown and is deleted from the browser", async () => {
     document.body.innerHTML = `
       <div id="guest-result" data-code="hhie-s" data-score-url="/api/guest-scores/" data-home-url="/">
-        <div data-guest-shown hidden><p class="bird-lead"></p><div data-guest-section></div></div>
+        <div data-guest-shown hidden><h1 class="bird-title"></h1><div data-guest-section></div></div>
         <p role="alert" data-guest-error></p>
       </div>`;
     const root = document.getElementById("guest-result");

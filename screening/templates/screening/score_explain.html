@@ -1,8 +1,7 @@
 {# 這個分數怎麼算, open between the score block and the 建議下一步 (spec #741, the owner 2026-11-21, compare-impact.html's A): how the total is counted; a ruler of the levels with a dot fixed at this score (drawn for the eye, said once in words; nothing to drag); for HHIE-S and HHIA-S where the impact is (情緒, 社交); then #461's reviewed first step, each level's range a tap away. The other steps and the level's full advice are not on result pages (the owner at acceptance, 2026-11-21). #}
 {% with result=submission.result %}
-<section class="score-explain" aria-labelledby="score-explain-title">
-    <h2 id="score-explain-title" class="score-explain-title">這個分數怎麼算</h2>
-    <p>{{ score_sum_text }}</p>
+{# Its heading 這個分數怎麼算 and how the total is counted went in the owner's 2026-11-27 walkthrough. #}
+<section class="score-explain">
     {% if ruler %}
     <div class="score-ruler" aria-hidden="true">
         {# 「您 N 分」 over the dot: the room beside it shared out as the score's share and the rest, so it is centred over the middle, flush with the ruler's ends at its ends, and never runs off it. #}
@@ -13,7 +12,7 @@
     <p class="visually-hidden">分數尺從 0 到 {{ ruler.ceiling }} 分，您 {{ result.total }} 分，在「{{ result.level.text }}」這一段。</p>
     {% endif %}
     {% if impact_parts %}
-    <h3 class="score-impact-title">聽力問題影響在哪裡</h3>
+    <h2 class="score-impact-title">聽力問題影響在哪裡</h2>
     {# Native folds: they open without JavaScript, by keyboard and with a screen reader; one name, so the browser keeps one open at a time where it can. #}
     {% for part in impact_parts %}
     <details class="score-impact" name="score-impact"{% if part.open %} open{% endif %}>

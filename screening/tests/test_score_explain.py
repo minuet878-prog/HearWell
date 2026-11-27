@@ -46,7 +46,6 @@ class ScoreExplainTests(TestCase):
         order = [
             '<div class="result-banner',
             '<section class="score-explain"',
-            "這個分數怎麼算</h2>",
             '<section class="hero-card"',
         ]
         positions = [main.find(piece) for piece in order]
@@ -56,7 +55,9 @@ class ScoreExplainTests(TestCase):
         self.assertNotIn("<span>這個分數怎麼算</span>", main)
         section = self.section(main)
         self.assertNotIn('<details class="result-details"', section)
-        self.assertIn("每一題的分數加起來就是總分，分數越高，影響越大。", section)
+        # Its heading and how the total is counted went in the owner's 2026-11-27 walkthrough.
+        self.assertNotIn("這個分數怎麼算", section)
+        self.assertNotIn("每一題的分數加起來就是總分，分數越高，影響越大。", section)
 
     def test_the_ruler_has_each_level_and_a_dot_that_does_not_move(self):
         cases = (
@@ -130,7 +131,8 @@ class ScoreExplainTests(TestCase):
                 "question_number", "question_text"
             )
         )
-        self.assertIn("聽力問題影響在哪裡</h3>", section)
+        # Under the page's h1 now that the section has no heading of its own (2026-11-27).
+        self.assertIn('<h2 class="score-impact-title">聽力問題影響在哪裡</h2>', section)
         self.assertEqual(
             self.parts(section),
             [

@@ -264,7 +264,7 @@ describe("setUpPlayInView: elements put in after it set up", () => {
 
   async function guestResultPage(win) {
     page(`<div id="guest-result" data-code="hhie-s" data-score-url="/api/guest-scores/" data-home-url="/">
-      <div data-guest-shown hidden><p class="bird-lead"></p><div data-guest-section></div></div>
+      <div data-guest-shown hidden><h1 class="bird-title"></h1><div data-guest-section></div></div>
       <p role="alert" data-guest-error></p></div>`);
     setUpPlayInView(win);
     saveGuestResult({

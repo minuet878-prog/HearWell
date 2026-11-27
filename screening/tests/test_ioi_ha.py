@@ -526,10 +526,11 @@ class IoiHaResultRedesignTests(TestCase):
         ungrouped = self._main(self._result(self.TWO_BELOW_ONE_ABOVE, grouped=False))
         self.assertIn(IoiHaTests.UNGROUPED_NOTE, self._summary(ungrouped))
 
-    def test_title_is_the_topic_alone(self):
+    def test_title_is_the_birds_one_line_alone(self):
         main = self._main(self._result(self.TWO_BELOW_ONE_ABOVE))
-        # #750 (canvas ProResult): 看看 the topic; no line under it (spec #741's 實作中本人補充).
-        self.assertRegex(main, r"<h1[^>]*>看看助聽器使用成效</h1>")
+        # #750 (canvas ProResult), the owner's 2026-11-27 walkthrough: the bird's one line; no
+        # line under it (spec #741's 實作中本人補充).
+        self.assertRegex(main, r"<h1[^>]*>辛苦了，看看結果</h1>")
         self.assertNotIn("IOI-HA・2026/10/15 作答", main)
 
     def test_grouped_summary_and_groups(self):
@@ -667,7 +668,7 @@ class IoiHaResultRedesignTests(TestCase):
         names = scoring.IOI_HA_ITEM_NAMES
         # #304: the 建議下一步, IOI-HA meaning wearing them, so the 照顧旅程's step 3 at the
         # route's 配戴之後 (#455); since #461 above 看完整說明, which holds the items.
-        start = [(1, "看看助聽器使用成效"), (2, "配戴助聽器之後")]
+        start = [(1, "辛苦了，看看結果"), (2, "配戴助聽器之後")]
         cases = {
             "grouped, two below": (
                 self.TWO_BELOW_ONE_ABOVE,

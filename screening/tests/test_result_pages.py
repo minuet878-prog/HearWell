@@ -60,14 +60,15 @@ class ResultPagesTests(TestCase):
     def _text(self, html):
         return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", html)).strip()
 
-    def test_every_result_page_is_headed_by_its_topic_alone(self):
-        for code, (_, topic, name) in QUESTIONNAIRES.items():
+    def test_every_result_page_is_headed_by_the_birds_one_line_alone(self):
+        for code, (_, _, name) in QUESTIONNAIRES.items():
             with self.subTest(code=code):
                 main = self._main(code)
                 day = timezone.localtime(self.submissions[code].created_at).strftime("%Y/%m/%d")
                 header = re.search(r"<h1[^>]*>(.*?)</h1>", main, re.S)
-                # #750 (canvas ProResult): 看看 the topic.
-                self.assertEqual(self._text(header.group(1)), f"看看{topic}")
+                # #750 (canvas ProResult); one line, the same for every questionnaire, since the
+                # owner's 2026-11-27 walkthrough. The browser tab's title still names it.
+                self.assertEqual(self._text(header.group(1)), "這是您這一次的結果")
                 # Spec #741's 實作中本人補充 (2026-11-21: 這塊不要): no line under it with the
                 # questionnaire, the date and the wearing.
                 self.assertNotIn(f"{name}・{day} 作答", self._text(main))

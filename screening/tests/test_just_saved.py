@@ -16,8 +16,9 @@ from screening.questionnaires import hhie_s
 from screening.tests.helpers import consented_user, submission_with_answers
 
 STRIP = '<p class="result-saved" role="status">'
-JUST_SENT = "做完了，辛苦了。"
-LATER = "這是您這一次的結果。"
+# The bird's one line since the owner's 2026-11-27 walkthrough.
+JUST_SENT = "辛苦了，看看結果"
+LATER = "這是您這一次的結果"
 
 
 class JustSavedTests(TestCase):
@@ -104,11 +105,11 @@ class JustSavedTests(TestCase):
 
     def test_a_guest_result_page_starts_seen_later_and_holds_both_words(self):
         # The owner, 2026-11-21: the server cannot tell a guest's just sent from opened again, so
-        # its page says 這是您這一次的結果。 (true either way) and holds 做完了，辛苦了。 for
+        # its page says 這是您這一次的結果 (true either way) and holds 辛苦了，看看結果 for
         # guest-results.js, which shows it once, right after sending (the answer page's mark).
         self.client.logout()
         page = self.client.get(reverse("guest_result", args=[hhie_s.CODE])).content.decode()
         self.assertNotIn(STRIP, page)
-        self.assertIn(f'<p class="bird-lead">{LATER}</p>', page)
-        self.assertIn(f'data-just-finished-lead="{JUST_SENT}"', page)
-        self.assertIn(f'data-reopened-lead="{LATER}"', page)
+        self.assertIn(f'<h1 class="bird-title">{LATER}</h1>', page)
+        self.assertIn(f'data-just-finished-title="{JUST_SENT}"', page)
+        self.assertIn(f'data-reopened-title="{LATER}"', page)

@@ -655,7 +655,7 @@ class PageFlowTests(TestCase):
         start = main.index("短問卷", main.index('class="catalogue-group'))
         card = main[start : main.index("</a>", start)]
         self.assertIn("<span>3 題・約 4 分鐘</span>", card)
-        self.assertIn("短問卷・共 3 題・", page)
+        self.assertIn("短問卷・共 3 題</p>", page)
         self.assertRegex(page, r"<legend[^>]*>(\s*<[^>]+>)*\s*第 3 題／共 3 題")
 
     # Answer page (6-7)
@@ -663,9 +663,7 @@ class PageFlowTests(TestCase):
         # Answer page tidy-up: the topic is the title, the code and count one line under it.
         title = r"<h1[^>]*>\s*聽力對生活的影響\s*</h1>"
         # #749: the title in the bird's bubble, the line right under the bird.
-        self.assertRegex(
-            page, title + r"\s*</div>\s*</div>\s*<p[^>]*>HHIE-S・共 10 題・大約 3 分鐘</p>"
-        )
+        self.assertRegex(page, title + r"\s*</div>\s*</div>\s*<p[^>]*>HHIE-S・共 10 題</p>")
         for n in (1, 10):
             with self.subTest(question=n):
                 self.assertRegex(page, rf"<legend[^>]*>(\s*<[^>]+>)*\s*第 {n} 題／共 10 題")
@@ -700,17 +698,17 @@ class PageFlowTests(TestCase):
         # Ticket #157 (ADR 0010), #461 (the #460 mockup R1), #750 (canvas ProResult), the owner
         # 2026-11-21: the level block, 這個分數怎麼算 open (the ruler, where the impact is, step
         # 1, each level's range; no other step and no full advice since the owner's acceptance
-        # that day), the 建議下一步, 看每一題的回答, then the list rows.
+        # that day; its heading gone since the owner's 2026-11-27 walkthrough), the 建議下一步,
+        # 看每一題的回答, then the list rows.
         submission = self._submit([4, 4, 2, 2, 0, 0, 0, 0, 0, 0])  # 12
         main = self._result(submission)
         steps = hhie_s.NEXT_STEPS["mild_to_moderate"]
         self._assert_in_order(
             main,
             (
-                "看看聽力對生活的影響",
+                '<h1 class="bird-title">',
                 '總分 <span class="result-number">12</span> 分（滿分 40）',
                 "輕度到中度影響",
-                "這個分數怎麼算</h2>",
                 "您 12 分",
                 "聽力問題影響在哪裡",
                 '"score-impact-points">12 分',

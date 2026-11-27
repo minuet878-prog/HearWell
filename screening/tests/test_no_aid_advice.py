@@ -29,7 +29,8 @@ SEVERE_ADVICE = (
     "裝作聽得懂等），這些壓力以及情緒的低落會增加長者的認知負擔。"
 )
 SAVE_REASONS = {
-    "mild_to_moderate": "註冊保存後，看完醫師可以接著記下聽力圖，網站會依聽力圖幫您整理下一步。",
+    # The owner's 2026-11-27 walkthrough.
+    "mild_to_moderate": "註冊後可記下您的聽力圖，網站會根據您的檢查結果幫您整理下一步。",
     "severe": "註冊保存後，就醫拿到聽力圖可以記下來，網站會依聽力圖幫您整理下一步。",
 }
 WHERE_TO_TEST_URL = reverse("qa_answer", args=["where-to-get-a-hearing-test"])
@@ -117,7 +118,7 @@ class NoAidAdviceGuestTests(test_guest_save.GuestSaveTestCase):
             for level, reason in SAVE_REASONS.items():
                 with self.subTest(questionnaire=code, level=level):
                     html = self.guest(code, level)
-                    self.assertIn(f'<p class="mb-2">{reason}</p>', save_card(html))
+                    self.assertIn(f'<p class="mb-3">{reason}</p>', save_card(html))
                     self.assertNotIn("助聽器選配", html)
 
     def test_the_advice_links_to_where_to_have_the_hearing_checked(self):
