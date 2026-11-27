@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from screening.care_journey import first_questionnaire_url
 from screening.main_flow import get_user_state
-from screening.models import AidAndSubsidy, Answer, NormGroup, shared_days
+from screening.models import AidAndSubsidy, Answer, NormGroup, ReportComparison, shared_days
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.questionnaires.results import GradedResult
 from screening.scoring import (
@@ -111,6 +111,29 @@ def shows_wearing_comparison(user, questionnaire):
     return (
         comparable.filter(wearing_hearing_aid=True).exists()
         and comparable.filter(wearing_hearing_aid=False).exists()
+    )
+
+
+def wearing_pair(user, submission):
+    """The result page's 戴上助聽器，差多少？ (the owner's 2026-11-27 walkthrough): this record
+    and the newest comparable one worn the other way, as an unsaved pair; None when this record
+    cannot be compared or has no such other."""
+    comparison = submission.questionnaire.definition.comparison
+    if comparison is None or submission.wearing_hearing_aid is None:
+        return None
+    comparable = comparison.records(user.submissions.filter(questionnaire=submission.questionnaire))
+    if not comparable.filter(pk=submission.pk).exists():
+        return None
+    other = (
+        comparable.filter(wearing_hearing_aid=not submission.wearing_hearing_aid)
+        .order_by("-created_at", "-id")
+        .first()
+    )
+    if other is None:
+        return None
+    unaided, aided = (other, submission) if submission.wearing_hearing_aid else (submission, other)
+    return ReportComparison(
+        user=user, questionnaire=submission.questionnaire, unaided=unaided, aided=aided
     )
 
 

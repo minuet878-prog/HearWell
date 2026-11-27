@@ -112,12 +112,15 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
         door = main.index(f'href="{self.url}" data-door="door_family"')
         self.assertLess(main.index('<section class="hero-card"'), door)
 
-    def test_new_user_without_records_has_a_family_link(self):
-        # #459: the 空狀態首頁 keeps the way in as a text link after the guide's (mockup #458 A).
+    def test_new_user_without_records_has_the_family_door(self):
+        # #459 kept the 空狀態首頁's way in as a text link 我是家人 (mockup #458 A); since the
+        # owner's 2026-11-27 walkthrough it is the visitor's door, first, not counted.
         self.client.force_login(consented_user(username="zone_new"))
         main = self._home()
-        self.assertIn(f'<li><a href="{self.url}">我是家人</a></li>', main)
-        self.assertLess(main.index("了解助聽器選配與補助"), main.index("我是家人"))
+        self.assertNotIn("我是家人", main)
+        door = main.index(f'<a class="link-card home-door" href="{self.url}">')
+        self.assertLess(door, main.index('href="/guide">'))
+        self.assertNotIn("data-door=", main)
 
     def test_returning_user_home_has_no_family_card_and_the_same_tabs(self):
         user = consented_user(username="zone_returning")
@@ -130,6 +133,8 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
         self.assertIn("journey-steps", content)  # really the returning user's page
         self.assertNotIn(FAMILY_CARD, content)
         self.assertNotIn(f'href="{self.url}">我是家人', content)
+        # The owner's 2026-11-27 walkthrough: the family door under the 照顧旅程, not counted.
+        self.assertIn(f'<a class="link-card home-door" href="{self.url}">', content)
         nav = test_pages.RedesignLayoutTests.NAV.search(content).group()
         self.assertEqual(
             re.findall(r"<span>([^<]+)</span>", nav),

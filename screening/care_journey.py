@@ -432,8 +432,9 @@ def _day(submission):
 
 
 def _life_impact_href(user, main, questionnaires):
-    # Step 1's 去做問卷, also the empty pages' 做第一份問卷 (#648), so both go to one place: the
-    # one to do again, or by age; the catalogue, which recommends one, while the age is unknown.
+    # Step 1's 去做問卷, also the empty pages' (#648; 做第一份問卷 till the owner's 2026-11-27
+    # walkthrough), so both go to one place: the one to do again, or by age; the catalogue,
+    # which recommends one, while the age is unknown.
     questionnaire = life_impact_questionnaire(user, questionnaires, main, None)
     if questionnaire is None:
         return reverse("questionnaire_list")
@@ -441,7 +442,7 @@ def _life_impact_href(user, main, questionnaires):
 
 
 def first_questionnaire_url(user, today):
-    """An empty page's 做第一份問卷 (#648: 我的紀錄, the report, the share page): where the home
+    """An empty page's 去做問卷 (#648: 我的紀錄, the report, the share page): where the home
     page's step 1 goes."""
     questionnaires = list(Questionnaire.objects.defined())
     return _life_impact_href(user, get_user_state(user, today), questionnaires)

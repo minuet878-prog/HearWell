@@ -93,6 +93,9 @@ ONE_LINE = {
     "audiogram_detail",
     "qa_answer",
     "questionnaire_list",
+    "health_report",
+    "learn",
+    "hhi_comparison",
 }
 
 
@@ -185,8 +188,8 @@ class EveryPageTests(TestCase):
         lead, title = found
         # The two home pages' bubbles are one line, as the canvas (spec #741's 實作中本人補充);
         # since the owner's 2026-11-27 walkthrough so are the wizard's, the answer page's, the
-        # result pages', the register and consent pages', 我的紀錄's, the audiogram pages' and a
-        # Q&A answer's.
+        # result pages', the register and consent pages', 我的紀錄's, the audiogram pages', a
+        # Q&A answer's, the health report's, 了解's and the wearing comparison's.
         try:
             name = resolve(response.request["PATH_INFO"]).url_name
         except Resolver404:

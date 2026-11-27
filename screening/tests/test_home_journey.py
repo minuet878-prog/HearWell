@@ -182,15 +182,18 @@ class EmptyStateHomeTests(HomeJourneyTestCase):
         for absent in ("journey-tiles", "journey-steps", "上次結果", "我已經有帳號"):
             self.assertNotIn(absent, main)
 
-    def test_the_empty_state_keeps_the_guide_family_and_home_screen_ways_in(self):
-        links = self.part(self.main(), "home-links")
+    def test_the_empty_state_keeps_the_home_screen_link_the_guide_and_family_as_doors(self):
+        # The owner's 2026-11-27 walkthrough: 了解助聽器選配與補助 and 我是家人 became the
+        # visitor's two doors (test_home_doors), leaving 加到手機主畫面 alone in the links.
+        main = self.main()
+        links = self.part(main, "home-links")
         self.assertEqual(
             re.findall(r'<li([^>]*)><a href="([^"]*)">([^<]*)</a></li>', links),
-            [
-                ("", "/guide", "了解助聽器選配與補助"),
-                ("", "/family", "我是家人"),
-                (" data-hide-in-app", "/add_to_home", "加到手機主畫面"),
-            ],
+            [(" data-hide-in-app", "/add_to_home", "加到手機主畫面")],
+        )
+        self.assertEqual(
+            re.findall(r'<a class="link-card home-door" href="([^"]*)">', main),
+            ["/family", "/guide"],
         )
 
     def test_another_account_s_records_leave_the_empty_state(self):

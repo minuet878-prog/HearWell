@@ -127,6 +127,8 @@
         {% endfor %}
     </ol>
 </section>
+{# The owner's 2026-11-27 walkthrough: the guest home's two doors, under the 照顧旅程. #}
+{% include "screening/home_doors.html" %}
 {# Spec #453 Q10: what 「您還可以」 offered, a row of text links. pwa-nav.js hides [data-hide-in-app] in the home-screen app; without JavaScript every link shows. #}
 <ul class="home-links" role="list">
     <li><a href="{% url 'health_report' %}">印聽力報告</a></li>
@@ -151,9 +153,9 @@
         <li><span class="step-list-number">3</span><span class="step-list-body">首頁一次告訴您一件該做的事</span></li>
     </ol>
 </div>
+{# The owner's 2026-11-27 walkthrough: the guest home's two doors for its 了解助聽器選配與補助 and 我是家人. #}
+{% include "screening/home_doors.html" %}
 <ul class="home-links" role="list">
-    <li><a href="{% url 'guide' %}">了解助聽器選配與補助</a></li>
-    <li><a href="{% url 'family_guide' %}">我是家人</a></li>
     <li data-hide-in-app><a href="{% url 'add_to_home' %}">加到手機主畫面</a></li>
 </ul>
 {% else %}
@@ -171,16 +173,7 @@
     <a class="btn btn-hero btn-lg" href="{% url 'questionnaire_list' %}" data-door="door_self">開始<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 6l6 6-6 6"/></svg></a>
 {% endcapture %}
 {% include "screening/hero_card.html" with body=hero attrs="data-play-in-view" %}
-<ul class="home-doors list-unstyled m-0" role="list">
-    <li><a class="link-card home-door" href="{% url 'family_guide' %}" data-door="door_family">
-        <span class="home-door-top">{% include "screening/action_icon.html" with icon="family" %}<span class="link-card-arrow" aria-hidden="true">›</span></span>
-        <span class="link-card-title">擔心家人的聽力</span>
-    </a></li>
-    <li><a class="link-card home-door" href="{% url 'guide' %}" data-door="door_aids">
-        <span class="home-door-top">{% include "screening/action_icon.html" with icon="sound" %}<span class="link-card-arrow" aria-hidden="true">›</span></span>
-        <span class="link-card-title">想了解助聽器</span>
-    </a></li>
-</ul>
+{% include "screening/home_doors.html" with count=True %}
 {# P13: 加到手機主畫面 stays, a small line at the bottom, centred. #}
 <ul class="home-links justify-center" role="list">
     <li data-hide-in-app><a href="{% url 'add_to_home' %}">加到手機主畫面</a></li>

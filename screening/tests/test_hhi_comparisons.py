@@ -53,7 +53,9 @@ class HhiComparisonTests(TestCase):
         self.assertEqual(page.status_code, 200)
         self.assertNotContains(page, "聽力報告裡的組合")
         page = self.client.get(self.url, data)
-        self.assertContains(page, "目前查看的兩筆")
+        # 分數變化 (目前查看的兩筆 till the owner's 2026-11-27 walkthrough).
+        self.assertContains(page, "分數變化")
+        self.assertNotContains(page, "目前查看的兩筆")
         self.assertContains(page, "40 分")
         self.assertContains(page, "20 分")
         self.assertNotContains(page, "聽力報告裡的組合")
@@ -68,7 +70,8 @@ class HhiComparisonTests(TestCase):
         self.assertEqual(saved.unaided_id, unaided.pk)
         self.assertEqual(saved.aided_id, aided.pk)
         self.assertContains(page, "聽力報告裡的組合")
-        self.assertContains(page, "不一定是開始戴之前和之後的比較")
+        # The card's reminders went in the owner's 2026-11-27 walkthrough.
+        self.assertNotContains(page, "不一定是開始戴之前和之後的比較")
 
     def test_versions_keep_independent_pairs_and_removal_keeps_answers(self):
         hhie = Questionnaire.objects.create(code="hhie-s", questionnaire_name="HHIE-S")
@@ -225,12 +228,16 @@ class HhiComparisonRadioCardTests(TestCase):
     def test_title_is_followed_by_the_topic_and_code(self):
         # #362: 「主題（代號）」, as the questionnaire cards write it.
         page = self.client.get(self.url)
-        # #749: the title in the bird's bubble, the line right under the bird.
+        # #749: the title in the bird's bubble, the line right under the bird; the bubble's
+        # title 戴上助聽器，差多少？ since the owner's 2026-11-27 walkthrough, its lead gone and the
+        # tab's title as before.
         self.assertRegex(
             page.content.decode(),
-            r'<h1 class="bird-title">比較戴與不戴助聽器</h1>\s*</div>\s*</div>\s*'
+            r'<h1 class="bird-title">戴上助聽器，差多少？</h1>\s*</div>\s*</div>\s*'
             r'<p class="mt-2">聽力對生活的影響（HHIE-S）</p>',
         )
+        self.assertContains(page, "<title>比較戴與不戴助聽器")
+        self.assertNotContains(page, "選一次沒戴、一次有戴時填的同一份問卷。")
 
     def test_cards_show_date_and_score_with_time_on_shared_days_and_a_lone_record_chosen(self):
         # Verification-flow batch F2 (replacing #190's 「沒有時留空」): with no saved pair, a
@@ -255,8 +262,8 @@ class HhiComparisonRadioCardTests(TestCase):
         chosen = {"unaided": unaided.pk, "aided": aided.pk, "action": "preview"}
         # A plain GET form submission, as a browser without JavaScript sends it.
         page = self.client.get(self.url, chosen)
-        self.assertContains(page, "目前查看的兩筆")
-        self.assertContains(page, "差值不能單獨判定助聽器效益")
+        self.assertContains(page, "分數變化")
+        self.assertNotContains(page, "差值不能單獨判定助聽器效益")
         self.assertContains(page, ">放進聽力報告</button>")
         self.assertIn(("2026/04/20・40 分", True), radio_cards(page, "unaided"))
         self.assertIn(("2026/09/02・20 分", True), radio_cards(page, "aided"))
@@ -280,7 +287,8 @@ class HhiComparisonRadioCardTests(TestCase):
         self.assertContains(page, "已放進聽力報告，新增紀錄不會自動換掉這一組。")
         self.assertNotContains(page, "自動換組")
         self.assertContains(page, "聽力報告裡的組合")
-        self.assertContains(page, "新增紀錄不會自動換掉")
+        # The line under the saved card went in the owner's 2026-11-27 walkthrough.
+        self.assertNotContains(page, "各問卷分開保留，從報告移除不會刪除作答。")
         self.assertContains(page, ">從報告移除</button>")
         answers = Answer.objects.filter(submission__user=self.user).count()
         page = self.client.post(self.url, {"action": "remove"}, follow=True)
@@ -332,9 +340,12 @@ class WearingComparisonEntryTests(TestCase):
         return content[content.index("<main") : content.index("</main>")]
 
     def entries(self, questionnaire, result):
-        """How many 「比較戴與不戴助聽器」 links its 我的紀錄 tab and a result page show."""
-        href = f'href="{reverse("hhi_comparison", args=[questionnaire.pk])}"'
-        # A button on 我的紀錄, a list row on a result page (#461).
+        """How many 「比較戴與不戴助聽器」 links its 我的紀錄 tab and a result page show: a
+        button on 我的紀錄; on a result page the block 戴上助聽器，差多少？ above the 建議下一步
+        card (the owner's 2026-11-27 walkthrough), or the list row (#461) when the record
+        itself cannot be compared."""
+        url = reverse("hhi_comparison", args=[questionnaire.pk])
+        href = f'href="{url}"'
         records = self.main(f"{reverse('my_hearing')}?questionnaire={questionnaire.code}")
         result_page = self.main(reverse("result", args=[result.pk]))
         row = re.compile(
@@ -342,16 +353,22 @@ class WearingComparisonEntryTests(TestCase):
             r'<span class="link-card-title">比較戴與不戴助聽器</span>',
             re.S,
         )
+        door = re.compile(
+            rf'<a class="link-card action-card result-compare-door" href="{url}\?.*?'
+            r'<span class="link-card-title">戴上助聽器，差多少？</span>',
+            re.S,
+        )
         return {
             "我的紀錄": records.count(f"{href}>比較戴與不戴助聽器</a>"),
-            "結果頁": len(row.findall(result_page)),
+            "結果頁": len(door.findall(result_page)),
+            "結果頁列表": len(row.findall(result_page)),
         }
 
     def test_entry_shows_only_once_a_questionnaire_has_both_wearing_statuses(self):
         hhie_s = self.record(self.hhie_s, False, 2)
         ssq12 = self.record(self.ssq12, False, 6)
-        none = {"我的紀錄": 0, "結果頁": 0}
-        one = {"我的紀錄": 1, "結果頁": 1}
+        none = {"我的紀錄": 0, "結果頁": 0, "結果頁列表": 0}
+        one = {"我的紀錄": 1, "結果頁": 1, "結果頁列表": 0}
         self.assertEqual(self.entries(self.hhie_s, hhie_s), none)
         self.assertEqual(self.entries(self.ssq12, ssq12), none)
         # An aided HHIE-S brings HHIE-S's entry only: the condition is per questionnaire.
@@ -367,9 +384,16 @@ class WearingComparisonEntryTests(TestCase):
         # Story 23 names HHIA-S too; it shares the result page with HHIE-S.
         hhia_s = Questionnaire.objects.get(code="hhia-s")
         record = self.record(hhia_s, False, 2)
-        self.assertEqual(self.entries(hhia_s, record), {"我的紀錄": 0, "結果頁": 0})
+        none = {"我的紀錄": 0, "結果頁": 0, "結果頁列表": 0}
+        self.assertEqual(self.entries(hhia_s, record), none)
         self.record(hhia_s, True, 0)
-        self.assertEqual(self.entries(hhia_s, record), {"我的紀錄": 1, "結果頁": 1})
+        one = {"我的紀錄": 1, "結果頁": 1, "結果頁列表": 0}
+        self.assertEqual(self.entries(hhia_s, record), one)
+        # A record that cannot be compared itself (one answer missing) keeps the row instead.
+        incomplete = self.record(hhia_s, True, 0)
+        incomplete.answers.first().delete()
+        row = {"我的紀錄": 1, "結果頁": 0, "結果頁列表": 1}
+        self.assertEqual(self.entries(hhia_s, incomplete), row)
 
     def test_ssq12_result_page_has_no_choose_questionnaire_button(self):
         ssq12 = self.record(self.ssq12, False, 6)
@@ -383,7 +407,7 @@ class WearingComparisonEntryTests(TestCase):
 
 
 def preview_text(page):
-    """The 「目前查看的兩筆」 section as plain text, one space between pieces."""
+    """The 「分數變化」 section as plain text, one space between pieces."""
     section = re.search(
         r'<section aria-labelledby="preview-title".*?</section>', page.content.decode(), re.S
     ).group(0)
@@ -391,7 +415,8 @@ def preview_text(page):
 
 
 class ComparisonResultCardTests(TestCase):
-    """The comparison page's result card (#191): two scores, one direction, the reminders."""
+    """The comparison page's result card (#191): two scores and one direction; its reminders
+    went in the owner's 2026-11-27 walkthrough."""
 
     def setUp(self):
         call_command("seed_questionnaires", stdout=StringIO())
@@ -420,14 +445,19 @@ class ComparisonResultCardTests(TestCase):
         url = f"/comparisons/{first.questionnaire_id}"
         return self.client.get(url, {"unaided": first.pk, "aided": second.pk, "action": "preview"})
 
-    def test_hhie_s_card_shows_both_scores_the_direction_and_the_reminders(self):
+    def test_hhie_s_card_shows_both_scores_and_the_direction_centred(self):
         page = self.preview("hhie-s", [4, 4, 4] + [0] * 7, [2, 2, 2] + [0] * 7)
         card = preview_text(page)
         self.assertIn("沒戴 12 分", card)
         self.assertIn("有戴 6 分", card)
         self.assertIn("有戴比沒戴少 6 分（分數越低越好）", card)
-        self.assertIn("差值不能單獨判定助聽器效益", card)
-        self.assertIn("兩筆是不同時間填的，不一定是開始戴之前和之後的比較", card)
+        self.assertContains(
+            page,
+            '<p class="mt-4 text-center text-xl/normal font-bold text-heading">'
+            "有戴比沒戴少 6 分（分數越低越好）</p>",
+        )
+        self.assertNotIn("差值不能單獨判定助聽器效益", card)
+        self.assertNotIn("兩筆是不同時間填的，不一定是開始戴之前和之後的比較", card)
         # The old lines of the report fragment are not on the card.
         self.assertNotIn("差值（配戴", card)
         self.assertNotIn("少了 6 分", card)
@@ -442,7 +472,7 @@ class ComparisonResultCardTests(TestCase):
             with self.subTest(code=code, sentence=sentence):
                 card = preview_text(self.preview(code, unaided, aided))
                 self.assertIn(sentence, card)
-                self.assertIn("差值不能單獨判定助聽器效益", card)
+                self.assertNotIn("差值不能單獨判定助聽器效益", card)
 
     def test_card_draws_no_conclusion(self):
         page = self.preview("hhie-s", [4] * 10, [0] * 10).content.decode()
@@ -450,10 +480,11 @@ class ComparisonResultCardTests(TestCase):
             with self.subTest(conclusion=conclusion):
                 self.assertNotIn(conclusion, page)
 
-    def test_the_old_reminder_moves_into_the_card(self):
+    def test_the_old_reminder_is_on_neither_the_page_nor_the_card(self):
+        # The card's took the page's (#191) and went in the owner's 2026-11-27 walkthrough.
         page = self.preview("hhie-s", [4] * 10, [2] * 10)
         self.assertNotContains(page, "前測與後測")
-        self.assertContains(page, "兩筆是不同時間填的，不一定是開始戴之前和之後的比較", count=1)
+        self.assertNotContains(page, "不一定是開始戴之前和之後的比較")
 
     def test_reports_keep_their_comparison_section(self):
         # The owner's report, its print version (the same page) and the family's report read as

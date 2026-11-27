@@ -309,15 +309,17 @@ describe("questionnaire intro (#153, #463)", () => {
 });
 
 describe("autosave note (#153)", () => {
-  // Shortened by the site owner in the answer page tidy-up (drafts actually stay in this browser, draft.js).
+  // The owner's 2026-11-27 walkthrough took the note out; drafts still stay in this browser (draft.js).
   const NOTE = "答案會自動存在這支手機，中途離開也沒關係。";
 
-  it("tells the user on opening the page, and on every question", async () => {
+  it("is not on the page on opening it, nor on any question", async () => {
     await renderApp();
-    expect(screen.getByText(NOTE)).not.toBeNull();
+    expect(screen.queryByText(NOTE)).toBeNull();
+    expect(document.querySelector(".answer-autosave")).toBeNull();
     choose("沒戴");
     next();
-    expect(screen.getByText(NOTE)).not.toBeNull();
+    expect(screen.queryByText(NOTE)).toBeNull();
+    expect(document.querySelector(".answer-autosave")).toBeNull();
   });
 });
 
@@ -347,8 +349,8 @@ describe("saved flash (#326 B4)", () => {
     expect(flash()).not.toBeNull();
     act(() => vi.advanceTimersByTime(100));
     expect(flash()).toBeNull();
-    // The footer's autosave note stays (#326 B4).
-    expect(screen.getByText("答案會自動存在這支手機，中途離開也沒關係。")).not.toBeNull();
+    // The footer's autosave note (#326 B4) went in the owner's 2026-11-27 walkthrough.
+    expect(screen.queryByText("答案會自動存在這支手機，中途離開也沒關係。")).toBeNull();
   });
 
   it("starts the 1.5 s again on another choice, and goes with the question", async () => {

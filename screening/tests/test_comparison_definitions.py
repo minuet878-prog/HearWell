@@ -59,8 +59,12 @@ class ComparisonFromDefinitionTests(TestCase):
         history = self.client.get(reverse("my_hearing")).content.decode()
         self.assertIn("配戴狀態比較", history)
         self.assertIn("少了 20 分", history)
+        # The result page's 戴上助聽器，差多少？ opens this pair (the owner's 2026-11-27
+        # walkthrough).
         result = self.client.get(reverse("result", args=[aided.pk]))
-        self.assertContains(result, f'href="{url}"')
+        self.assertContains(
+            result, f'href="{url}?unaided={unaided.pk}&amp;aided={aided.pk}&amp;action=preview"'
+        )
 
     def test_a_definition_without_a_comparison_offers_none(self):
         self.enterContext(register(fake_definition("fake-alone")))

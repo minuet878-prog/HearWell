@@ -237,8 +237,9 @@ class Ssq12ComparisonResultCardTests(TestCase):
                 card = test_hhi_comparisons.preview_text(self.preview(unaided, aided))
                 self.assertIn("沒戴 平均", card)
                 self.assertIn(sentence, card)
-                self.assertIn("差值不能單獨判定助聽器效益", card)
-                self.assertIn("兩筆是不同時間填的，不一定是開始戴之前和之後的比較", card)
+                # The card's reminders went in the owner's 2026-11-27 walkthrough.
+                self.assertNotIn("差值不能單獨判定助聽器效益", card)
+                self.assertNotIn("兩筆是不同時間填的，不一定是開始戴之前和之後的比較", card)
                 self.assertNotIn("差值（配戴", card)
         card = test_hhi_comparisons.preview_text(self.preview([4] * 11 + [8], [4] * 10 + [6, 10]))
         self.assertIn("沒戴 平均 4.3 分", card)
@@ -249,8 +250,8 @@ class Ssq12ComparisonResultCardTests(TestCase):
         card = test_hhi_comparisons.preview_text(page)
         self.assertIn("未計算整體差值：包含不適用題目或缺少完整回答", card)
         self.assertNotIn("有戴比沒戴", card)
-        self.assertIn("差值不能單獨判定助聽器效益", card)
-        self.assertIn("兩筆是不同時間填的，不一定是開始戴之前和之後的比較", card)
+        self.assertNotIn("差值不能單獨判定助聽器效益", card)
+        self.assertNotIn("兩筆是不同時間填的，不一定是開始戴之前和之後的比較", card)
         details = re.search(
             r"<details[^>]*>\s*<summary>看每一題的回答</summary>.*?</details>",
             page.content.decode(),

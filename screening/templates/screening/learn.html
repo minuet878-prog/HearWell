@@ -6,7 +6,7 @@
 {% block body %}
 {# #269 (spec #268): the 了解 tab's entry. #469 (the #468 mockup A): one list of rows (E), the same as the family zone's and the catalogue's, without group titles. #}
 {# #366: card titles wrap into even lines, never one character alone on the last. #}
-{% include "screening/bird_dialogue.html" with lead="learn"|page_lead title="了解" %}
+{% include "screening/bird_dialogue.html" with title="了解聽伴" %}
 {# #754 (spec #741 acceptance 51, 56; P22, P23; the canvas's ProLearn): the stacked cards, one for each item with its own drawing, the one most about the 現在這一步 first (the view's stack). The cards behind are inert until card-stack.js brings each to the front, so their drawings wait to play (in-view.js). Without JavaScript the first card shows alone, the whole list below. #}
 <section class="card-stack" aria-roledescription="輪播" aria-label="了解卡片">
     <div class="card-stack-cards">
@@ -14,7 +14,6 @@
         <article class="hero-card card-stack-card learn-card" role="group" aria-roledescription="卡片" aria-label="第 {{ forloop.counter }} 張，共 {{ stack|length }} 張：{{ item.title }}"{% if not forloop.first %} inert{% endif %}>
             {% include "screening/learn_drawing.html" with key=item.key %}
             <h2 class="hero-card-title text-balance">{{ item.title }}</h2>
-            <p>{{ item.line }}</p>
             <a class="btn btn-hero btn-lg" href="{% url item.url_name %}">{{ item.button }}<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 6l6 6-6 6"/></svg></a>
         </article>
     {% endfor %}

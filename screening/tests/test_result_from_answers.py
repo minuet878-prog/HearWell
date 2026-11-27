@@ -158,14 +158,15 @@ class SectionTests(ResultFromAnswersTestCase):
 class RecordPageUnchangedTests(ResultFromAnswersTestCase):
     """The signed-in result page draws the same section from the record, with what an account has.
     The queries are main's (one more since #647 counts which time this is, two more since #661
-    reads the email 重測提醒 and its next date, one fewer since #742 took away the to-do ticks),
-    measured with these records (its HTML was compared byte for byte with main's on HHIE-S and
-    HHIA-S records of each level and hearing aid status)."""
+    reads the email 重測提醒 and its next date, one fewer since #742 took away the to-do ticks,
+    two more unaided and three more aided since the owner's 2026-11-27 walkthrough looks for the
+    pair of 戴上助聽器，差多少？), measured with these records (its HTML was compared byte for
+    byte with main's on HHIE-S and HHIA-S records of each level and hearing aid status)."""
 
     def test_queries_and_the_account_parts(self):
         self.client.force_login(self.user)
         for code in LEVELS:
-            for wearing, queries in ((False, 18), (True, 18), (None, 17)):
+            for wearing, queries in ((False, 20), (True, 21), (None, 17)):
                 with self.subTest(code=code, wearing=wearing):
                     submission_with_answers(self.user, code, [0] * 10, wearing_hearing_aid=wearing)
                     record = submission_with_answers(

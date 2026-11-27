@@ -1,0 +1,11 @@
+{# The owner's 2026-11-27 walkthrough (the mockup's B): with records both worn and not, the wearing comparison moves up from the rows to a pale blue block over the 建議下一步 card, this record against the newest worn the other way (wearing_pair), opening that pair on the comparison page. #}
+{% if comparison_pair %}
+<a class="link-card action-card result-compare-door" href="{% url 'hhi_comparison' submission.questionnaire_id %}?unaided={{ comparison_pair.unaided_id }}&amp;aided={{ comparison_pair.aided_id }}&amp;action=preview">
+    {% include "screening/action_icon.html" with icon="compare" %}
+    <span class="link-card-body">
+        <span class="link-card-title">戴上助聽器，差多少？</span>
+        <span>沒戴 {{ comparison_pair.unaided_result }}<span aria-hidden="true"> → </span><span class="visually-hidden">，</span>有戴 {{ comparison_pair.aided_result }}</span>
+    </span>
+    <span class="link-card-arrow" aria-hidden="true">›</span>
+</a>
+{% endif %}

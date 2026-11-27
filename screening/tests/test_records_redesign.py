@@ -332,7 +332,10 @@ class WearingComparisonTests(Records):
         )
         main = self.main(self.url, unaided=self.unaided.pk, aided=self.aided.pk, action="preview")
         self.assertEqual(solid_buttons(main), ["改放這一組到報告"])
-        self.assertLess(main.index("目前查看的兩筆"), main.index("<details"))
+        # 分數變化, 目前查看的兩筆 till the owner's 2026-11-27 walkthrough.
+        self.assertLess(
+            main.index('id="preview-title" class="h4">分數變化</h2>'), main.index("<details")
+        )
         saved = fold_titled(main, "聽力報告裡的組合")
         self.assertIn("沒戴 18 分、有戴 12 分，少了 6 分", saved[: saved.index("</summary>")])
         self.assertIn("從報告移除", saved)

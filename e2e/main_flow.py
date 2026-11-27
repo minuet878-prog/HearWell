@@ -790,7 +790,8 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         # #463: the intro folds away from the hearing aid step on, until asked for; that step
         # has no question count.
         expect(app.get_by_text("本問卷的目的", exact=False)).to_have_count(0)
-        expect(app).to_contain_text("答案會自動存在這支手機，中途離開也沒關係")
+        # The autosave note went in the owner's 2026-11-27 walkthrough.
+        expect(app).not_to_contain_text("答案會自動存在這支手機，中途離開也沒關係")
         expect(about).to_have_attribute("aria-expanded", "false")
         self.assert_step_bar(0, 0)
         self.answer("沒戴")
@@ -1155,7 +1156,8 @@ class ProgressSavedTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     expect(self.question(number)).not_to_have_accessible_name(re.compile("已儲存"))
                     expect(saved).to_have_count(0, timeout=2500)
                     self.assertEqual(line.evaluate(self.LAYOUT), before)
-                    expect(self.main()).to_contain_text(
+                    # The autosave note went in the owner's 2026-11-27 walkthrough.
+                    expect(self.main()).not_to_contain_text(
                         "答案會自動存在這支手機，中途離開也沒關係。"
                     )
                     self.next()
@@ -2051,7 +2053,8 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             self.page.locator(f'input[name="aided"][value="{aided.pk}"]').check()
             expect(first).to_be_checked()
             self.page.get_by_role("button", name="查看比較", exact=True).click()
-            expect(self.page.get_by_role("heading", name="目前查看的兩筆")).to_be_visible()
+            # 分數變化, 目前查看的兩筆 till the owner's 2026-11-27 walkthrough.
+            expect(self.page.get_by_role("heading", name="分數變化")).to_be_visible()
             expect(
                 self.page.get_by_text("有戴比沒戴少 20 分（分數越低越好）", exact=True)
             ).to_be_visible()
@@ -2267,7 +2270,18 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             for aided, (unaided_card, aided_card), card_texts, section, report_texts in routes:
                 with self.subTest(questionnaire=aided.questionnaire.code):
                     self.page.goto(f"{self.live_server_url}/submission/{aided.pk}")
-                    self.main().get_by_role("link", name="比較戴與不戴助聽器", exact=True).click()
+                    # The owner's 2026-11-27 walkthrough: the result page's way in is the block
+                    # 戴上助聽器，差多少？ over the 建議下一步 card, opening this record's pair;
+                    # the comparison page itself is opened plainly here to choose the pair.
+                    door = self.main().locator(".result-compare-door")
+                    expect(door).to_contain_text("戴上助聽器，差多少？")
+                    expect(door).to_have_attribute(
+                        "href", re.compile(rf"^/comparisons/{aided.questionnaire_id}\?")
+                    )
+                    expect(
+                        self.main().get_by_role("link", name="比較戴與不戴助聽器", exact=True)
+                    ).to_have_count(0)
+                    self.page.goto(f"{self.live_server_url}/comparisons/{aided.questionnaire_id}")
                     expect(self.page).to_have_url(
                         re.compile(rf"/comparisons/{aided.questionnaire_id}$")
                     )
@@ -2286,18 +2300,19 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                             card, exact=True
                         ).check()
                     self.main().get_by_role("button", name="查看比較", exact=True).click()
-                    result = self.main().get_by_role("region", name="目前查看的兩筆")
+                    result = self.main().get_by_role("region", name="分數變化")
                     for text in card_texts:
                         expect(result.get_by_text(text, exact=True)).to_be_visible()
+                    # The card's reminders went in the owner's 2026-11-27 walkthrough.
                     expect(
                         result.get_by_text("差值不能單獨判定助聽器效益。", exact=True)
-                    ).to_be_visible()
+                    ).to_have_count(0)
                     result.get_by_role("button", name="放進聽力報告", exact=True).click()
                     expect(self.main()).to_contain_text(
                         "已放進聽力報告，新增紀錄不會自動換掉這一組。"
                     )
                     # Pages tidy-up: the pair on screen is the saved one, so it shows once.
-                    preview = self.main().get_by_role("region", name="目前查看的兩筆")
+                    preview = self.main().get_by_role("region", name="分數變化")
                     expect(preview).to_have_count(0)
                     saved = self.main().get_by_role("region", name="聽力報告裡的組合")
                     expect(saved.get_by_text("這一組已經在聽力報告裡", exact=True)).to_be_visible()
@@ -2336,15 +2351,13 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                 self.main().locator(".result-details > summary").click()
                 expect(self.main().get_by_role("heading", name="分數最低的 3 題")).to_be_visible()
                 self.main().get_by_text("看全部 12 題的回答", exact=True).click()
-                expect(
-                    self.main().get_by_role("link", name="比較戴與不戴助聽器", exact=True)
-                ).to_be_visible()
+                # 戴上助聽器，差多少？ over the 建議下一步 card since the owner's 2026-11-27
+                # walkthrough, in place of the row 比較戴與不戴助聽器.
+                expect(self.main().locator(".result-compare-door")).to_be_visible()
                 self.assert_fits_a_phone_at_double_text_size("SSQ12-TW result")
             with self.subTest(page="HHIE-S result"):
                 self.page.goto(f"{self.live_server_url}/submission/{hhie_aided.pk}")
-                expect(
-                    self.main().get_by_role("link", name="比較戴與不戴助聽器", exact=True)
-                ).to_be_visible()
+                expect(self.main().locator(".result-compare-door")).to_be_visible()
                 self.assert_fits_a_phone_at_double_text_size("HHIE-S result")
             with self.subTest(page="HHIE-S comparison"):
                 self.page.goto(
@@ -4430,10 +4443,12 @@ class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
                 }
             ]
         )
-        # #459: the 空狀態首頁's text link (mockup #458 A).
-        words = "我是家人"
+        # #459: the 空狀態首頁's text link 我是家人 (mockup #458 A); since the owner's 2026-11-27
+        # walkthrough the visitor's door.
+        words = "擔心家人的聽力"
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
+            expect(self.main().get_by_role("link", name="我是家人", exact=True)).to_have_count(0)
             card = self.main().get_by_role("link", name=words, exact=True)
             self.assertGreaterEqual(card.bounding_box()["height"], 44)
             root = self.page.evaluate(
@@ -4917,7 +4932,7 @@ class BottomTabsTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
         tabs = (
             ("問卷", "/questionnaire_list", None),
             ("紀錄", "/my_hearing", "我的紀錄"),
-            ("了解", "/learn", "了解"),
+            ("了解", "/learn", "了解聽伴"),
             ("首頁", "/", None),
         )
         self.open(390, javascript=False)
@@ -9471,9 +9486,9 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.assertEqual(self.style(block, "backgroundColor"), "rgb(255, 244, 214)")
                     self.assertEqual(self.style(block, "boxShadow"), "none")
             self.visit(True, lambda test: test.hhi_comparison())
-            block = self.page.get_by_role("region", name="目前查看的兩筆")
+            block = self.page.get_by_role("region", name="分數變化")
             self.assert_flat_part(block)
-            self.assert_block_title(block.get_by_role("heading", name="目前查看的兩筆", exact=True))
+            self.assert_block_title(block.get_by_role("heading", name="分數變化", exact=True))
             self.assert_readable_on_white(block, skip_own_backgrounds=True)
             save = block.get_by_role("button", name="改放這一組到報告", exact=True)
             self.assertEqual(self.style(save, "backgroundColor"), self.PRIMARY)
@@ -17786,10 +17801,9 @@ class EmptyStatesT648Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
     PAGES = (
         (
             "/my_hearing",
-            '- heading "還沒有紀錄" [level=2]\n'
-            "- paragraph: 做完第一份問卷，分數和變化會出現在這裡。\n"
-            '- link "做第一份問卷"',
-            "做第一份問卷",
+            # No sentence and 去做問卷 since the owner's 2026-11-27 walkthrough.
+            '- heading "還沒有紀錄" [level=2]\n- link "去做問卷"',
+            "去做問卷",
         ),
         (
             "/audiograms",
@@ -17801,15 +17815,15 @@ class EmptyStatesT648Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             "/report",
             '- heading "還沒有報告" [level=2]\n'
             "- paragraph: 做完第一份問卷或記錄聽力圖，報告就會有內容，可以印出來給醫師看。\n"
-            '- link "做第一份問卷"',
-            "做第一份問卷",
+            '- link "去做問卷"',
+            "去做問卷",
         ),
         (
             "/share",
             '- heading "還沒有可以分享的紀錄" [level=2]\n'
             "- paragraph: 做完第一份問卷或記錄聽力圖，就能傳給家人看。\n"
-            '- link "做第一份問卷"',
-            "做第一份問卷",
+            '- link "去做問卷"',
+            "去做問卷",
         ),
     )
 

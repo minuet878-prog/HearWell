@@ -34,9 +34,10 @@ class LearnPageTests(TestCase):
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
         main = content[content.index("<main") : content.index("</main>")]
-        # #754: one heading over the page, then each stacked card's (test_learn_stack).
+        # #754: one heading over the page, then each stacked card's (test_learn_stack); 了解聽伴
+        # since the owner's 2026-11-27 walkthrough.
         headings = re.findall(r"<h(\d)[^>]*>([^<]*)</h\d>", main)
-        self.assertEqual(headings[0], ("1", "了解"))
+        self.assertEqual(headings[0], ("1", "了解聽伴"))
         self.assertEqual({level for level, _ in headings[1:]}, {"2"})
         self.assertEqual(main.count("<ul"), 1)
         return CARD.findall(main)

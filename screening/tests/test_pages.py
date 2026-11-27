@@ -39,21 +39,13 @@ class CopyTests(TestCase):
         "已選配助聽器一段時間後，可以再填一次，有助於了解所配的助聽器是否真的有幫助。",
         "請在閱讀每項問題後圈選常常、有時或從未。",
     )
+    # One sentence a level since the owner's 2026-11-27 walkthrough.
     ADVICE: ClassVar[dict[str, str]] = {
-        "mild_to_moderate": (
-            "聽力的問題已經慢慢開始影響到您的社交活動以及情緒，例如"
-            "與家人之間常常因為聽不清楚或是電視聲音等而產生爭吵、在多人且吵雜的"
-            "社交環境當中會因為聽不清楚而導致社交上的窘迫及退縮，許多聽力衰退"
-            "帶來的問題是微妙且和緩的，但經過此次篩檢能夠讓您體認到聽力對自身生"
-            "活的影響，建議前往醫院耳鼻喉科進行聽力相關檢查及詢問相關專業意見。 " + LIMITS
-        ),
+        "normal": "聽力還沒明顯影響生活，但聽力退化常常不自覺，建議定期做聽力檢查。 " + LIMITS,
+        "mild_to_moderate": "聽力問題開始影響到生活了，建議去耳鼻喉科尋求專業建議。 " + LIMITS,
         "severe": (
-            "聽力問題已經嚴重影響到您的生活了，許多人常常會忽視這一塊，聽不到這件事"
-            "情往往已經十分嚴重了才會發現，若您尚未採取任何行動建議立即前往醫院耳鼻"
-            "喉科尋求專業建議，並做聽力檢查；有 AirPods Pro 的話，也可以先用 iPhone 做聽力"
-            "自我測試。聽力喪失影響的並不只是聽不聽得到，"
-            "無形中也會增加社交活動的壓力（例如因為聽不清楚常會在聊天的過程中退縮、"
-            "裝作聽得懂等），這些壓力以及情緒的低落會增加長者的認知負擔。 " + LIMITS
+            "聽力問題已經明顯影響生活，建議盡快去耳鼻喉科尋求專業建議，並做聽力檢查；"
+            "有 AirPods Pro 的話，也可以先用 iPhone 做聽力自我測試。 " + LIMITS
         ),
     }
 
@@ -133,8 +125,10 @@ class CopyTests(TestCase):
         self.assertNotContains(response, "連結")
 
     def test_empty_history_uses_polite_you(self):
+        # No sentence under 還沒有紀錄 since the owner's 2026-11-27 walkthrough; still no 你.
         response = self.client.get(reverse("my_hearing"))
-        self.assertContains(response, "做完第一份問卷，分數和變化會出現在這裡。")
+        self.assertContains(response, '<h2 class="h4">還沒有紀錄</h2>')
+        self.assertNotContains(response, "做完第一份問卷，分數和變化會出現在這裡。")
         self.assertNotContains(response, "你還沒有")
 
     def test_questionnaire_list_has_no_orphan_li(self):

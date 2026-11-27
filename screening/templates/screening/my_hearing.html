@@ -59,7 +59,7 @@
 {% endwith %}
 {% endif %}
 {% if not submissions %}
-{% include "screening/empty_state.html" with icon="records" title="還沒有紀錄" text="做完第一份問卷，分數和變化會出現在這裡。" button="做第一份問卷" href=first_questionnaire_href %}
+{% include "screening/empty_state.html" with icon="records" title="還沒有紀錄" button="去做問卷" href=first_questionnaire_href %}
 {% elif user_state.retest_due %}
 {% include "screening/records_report_row.html" with spaced=True %}
 {% else %}
@@ -86,7 +86,7 @@
 {% endif %}
 {% endif %}
 <div class="mt-6">
-    {# #648: with nothing yet, 做第一份問卷 is the one solid button and the report a row, as while a retest is due. #}
+    {# #648: with nothing yet, 去做問卷 is the one solid button and the report a row, as while a retest is due. #}
     {% if not submissions %}{% include "screening/records_report_row.html" %}{% endif %}
     <a class="link-card action-card" href="{% url 'share_report' %}">
         {% include "screening/action_icon.html" with icon="share" %}

@@ -117,11 +117,17 @@ class ResultPagesTests(TestCase):
             Answer(submission=aided, question=question, score=0)
             for question in unaided.questionnaire.questions.all()
         )
-        cards = action_cards_titles(self._main("hhia-s"))
-        # The optional SSQ12-TW row (unaided HHIA-S) comes last.
+        main = self._main("hhia-s")
+        cards = action_cards_titles(main)
+        # The owner's 2026-11-27 walkthrough: with a comparable pair the comparison is the block
+        # 戴上助聽器，差多少？ over the 建議下一步 card, not a row; the optional SSQ12-TW row
+        # (unaided HHIA-S) comes last.
         self.assertEqual(
-            cards[:4], ["印聽力報告", "分享給家人", "看紀錄與趨勢", "比較戴與不戴助聽器"]
+            cards[:4], ["印聽力報告", "分享給家人", "看紀錄與趨勢", "了解日常聆聽能力"]
         )
+        self.assertNotIn("比較戴與不戴助聽器", main)
+        door = main.index('class="link-card action-card result-compare-door"')
+        self.assertLess(door, main.index('<p class="hero-card-label">建議您下一步</p>'))
 
 
 def action_cards_titles(html):

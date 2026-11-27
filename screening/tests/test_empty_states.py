@@ -1,7 +1,8 @@
 """#648 (spec #644 H4, acceptance 19-26, the #645 mockup's 3A): 我的紀錄's questionnaire side,
 the audiogram list, the health report and the share page before there is anything to show, one
-look shared by the four: an icon, a title, a sentence and (but on the audiogram list) a solid
-做第一份問卷 going where the home page's 照顧旅程 step 1 goes."""
+look shared by the four: an icon, a title, a sentence (none on 我的紀錄 since the owner's
+2026-11-27 walkthrough) and (but on the audiogram list) a solid 去做問卷 (做第一份問卷 till that
+walkthrough) going where the home page's 照顧旅程 step 1 goes."""
 
 import re
 from datetime import date
@@ -20,17 +21,17 @@ from screening.tests import test_guide_summary
 from screening.tests.helpers import consented_user
 
 SOLID = re.compile(r'class="btn btn-primary\b')
-FIRST = "做第一份問卷"
+FIRST = "去做問卷"
 QUESTIONNAIRES = f"{reverse('my_hearing')}?view=questionnaires"
 NORMAL = (20, 20, 20, 20)
 
 
 def _empty_state(main):
-    """(icon, title, sentence, (button, its address) or None), or None without one."""
+    """(icon, title, sentence or None, (button, its address) or None), or None without one."""
     found = re.search(
         r'<div class="empty-state">\s*'
         r'<span class="action-card-icon" aria-hidden="true" data-icon="([^"]*)">.*?</span>\s*'
-        r"<h2[^>]*>([^<]*)</h2>\s*<p>([^<]*)</p>\s*"
+        r"<h2[^>]*>([^<]*)</h2>\s*(?:<p>([^<]*)</p>\s*)?"
         r'(?:<a class="btn btn-primary btn-lg w-full" href="([^"]*)">([^<]*)</a>\s*)?</div>',
         main,
         re.S,
@@ -79,18 +80,15 @@ class EmptyStateTestCase(TestCase):
 
 class MyRecordsEmptyTests(EmptyStateTestCase):
     def test_no_records_shows_the_empty_state(self):
-        # Acceptance 19.
+        # Acceptance 19; no sentence under the title since the owner's 2026-11-27 walkthrough.
         hhie = Questionnaire.objects.get(code=hhie_s.CODE)
         main = self.main(reverse("my_hearing"))
         self.assertEqual(
             _empty_state(main),
-            (
-                "records",
-                "還沒有紀錄",
-                "做完第一份問卷，分數和變化會出現在這裡。",
-                (FIRST, reverse("screening", args=[hhie.pk])),
-            ),
+            ("records", "還沒有紀錄", None, (FIRST, reverse("screening", args=[hhie.pk]))),
         )
+        self.assertNotIn("做完第一份問卷，分數和變化會出現在這裡。", main)
+        self.assertNotIn("做第一份問卷", main)
         self.assertNotIn("您還沒有做過篩檢紀錄", main)
 
     def test_the_report_is_a_list_row_and_the_page_has_one_solid_button(self):
@@ -249,7 +247,7 @@ class ReportAndShareEmptyTests(EmptyStateTestCase):
                 self.assertRegex(main, r'<div class="empty-state">\s*<span[^>]*aria-hidden="true"')
 
     def test_the_three_buttons_ask_one_place_where_to_go(self):
-        # 做第一份問卷 on 我的紀錄, the report and the share page: care_journey's one function.
+        # 去做問卷 on 我的紀錄, the report and the share page: care_journey's one function.
         for module, url in (
             ("my_hearing", QUESTIONNAIRES),
             ("reports", reverse("health_report")),

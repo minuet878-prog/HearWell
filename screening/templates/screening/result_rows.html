@@ -1,4 +1,4 @@
-{# The list rows under a result page's 建議下一步 (#461; #750, spec #741 user story 43, canvas ProResult): printing, sharing and this questionnaire's records, then the wearing comparison and the optional SSQ12-TW where they apply. Printing or sharing leaves the list while the card above suggests it (回首頁 went: the tab bar has it). #}
+{# The list rows under a result page's 建議下一步 (#461; #750, spec #741 user story 43, canvas ProResult): printing, sharing and this questionnaire's records, then the wearing comparison (when not above, result_comparison_door.html) and the optional SSQ12-TW where they apply. Printing or sharing leaves the list while the card above suggests it (回首頁 went: the tab bar has it). #}
 {% if next_step.suggested != "print" %}
 <a class="link-card action-card" href="{% url 'health_report' %}">
     {% include "screening/action_icon.html" with icon="report" %}
@@ -18,7 +18,7 @@
     <span class="link-card-body"><span class="link-card-title">{% if submission.questionnaire.definition.trend_chart %}看紀錄與趨勢{% else %}看紀錄{% endif %}</span></span>
     <span class="link-card-arrow" aria-hidden="true">›</span>
 </a>
-{% if show_comparison %}
+{% if show_comparison and not comparison_pair %}
 <a class="link-card action-card" href="{% url 'hhi_comparison' submission.questionnaire_id %}">
     {% include "screening/action_icon.html" with icon="compare" %}
     <span class="link-card-body"><span class="link-card-title">比較戴與不戴助聽器</span></span>

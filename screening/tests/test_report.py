@@ -38,6 +38,18 @@ def _section(content, section_id):
     return match.group(0) if match else ""
 
 
+def _audiogram_row(content):
+    """The audiogram's fold row: each ear's dB HL, degree and type, which the section's own list
+    said too till the owner's 2026-11-27 walkthrough."""
+    match = re.search(
+        r'<summary>\s*<span class="action-card-icon" aria-hidden="true" data-icon="audiogram">'
+        r".*?</summary>",
+        content,
+        re.S,
+    )
+    return match.group(0) if match else ""
+
+
 class HealthReportTests(TestCase):
     """Spec docs/specs/phase-08/phase8_c3_report.md, acceptance 1-16."""
 
@@ -159,6 +171,8 @@ class HealthReportTests(TestCase):
         # ④ IOI-HA, same comparison as its result page
         ioi = _section(content, "report-ioi-ha")
         self.assertIn("輕度至中度", ioi)
+        # Its 完成時固定依據 line went in the owner's 2026-11-27 walkthrough.
+        self.assertNotIn("完成時固定依據", ioi)
         for item, answer, comparison in (
             ("幫助程度", IOI_HA_CHOICES[2][1], "低於常模"),
             ("生活樂趣", IOI_HA_CHOICES[7][4], "高於常模"),
@@ -175,14 +189,19 @@ class HealthReportTests(TestCase):
         # The result page says the same comparison in its own words (#187).
         self.assertContains(result_page, "比一般使用者低的 1 項")
         self.assertContains(result_page, f"您的回答：{IOI_HA_CHOICES[2][1]}")
-        # ⑤ audiogram interpretation, same as the audiogram page
+        # ⑤ audiogram interpretation, same as the audiogram page: on its fold row, the section
+        # under it no longer listing it (the owner's 2026-11-27 walkthrough).
         audiogram = _section(content, "report-audiogram")
         self.assertIn("2026/09/28", audiogram)
-        self.assertIn("45 dB HL", audiogram)
-        self.assertIn("中度", audiogram)
-        self.assertIn("感音神經性", audiogram)
-        self.assertIn("35 dB HL", audiogram)
-        self.assertIn("輕度", audiogram)
+        self.assertNotIn("dB HL", audiogram)
+        self.assertNotIn("四頻平均", audiogram)
+        row = _audiogram_row(content)
+        self.assertIn("2026/09/28", row)
+        self.assertIn("45 dB HL", row)
+        self.assertIn("中度", row)
+        self.assertIn("感音神經性", row)
+        self.assertIn("35 dB HL", row)
+        self.assertIn("輕度", row)
 
     def test_a_self_test_is_tagged_on_the_report_and_its_shared_copy(self):
         """Spec #702 acceptance 19 (#703 mockup 6A): the summary line, the row and the section
@@ -360,8 +379,10 @@ class HealthReportTests(TestCase):
         expected = {(p.ear, p.conduction, p.frequency, p.db) for p in latest.points.all()}
         drawn = {(p["ear"], p["conduction"], p["frequency"], p["db"]) for p in points}
         self.assertEqual(drawn, expected)
-        # The interpretation is in the HTML itself, not drawn by JS.
-        self.assertIn("45 dB HL", _section(content, "report-audiogram"))
+        # The interpretation is in the HTML itself, not drawn by JS: on the fold row since the
+        # owner's 2026-11-27 walkthrough.
+        self.assertIn("45 dB HL", _audiogram_row(content))
+        self.assertNotIn("dB HL", _section(content, "report-audiogram"))
         self.assertNotIn("2025/05/01", content)
 
     # 14

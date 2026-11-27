@@ -73,13 +73,17 @@ class LearnStackTests(TestCase):
             ],
         )
 
-    def test_each_card_has_its_title_its_line_its_drawing_and_its_white_button(self):
+    def test_each_card_has_its_title_its_drawing_and_its_white_button(self):
         _, main = self.page()
         body = self.cards(main)[0][1]
-        # The canvas's ProLearn card: its sound wave plays once (ADR 0077), then the words.
+        # The canvas's ProLearn card: its sound wave plays once (ADR 0077), then the words; the
+        # line under the title went in the owner's 2026-11-27 walkthrough.
         self.assertIn('class="hero-wave play-once-wave" data-play-in-view', body)
         self.assertIn('<h2 class="hero-card-title text-balance">聽損模擬</h2>', body)
-        self.assertIn("<p>了解聽損者的感覺</p>", body)
+        self.assertNotIn("了解聽損者的感覺", body)
+        for _, card in self.cards(main):
+            with self.subTest(card=card[:80]):
+                self.assertNotRegex(card, r"<p[\s>]")
         self.assertRegex(
             body,
             rf'<a class="btn btn-hero btn-lg" href="{reverse("hearing_loss_simulator")}">聽聽看',
@@ -87,8 +91,6 @@ class LearnStackTests(TestCase):
         # The owner (2026-11-21, at acceptance): the words on these cards centred.
         css = read_site_css()
         self.assertRegex(css, r"\.learn-card \{[^}]*text-align: center;")
-        # Its line bigger than body text (owner, 2026-11-21): 22px at the 18px root.
-        self.assertRegex(css, r"\.learn-card > p \{[^}]*font-size: 1\.2222rem;")
         # And the simulator's wave no taller than the other cards' drawings, so the words lead.
         self.assertRegex(css, r"\.learn-card \.hero-wave \{[^}]*height: 2\.6667rem;")
         # Every card its own drawing, each playing once when its card comes to the front.
