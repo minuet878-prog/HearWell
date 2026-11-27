@@ -347,6 +347,7 @@ class AudiogramStepsTests(CareJourneyTestCase):
                 f"/audiograms/{audiogram.pk}",
                 date(2026, 6, 2),
                 (EarResult("右耳", "right", "中度", 45), EarResult("左耳", "left", "中度", 55)),
+                f"/audiograms/{audiogram.pk}/speech-banana",
             ),
         )
 

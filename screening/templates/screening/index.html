@@ -112,6 +112,8 @@
                         <span class="journey-audiogram-ears">{% for ear in result.ears %}<span class="journey-audiogram-ear"><span class="journey-audiogram-side is-{{ ear.side }}"><span aria-hidden="true">{% if ear.side == "right" %}○{% else %}×{% endif %} </span>{{ ear.label }}</span>{% include "screening/level_badge.html" with text=ear.degree|default:"資料不足" color=ear.degree|degree_level %}{% if ear.pta is not None %}<span class="journey-when">平均 {{ ear.pta|stringformat:"g" }} dB</span>{% endif %}</span>{% endfor %}</span>
                         <span class="journey-audiogram-link">看聽力圖<span aria-hidden="true"> ›</span></span>
                     </a>
+                    {# The owner's 2026-11-27 walkthrough (note #044d2ecb): its speech banana too, in the audiogram page's words. #}
+                    <ul class="journey-entries" role="list"><li>{% include "screening/entry_card.html" with icon="ear" text="看語言香蕉區" href=result.speech_banana_href note="看哪些說話聲可能不容易聽到" %}</li></ul>
                     {% endwith %}{% endif %}
                     {% else %}
                     {# Step 7 counting down opens to its countdown card (the canvas's 5-a, #746). #}

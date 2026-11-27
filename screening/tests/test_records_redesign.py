@@ -162,6 +162,7 @@ class AudiogramListTests(Records):
             AudiogramPoint(audiogram=audiogram, **p)
             for p in test_audiogram._four(test_audiogram._air, "right", (30, 30, 30, 30))
         )
+        return audiogram
 
     def test_add_is_the_only_solid_button(self):
         self.make(date(2026, 10, 3))
@@ -184,6 +185,27 @@ class AudiogramListTests(Records):
         for day in [(2024, 3, 20), (2025, 4, 12), (2025, 10, 20)]:
             self.make(date(*day))
         self.assertNotIn("看以前的", self.main(reverse("audiogram_list")))
+
+    def test_the_speech_banana_button_opens_the_newest_audiogram(self):
+        # The owner's 2026-11-27 walkthrough (note #044d2ecb): not only from an audiogram's page.
+        self.make(date(2025, 4, 12))
+        newest = self.make(date(2026, 10, 3))
+        banana = reverse("audiogram_speech_banana", args=[newest.pk])
+        button = f'<a class="btn btn-outline-primary btn-lg w-full mt-3" href="{banana}">'
+        self.assertIn(f"{button}看語言香蕉區</a>", self.main(reverse("audiogram_list")))
+
+    def test_no_speech_banana_button_without_the_newest_s_air_marks(self):
+        # As on the audiogram page (#440): the speech banana reads air conduction only.
+        self.make(date(2025, 4, 12))
+        bone_only = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 3))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=bone_only, **p)
+            for p in test_audiogram._four(test_audiogram._bone, "right", (30, 30, 30, 30))
+        )
+        self.assertNotIn("看語言香蕉區", self.main(reverse("audiogram_list")))
+
+    def test_no_speech_banana_button_without_an_audiogram(self):
+        self.assertNotIn("看語言香蕉區", self.main(reverse("audiogram_list")))
 
 
 class Audiograms(Records):

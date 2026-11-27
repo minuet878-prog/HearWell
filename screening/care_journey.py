@@ -156,11 +156,13 @@ class EarResult:
 
 @dataclass(frozen=True)
 class AudiogramResult:
-    """Step 3 done: the newest audiogram's card, each ear's degree and average, to see it."""
+    """Step 3 done: the newest audiogram's card, each ear's degree and average, to see it, and
+    the way to its speech banana (the owner's 2026-11-27 walkthrough)."""
 
     href: str
     tested_on: date
     ears: tuple[EarResult, ...]
+    speech_banana_href: str
 
 
 @dataclass(frozen=True)
@@ -424,6 +426,8 @@ def _audiogram_result(audiogram):
             EarResult(label, side, ears[side]["degree"], ears[side]["pta"])
             for label, side in (("右耳", "right"), ("左耳", "left"))
         ),
+        # Done, step 3's audiogram can tell, so it has the air marks the speech banana reads.
+        reverse("audiogram_speech_banana", args=[audiogram.pk]),
     )
 
 

@@ -451,6 +451,18 @@ class JourneyHomeTests(HomeJourneyTestCase):
         )
         self.assertIn('<span class="level-badge level-badge-mild_to_moderate">輕度</span>', result)
 
+    def test_step_3_done_also_opens_the_newest_audiogram_s_speech_banana(self):
+        # The owner's 2026-11-27 walkthrough (note #044d2ecb): not only from an audiogram's page.
+        self.answer()
+        self.make(PTA_55, PTA_55, tested_on=date(2026, 3, 1))
+        newest = self.make((40, 40, 35, 35), PTA_55, tested_on=date(2026, 6, 2))
+        body = self.body(self.main(), 2)
+        banana = reverse("audiogram_speech_banana", args=[newest.pk])
+        self.assertEqual(body.count('class="entry-card"'), 1)
+        card = self.part(body, "entry-card")
+        self.assertIn(f'href="{banana}"', card)
+        self.assertEqual(self.text(card), "看語言香蕉區 看哪些說話聲可能不容易聽到")
+
     def test_eligible_step_4_points_to_my_guide_and_opening_it_finishes_it(self):
         # Spec #741 acceptance 7, 8.
         self.answer()
