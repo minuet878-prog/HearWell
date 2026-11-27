@@ -11,26 +11,18 @@ const fallback = document.getElementById("answer-form");
 // once React is in.
 const intro = document.getElementById("answer-intro");
 const introFold = document.getElementById("answer-intro-fold");
-// IOI-HA's norm basis (#463): a template of its own for item 1, where the fold leaves out the
-// intro's copy of it, so it is not said twice.
-const norm = document.getElementById("answer-norm");
-const introWithoutNorm = intro?.cloneNode(true);
-introWithoutNorm?.querySelector("[data-intro-norm]")?.remove();
 // Why 沒戴 is already chosen (#154): the Django form's sentence, there only when preselected.
 const hint = document.getElementById("hearing-aid-hint");
 const note = document.getElementById("answer-loading");
-// The page's title, count, reassurance and guest line: above the first screen only (readability
-// batch 1, spec #611 Q2). Past it the title and count are left for screen readers, so the page
-// keeps its heading; the reassurance and the guest line go, the guest line's link with it.
+// The page's title, count and guest line: above the first screen only (readability batch 1, spec
+// #611 Q2). Past it the title and count are left for screen readers, so the page keeps its
+// heading; the guest line goes, its link with it.
 const head = document.getElementById("answer-head");
 const foldHead = (past) => {
   // The bird's bubble holds the title since #749: they fold together.
   head?.querySelectorAll(".bird-dialogue, .answer-meta").forEach((el) => el.classList.toggle("visually-hidden", past));
-  head?.querySelectorAll(".answer-reassure, .answer-guest-line").forEach((el) => (el.hidden = past));
+  head?.querySelectorAll(".answer-guest-line").forEach((el) => (el.hidden = past));
 };
-// The reassurance's second sentence (#611 Q2): drawn only where a draft is kept, shown once
-// React takes over, so the form given back says the first sentence only.
-const draftLine = head?.querySelector("[data-draft-line]");
 const page = document.documentElement.classList;
 
 // A guest's note asking to register (I3): the form saves records, so it is not given back to them.
@@ -57,8 +49,6 @@ if (container && fallback) {
       userId={Number(container.dataset.userId)}
       csrfToken={fallback.querySelector("[name=csrfmiddlewaretoken]").value}
       introHtml={intro.innerHTML}
-      normHtml={norm?.innerHTML}
-      introWithoutNormHtml={introWithoutNorm?.innerHTML}
       preselectUnaided={"preselectUnaided" in container.dataset}
       unaidedHint={hint?.textContent}
       alwaysAided={"alwaysAided" in container.dataset}
@@ -75,7 +65,6 @@ if (container && fallback) {
         }
         fallback.hidden = true;
         introFold.hidden = true;
-        if (draftLine) draftLine.hidden = false;
         showForm();
       }}
       onFail={giveUp}

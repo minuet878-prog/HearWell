@@ -532,12 +532,8 @@ class SadlRecommendationTests(SadlTestCase):
         page = self.wizard(concern="hearing_aid", age_group="older")
         self.assertEqual(page.context["recommended"], self.hhie)
         self.assertEqual(page.context["reason"], "needs_norm_basis")
-        self.assertContains(
-            page,
-            '<p class="recommended-why"><strong>為什麼推薦：</strong>'
-            "您有戴助聽器，但還沒有沒戴助聽器時的紀錄。"
-            "先了解沒戴助聽器時的情況，之後做助聽器成效問卷才能比較。</p>",
-        )
+        # The card no longer says why (the owner's 2026-11-27 walkthrough); `reason` above does.
+        self.assertNotContains(page, "為什麼推薦")
 
     def test_home_page_shows_the_overall_score_for_a_sadl_only_history(self):
         sadl_submission(self.user, self.questionnaire)

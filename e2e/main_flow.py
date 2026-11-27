@@ -278,10 +278,11 @@ class OnAPhone:
         self.main().get_by_role("button", name="下一題").click()
 
     def answer_ioi_ha(self):
-        """On IOI-HA's React page: no wearing step, the norm basis told on item 1 (ADR 0002)."""
+        """On IOI-HA's React page: no wearing step, and since ADR 0085 no norm basis box over
+        item 1 (its fold says it)."""
         app = self.main().locator(".answer-app")
         expect(app.get_by_role("group")).to_contain_text("第 1 題，共 7 題")
-        expect(app).to_contain_text("本次常模依據：")
+        expect(app.locator(".answer-norm")).to_have_count(0)
         expect(app).not_to_contain_text("有沒有戴助聽器")
         for number in range(1, 8):
             group = app.get_by_role("group")
@@ -770,9 +771,8 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         self.assert_step_bar(3, 3)
         expect(self.main().get_by_role("heading", name="推薦您做這一份")).to_be_visible()
         expect(self.main().locator("#recommended-title")).to_contain_text("HHIE-S")
-        expect(self.main()).to_contain_text(
-            "為什麼推薦：這份問卷幫您了解聽力對日常生活和心情的影響。"
-        )
+        # The card says no 為什麼推薦 since the owner's 2026-11-27 walkthrough.
+        expect(self.main()).not_to_contain_text("為什麼推薦")
         # Only the hearing-aid answer has more worth doing.
         expect(self.main().get_by_role("heading", name="也可以做")).to_have_count(0)
         self.main().get_by_role("link", name="開始作答").click()
@@ -1571,7 +1571,8 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
             # card below.
             recommended = self.main().get_by_role("group", name=self.HHIE_CARD)
             expect(recommended).to_contain_text("推薦您做這一份")
-            expect(recommended).to_contain_text(self.REMINDER)
+            # It no longer says why (the owner's 2026-11-27 walkthrough).
+            expect(recommended).not_to_contain_text(self.REMINDER)
             self.assert_fits_a_phone_at_double_text_size("catalogue")
             tag = cards.first.locator(".inline-block")
             self.assertEqual(tag.evaluate("e => e.getClientRects().length"), 1)
@@ -1584,8 +1585,8 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
 
     def test_both_recommended_life_impact_questionnaires_fit_a_phone(self):
         """#347 (#339 acceptance 5, 22): only THI and no birth year, so HHIE-S and HHIA-S are
-        both recommended, the first two stacked cards (#753), each with its ages; 320px at 200%
-        text."""
+        both recommended, the first two stacked cards (#753), no longer saying their ages (the
+        owner's 2026-11-27 walkthrough); 320px at 200% text."""
         call_command("seed_questionnaires", verbosity=0)
         user = consented_user(username="thi_only_e2e")
         Submission.objects.create(user=user, questionnaire=Questionnaire.objects.get(code="thi"))
@@ -1604,7 +1605,8 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
                 card = stack.get_by_role("group", name=re.compile(rf"^第 {place} 張"))
                 expect(card).to_contain_text(code)
                 expect(card).to_contain_text("推薦您做這一份")
-                expect(card).to_contain_text(ages)
+                # Whom it suits went in the owner's 2026-11-27 walkthrough.
+                expect(card).not_to_contain_text(ages)
                 content_width, box_width = card.evaluate("e => [e.scrollWidth, e.clientWidth]")
                 self.assertLessEqual(content_width, box_width, code)
                 stack.get_by_role("button", name="下一張").click()
@@ -2083,10 +2085,8 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
         ioi = Questionnaire.objects.get(code="ioi-ha")
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/questionnaire/{ioi.pk}")
-            # #245: on React; only its copy of the intro shows, the page's own is hidden.
-            told = self.main().locator(".answer-app").get_by_text("本次常模依據：", exact=False)
-            expect(told).to_contain_text("HHIA-S")
-            expect(told).to_contain_text("40 分")
+            # #245: on React; only its copy of the intro shows, the page's own is hidden. ADR
+            # 0085: the norm basis in that fold alone.
             self.assert_fits_a_phone_at_double_text_size("IOI-HA answer item 1")
             self.answer_ioi_ha()
             expect(self.page.get_by_text("分組依據：", exact=False)).to_contain_text("HHIA-S")
@@ -11739,24 +11739,18 @@ class ChooserAndAnsweringT362Test(SavesFailureArtifacts, LayoutOnAPhone, StaticL
                             scoring.evaluate("e => getComputedStyle(e).fontSize"), f"{self.rem()}px"
                         )
 
-    # Acceptance 7: IOI-HA's first page has room between its intro and item 1, and no line.
-    # Since #463 (the #462 mockup) only the norm basis is there, in a grey 提示框 about 1rem
-    # above item 1; the rest of the intro is folded under the buttons.
-    def test_ioi_ha_first_page_has_room_between_intro_and_item_1(self):
+    # Acceptance 7: IOI-HA's first page had room between its intro and item 1, and no line.
+    # #463 (the #462 mockup) put the norm basis there in a grey 提示框; ADR 0085 (the owner's
+    # 2026-11-27 walkthrough) took it out, so item 1 opens the page, the intro folded below.
+    def test_ioi_ha_first_page_opens_on_item_1(self):
         with self.saving_artifacts():
             self.answer_page("ioi-ha")
             app = self.main().locator(".answer-app")
             fieldset = app.locator("fieldset")
             expect(fieldset).to_contain_text("第 1 題，共 7 題")
-            intro = app.locator("> div").first
-            expect(intro).to_contain_text("這是常模比較的分組，不代表聽損程度。")
-            gap = fieldset.bounding_box()["y"] - (
-                intro.bounding_box()["y"] + intro.bounding_box()["height"]
-            )
-            self.assertGreaterEqual(gap, self.rem() - 1)
-            self.assertLess(gap, 2 * self.rem())
-            for locator, side in ((intro, "borderBottomWidth"), (fieldset, "borderTopWidth")):
-                self.assertEqual(locator.evaluate(f"e => getComputedStyle(e).{side}"), "0px")
+            expect(app.locator(".answer-norm")).to_have_count(0)
+            expect(app.locator("> fieldset").first).to_contain_text("第 1 題，共 7 題")
+            self.assertEqual(fieldset.evaluate("e => getComputedStyle(e).borderTopWidth"), "0px")
 
 
 def assert_address_only_without_javascript(test, path, button, url_end):
@@ -15205,12 +15199,15 @@ class ScreeningAnsweringT463Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLi
         self.open(self.answer_page("ioi-ha"))
         with self.saving_artifacts():
             self.wait_for_questions()
-            # ADR 0002: the norm basis before item 1, in its own box, said once.
-            norm = self.main().locator(".answer-norm")
-            expect(norm).to_contain_text("本次常模依據：HHIE-S")
+            # ADR 0085: no norm basis box over item 1; the fold says it, once.
             app = self.main().locator(".answer-app")
+            expect(app.locator(".answer-norm")).to_have_count(0)
+            app.get_by_role("button", name="這份問卷在問什麼？").click()
+            fold = app.locator("#answer-intro-text")
+            expect(fold).to_contain_text("本次常模依據：HHIE-S")
             expect(app.get_by_text("本次常模依據", exact=False)).to_have_count(1)
-            # Item 1 after the norm basis, and item 2, the longest question: nothing over
+            app.get_by_role("button", name="這份問卷在問什麼？").click()
+            # Item 1, and item 2, the longest question: nothing over
             # 下一題 at the window's foot (the tab bar used to float there).
             for item in (1, 2):
                 with self.subTest(item=item):
@@ -15226,7 +15223,7 @@ class ScreeningAnsweringT463Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLi
                     self.main().get_by_role("radio").first.check()
                     button.click()
                     expect(app.locator(".question-progress")).to_contain_text(f"第 {item + 1} 題")
-            expect(norm).to_have_count(0)
+            expect(app.locator(".answer-norm")).to_have_count(0)
 
     def test_the_intro_folds_under_the_buttons_without_round_icons(self):
         self.open(self.answer_page("hhie-s"))
@@ -17448,10 +17445,9 @@ class EnterNextFieldTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
 
 
 class AnswerReassuranceTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
-    """Spec #611 Q2 (the #613 mockup's A): under the count on the answer page's first screen, in
-    its grey; the sentence when signed in, none for a guest; gone past the first screen; the
-    first question and 下一題 still on a 390 phone's first screen (acceptance 67). Its first
-    sentence, 這不是考試，沒有對錯。, went in #755 (spec #741 P21)."""
+    """Spec #611 Q2 (the #613 mockup's A) put a reassurance under the count; its first sentence
+    went in #755 (spec #741 P21), its second in the owner's 2026-11-27 walkthrough. The first
+    question and 下一題 stay on a 390 phone's first screen (acceptance 67)."""
 
     fixtures = ("questions_fixture.json",)
     SECOND = "答到一半離開，答案會留在這支手機，7 天內回來可以接著答。"
@@ -17481,31 +17477,18 @@ class AnswerReassuranceTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
             box = part.bounding_box()
             self.assertLessEqual(box["y"] + box["height"], self.PHONE[1], where)
 
-    def test_signed_in_every_questionnaire_says_the_sentence_then_folds_it(self):
+    def test_signed_in_no_questionnaire_says_it(self):
         self.sign_in(consented_user(username="reassurance_e2e", birth_year=1950))
         with self.saving_artifacts():
             for code in ("hhie-s", "hhia-s", "thi", "ssq12-tw", "sadl", "ioi-ha"):
                 with self.subTest(code=code):
                     self.open(self.answer_page(code))
                     self.wait_for_questions()
-                    line = self.reassure()
-                    expect(line).to_be_visible()
-                    expect(line).to_have_text(self.SECOND)
-                    meta = self.main().locator(".answer-meta")
-                    self.assertGreaterEqual(
-                        line.bounding_box()["y"],
-                        meta.bounding_box()["y"] + meta.bounding_box()["height"],
-                    )
-                    # The count's grey and size.
-                    for prop in ("color", "fontSize"):
-                        self.assertEqual(self.style(line, prop), self.style(meta, prop))
+                    expect(self.reassure()).to_have_count(0)
+                    expect(self.main().get_by_text(self.SECOND)).to_have_count(0)
                     self.assert_first_screen_holds_the_question(
                         code, with_next=code not in self.NEXT_BELOW_ALREADY
                     )
-                    self.main().locator(".answer-app").get_by_role("radio").first.check()
-                    self.next()
-                    expect(self.main().locator(".answer-app .question-progress")).to_be_visible()
-                    expect(line).to_be_hidden()
 
     def test_a_guest_says_none_but_the_guest_line(self):
         with self.saving_artifacts():
@@ -17524,8 +17507,6 @@ class AnswerReassuranceTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
                     with self.subTest(where=where):
                         self.open(self.answer_page("hhie-s"), (width, 844), signed_in=signed_in)
                         self.wait_for_questions()
-                        if signed_in:
-                            expect(self.reassure()).to_be_visible()
                         self.assert_fits_a_phone_at_double_text_size(where, width)
 
 
@@ -17906,9 +17887,8 @@ class LastResultT649Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
                     # #753: the first stacked card.
                     recommended = self.main().locator(".card-stack-card").first
                     expect(recommended).to_contain_text("推薦您做這一份")
-                    expect(recommended.locator(".inline-block")).to_have_text(
-                        f"上次 {self.days['hhie-s']}・輕度到中度影響"
-                    )
+                    # The blue card says no 上次 since the owner's 2026-11-27 walkthrough.
+                    expect(recommended.locator(".inline-block")).to_have_count(0)
                     for code, said in self.LAST.items():
                         name = Questionnaire.objects.get(code=code).questionnaire_name
                         card = self.main().locator("a.questionnaire-card", has_text=f"（{name}）")
@@ -18031,16 +18011,6 @@ class NarrowOverflowsT668Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveS
     TAIPEI = ResultPagesT461Test.TAIPEI
     record = ResultPagesT461Test.record
     DOUBLE_FROM_THE_START = ChangeLabelT646Test.DOUBLE_FROM_THE_START
-    # Where the words' last line ends, and where the room for words in their paragraph ends.
-    WORDS_END = """e => {
-        const range = document.createRange();
-        range.selectNodeContents(e);
-        const words = e.closest("p");
-        return [
-            Math.max(...[...range.getClientRects()].map((r) => r.right)),
-            words.getBoundingClientRect().left + words.clientWidth,
-        ];
-    }"""
 
     def setUp(self):
         call_command("seed_questionnaires", verbosity=0)
@@ -18110,9 +18080,9 @@ class NarrowOverflowsT668Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveS
                         first = self.page.locator(".trend-dot").first
                         self.assertEqual(float(first.get_attribute("data-cx")), 16)
 
-    def test_the_recommended_date_stays_inside_its_words(self):
-        # Acceptance 3: HHIE-S 200 days ago, so it is recommended (retest due) with 上次 and its
-        # date; the date ends inside the block's words, not in its padding.
+    def test_the_recommended_card_keeps_its_sides(self):
+        # Acceptance 3: HHIE-S 200 days ago, so it is recommended (retest due). Since the owner's
+        # 2026-11-27 walkthrough the blue card has no facts line, so no 上次 and date in it.
         old = datetime.now(self.TAIPEI) - timedelta(days=200)
         hhie_s = self.record("hhie-s", [4, 4, 2, 2] + [0] * 6, wearing_hearing_aid=False)
         Submission.objects.filter(pk=hhie_s.pk).update(created_at=old)
@@ -18123,11 +18093,8 @@ class NarrowOverflowsT668Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveS
                     self.assert_fits_a_phone_at_double_text_size("catalogue", width)
                     # #749, #753: on the front stacked card, blue.
                     front = self.main().locator('.card-stack-card[data-offset="0"]')
-                    facts = front.locator(".recommended-facts")
-                    expect(facts).to_contain_text(f"上次 {old:%Y/%m/%d}")
-                    words_end, room_end = facts.locator(".inline-block").evaluate(self.WORDS_END)
-                    # Half a pixel for sub-pixel rounding of the text's box.
-                    self.assertLessEqual(words_end, room_end + 0.5, f"{width}px")
+                    expect(front.locator(".recommended-facts")).to_have_count(0)
+                    expect(front).not_to_contain_text(f"上次 {old:%Y/%m/%d}")
                     # Acceptance 4: the block keeps its 1.125rem sides where the date fits: at
                     # 390px even at 200% (40.5px), and at the usual size (20.25px).
                     block = front

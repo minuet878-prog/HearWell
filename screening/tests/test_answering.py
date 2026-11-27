@@ -925,19 +925,21 @@ class ReassuranceLineTests(TestCase):
         # Up to the loading note: the bird's bubble (#749) has its own divs.
         return re.search(
             r'<div id="answer-head">(.*?)</div>\s*'
-            r'(?:<template id="answer-norm">|<p id="answer-loading"|<form id="answer-form")',
+            r'(?:<p id="answer-loading"|<form id="answer-form")',
             content,
             re.S,
         ).group(1)
 
-    def test_every_questionnaire_says_it_under_the_count(self):
+    def test_no_questionnaire_says_it_under_the_count(self):
+        # Its second sentence went in the owner's 2026-11-27 walkthrough; the note at the foot
+        # of the answer page still says the answers are kept.
         for code in self.CODES:
             with self.subTest(code=code):
                 pk = Questionnaire.objects.get(code=code).pk
                 head = self.head(self.client.get(reverse("screening", args=[pk])).content.decode())
-                self.assertLess(head.index('class="answer-meta"'), head.index(self.SECOND))
-                line = re.search(r'<p class="answer-reassure">(.*?)</p>', head, re.S).group(1)
-                self.assertEqual(line, f"<span data-draft-line hidden>{self.SECOND}</span>")
+                self.assertIn('class="answer-meta"', head)
+                self.assertNotIn(self.SECOND, head)
+                self.assertNotIn("answer-reassure", head)
                 self.assertNotIn("照平常的感覺", head)
 
     def test_the_form_sent_back_with_errors_says_none(self):

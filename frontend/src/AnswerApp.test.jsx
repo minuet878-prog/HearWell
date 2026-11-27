@@ -1216,27 +1216,16 @@ describe("IOI-HA (#245)", () => {
     );
   });
 
-  it("shows the norm basis in its own box on item 1 and folds the rest (ADR 0002, #462)", async () => {
+  // ADR 0085 (the owner's 2026-11-27 walkthrough): no box of its own over item 1; the fold says it.
+  it("says the norm basis only in the fold, on item 1 too", async () => {
     mockApi(undefined, IOI_HA);
     const norm = "<p>本次常模依據：HHIE-S，2026/10/20 未配戴紀錄，20 分。</p>";
     const brief = "<p>本量表適合已配戴助聽器的人。</p>";
-    await renderApp({
-      skipWearing: true, normToken: "signed", normHtml: norm, introHtml: brief + norm, introWithoutNormHtml: brief,
-    });
-    const basis = screen.getByText(/本次常模依據/);
-    expect(basis.closest(".answer-norm")).not.toBeNull();
-    // Before the question, so it is read before answering.
-    const question = screen.getByRole("group");
-    expect(Boolean(basis.compareDocumentPosition(question) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
-    expect(screen.queryByText("本量表適合已配戴助聽器的人。")).toBeNull();
-    // The fold holds the rest, without saying the norm basis twice.
+    await renderApp({ skipWearing: true, normToken: "signed", introHtml: brief + norm });
+    expect(document.querySelector(".answer-norm")).toBeNull();
+    expect(screen.queryByText(/本次常模依據/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "這份問卷在問什麼？" }));
     expect(screen.getByText("本量表適合已配戴助聽器的人。")).toBeTruthy();
-    expect(screen.getAllByText(/本次常模依據/)).toHaveLength(1);
-    choose("第1題選項1");
-    next();
-    // From item 2 on, the norm basis is in the fold alone.
-    expect(document.querySelector(".answer-norm")).toBeNull();
     expect(screen.getByText(/本次常模依據/).closest("#answer-intro-text")).not.toBeNull();
   });
 

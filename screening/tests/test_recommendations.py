@@ -148,44 +148,41 @@ class ConcernWizardTests(TestCase):
     def start_url(self, code):
         return reverse("screening", args=[self.by_code[code].pk])
 
-    def assert_recommends(self, page, code, why):
+    def assert_recommends(self, page, code, reason):
+        # The rule that picked it, from the page's data: its 為什麼推薦 went in the owner's
+        # 2026-11-27 walkthrough, the card keeping its icon, title, name and button.
         recommended = self.by_code[code]
         self.assertEqual(page.context["recommended"], recommended)
+        self.assertEqual(page.context["reason"], reason)
         main = page.content.decode()
         self.assertIn('<h1 class="bird-title">推薦您做這一份</h1>', main)
         self.assertIn(f"{recommended.definition.topic}<span", main)
         self.assertIn(f">{recommended}</span>", main)
-        self.assertIn(f'<p class="recommended-why"><strong>為什麼推薦：</strong>{why}</p>', main)
+        self.assertNotIn("為什麼推薦", main)
+        self.assertNotIn("recommended-facts", main)
 
     def test_life_impact_or_unsure_with_a_known_age_recommends_by_age_in_two_steps(self):
         # #339 acceptance 11.
-        whys = {
-            "life_impact": "這份問卷幫您了解聽力對日常生活和心情的影響。",
-            "unsure": "不確定的話，先從這份開始，了解聽力對日常生活和心情的影響。",
-        }
         for age, code in ((70, "hhie-s"), (66, "hhie-s"), (64, "hhia-s"), (40, "hhia-s")):
-            for concern, why in whys.items():
+            for concern in ("life_impact", "unsure"):
                 with self.subTest(age=age, concern=concern):
                     self.login_age(age)
                     page = self.wizard(concern=concern)
                     self.assertContains(page, "第 2 步／共 2 步")
                     self.assertEqual(step_bar(page), (2, 2))
-                    self.assert_recommends(page, code, why)
+                    self.assert_recommends(page, code, concern)
                     self.assertContains(page, f'href="{self.start_url(code)}">開始作答</a>')
                     self.assertNotContains(page, "也可以做")
 
     def test_tinnitus_and_listening_recommend_thi_and_ssq12_alone(self):
         # #339 acceptance 12.
-        for concern, code, why in (
-            ("tinnitus", "thi", "這份問卷幫您了解耳鳴對生活和情緒的影響。"),
-            ("listening", "ssq12-tw", "這份問卷問您在吵雜環境、多人說話時聽得懂多少。"),
-        ):
+        for concern, code in (("tinnitus", "thi"), ("listening", "ssq12-tw")):
             for age in (70, None):
                 with self.subTest(concern=concern, age=age):
                     self.login_age(age)
                     page = self.wizard(concern=concern)
                     self.assertEqual(step_bar(page), (2, 2))
-                    self.assert_recommends(page, code, why)
+                    self.assert_recommends(page, code, concern)
                     self.assertContains(page, f'href="{self.start_url(code)}">開始作答</a>')
                     self.assertNotContains(page, "也可以做")
                     self.assertNotContains(page, "如果您有耳鳴")
@@ -197,12 +194,7 @@ class ConcernWizardTests(TestCase):
                 self.login_age(age)
                 page = self.wizard(concern="hearing_aid")
                 self.assertEqual(step_bar(page), (2, 2))
-                self.assert_recommends(
-                    page,
-                    code,
-                    "您有戴助聽器，但還沒有沒戴助聽器時的紀錄。"
-                    "先了解沒戴助聽器時的情況，之後做助聽器成效問卷才能比較。",
-                )
+                self.assert_recommends(page, code, "needs_norm_basis")
                 self.assertContains(
                     page, f'href="{self.start_url(code)}?preselect=unaided">開始作答</a>'
                 )
@@ -216,12 +208,7 @@ class ConcernWizardTests(TestCase):
         user = self.login_age(70)
         self.hhi_record(user, wearing=False)
         page = self.wizard(concern="hearing_aid")
-        self.assert_recommends(
-            page,
-            "ioi-ha",
-            "您有戴助聽器，也有沒戴助聽器時的紀錄。這份問卷了解助聽器對您的幫助，"
-            "並和沒戴時困擾程度相近的一般使用者比較。",
-        )
+        self.assert_recommends(page, "ioi-ha", "has_norm_basis")
         self.assertContains(page, f'href="{self.start_url("ioi-ha")}">開始作答</a>')
         cards = self.also_cards(page)
         self.assertEqual(
@@ -715,6 +702,11 @@ class RecommendedQuestionnaireTests(TestCase):
         )
         return "".join(card for card in cards if "推薦您做這一份" in card) or None
 
+    def whys(self, page):
+        # The reason each 推薦問卷 card was picked for, from the page's data: the cards no longer
+        # say it (the owner's 2026-11-27 walkthrough).
+        return [why for _, why in page.context["stack"] if why]
+
     def starts(self, block):
         # The recommended cards' 開始作答 links, in order.
         return re.findall(r'<a class="btn btn-hero btn-lg" href="([^"]+)">', block)
@@ -730,7 +722,8 @@ class RecommendedQuestionnaireTests(TestCase):
         block = self.recommended(page)
         self.assertIn('<p class="hero-card-label">推薦您做這一份</p>', block)
         self.assertEqual(self.starts(block), [self.start_url("hhia-s")])
-        self.assertIn(f"<strong>為什麼推薦：</strong>{RETEST_DUE_TEXT}</p>", block)
+        self.assertEqual(self.whys(page), [RETEST_DUE_TEXT])
+        self.assertNotIn("為什麼推薦", block)
         # On top: the stacked cards come before the catalogue's first card (#753).
         main = page.content.decode()
         card = '<a class="link-card questionnaire-card"'
@@ -747,12 +740,12 @@ class RecommendedQuestionnaireTests(TestCase):
             with self.subTest(age=age):
                 user = self.login(age=age)
                 self.record(user, "thi")
-                block = self.recommended()
+                page = self.client.get(reverse("questionnaire_list"))
+                block = self.recommended(page)
                 self.assertEqual(self.starts(block), [self.start_url(code)])
-                self.assertIn(
-                    "<strong>為什麼推薦：</strong>您還沒做過聽力對生活影響的問卷，"
-                    "做一次之後才有基礎可以比較。</p>",
-                    block,
+                self.assertEqual(
+                    self.whys(page),
+                    ["您還沒做過聽力對生活影響的問卷，做一次之後才有基礎可以比較。"],
                 )
 
     def test_without_a_life_impact_record_or_an_age_both_are_listed(self):
@@ -761,15 +754,16 @@ class RecommendedQuestionnaireTests(TestCase):
             with self.subTest(age=age):
                 user = self.login(age=age)
                 self.record(user, "thi")
-                block = self.recommended()
+                page = self.client.get(reverse("questionnaire_list"))
+                block = self.recommended(page)
                 self.assertEqual(
                     self.starts(block), [self.start_url("hhie-s"), self.start_url("hhia-s")]
                 )
-                # #753: two stacked cards, each with the reason and whom it suits.
-                self.assertEqual(block.count("為什麼推薦："), 2)
-                for code in ("hhie-s", "hhia-s"):
-                    audience = self.by_code[code].definition.audience
-                    self.assertIn(f'<p class="recommended-audience">{audience}</p>', block)
+                # #753: two stacked cards for one reason; since the owner's 2026-11-27
+                # walkthrough neither says it or whom it suits.
+                self.assertEqual(len(self.whys(page)), 2)
+                self.assertNotIn("為什麼推薦", block)
+                self.assertNotIn("recommended-audience", block)
 
     def test_aided_and_unaided_records_without_ioi_ha_recommend_ioi_ha(self):
         # #339 acceptance 6: an unaided HHIE-S within six months, and a record answered wearing
@@ -779,12 +773,14 @@ class RecommendedQuestionnaireTests(TestCase):
                 user = self.login()
                 self.record(user, "hhie-s", wearing=False, days_ago=30)
                 self.record(user, aided, wearing=True)
-                block = self.recommended()
+                page = self.client.get(reverse("questionnaire_list"))
+                block = self.recommended(page)
                 self.assertEqual(self.starts(block), [self.start_url("ioi-ha")])
-                self.assertIn(
-                    "<strong>為什麼推薦：</strong>您有戴著助聽器的紀錄，也有沒戴時的紀錄，"
-                    "可以了解助聽器的成效跟一般使用者比起來怎樣。</p>",
-                    block,
+                self.assertEqual(
+                    self.whys(page),
+                    [
+                        "您有戴著助聽器的紀錄，也有沒戴時的紀錄，可以了解助聽器的成效跟一般使用者比起來怎樣。"
+                    ],
                 )
 
     def test_no_rule_holding_leaves_no_recommendation(self):
@@ -811,9 +807,10 @@ class RecommendedQuestionnaireTests(TestCase):
         user = self.login()
         self.record(user, "hhie-s", wearing=False, days_ago=200)
         self.record(user, "sadl", wearing=True, days_ago=10)
-        block = self.recommended()
+        page = self.client.get(reverse("questionnaire_list"))
+        block = self.recommended(page)
         self.assertEqual(self.starts(block), [self.start_url("hhie-s")])
-        self.assertIn(RETEST_DUE_TEXT, block)
+        self.assertEqual(self.whys(page), [RETEST_DUE_TEXT])
 
     def test_the_recommendation_queries_do_not_grow_with_the_records(self):
         # Rule 3, the one asking the most: two records, then many of every questionnaire.

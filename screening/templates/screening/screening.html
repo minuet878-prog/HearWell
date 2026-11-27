@@ -42,16 +42,11 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
     {% include "screening/bird_dialogue.html" with title=questionnaire.definition.topic %}
     <p class="answer-meta">{{ questionnaire.questionnaire_name }}・共 {{ question_count }} 題</p>
     {# Spec #611 Q2: the sentence only where answers are kept; React shows it once it takes over, so the form and a guest (no draft, ADR 0055) say nothing. Its first sentence, 這不是考試，沒有對錯。, went in #755 (spec #741 P21). #}
-    {% if use_react and not guest %}<p class="answer-reassure"><span data-draft-line hidden>答到一半離開，答案會留在這支手機，7 天內回來可以接著答。</span></p>{% endif %}
     {% if guest %}
     {# Spec #492 (the #493 mockup G2): how a guest's answers are kept is on the privacy page; the owner's 2026-11-27 walkthrough left the link alone. #}
     <p class="answer-guest-line"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span><a class="inline-link" href="{% url 'privacy' %}">隱私權說明</a></span></p>
     {% endif %}
     </div>
-    {% if is_ioi_ha %}
-    {# IOI-HA's norm basis for React's item 1, shown before answering (ADR 0002); a template, so never shown by itself. #}
-    <template id="answer-norm">{% include "screening/ioi_ha_norm_basis.html" %}</template>
-    {% endif %}
     {% if use_react %}
     {# React version (one question per page); it hides the form below once the questions load. #}
     <p id="answer-loading" class="text-xl/normal font-bold loading-message" role="status"></p>

@@ -1,9 +1,6 @@
-{# One recommended questionnaire, in the blue hero card since #749 (ADR 0076; #463, the #462 mockup before), the wizard's result and the returning user's catalogue alike: not a link itself, only its 開始作答 button is. `level` and `title_id`: its title's heading; `why` shown when given; `audience`: true to say whom it suits (the stacked cards, #753); `start_url`, else its answer page. #}
+{# One recommended questionnaire, in the blue hero card since #749 (ADR 0076; #463, the #462 mockup before), the wizard's result and the returning user's catalogue alike: not a link itself, only its 開始作答 button is. `level` and `title_id`: its title's heading; `start_url`, else its answer page. Since the owner's 2026-11-27 walkthrough only the icon, the title, the questionnaire's name and the button: no facts, whom it suits or why. #}
 <div class="recommended-heading">
     {% include "screening/questionnaire_icon.html" with icon=questionnaire.definition.icon %}
     <h{{ level }} id="{{ title_id }}" class="recommended-title">{{ questionnaire.definition.topic }}<span class="recommended-code">{{ questionnaire }}</span></h{{ level }}>
 </div>
-<p class="recommended-facts">{% include "screening/questionnaire_facts.html" %}</p>
-{% if audience %}<p class="recommended-audience">{{ questionnaire.definition.audience }}</p>{% endif %}
-{% if why %}<p class="recommended-why"><strong>為什麼推薦：</strong>{{ why }}</p>{% endif %}
 <a class="btn btn-hero btn-lg" href="{% if start_url %}{{ start_url }}{% else %}{% url 'screening' questionnaire.id %}{% endif %}">開始作答</a>

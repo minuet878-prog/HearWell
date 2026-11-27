@@ -92,6 +92,7 @@ ONE_LINE = {
     "audiogram_edit",
     "audiogram_detail",
     "qa_answer",
+    "questionnaire_list",
 }
 
 
@@ -190,8 +191,13 @@ class EveryPageTests(TestCase):
             name = resolve(response.request["PATH_INFO"]).url_name
         except Resolver404:
             name = None
-        wizard = name == "questionnaire_list" and "wizard" in response.request["QUERY_STRING"]
-        one_line = wizard or name in ONE_LINE
+        # The questionnaire list's own page too (2026-11-27); its wizard's recommendation keeps
+        # its lead 照您的回答，這一份最適合。
+        query = response.request["QUERY_STRING"]
+        recommends = name == "questionnaire_list" and "concern=" in query
+        one_line = (name in ONE_LINE and not recommends) or (
+            name == "questionnaire_list" and "wizard" in query
+        )
         self.assertTrue(title, found)
         self.assertEqual(lead is None, one_line, found)
         main = _main(response)

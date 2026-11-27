@@ -142,7 +142,8 @@ class CardStackTests(StackMixin, TestCase):
         self.record(user, "thi")
         html = self.page()
         bubble = html[html.index('<div class="bird-bubble">') : html.index("</h1>")]
-        self.assertIn("不確定做哪一份？我可以幫您選。", bubble)
+        # Its lead went in the owner's 2026-11-27 walkthrough.
+        self.assertNotIn("bird-lead", bubble)
         after = html[html.index("</h1>") :]
         pick = after[: after.index("</div>")]
         self.assertIn(f'href="{reverse("questionnaire_list")}?wizard=1"', pick)

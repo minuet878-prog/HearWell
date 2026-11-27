@@ -153,17 +153,15 @@ class CatalogueTests(ScreeningPagesMixin, TestCase):
             '<span class="recommended-code">HHIE-S</span></h2>',
             block,
         )
-        self.assertIn(
-            '<p class="recommended-facts">10 題・約 3 分鐘・<span class="inline-block max-w-full">',
-            block,
-        )
-        self.assertIn(f"<strong>為什麼推薦：</strong>{RETEST_DUE_TEXT}</p>", block)
+        # Icon, title, name and button alone since the owner's 2026-11-27 walkthrough.
+        for gone in ("recommended-facts", "recommended-audience", "為什麼推薦", RETEST_DUE_TEXT):
+            self.assertNotIn(gone, block)
         self.assertIn(f'href="{self.answer_url("hhie-s")}">開始作答</a>', block)
         for card in cards:
             self.assertEqual(len(SOLID.findall(card)), 1)
         self.assertEqual(len(SOLID.findall(main)), len(cards))
 
-    def test_two_recommendations_are_the_first_two_cards_each_saying_whom_it_suits(self):
+    def test_two_recommendations_are_the_first_two_cards(self):
         for age in (None, 65):
             with self.subTest(age=age):
                 user = self.login(age=age)
@@ -172,8 +170,8 @@ class CatalogueTests(ScreeningPagesMixin, TestCase):
                 for card, code in zip(cards, ("hhie-s", "hhia-s"), strict=False):
                     self.assertIn("推薦您做這一份", card)
                     self.assertIn(f'href="{self.answer_url(code)}">開始作答</a>', card)
-                    audience = self.by_code[code].definition.audience
-                    self.assertIn(f'<p class="recommended-audience">{audience}</p>', card)
+                    # Whom it suits went in the owner's 2026-11-27 walkthrough.
+                    self.assertNotIn("recommended-audience", card)
                 self.assertNotIn("推薦您做這一份", cards[2])
 
     def test_a_new_users_choose_yourself_ends_with_help_me_choose_too(self):
@@ -197,7 +195,8 @@ class WizardTests(ScreeningPagesMixin, TestCase):
             '<span class="recommended-code">HHIE-S</span></h2>',
             main,
         )
-        self.assertIn('<p class="recommended-facts">10 題・約 3 分鐘</p>', main)
+        # Icon, title, name and button alone since the owner's 2026-11-27 walkthrough.
+        self.assertNotIn("recommended-facts", main)
         self.assertEqual(len(SOLID.findall(main)), 1)
 
     def test_other_questionnaires_fold_in_a_list_row(self):
@@ -248,19 +247,19 @@ class AnswerPageTests(ScreeningPagesMixin, TestCase):
                 self.assertNotIn("data-icon", intro)
                 self.assertIn(source, intro)
 
-    def test_ioi_ha_keeps_its_norm_basis_apart_for_item_1(self):
+    def test_ioi_ha_says_its_norm_basis_in_the_intro_fold_alone(self):
+        # ADR 0085 (the owner's 2026-11-27 walkthrough): no box of its own over item 1.
         user = self.login()
         basis = self.record(user, "hhie-s", wearing=False, days_ago=3)
         basis.refresh_from_db()
         content = self.client.get(self.answer_url("ioi-ha")).content.decode()
-        template = re.search(r'<template id="answer-norm">(.*?)</template>', content, re.S)
+        self.assertNotIn('id="answer-norm"', content)
         day = timezone.localtime(basis.created_at).strftime("%Y/%m/%d")
         sentence = f"本次常模依據：HHIE-S，{day} 未配戴紀錄，0 分。"
-        self.assertIn(sentence, template.group(1))
-        self.assertIn("這是常模比較的分組，不代表聽損程度。", template.group(1))
         intro = self.intro("ioi-ha")
-        norm = intro[intro.index("data-intro-norm") :]
+        norm = intro[intro.index("常模比較") :]
         self.assertIn(sentence, norm[: norm.index("</section>")])
+        self.assertIn("這是常模比較的分組，不代表聽損程度。", norm[: norm.index("</section>")])
         self.assertNotIn(
             'id="answer-norm"', self.client.get(self.answer_url("hhie-s")).content.decode()
         )

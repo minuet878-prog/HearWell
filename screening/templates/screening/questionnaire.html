@@ -13,7 +13,7 @@
 {% if not step %}
 {# #753 (P3, P4): 幫我選 in the bird's bubble, under the page's title (ADR 0030's wizard). #}
 {% capture pick %}<a class="bird-pick" href="{% url 'questionnaire_list' %}?wizard=1"><span class="bird-pick-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 13v8M12 3v3M18 6a2 2 0 0 1 1.4.6l2.3 2.2a1 1 0 0 1 0 1.4l-2.3 2.2A2 2 0 0 1 18 13H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/></svg></span><span class="bird-pick-text">幫我選</span><span class="bird-pick-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M9 6l6 6-6 6"/></svg></span></a>{% endcapture %}
-{% include "screening/bird_dialogue.html" with lead="questionnaire_list"|page_lead title="問卷" after=pick %}
+{% include "screening/bird_dialogue.html" with title="問卷" after=pick %}
 {# #753 (spec #741 acceptance 44-46, 56, 58): the stacked cards, the page's one blue thing (ADR 0076) shown a card at a time: the 推薦問卷 (#347) first, then the ones that suit this person (stack_cards). Without JavaScript the first card shows alone, the whole catalogue below. #}
 {% if stack %}
 <section class="card-stack" aria-roledescription="輪播" aria-label="問卷卡片">
@@ -21,7 +21,7 @@
     {% for questionnaire, why in stack %}
         <article class="hero-card card-stack-card" role="group" aria-roledescription="卡片" aria-label="第 {{ forloop.counter }} 張，共 {{ stack|length }} 張：{{ questionnaire.definition.topic }}（{{ questionnaire }}）"{% if not forloop.first %} inert{% endif %}>
             {% if why %}<p class="hero-card-label">推薦您做這一份</p>{% endif %}
-            {% include "screening/recommended_questionnaire.html" with level=2 title_id="stack-"|add:questionnaire.code audience=True %}
+            {% include "screening/recommended_questionnaire.html" with level=2 title_id="stack-"|add:questionnaire.code %}
         </article>
     {% endfor %}
     </div>

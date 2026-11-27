@@ -3,11 +3,7 @@ import logging
 from screening import questionnaires
 from screening.questionnaires import hhie_s
 from screening.questionnaires.definition import (
-    LIFE_IMPACT,
-    LISTENING,
     RETEST_MONTHS,
-    TINNITUS,
-    UNSURE,
 )
 
 logger = logging.getLogger(__name__)
@@ -87,26 +83,6 @@ IOI_HA_BELOW_NORM_NOTES = {
     "也可以請家人陪您一起找聽力師討論溝通的方法。",
     7: "助聽器讓您享受生活的程度提升得比多數使用者少。"
     "可以想想有哪些想做、卻因為聽不清楚而放棄的事，和聽力師討論怎麼幫上忙。",
-}
-
-# Why the wizard recommends a questionnaire (#152), by the first answer's value or, for the
-# hearing-aid answer, by the unaided record (ADR 0030); spec #339's drafts, the owner settles them
-# on review.
-RECOMMENDATION_REASONS = {
-    LIFE_IMPACT: "這份問卷幫您了解聽力對日常生活和心情的影響。",
-    TINNITUS: "這份問卷幫您了解耳鳴對生活和情緒的影響。",
-    LISTENING: "這份問卷問您在吵雜環境、多人說話時聽得懂多少。",
-    UNSURE: "不確定的話，先從這份開始，了解聽力對日常生活和心情的影響。",
-    "needs_norm_basis": (
-        "您有戴助聽器，但還沒有沒戴助聽器時的紀錄。"
-        "先了解沒戴助聽器時的情況，之後做助聽器成效問卷才能比較。"
-    ),
-    # Verification-flow batch F1 (2026-10-23): IOI-HA compares with other users, not with going
-    # unaided, which the retake card below is for.
-    "has_norm_basis": (
-        "您有戴助聽器，也有沒戴助聽器時的紀錄。這份問卷了解助聽器對您的幫助，"
-        "並和沒戴時困擾程度相近的一般使用者比較。"
-    ),
 }
 
 # Why the returning user's catalogue recommends a questionnaire (#347, ADR 0030), by the rule

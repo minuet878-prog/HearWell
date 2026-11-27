@@ -36,10 +36,6 @@ export default function AnswerApp({
   userId,
   csrfToken,
   introHtml,
-  // IOI-HA (#463): its norm basis, in a box of its own on item 1 (ADR 0002), and the intro
-  // without it for the fold there, so the norm basis is not said twice.
-  normHtml,
-  introWithoutNormHtml,
   preselectUnaided = false,
   // Why 沒戴 is already chosen when catching up an unaided record (#154); from screening.html.
   unaidedHint,
@@ -248,8 +244,6 @@ export default function AnswerApp({
 
   const { step } = form;
   const isHearingAid = asksWearing && step === 0;
-  // IOI-HA has no wearing step, so item 1 shows the norm basis before answering (ADR 0002).
-  const showNorm = Boolean(normHtml) && skipWearing && step === 1;
   const question = isHearingAid ? { text: wearingQuestion, choices: HEARING_AID_CHOICES } : questions[step - 1];
   const current = isHearingAid ? form.wearing : form.answers[question.id];
   const answered = current !== undefined && (!isHearingAid || current !== null);
@@ -375,8 +369,6 @@ export default function AnswerApp({
 
   return (
     <div className="answer-app">
-      {/* A 提示框 (P3), only on item 1; item 1's question follows it straight away (#362). */}
-      {showNorm && <div className="answer-norm" dangerouslySetInnerHTML={{ __html: normHtml }} />}
       {/* The legend must be the fieldset's first child to name the radio group. A flat block: only
           the choices are white (ADR 0022). */}
       <fieldset
@@ -527,7 +519,7 @@ export default function AnswerApp({
         </button>
         <div id="answer-intro-text">
           {introOpen && (
-            <div className="answer-about-body" dangerouslySetInnerHTML={{ __html: showNorm ? introWithoutNormHtml : introHtml }} />
+            <div className="answer-about-body" dangerouslySetInnerHTML={{ __html: introHtml }} />
           )}
         </div>
       </div>
