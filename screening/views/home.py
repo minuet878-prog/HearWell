@@ -95,48 +95,26 @@ class LearnItem:
     url_name: str
     icon: str  # action_icon.html's, on its row
     title: str
-    line: str  # under the card's title
-    button: str  # the card's white button
+    button: str  # the card's white button, under its title (the owner's 2026-11-27 walkthrough)
     row_line: str = ""  # under the row's title
 
 
 # The list's order (#469, #487, #640), its rows' words the canvas's ProLearn. The cards' words,
-# drawings and the first card for each step: the owner reviewed them on 2026-11-21.
+# drawings and the first card for each step: the owner reviewed them on 2026-11-21; the cards'
+# line under the title went in the 2026-11-27 walkthrough.
 SIMULATOR = LearnItem(
-    "simulator",
-    "hearing_loss_simulator",
-    "sound",
-    "聽損模擬",
-    "了解聽損者的感覺",
-    "聽聽看",
-    "聽聽看他聽到的聲音",
+    "simulator", "hearing_loss_simulator", "sound", "聽損模擬", "聽聽看", "聽聽看他聽到的聲音"
 )
 GUIDE = LearnItem(
-    "guide",
-    "guide",
-    "guide",
-    "了解助聽器選配與補助",
-    "從聽力檢查到申請補助",
-    "開始了解",
-    "從聽力檢查到申請補助",
+    "guide", "guide", "guide", "了解助聽器選配與補助", "開始了解", "從聽力檢查到申請補助"
 )
-QA = LearnItem(
-    "qa", "qa_home", "question", "問答小助手", "常見問題一次查", "問問看", "常見問題一次查"
-)
+QA = LearnItem("qa", "qa_home", "question", "問答小助手", "問問看", "常見問題一次查")
 LEARN_ITEMS = (
     GUIDE,
-    LearnItem("family", "family_guide", "family", "家人專區", "溝通與陪伴", "去看看", "溝通與陪伴"),
+    LearnItem("family", "family_guide", "family", "家人專區", "去看看", "溝通與陪伴"),
     SIMULATOR,
     QA,
-    LearnItem(
-        "about",
-        "about",
-        "info",
-        "關於聽伴",
-        "誰做的、內容怎麼查核",
-        "認識聽伴",
-        "誰做的、內容怎麼查核",
-    ),
+    LearnItem("about", "about", "info", "關於聽伴", "認識聽伴", "誰做的、內容怎麼查核"),
 )
 # Spec #741 P23: the first card is the item most about the 現在這一步; about none, the
 # simulator. Step 2's 查詢醫療院所 is the assistant's answer; the guide is steps 4 to 6's, its

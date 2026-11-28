@@ -16,6 +16,18 @@
     margin: 1rem 0 1.75rem;
   }
 
+  /* The owner's 2026-11-28 pick (the home doors mockup's C): the two doors right under the two
+     tiles, the four one block of two rows, the 照顧旅程 after them. */
+  .journey-tiles:has(+ .home-doors) {
+    margin-bottom: 0.75rem;
+  }
+
+  .journey-tiles + .home-doors {
+    grid-template-columns: repeat(auto-fit, minmax(min(8.5rem, 100%), 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.75rem;
+  }
+
   /* 上次結果 is a link in its level's pale colour (L1, from .result-banner-*); grey is
      information, not a link (P3). */
   .journey-tile {
@@ -171,6 +183,50 @@
 
   .journey {
     margin-bottom: 1rem;
+  }
+
+  /* The owner's 2026-11-28 pick (the home glow mockup's B, after a soft glow they showed): the
+     照顧旅程 home on an off-white ground with a pale blue glow behind its top, fading out at its
+     edges, its parts white cards on it, lifted a little. Only this page: the guest and empty
+     homes, and every other page, stay white. The muted grey is over 5:1 even at the glow's
+     deepest blue. The header lets the glow show through. */
+  body:has(#journey-now) {
+    background:
+      radial-gradient(ellipse 60rem 30rem at 50% 12rem, var(--color-home-glow) 0%, #e3eefc 38%, transparent 72%)
+        no-repeat,
+      var(--color-home-ground);
+  }
+
+  body:has(#journey-now) .site-header {
+    background-color: transparent;
+  }
+
+  body:has(#journey-now) :is(.bird-bubble, .journey-tile-info, .home-doors > li > .link-card.home-door, .journey) {
+    background-color: #fff;
+    box-shadow: var(--shadow-card);
+  }
+
+  body:has(#journey-now) .bird-bubble-tail {
+    fill: #fff;
+  }
+
+  body:has(#journey-now) #journey-now .hero-card {
+    box-shadow: 0 0.25rem 0.75rem rgba(31, 78, 140, 0.25);
+  }
+
+  body:has(#journey-now) .journey-tile[class*="result-banner-"] {
+    box-shadow: var(--shadow-card);
+  }
+
+  body:has(#journey-now) .home-door .link-card-title {
+    color: var(--color-primary);
+  }
+
+  /* The card reaches a little past the column on both sides, so its steps keep their width. */
+  body:has(#journey-now) .journey {
+    margin-inline: -0.5rem;
+    padding: 0.875rem 0.5rem 0.25rem;
+    border-radius: var(--radius-medium);
   }
 
   .journey-head {
@@ -340,7 +396,7 @@
 
   /* I2 (ADR 0028's 2026-11-12 exception): on a tab's first visit (care-journey.js), the ticks
      draw one by one, the blue line grows down to the 現在這一步 and its dot's ring lights once,
-     each step half a second after the one before; held until in view (ADR 0029). Otherwise, and
+     each step a quarter of a second after the one before (the owner's 2026-11-27 walkthrough); held until in view (ADR 0029). Otherwise, and
      with reduced motion, the end at once. Longhands, not the animation shorthand: that would
      set the play state back to running and so outrank the hold until in view. */
   @media (prefers-reduced-motion: no-preference) {
@@ -366,25 +422,25 @@
     .journey-plays .journey-step.is-done .journey-dot path {
       stroke-dasharray: 1;
       animation-name: gauge-draw;
-      animation-duration: 0.35s;
+      animation-duration: 0.25s;
       animation-timing-function: ease-out;
-      animation-delay: calc(var(--journey-step) * 0.5s);
+      animation-delay: calc(var(--journey-step) * 0.25s);
       animation-fill-mode: both;
     }
 
     .journey-plays .journey-step.is-walked::after {
       animation-name: journey-line;
-      animation-duration: 0.45s;
+      animation-duration: 0.25s;
       animation-timing-function: linear;
-      animation-delay: calc(var(--journey-step) * 0.5s + 0.1s);
+      animation-delay: calc(var(--journey-step) * 0.25s + 0.05s);
       animation-fill-mode: both;
     }
 
     .journey-plays .journey-step.is-current .journey-dot {
       animation-name: journey-ring;
-      animation-duration: 0.9s;
+      animation-duration: 0.6s;
       animation-timing-function: ease-in-out;
-      animation-delay: calc(var(--journey-step) * 0.5s + 0.05s);
+      animation-delay: calc(var(--journey-step) * 0.25s + 0.05s);
       animation-fill-mode: both;
     }
   }

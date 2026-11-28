@@ -58,13 +58,6 @@
     padding: 0.625rem 1rem;
   }
 
-  .result-banner-meta {
-    margin: 0 0 0.25rem;
-    color: inherit;
-    font-weight: 700;
-    text-align: center;
-  }
-
   /* All of it in the level's text colour, the canvas's, not the heading's of other blocks. */
   .result-banner > div:is(.result-gauge-row, .result-since-last) {
     color: inherit;
@@ -166,11 +159,6 @@
     font-weight: 700;
   }
 
-  /* Over #750's bars, closer to them. */
-  .result-banner:has(> .result-gauge-row) .change-label {
-    margin-bottom: 0.125rem;
-  }
-
   /* Last time's total and this one's as bars, each its share of the full score: last time's
      outlined, this one's solid, both in this level's colour. */
   .result-bars {
@@ -206,11 +194,55 @@
   }
 
   /* Not graded: a 提示框's pale grey (P3), the words in the heading colour. */
+  /* An ungraded result's block (SSQ12-TW, SADL, IOI-HA): pale blue since the owner's 2026-11-28
+     pick (the result page mockup's 4A), no level's colour as it has no grade. */
   .result-summary {
     padding: 1rem 1.25rem;
     border-radius: var(--radius-medium);
-    background-color: var(--color-surface);
+    background-color: var(--color-brand-soft);
     color: var(--color-heading);
+  }
+
+  /* Its score on a bar from the scale's lowest to its highest: filled in the brand blue to the
+     score, a white dot ringed blue at it, the ends' words under it. */
+  .result-scale {
+    margin-top: 1.25rem;
+  }
+
+  .result-scale-bar {
+    position: relative;
+    display: block;
+    height: 0.75rem;
+    border-radius: 0.75rem;
+    background-color: #fff;
+  }
+
+  .result-scale-fill {
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    border-radius: 0.75rem;
+    background-color: var(--color-primary);
+  }
+
+  .result-scale-dot {
+    position: absolute;
+    top: 50%;
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 0.1875rem solid var(--color-primary);
+    border-radius: 50%;
+    background-color: #fff;
+    transform: translate(-50%, -50%);
+  }
+
+  .result-scale-ends {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 0.5rem;
+    color: var(--color-muted);
+    font-size: 1rem;
   }
 
   .result-summary > p {

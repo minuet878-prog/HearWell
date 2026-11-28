@@ -355,6 +355,14 @@ def semicircle_gauge(definition, score, level):
     return {"arcs": arcs, "knob": knob, "ceiling": ceiling}
 
 
+def _scale(value, low, high):
+    """A score's place on its scale, for the bar in the result page's block (the owner's
+    2026-11-28 pick, the result page mockup's 4A); None without a score."""
+    if value is None:
+        return None
+    return {"percent": float((Decimal(value) - low) / (high - low) * 100)}
+
+
 class AverageResult(Result):
     """平均: the average of the items, no grade (SSQ12-TW)."""
 
@@ -392,7 +400,7 @@ class AverageResult(Result):
         )
 
     def page_context(self):
-        return {"answers": self._answers()}
+        return {"answers": self._answers(), "scale": _scale(self.average, 0, 10)}
 
     def export(self):
         return super().export() | {
@@ -555,4 +563,4 @@ class SubscaleResult(Result):
     def page_context(self):
         # The page reads satisfaction and each answer from the record: one query for both.
         self._load_answers()
-        return {}
+        return {"scale": _scale(self.satisfaction["overall"], 1, 7)}

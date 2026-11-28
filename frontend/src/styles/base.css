@@ -18,6 +18,9 @@
   --color-severe-bg-deep: #f6c3b3;
   --color-surface: #f4f6f8;
   --color-brand-soft: #eef3fa;
+  /* The 照顧旅程 home's off-white ground and the pale blue glow at its top (the owner, 2026-11-28). */
+  --color-home-ground: #f6f7f9;
+  --color-home-glow: #cfe3fb;
   --color-brand-soft-deep: #d6e2f2;
   --color-brand-selected: #e8eef7;
   --color-pull: #e7eef8;
@@ -70,6 +73,8 @@
   --spacing-button: 3.1111rem;
   /* A clickable card under a mouse (ADR 0006): lifted on a soft neutral shadow. */
   --shadow-lifted: 0 0.5rem 1.25rem rgba(33, 37, 41, 0.14);
+  /* A card on the home page's warm ground (the owner, 2026-11-28). */
+  --shadow-card: 0 0.0625rem 0.25rem rgba(33, 37, 41, 0.1);
   --radius-large: 1.5rem;
   --radius-medium: 0.75rem;
   --radius-pill: 999px;

@@ -81,10 +81,11 @@ class AnswerCardTestCase(test_home_journey.HomeJourneyTestCase):
 
 class CertificateCardTests(AnswerCardTestCase):
     def test_unanswered_the_card_is_the_question_and_its_three_boxes_only(self):
-        # Acceptance 11.
+        # Acceptance 11; since the owner's 2026-11-28 walkthrough the title without 現在這一步.
         card = self.home_card()
+        self.assertNotIn("hero-card-label", card)
         self.assertEqual(
-            self.text(card), "現在這一步 身障鑑定與鑑定醫院 您有身心障礙證明嗎？ 有 正在申請 沒有"
+            self.text(card), "身障鑑定與鑑定醫院 您有身心障礙證明嗎？ 有 正在申請 沒有"
         )
         self.assertEqual(
             self.choices(card),
@@ -141,7 +142,7 @@ class Form9AndNoticeCardTests(AnswerCardTestCase):
         card = self.home_card()
         self.assertEqual(
             self.text(card),
-            "現在這一步 九號表：申請助聽器補助 您的九號表完成了嗎？ 是 已經完成 否 還沒有",
+            "九號表：申請助聽器補助 您的九號表完成了嗎？ 是 已經完成 否 還沒有",
         )
         card = self.answered("form-9", "form_9_done", "True")
         self.assertIn(("form_9_done", "True", True, "是 已經完成"), self.choices(card))
@@ -161,14 +162,14 @@ class Form9AndNoticeCardTests(AnswerCardTestCase):
         self.aid(certificate=Certificate.YES, form_9_done=True)
         self.assertEqual(
             self.text(self.home_card()),
-            "現在這一步 等待核定公文 您收到核定公文了嗎？ 是 已經收到 否 還沒收到",
+            "等待核定公文 您收到核定公文了嗎？ 是 已經收到 否 還沒收到",
         )
         response = self.send("notice", "notice_received", "True")
         self.assertRedirects(response, NOW, fetch_redirect_response=False)
         card = self.home_card(response["Location"])
         self.assertEqual(
             self.text(card),
-            "現在這一步 等待核定公文 已經收到核定公文 核定的是單耳還是雙耳？ 單耳 雙耳",
+            "等待核定公文 已經收到核定公文 核定的是單耳還是雙耳？ 單耳 雙耳",
         )
         self.assertIn('<span aria-hidden="true">✓ </span>已經收到核定公文', card)
         self.assertEqual(
@@ -188,7 +189,7 @@ class Form9AndNoticeCardTests(AnswerCardTestCase):
         card = self.home_card(response["Location"])
         self.assertEqual(
             self.text(card),
-            "現在這一步 等待核定公文 已經收到核定公文、雙耳 補助的等級是？ "
+            "等待核定公文 已經收到核定公文、雙耳 補助的等級是？ "
             "簡易型 中階型 進階型 雙對側傳聲型 不知道",
         )
         self.assertEqual(
@@ -243,13 +244,13 @@ class OtherStopCardTests(AnswerCardTestCase):
         # Acceptance 20.
         self.aid(certificate=Certificate.NO_SUBSIDY)
         card = self.home_card()
-        self.assertEqual(self.text(card), "現在這一步 去找聽力師之前 了解須知")
+        self.assertEqual(self.text(card), "去找聽力師之前 了解須知")
         self.assertEqual(HERO_BUTTON.findall(card), [("/guide/before-you-go", "了解須知")])
         self.client.get(reverse("guide_chapter", args=["before-you-go"]))
         self.assertIn('<h2 class="hero-card-title">配戴助聽器之後</h2>', self.home_card())
 
-    def test_after_fitting_is_its_sentence_and_two_cards_until_an_ioi_ha(self):
-        # Acceptance 21, 22.
+    def test_after_fitting_is_its_title_and_two_cards_until_an_ioi_ha(self):
+        # Acceptance 21, 22; since the owner's 2026-11-28 walkthrough without the sentence why.
         self.aid(certificate=Certificate.NO_SUBSIDY)
         GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
         ioi = reverse("screening", args=[self.questionnaires[ioi_ha.CODE].pk])
@@ -258,9 +259,7 @@ class OtherStopCardTests(AnswerCardTestCase):
                 self.aid(**fields)
                 card = self.home_card()
                 self.assertIn('<h2 class="hero-card-title">配戴助聽器之後</h2>', card)
-                self.assertIn(
-                    "<p>配戴一個月後才能做二十五號表，配合問卷使用更能知道助聽器的效果。</p>", card
-                )
+                self.assertNotIn("配戴一個月後才能做二十五號表", card)
                 self.assertEqual(
                     self.links(card),
                     [
@@ -280,7 +279,7 @@ class OtherStopCardTests(AnswerCardTestCase):
         sheet = re.compile(r'<span class="date-card-sheet" aria-hidden="true">.*?</span></span>')
         self.assertEqual(
             self.text(sheet.sub("", card)),
-            "現在這一步 二十五號表：使用效益驗證 2026/12/02 起可以做二十五號表 "
+            "二十五號表：使用效益驗證 2026/12/02 起可以做二十五號表 "
             "2027/02/02 前要完成，才能核銷補助 看二十五號表要帶什麼",
         )
         self.assertIn(

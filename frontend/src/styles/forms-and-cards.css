@@ -243,6 +243,29 @@
     background-color: var(--color-brand-selected);
   }
 
+  /* The owner's 2026-11-27 walkthrough (the mockup's B): a result page's wearing comparison over
+     the 建議下一步 card, in the home doors' pale blue. */
+  .link-card.result-compare-door {
+    margin-block: 1rem;
+    border: 0;
+    border-radius: var(--radius-badge);
+    background-color: var(--color-brand-soft);
+  }
+
+  .result-compare-door .action-card-icon {
+    background-color: #fff;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .link-card.result-compare-door:hover {
+      background-color: var(--color-brand-soft-deep);
+    }
+  }
+
+  .link-card.result-compare-door:active {
+    background-color: var(--color-brand-selected);
+  }
+
   /* #648 (spec #644 H4, the #645 mockup's 3A): a page with nothing yet, all in the middle: the
      action card's pale blue circle grown large, then the title, a sentence and its button. */
   .empty-state {
@@ -1198,14 +1221,6 @@
     font-size: 0.875rem;
   }
 
-  .answer-autosave {
-    display: flex;
-    gap: 0.5rem;
-    align-items: flex-start;
-    margin-top: 1.25rem;
-    font-size: 1rem;
-  }
-
   /* A guest's line under the questionnaire's name on the answer page (#495, the #493 mockup G2). */
   .answer-guest-line {
     display: flex;
@@ -1213,7 +1228,6 @@
     align-items: flex-start;
   }
 
-  .answer-autosave svg,
   .answer-guest-line svg {
     flex: none;
     width: 1.1rem;

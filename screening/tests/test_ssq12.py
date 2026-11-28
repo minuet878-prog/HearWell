@@ -106,9 +106,14 @@ class Ssq12Tests(TestCase):
             )
         page = self.client.get(reverse("screening", args=[self.questionnaire.pk]))
         self.assertContains(page, "完全不行選 0")
-        self.assertContains(page, "經驗不足可以先不填")
-        # #76 rule 7: describe current unaided experience, never recall before fitting.
-        self.assertContains(page, "選「沒戴」時，依您目前不戴助聽器時的實際經驗")
+        # The owner's 2026-11-27 walkthrough took out 有戴、沒戴怎麼選 (#76 rule 7's current
+        # unaided experience) and the sentence after how the average counts; still never recall
+        # before fitting.
+        self.assertNotContains(page, "有戴、沒戴怎麼選")
+        self.assertNotContains(page, "經驗不足可以先不填")
+        self.assertNotContains(page, "選「沒戴」時，依您目前不戴助聽器時的實際經驗")
+        self.assertContains(page, "十二題都有分數才計算整體平均；含不適用仍可保存逐題回答。</p>")
+        self.assertNotContains(page, "這是網站審定規則")
         self.assertNotContains(page, "回想")
 
     def test_invalid_or_missing_answers_never_save_and_retries_keep_one_record(self):

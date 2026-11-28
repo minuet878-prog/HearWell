@@ -1,4 +1,4 @@
-{# #661 (spec #656 acceptance 12-14, the #657 mockup's result page B): under 建議您下一步, a white box in a blue frame turning the email 重測提醒 on, back to this page. Its button is an outline: the page's one solid button stays 建議您下一步's (ADR 0043). Once on, only the green line. #}
+{# #661 (spec #656 acceptance 12-14, the #657 mockup's result page B): under 建議您下一步, a white box in a blue frame turning the email 重測提醒 on, back to this page. Its button is an outline: the page's one solid button stays 建議您下一步's (ADR 0043). Once on, only the green line. Since the owner's 2026-11-28 walkthrough the title and button alone (ADR 0065's update). #}
 <section class="result-reminder" aria-labelledby="result-reminder-title">
     <h2 id="result-reminder-title" class="result-reminder-title"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>半年後再做一次</h2>
     {% if retest_reminder.on %}
@@ -11,14 +11,11 @@
     <p class="mt-0 mb-1">想在到期時收到 email 提醒，要先確認您的 email。</p>
     <a class="inline-link" href="{% url 'account_settings' %}">到帳號設定重寄確認信</a>
     {% else %}
-    {% if retest_reminder.next_date %}<p class="mt-0 mb-1">下次建議 {{ retest_reminder.next_date|date:"Y/m/d" }}。</p>{% endif %}
-    {% include "screening/retest_reminder_purpose.html" %}
     <form method="post" action="{% url 'retest_reminder' %}">
         {% csrf_token %}
         <input type="hidden" name="enabled" value="1">
         <input type="hidden" name="next" value="{{ request.path }}">
         <button class="btn btn-outline-primary w-full mt-2" type="submit">到期時寄 email 提醒我</button>
     </form>
-    <p class="field-help mt-2 mb-0 wrap-anywhere">會寄到 {{ user.email }}</p>
     {% endif %}
 </section>

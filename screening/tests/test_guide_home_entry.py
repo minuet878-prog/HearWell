@@ -52,8 +52,11 @@ class NewUserGuideEntryTests(TestCase):
         self.assertIn('href="/guide" data-door="door_aids"', content)
         self.assertNotIn(f'<li><a href="/guide">{CARD}</a></li>', content)
 
-    def test_signed_in_user_without_records_has_a_guide_link(self):
-        # #459: the 空狀態首頁 keeps the way in as a text link (mockup #458 A).
+    def test_signed_in_user_without_records_has_the_guide_door(self):
+        # #459 kept the 空狀態首頁's way in as a text link (mockup #458 A); since the owner's
+        # 2026-11-27 walkthrough it is the visitor's door 想了解助聽器, not counted.
         self.client.force_login(consented_user(username="guide_entry_new"))
         content = self.client.get(reverse("index")).content.decode()
-        self.assertIn(f'<li><a href="/guide">{CARD}</a></li>', content)
+        self.assertNotIn(f'<li><a href="/guide">{CARD}</a></li>', content)
+        self.assertIn('<a class="link-card home-door" href="/guide">', content)
+        self.assertNotIn('data-door="door_aids"', content)

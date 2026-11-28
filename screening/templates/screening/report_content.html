@@ -32,11 +32,6 @@
     <h2 id="audiogram-title" class="h4">聽力圖（{% if audiogram.is_self_test %}測試日期{% else %}檢查日期{% endif %} {{ audiogram.tested_on|date:"Y/m/d" }}）{% include "screening/audiogram_source_tag.html" %}</h2>
     <div id="audiogram-chart" class="audiogram-chart"></div>
     {{ chart_points|json_script:"audiogram-points" }}
-    <ul>
-        {% for ear, label, result in ears %}
-        <li>{{ label }}：{% if result.pta is None %}資料不足，無法判讀{% else %}四頻平均 {{ result.pta|stringformat:"g" }} dB HL，程度 <strong>{{ result.degree }}</strong>，類型 {% if result.type %}<strong>{{ result.type }}</strong>{% else %}需要骨導資料才能判斷{% endif %}{% if result.no_response %}（含無反應的頻率，實際聽力可能更差）{% endif %}{% endif %}</li>
-        {% endfor %}
-    </ul>
     <p>這是依固定規則算出的參考結果，不能取代聽力師的判讀。</p>
 </section>
 </div>
@@ -110,7 +105,6 @@
 <div class="report-fold-body">
 <section id="report-ioi-ha" aria-labelledby="ioi-ha-title">
     <h3 id="ioi-ha-title" class="h5">IOI-HA 助聽器效益（{{ submission.created_at|date:"Y/m/d" }}）</h3>
-    {% if submission.norm_basis %}<p>完成時固定依據：{{ submission.norm_basis.questionnaire }}，{{ submission.norm_basis.created_at|date:"Y/m/d H:i" }}，{{ submission.norm_basis.result.total }} 分（未配戴）。</p>{% endif %}
     <p class="mb-1">常模組別：{{ submission.get_norm_group_display }}</p>
     {% if not ioi_ha.grouped %}<p>需要一筆完整有效的未配戴 HHIA-S／HHIE-S 紀錄，才能跟常模比較。</p>{% endif %}
     <table class="table" role="table">

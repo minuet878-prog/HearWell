@@ -92,7 +92,8 @@ class PageHeadingTests(TestCase):
             # Spec #655 (#673): the visitor's home is two doors; #749 (the canvas's ProGuest)
             # put its heading in the bird's bubble.
             "/": "您是否有聽覺困擾？",
-            "/learn": "了解",
+            # 了解聽伴 since the owner's 2026-11-27 walkthrough.
+            "/learn": "了解聽伴",
             "/learn/simulator": "聽損模擬",
             "/privacy": "隱私權說明",
             "/family": "家人專區",

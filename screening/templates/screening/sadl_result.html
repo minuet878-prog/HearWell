@@ -6,6 +6,7 @@
 {# #461 (the #460 mockup R1): no levels, so a pale grey block instead of a level's colour (ADR 0007); how to read it is the one sentence. #}
 <div class="result-summary">
     <p class="result-score">整體滿意度：<span class="result-number">{{ satisfaction.overall }}</span> 分（滿分 7）</p>
+    {% include "screening/result_scale.html" with low="1 分" high="7 分" %}
 </div>
 <p class="result-one-line">{{ submission.questionnaire.definition.result_note }}</p>
 {% include "screening/result_next.html" %}

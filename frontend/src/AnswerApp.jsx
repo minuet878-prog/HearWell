@@ -535,14 +535,6 @@ export default function AnswerApp({
           )}
         </div>
       </div>
-      {/* Shortened by the site owner (answer page tidy-up); draft.js keeps it in this browser only.
-          A guest keeps no draft, so not said (the #493 mockup's 16th line). */}
-      {!guest && (
-        <p className="answer-autosave">
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 4h11l3 3v13H5z" /><path d="M8 4v5h7V4M8 20v-6h8v6" /></svg>
-          答案會自動存在這支手機，中途離開也沒關係。
-        </p>
-      )}
     </div>
   );
 }

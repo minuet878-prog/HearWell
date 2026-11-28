@@ -16,20 +16,17 @@ LEADS = {
     # The same result opened again later (上次結果, 我的紀錄, a reload): views.common.JUST_SAVED.
     "result_reopened": "這是您這一次的結果",
     "guest_save": "這次的結果還在這支手機上。",
-    "hhi_comparison": "戴上助聽器，差多少？",
     # 紀錄
     "audiogram_import": "用 iPhone 做過聽力測試嗎？",
     "audiogram_import_preview": "存起來之前，先看一眼。",
     "audiogram_compare": "看看前後有沒有變化。",
     "audiogram_delete": "刪除之前，請再確認一次。",
     "audiogram_speech_banana": "看看哪些說話的聲音聽得到。",
-    "health_report": "可以印出來，帶去看診。",
     "share_report": "讓家人也知道您的聽力狀況。",
     "shared_cover": "您好，這是聽伴。",
     "shared_report": "這是家人的聽力報告。",
     "share_invalid": "可以請家人再傳一次新的連結。",
     # 了解
-    "learn": "想多了解一點嗎？",
     "guide": "一步一步來，不用急。",
     "guide_chapter": "慢慢看，有問題可以問聽力師。",
     # #775: a draft until the owner has reviewed it.

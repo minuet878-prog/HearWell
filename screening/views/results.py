@@ -6,7 +6,7 @@ from screening.care_journey import next_step
 from screening.main_flow import get_user_state
 from screening.models import RetestReminder, Submission
 from screening.views.common import JUST_SAVED, health_data_page
-from screening.views.my_hearing import shows_wearing_comparison
+from screening.views.my_hearing import shows_wearing_comparison, wearing_pair
 
 
 @login_required
@@ -23,6 +23,7 @@ def submission_result(request, submission_id):
         "submission": submission,
         "just_saved": just_saved,
         "show_comparison": shows_wearing_comparison(request.user, submission.questionnaire),
+        "comparison_pair": wearing_pair(request.user, submission),
         "next_step": suggested,
         "retest_reminder": _retest_reminder(request.user, submission),
     }

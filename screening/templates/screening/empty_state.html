@@ -1,7 +1,7 @@
-{# #648 (spec #644 H4, the #645 mockup's 3A): a page with nothing yet, one look for 我的紀錄, the audiogram list, the report and the share page. icon: an action_icon.html icon, read past; title: the part's heading, read first; text: what comes here; button and href: the page's one solid button, left out where the page has its own (the audiogram list). #}
+{# #648 (spec #644 H4, the #645 mockup's 3A): a page with nothing yet, one look for 我的紀錄, the audiogram list, the report and the share page. icon: an action_icon.html icon, read past; title: the part's heading, read first; text: what comes here, left out where the title says enough (我的紀錄); button and href: the page's one solid button, left out where the page has its own (the audiogram list). #}
 <div class="empty-state">
     {% include "screening/action_icon.html" with icon=icon %}
     <h2 class="h4">{{ title }}</h2>
-    <p>{{ text }}</p>
+    {% if text %}<p>{{ text }}</p>{% endif %}
     {% if button %}<a class="btn btn-primary btn-lg w-full" href="{{ href }}">{{ button }}</a>{% endif %}
 </div>

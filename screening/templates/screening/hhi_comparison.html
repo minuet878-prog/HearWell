@@ -2,9 +2,8 @@
 {% load custom_filters %}
 {% block title %}比較戴與不戴助聽器｜聽伴{% endblock %}
 {% block body %}
-{% include "screening/bird_dialogue.html" with lead="hhi_comparison"|page_lead title="比較戴與不戴助聽器" %}
+{% include "screening/bird_dialogue.html" with title="戴上助聽器，差多少？" %}
 <p class="mt-2">{{ questionnaire.definition.topic }}（{{ questionnaire }}）</p>
-<p>選一次沒戴、一次有戴時填的同一份問卷。</p>
 {# #465 (the #464 mockup 7): one solid button a state. Opened with nothing in the report, the form's 查看比較; once a pair is looked at (opened with one in the report, that one), it comes first, with the button to put it in the report when it is not there yet, and the form folds under 換別的兩筆 (a draft) with an outlined button. #}
 {% if preview %}
 {% if preview_is_saved %}
@@ -15,7 +14,7 @@
 {% else %}
 {# Pages tidy-up: the pair on screen being the one in the report shows once, as the saved card. #}
 <section aria-labelledby="preview-title" class="mt-6" data-jump-box>
-    <h2 id="preview-title" class="h4">目前查看的兩筆</h2>
+    <h2 id="preview-title" class="h4">分數變化</h2>
     {% include preview.questionnaire.definition.comparison.card_template with comparison=preview %}
     <form method="post" action="{% url 'hhi_comparison' questionnaire.pk %}">
         {% csrf_token %}<input type="hidden" name="unaided" value="{{ preview.unaided.pk }}"><input type="hidden" name="aided" value="{{ preview.aided.pk }}">

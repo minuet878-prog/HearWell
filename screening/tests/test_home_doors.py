@@ -16,11 +16,12 @@ def words(html):
 
 
 def doors(content):
-    """The (address, kind, words) of each door under the blue hero card."""
+    """The (address, kind, words) of each door, kind "" for one not counted (a signed-in home's,
+    since the owner's 2026-11-27 walkthrough)."""
     return [
         (href, kind, words(body))
         for href, kind, body in re.findall(
-            r'<a class="link-card home-door" href="([^"]+)" data-door="([^"]+)">(.*?)</a>',
+            r'<a class="link-card home-door" href="([^"]+)"(?: data-door="([^"]+)")?>(.*?)</a>',
             content,
             re.S,
         )
@@ -84,6 +85,7 @@ class SignedOutHomeTests(TestCase):
             ],
         )
         self.assertLess(self.main.index("</section>"), self.main.index("home-door"))
+        self.assertEqual(self.main.count('<ul class="home-doors'), 1)
 
     def test_no_login_link_and_none_of_the_old_doors(self):
         for gone in (
@@ -122,24 +124,46 @@ class SignedOutHomeTests(TestCase):
         self.assertLess(place, self.main.index('<section class="hero-card"'))
 
 
-class SignedInHomeKeepsNoDoorsTests(TestCase):
-    """Acceptance 14 and 15 (grill Q3): a signed-in user's home is as it was, with no doors."""
+class SignedInHomeDoorsTests(TestCase):
+    """Acceptance 14 and 15 (grill Q3): a signed-in user's home is as it was; since the owner's
+    2026-11-27 walkthrough with the same two doors, not counted (a signed-in press is not a 訪客
+    one): under the empty preview, or, since the owner's 2026-11-28 pick (the mockup's C), right
+    under 上次結果 and 下次篩檢, over the 照顧旅程."""
 
     fixtures = ("questions_fixture.json",)  # HHIE-S
 
-    def test_signed_in_without_a_record_still_starts_from_a_questionnaire(self):
+    SIGNED_IN_DOORS = (("/family", "", "擔心家人的聽力"), ("/guide", "", "想了解助聽器"))
+
+    @staticmethod
+    def main(content):
+        return content[content.index("<main") : content.index("</main>")]
+
+    def test_signed_in_without_a_record_has_the_doors_under_the_empty_preview(self):
         self.client.force_login(consented_user(username="new_user"))
         content = self.client.get("/").content.decode()
         self.assertIn("從一份問卷開始", content)
         self.assertIn(">開始篩檢<", content)
-        self.assertEqual(doors(content), [])
+        self.assertEqual(doors(content), list(self.SIGNED_IN_DOORS))
+        self.assertNotIn("data-door=", content)
         self.assertNotIn(DOOR_SCRIPT, content)
+        main = self.main(content)
+        self.assertEqual(main.count('<ul class="home-doors'), 1)
+        self.assertLess(main.index('<div class="empty-preview">'), main.index("home-doors"))
+        self.assertLess(main.index("home-doors"), main.index('<ul class="home-links"'))
 
-    def test_signed_in_with_a_record_sees_the_care_journey_without_doors(self):
+    def test_signed_in_with_a_record_has_the_doors_under_the_tiles_over_the_journey(self):
         user = consented_user(username="with_a_record")
         submission_with_answers(user, "hhie-s", [4] * 10)
         self.client.force_login(user)
         content = self.client.get("/").content.decode()
         self.assertIn("照顧旅程", content)
-        self.assertEqual(doors(content), [])
+        self.assertEqual(doors(content), list(self.SIGNED_IN_DOORS))
+        self.assertNotIn("data-door=", content)
         self.assertNotIn(DOOR_SCRIPT, content)
+        main = self.main(content)
+        self.assertEqual(main.count('<ul class="home-doors'), 1)
+        # Straight after the two tiles' block, the 照顧旅程 after the doors.
+        tiles_end = main.index('<section class="journey"')
+        self.assertLess(main.index('<div class="journey-tiles">'), main.index("home-doors"))
+        self.assertRegex(main[:tiles_end], r"</div>\s*</div>\s*<ul class=\"home-doors[^\"]*\"")
+        self.assertLess(main.index("home-doors"), main.index('<ol class="journey-steps"'))

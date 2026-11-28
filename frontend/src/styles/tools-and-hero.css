@@ -842,12 +842,6 @@
     text-align: center;
   }
 
-  /* The owner (2026-11-21): the line under the title 22px (400 since ADR 0080). */
-  .learn-card > p {
-    font-size: 1.2222rem;
-    font-weight: 400;
-  }
-
   /* The owner (2026-11-21): the simulator's wave was too big beside its words; on these cards
      it is as tall as the other drawings (.hero-art), centred. */
   .learn-card .hero-wave {
