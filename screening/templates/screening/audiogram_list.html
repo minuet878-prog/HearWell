@@ -24,7 +24,7 @@
 <p id="compare-needs-two" class="mt-2">要有兩張聽力圖才能比較</p>
 {% endif %}
 {# The owner's 2026-11-27 walkthrough (note #044d2ecb): the newest audiogram's speech banana, outlined as comparing. #}
-{% if speech_banana %}<a class="btn btn-outline-primary btn-lg w-full mt-3" href="{% url 'audiogram_speech_banana' speech_banana.id %}">看語言香蕉區</a>{% endif %}
+{% if banana_audiogram %}<a class="btn btn-outline-primary btn-lg w-full mt-3" href="{% url 'audiogram_speech_banana' banana_audiogram.id %}">看語言香蕉區</a>{% endif %}
 <div class="mt-6">
     {% for audiogram in recent %}{% include "screening/audiogram_list_row.html" %}{% endfor %}
     {% if older %}

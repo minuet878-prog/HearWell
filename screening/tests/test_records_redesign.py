@@ -192,7 +192,9 @@ class AudiogramListTests(Records):
         newest = self.make(date(2026, 10, 3))
         banana = reverse("audiogram_speech_banana", args=[newest.pk])
         button = f'<a class="btn btn-outline-primary btn-lg w-full mt-3" href="{banana}">'
-        self.assertIn(f"{button}看語言香蕉區</a>", self.main(reverse("audiogram_list")))
+        main = self.main(reverse("audiogram_list"))
+        self.assertIn(f"{button}看語言香蕉區</a>", main)
+        self.assertLess(main.index("比較聽力圖"), main.index("看語言香蕉區"))
 
     def test_no_speech_banana_button_without_the_newest_s_air_marks(self):
         # As on the audiogram page (#440): the speech banana reads air conduction only.

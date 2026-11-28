@@ -436,6 +436,8 @@ class JourneyHomeTests(HomeJourneyTestCase):
         edit = reverse("audiogram_edit", args=[audiogram.pk])
         self.assertIn(f'<a class="btn btn-hero btn-lg" href="{edit}">', card)
         self.assertEqual(self.entries(card), [])
+        # Not done, step 3 opens to what it is, without the speech banana.
+        self.assertNotIn("speech-banana", self.body(self.main(), 2))
 
     def test_step_3_done_opens_to_the_stamp_and_the_audiogram_s_result(self):
         # Spec #741 acceptance 6.
@@ -462,6 +464,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
         card = self.part(body, "entry-card")
         self.assertIn(f'href="{banana}"', card)
         self.assertEqual(self.text(card), "看語言香蕉區 看哪些說話聲可能不容易聽到")
+        self.assertLess(body.index('class="journey-audiogram"'), body.index(banana))
 
     def test_eligible_step_4_points_to_my_guide_and_opening_it_finishes_it(self):
         # Spec #741 acceptance 7, 8.

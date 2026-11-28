@@ -57,7 +57,7 @@ def audiogram_list(request):
             "audiograms": audiograms,
             "recent": audiograms[:RECENT_SHOWN],
             "older": older_fold(audiograms, lambda a: a.tested_on, "張"),
-            "speech_banana": newest if has_air_marks else None,
+            "banana_audiogram": newest if has_air_marks else None,
         },
     )
 
