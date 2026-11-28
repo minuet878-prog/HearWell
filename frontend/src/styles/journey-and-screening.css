@@ -186,19 +186,11 @@
   }
 
   /* The owner's 2026-11-28 pick (the home glow mockup's B, after a soft glow they showed): the
-     照顧旅程 home on an off-white ground with a pale blue glow behind its top, fading out at its
-     edges, its parts white cards on it, lifted a little. Only this page: the guest and empty
-     homes, and every other page, stay white. The muted grey is over 5:1 even at the glow's
-     deepest blue. The header lets the glow show through. */
+     照顧旅程 home on an off-white ground, its parts white cards on it, lifted a little. Only this
+     page: the guest and empty homes, and every other page, stay white. The glow behind its top
+     is every page's since the owner's next pick that day (.page-glow, ADR 0087). */
   body:has(#journey-now) {
-    background:
-      radial-gradient(ellipse 60rem 30rem at 50% 12rem, var(--color-home-glow) 0%, #e3eefc 38%, transparent 72%)
-        no-repeat,
-      var(--color-home-ground);
-  }
-
-  body:has(#journey-now) .site-header {
-    background-color: transparent;
+    background-color: var(--color-home-ground);
   }
 
   body:has(#journey-now) :is(.bird-bubble, .journey-tile-info, .home-doors > li > .link-card.home-door, .journey) {

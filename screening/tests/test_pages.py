@@ -440,6 +440,8 @@ class RedesignLayoutTests(TestCase):
         reveal_js = "screening/switch-reveal.js"
         # Every page: the inline mark that holds entrance animations until in view (#341).
         play_in_view = "<inline>"
+        # Every page: where the glow starts, kept from the page before (ADR 0087).
+        glow = "<inline>"
         smooth = "<inline>"
         # And the copy buttons' script, for 複製信箱 in every page's footer (#580).
         copy_js = "screening/copy-link.js"
@@ -458,6 +460,7 @@ class RedesignLayoutTests(TestCase):
                     # Spec #655 (#673): the two doors' press count, for someone not signed in.
                     "screening/frontend/door-count.js",
                     play_in_view,
+                    glow,
                     smooth,
                     "<inline>",
                 ],
@@ -482,6 +485,7 @@ class RedesignLayoutTests(TestCase):
                         *extra,
                         enter_next,
                         play_in_view,
+                        glow,
                         smooth,
                     ],
                 )
@@ -489,11 +493,11 @@ class RedesignLayoutTests(TestCase):
         with self.subTest(url="my_hearing without records"):
             self.assertEqual(
                 scripts(reverse("my_hearing")),
-                [*every, *signed_in, reveal_js, play_in_view, smooth],
+                [*every, *signed_in, reveal_js, play_in_view, glow, smooth],
             )
         self.client.force_login(self.user)
         # The continue notice (#337): its script and, inline, the questionnaires it matches.
-        notice = [test_continue_notice.SCRIPT, play_in_view, smooth, "<inline>"]
+        notice = [test_continue_notice.SCRIPT, play_in_view, glow, smooth, "<inline>"]
         # #459: the 照顧旅程's steps that open and its entrance on a tab's first visit.
         journey_js = "screening/frontend/care-journey.js"
         expected = {
@@ -512,6 +516,7 @@ class RedesignLayoutTests(TestCase):
                 *signed_in,
                 answer_js,
                 play_in_view,
+                glow,
                 smooth,
                 "<inline>",
             ],
@@ -519,6 +524,7 @@ class RedesignLayoutTests(TestCase):
                 *every,
                 *signed_in,
                 play_in_view,
+                glow,
                 smooth,
             ],
             reverse("my_hearing"): [
@@ -527,6 +533,7 @@ class RedesignLayoutTests(TestCase):
                 reveal_js,
                 test_history.TrendChartPageTests.CHART_JS,
                 play_in_view,
+                glow,
                 smooth,
             ],
         }

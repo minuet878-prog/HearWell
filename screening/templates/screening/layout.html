@@ -40,6 +40,12 @@
             document.documentElement.classList.remove("play-in-view");
         }, 3000);
     </script>
+    {# The owner's 2026-11-28 pick (G1, ADR 0087): the glow is first drawn where the page before left it, so page-glow.js slides it from there to this page's tab. #}
+    <script nonce="{{ request.csp_nonce }}">
+        try {
+            document.documentElement.style.setProperty("--glow-x", sessionStorage.getItem("hearwell:glow-x") || "50%");
+        } catch (error) {}
+    </script>
     {# Smooth scrolling waits for the page and its fonts: a link into a page jumps straight to its section. #}
     <script nonce="{{ request.csp_nonce }}">
         addEventListener("load", () => {
@@ -59,6 +65,8 @@
 </head>
 
 <body>
+    {# The owner's 2026-11-28 pick (G1, ADR 0087): a pale blue glow behind the top of every page, under its current tab (page-glow.js). #}
+    <div class="page-glow" aria-hidden="true"><div></div></div>
     <a class="skip-link visually-hidden-focusable" href="#main-content">跳到主要內容</a>
     <div id="pwa-pull" class="pwa-pull" hidden aria-hidden="true"></div>
     <div class="page-loading-bar" aria-hidden="true"></div>
