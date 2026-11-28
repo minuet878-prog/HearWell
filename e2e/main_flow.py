@@ -8224,7 +8224,10 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
 
     # #453 acceptance 32 (ADR 0043): on every page the page is white, with no beige box and no
     # bar down a block's side; the body text is 18px, every button at least 56px tall and every
-    # card, text-link button and tab at least 44px.
+    # card, text-link button and tab at least 44px. The 照顧旅程 home alone, since the owner's
+    # 2026-11-28 pick, is off-white with a pale blue glow at its top.
+    HOME_GROUND = "rgb(246, 247, 249)"
+
     def test_pages_are_white_with_large_enough_text_buttons_and_targets(self):
         with self.saving_artifacts():
             pages = self.PAGES + self.ANSWERING_PAGES + WHITE_CARD_PAGE_CONSENT
@@ -8233,7 +8236,11 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.assert_landed_on(self.visit(signed_in, path))
                     self.drawn()
                     body = self.page.locator("body")
-                    self.assertEqual(self.style(body, "backgroundColor"), self.WHITE)
+                    if name == "home, returning":
+                        self.assertEqual(self.style(body, "backgroundColor"), self.HOME_GROUND)
+                        self.assertIn("radial-gradient", self.style(body, "backgroundImage"))
+                    else:
+                        self.assertEqual(self.style(body, "backgroundColor"), self.WHITE)
                     self.assertEqual(self.style(body, "fontSize"), "18px")
                     self.assertEqual(
                         self.page.evaluate(self.BEIGE_OR_SIDE_BARS, list(self.OLD_BEIGES)), []
@@ -8271,7 +8278,8 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assertNotEqual(self.style(icon, "backgroundColor"), "rgb(255, 255, 255)")
             expect(card.locator("a.btn")).to_have_count(0)
             tile = self.main().locator("a.journey-tile")
-            self.assertEqual(self.style(tile, "boxShadow"), "none")
+            # A card lifted a little on the home's ground since the owner's 2026-11-28 pick.
+            self.assertIn("rgba(33, 37, 41, 0.1)", self.style(tile, "boxShadow"))
             arrow = tile.locator(".journey-tile-arrow")
             self.assertEqual(self.style(arrow, "color"), self.PRIMARY)
             links = self.main().locator(".home-links").get_by_role("link")
