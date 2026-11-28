@@ -8290,6 +8290,17 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.assertEqual(self.style(link, "textDecorationLine"), "underline")
                     self.assertGreaterEqual(link.bounding_box()["height"], 44)
 
+    # The owner's 2026-11-28 pick (the home doors mockup's C): the two doors end the block of
+    # four, a gap before the 照顧旅程's white card, which lines up with the cards above it.
+    def test_journey_home_doors_stand_apart_from_the_journey_card(self):
+        with self.saving_artifacts():
+            self.visit(True, lambda test: test.returning_home())
+            doors = self.main().locator(".home-doors").bounding_box()
+            journey = self.main().locator(".journey").bounding_box()
+            self.assertGreaterEqual(journey["y"] - (doors["y"] + doors["height"]), 24)
+            self.assertAlmostEqual(journey["x"], doors["x"], delta=0.5)
+            self.assertAlmostEqual(journey["width"], doors["width"], delta=0.5)
+
     # #309: the advice is flat and the cards below are list rows. Since #750 (canvas ProResult)
     # the advice is in 這個分數怎麼算, since 2026-11-21 open and flat on the white page, and since
     # the owner's acceptance that day only step 1, which has no link. THI's support message has

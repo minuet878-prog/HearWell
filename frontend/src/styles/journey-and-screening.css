@@ -222,9 +222,8 @@
     color: var(--color-primary);
   }
 
-  /* The card reaches a little past the column on both sides, so its steps keep their width. */
+  /* The card lines up with the white cards above it (the owner, 2026-11-28). */
   body:has(#journey-now) .journey {
-    margin-inline: -0.5rem;
     padding: 0.875rem 0.5rem 0.25rem;
     border-radius: var(--radius-medium);
   }
