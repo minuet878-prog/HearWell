@@ -239,10 +239,11 @@ class EveryPageTests(TestCase):
         return main[start : main.index("</section>", start)]
 
     def test_each_page_s_one_thing_is_in_the_hero_card_with_a_white_button(self):
-        """The 現在這一步, a result's 建議下一步 and the wizard's recommended questionnaire;
-        the catalogue's is the first of its stacked cards (#753, test_card_stack)."""
+        """The 現在這一步 (its title alone since the owner's 2026-11-28 walkthrough), a result's
+        建議下一步 and the wizard's recommended questionnaire; the catalogue's is the first of its
+        stacked cards (#753, test_card_stack)."""
         for user, url, words, button in (
-            (self.user, reverse("index"), "現在這一步", None),
+            (self.user, reverse("index"), '<h2 class="hero-card-title">記錄聽力圖</h2>', None),
             (self.user, reverse("result", args=[self.record.pk]), "建議您下一步", None),
             (
                 self.user,

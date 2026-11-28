@@ -58,13 +58,6 @@
     padding: 0.625rem 1rem;
   }
 
-  .result-banner-meta {
-    margin: 0 0 0.25rem;
-    color: inherit;
-    font-weight: 700;
-    text-align: center;
-  }
-
   /* All of it in the level's text colour, the canvas's, not the heading's of other blocks. */
   .result-banner > div:is(.result-gauge-row, .result-since-last) {
     color: inherit;
@@ -164,11 +157,6 @@
     background-color: #fff;
     color: var(--color-heading);
     font-weight: 700;
-  }
-
-  /* Over #750's bars, closer to them. */
-  .result-banner:has(> .result-gauge-row) .change-label {
-    margin-bottom: 0.125rem;
   }
 
   /* Last time's total and this one's as bars, each its share of the full score: last time's

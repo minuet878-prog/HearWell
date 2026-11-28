@@ -136,11 +136,14 @@ class MyRecordsEmptyTests(EmptyStateTestCase):
         self.user.submissions.create(questionnaire=hhie, wearing_hearing_aid=False)
         main = self.main(reverse("my_hearing"))
         self.assertIsNone(_empty_state(main))
-        self.assertIn(
-            f'<a class="btn btn-primary btn-lg w-full mt-4 mb-4" href="{reverse("health_report")}">'
-            "看／印聽力報告</a>",
-            main,
+        # The report's solid button, at the bottom of the page since the owner's 2026-11-28
+        # walkthrough.
+        button = (
+            f'<a class="btn btn-primary btn-lg w-full mt-6 mb-4" href="{reverse("health_report")}">'
+            "看／印聽力報告</a>"
         )
+        self.assertIn(button, main)
+        self.assertLess(main.index("傳給家人看"), main.index(button))
 
 
 class AudiogramListEmptyTests(EmptyStateTestCase):

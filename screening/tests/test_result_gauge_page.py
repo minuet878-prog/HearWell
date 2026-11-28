@@ -111,9 +111,11 @@ class ResultGaugePageTests(TestCase):
         since = block[block.index('<div class="result-since-last">') :]
         self.assertEqual(
             text(since),
-            # The label, the line a screen reader reads, then the bars it skips.
-            "比上次少 4 分 上次 2026/03/26 是 18 分 上一次 18 分 這一次 14 分",
+            # The line a screen reader reads, then the bars it skips; the label went in the
+            # owner's 2026-11-28 walkthrough.
+            "上次 2026/03/26 是 18 分 上一次 18 分 這一次 14 分",
         )
+        self.assertNotIn("change-label", since)
 
     def test_the_first_record_has_no_bars(self):
         main = self.main(self.record(hhie_s.CODE, [2] * 10, (2026, 11, 12)))

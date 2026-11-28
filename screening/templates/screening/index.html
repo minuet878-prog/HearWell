@@ -22,9 +22,8 @@
 {% with card=journey.card %}
 <div class="journey-card" id="journey-now">
     {% capture hero %}
-        <p class="hero-card-label">現在這一步</p>
+        {# The owner's 2026-11-28 walkthrough: the step's title alone, without 現在這一步 or why. #}
         <h2 class="hero-card-title">{{ card.title }}</h2>
-        {% if card.because %}<p>{{ card.because }}</p>{% endif %}
         <div class="journey-progress">
             <span class="journey-progress-bar" aria-hidden="true">{% for step in journey.steps %}<span class="journey-progress-segment{% if forloop.counter <= journey.current %} is-filled{% endif %}{% if forloop.counter == journey.current %} play-once-grow{% endif %}"></span>{% endfor %}</span>
             <p class="journey-progress-text">第 {{ journey.current }} 步，共 {{ journey.steps|length }} 步</p>
@@ -32,8 +31,8 @@
         {# Spec #741 (#745): step 5's certificate, form 9 and notice are answer cards; form 25 a calendar date card. #}
         {% if card.question %}{% include "screening/answer_card.html" with question=card.question done=card.moved_on %}{% endif %}
         {% if card.date %}{% include "screening/date_card.html" with day=card.date %}{% endif %}
-        {# Steps 6 and 7 counting down (#746). #}
-        {% if card.countdown %}{% include "screening/countdown_card.html" with countdown=card.countdown %}{% endif %}
+        {# Step 6 counting down (#746); step 7's is the 下次篩檢 tile's since the owner's 2026-11-28 walkthrough. #}
+        {% if card.countdown and journey.current != 7 %}{% include "screening/countdown_card.html" with countdown=card.countdown %}{% endif %}
         {# Spec #741: steps 2 and 4 are white entry cards, nothing else; step 3 without an audiogram its two sources under their small heading. #}
         {% if card.entries_title %}<p class="journey-entries-title">{{ card.entries_title }}</p>{% endif %}
         {% if card.entries %}<ul class="journey-entries" role="list">{% for entry in card.entries %}<li>{% include "screening/entry_card.html" with icon=entry.icon text=entry.text href=entry.href come_back=entry.come_back note=entry.note %}</li>{% endfor %}</ul>{% endif %}

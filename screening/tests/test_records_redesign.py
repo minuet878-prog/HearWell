@@ -106,6 +106,8 @@ class MyRecordsTests(Records):
         self.assertRegex(main, rf'class="btn btn-primary[^"]*" href="{report}">看／印聽力報告')
         self.assertNotIn("要給醫師或家人看？", main)
         self.assertIn('<span class="link-card-title">傳給家人看</span>', main)
+        # The owner's 2026-11-28 walkthrough: the button at the bottom, after the share row.
+        self.assertLess(main.index("傳給家人看"), main.index("btn btn-primary"))
 
     def test_a_due_retest_takes_the_solid_button_and_the_report_becomes_a_row(self):
         self.hhie_s([0] * 10, (2025, 1, 2))
@@ -113,6 +115,12 @@ class MyRecordsTests(Records):
         self.assertEqual(solid_buttons(main), ["再做一次（大約 3 分鐘）"])
         self.assertIn(f'href="{reverse("health_report")}">', main[main.index("records-score") :])
         self.assertIn('<span class="link-card-title">看／印聽力報告</span>', main)
+        # The owner's 2026-11-28 walkthrough: the row is the bottom list's first, right above
+        # 傳給家人看, not a row of its own under the score block.
+        self.assertIn(f'<a class="link-card action-card" href="{reverse("health_report")}">', main)
+        self.assertNotIn("action-card mt-4", main)
+        rows = re.findall(r'<span class="link-card-title">([^<]*)</span>', main)
+        self.assertEqual(rows[rows.index("看／印聽力報告") + 1], "傳給家人看")
 
     def test_the_wearing_comparison_folds_under_its_summary(self):
         unaided = self.hhie_s([4, 4, 4, 4, 2, 0, 0, 0, 0, 0], (2026, 5, 20))  # 18

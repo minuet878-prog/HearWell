@@ -385,9 +385,8 @@ class JourneyHomeTests(HomeJourneyTestCase):
         self.assertIn(STAMP, body)
         self.assertEqual(self.entries(body), [("/qa/where-to-get-a-hearing-test", "查詢醫療院所")])
         card = self.card(main)
-        self.assertEqual(
-            self.text(card), "現在這一步 記錄聽力圖 聽力圖來源 醫院檢查報告 AirPods 自我檢測"
-        )
+        # The owner's 2026-11-28 walkthrough: the title alone, without 現在這一步.
+        self.assertEqual(self.text(card), "記錄聽力圖 聽力圖來源 醫院檢查報告 AirPods 自我檢測")
         self.assertIn('<p class="journey-entries-title">聽力圖來源</p>', card)
         self.assertEqual(
             self.entries(card),
@@ -425,16 +424,15 @@ class JourneyHomeTests(HomeJourneyTestCase):
             ],
         )
 
-    def test_a_missing_frequency_s_card_is_its_sentence_and_editing_it(self):
-        # Spec #741 acceptance 5.
+    def test_a_missing_frequency_s_card_is_its_title_and_editing_it(self):
+        # Spec #741 acceptance 5; since the owner's 2026-11-28 walkthrough without the sentence
+        # why.
         self.answer()
         audiogram = self.make(NORMAL, NORMAL)
         audiogram.points.filter(ear="left", frequency=4000).delete()
         card = self.card(self.main())
-        self.assertEqual(
-            self.text(card),
-            "現在這一步 記錄聽力圖 這張聽力圖缺少頻率，資料不足，無法判斷。 修改這張聽力圖",
-        )
+        self.assertEqual(self.text(card), "記錄聽力圖 修改這張聽力圖")
+        self.assertNotIn("這張聽力圖缺少頻率", card)
         edit = reverse("audiogram_edit", args=[audiogram.pk])
         self.assertIn(f'<a class="btn btn-hero btn-lg" href="{edit}">', card)
         self.assertEqual(self.entries(card), [])
@@ -458,10 +456,10 @@ class JourneyHomeTests(HomeJourneyTestCase):
         self.answer()
         self.make(PTA_55, PTA_55)
         card = self.card(self.main())
-        self.assertEqual(
-            self.text(card),
-            f"現在這一步 了解助聽器選配與補助 {GUIDE_WORDS} 看助聽器選配與補助",
-        )
+        # The owner's 2026-11-28 walkthrough: the title and the entry card, the words why only
+        # where the step opens.
+        self.assertEqual(self.text(card), "了解助聽器選配與補助 看助聽器選配與補助")
+        self.assertNotIn(GUIDE_WORDS, card)
         self.assertEqual(self.entries(card), [("/guide", "看助聽器選配與補助")])
         self.client.get(reverse("guide"))
         main = self.main()
@@ -478,7 +476,9 @@ class JourneyHomeTests(HomeJourneyTestCase):
         self.answer()
         self.make(PTA_45, PTA_45)
         card = self.card(self.main())
-        self.assertIn(f"<p>{MILD_WORDS}</p>", card)
+        # The owner's 2026-11-28 walkthrough: the title and the entry card, without the words why.
+        self.assertIn('<h2 class="hero-card-title">了解助聽器選配與補助</h2>', card)
+        self.assertNotIn(MILD_WORDS, card)
         self.assertEqual(self.entries(card), [("/guide/types-and-prices", "看助聽器的種類與價格")])
         self.client.get(reverse("guide_chapter", args=["types-and-prices"]))
         main = self.main()
@@ -515,13 +515,13 @@ class JourneyHomeTests(HomeJourneyTestCase):
 
     def test_step_6_before_3_months_is_its_countdown_card(self):
         # Spec #741 acceptance 24: fitted 2026/09/27, so 3 months is 2026/12/27, 45 days on.
+        # Since the owner's 2026-11-28 walkthrough without 和上一次進行比較.
         self.fitted(date(2026, 9, 27))
         card = self.card(self.main())
         self.assertEqual(
-            self.text(card),
-            "現在這一步 戴滿 3 個月做效益問卷 和上一次進行比較 "
-            "還有 45 天 2026/12/27 起可以再做一次",
+            self.text(card), "戴滿 3 個月做效益問卷 還有 45 天 2026/12/27 起可以再做一次"
         )
+        self.assertIn("countdown-card", card)
         self.assertEqual(self.buttons(card), [])
         # The semicircle (ADR 0075, 2026-11-21): 46 of the 91 days gone, its blue arc from the
         # left foot just past the top, drawn once in view (ADR 0077); the days count up while a
@@ -538,7 +538,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
         self.fitted(date(2026, 8, 12))
         card = self.card(self.main())
         ioi = reverse("screening", args=[self.questionnaires[ioi_ha.CODE].pk])
-        self.assertEqual(self.text(card), "現在這一步 戴滿 3 個月做效益問卷 做效益問卷")
+        self.assertEqual(self.text(card), "戴滿 3 個月做效益問卷 做效益問卷")
         self.assertEqual(self.buttons(card), [(ioi, "做效益問卷")])
         self.assertNotIn("countdown-card", card)
 
@@ -563,32 +563,38 @@ class JourneyHomeTests(HomeJourneyTestCase):
             self.answer(code=ioi_ha.CODE, on=date(2026, 9, 1))
 
         # Counting down, the semicircle (ADR 0075, 2026-11-21): 1 of 181 days gone, a sliver of
-        # blue at the left foot.
+        # blue at the left foot. Since the owner's 2026-11-28 walkthrough it is the 下次篩檢
+        # tile's alone: the card is the title without 現在這一步, why or a countdown card.
         sliver = (
             '<path class="countdown-gauge-arc play-once-ring" pathLength="1" '
             'd="M35.0 150.0A124 124 0 0 1 35.0 147.8"/>'
         )
-        for name, records, words, buttons, arc in (
-            ("counting", counting, "還有 180 天 下次篩檢 2027/05/11", [], sliver),
+        for name, records, words, buttons, tile in (
+            ("counting", counting, "", [], "離下次篩檢 還有 180 天 2027/05/11"),
             (
                 "due",
                 due,
-                "時間到了！ 再做一次（大約 3 分鐘）",  # noqa: RUF001
+                " 再做一次（大約 3 分鐘）",
                 [(hhie, "再做一次（大約 3 分鐘）")],
                 None,
             ),
-            ("none", none, "還沒有完成第一次篩檢。 去做問卷", [(hhie, "去做問卷")], None),
+            ("none", none, " 去做問卷", [(hhie, "去做問卷")], None),
         ):
             with self.subTest(name):
                 self.fresh_user(name)
                 records()
-                card = self.card(self.main())
-                self.assertEqual(self.text(card), f"現在這一步 半年後再篩檢 {words}")
+                main = self.main()
+                card = self.card(main)
+                self.assertEqual(self.text(card), f"半年後再篩檢{words}")
                 self.assertEqual(self.buttons(card), buttons)
-                if arc:
-                    self.assertIn(arc, card)
-                else:
-                    self.assertNotIn("countdown-gauge", card)
+                self.assertNotIn("countdown-card", card)
+                self.assertNotIn("countdown-gauge", card)
+                for gone in ("時間到了", "還沒有完成第一次篩檢"):
+                    self.assertNotIn(gone, card)
+                if tile:
+                    info = self.tiles(main).split('<div class="journey-tile journey-tile-info">')
+                    self.assertEqual(self.text(info[-1]), tile)
+                    self.assertIn(sliver, info[-1])
 
     def test_done_steps_say_their_day(self):
         # #458 D7.
@@ -713,13 +719,13 @@ class LoggedInHomeTests(HomeJourneyTestCase):
 
     def test_the_hero_card_is_the_current_step_and_its_place_of_seven(self):
         # Acceptance 41: the 現在這一步's card under the bird, above the two tiles and the
-        # journey, with 「第 N 步，共 7 步」 and its bar after the card's words.
+        # journey, with 「第 N 步，共 7 步」 and its bar after the card's title; since the owner's
+        # 2026-11-28 walkthrough without the 現在這一步 label.
         self.answer()
         main = self.main()
         hero = self.hero(main)
-        self.assertEqual(
-            self.text(hero), "現在這一步 到醫院進行聽力檢查 第 2 步，共 7 步 查詢醫療院所"
-        )
+        self.assertEqual(self.text(hero), "到醫院進行聽力檢查 第 2 步，共 7 步 查詢醫療院所")
+        self.assertNotIn("hero-card-label", hero)
         self.assertIn('<h2 class="hero-card-title">到醫院進行聽力檢查</h2>', hero)
         self.assertLess(main.index("bird-dialogue"), main.index(hero))
         self.assertLess(main.index(hero), main.index('<div class="journey-tiles">'))
@@ -730,15 +736,13 @@ class LoggedInHomeTests(HomeJourneyTestCase):
             [" is-filled", " is-filled play-once-grow", "", "", "", "", ""],
         )
 
-    def test_the_bar_comes_between_the_card_s_words_and_what_to_press(self):
-        # The canvas: the title, why, the place of seven, then its button. Only an audiogram:
-        # step 1 is the 現在這一步.
+    def test_the_bar_comes_between_the_card_s_title_and_what_to_press(self):
+        # The canvas: the title, the place of seven, then its button; why went in the owner's
+        # 2026-11-28 walkthrough. Only an audiogram: step 1 is the 現在這一步.
         self.make(PTA_55, PTA_55)
-        self.assertEqual(
-            self.text(self.hero(self.main())),
-            "現在這一步 填生活影響問卷 先做一份生活影響問卷，了解聽力對您生活的影響。 "
-            "第 1 步，共 7 步 去做問卷",
-        )
+        hero = self.hero(self.main())
+        self.assertEqual(self.text(hero), "填生活影響問卷 第 1 步，共 7 步 去做問卷")
+        self.assertNotIn("先做一份生活影響問卷", hero)
 
     def test_one_thing_to_do_today_is_gone(self):
         self.answer()

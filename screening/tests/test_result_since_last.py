@@ -207,9 +207,11 @@ class SinceLastTests(TestCase):
         self.assertIsNone(latest.result.since_last)
 
 
-class ChangeLabelOnTheResultPageTests(TestCase):
-    """#646 (spec #644 H2, the #645 mockup's A): the label at the top of the result box's line
-    against last time, the sentence under it shortened; which record is compared is unchanged."""
+class SinceLastLineOnTheResultPageTests(TestCase):
+    """#646 (spec #644 H2, the #645 mockup's A) put a label at the top of the result box's line
+    against last time; the owner's 2026-11-28 walkthrough took it and the changed level out,
+    leaving the line a screen reader reads (then the bars); which record is compared is
+    unchanged."""
 
     fixtures = SinceLastTests.fixtures
     setUpTestData = SinceLastTests.setUpTestData
@@ -227,48 +229,44 @@ class ChangeLabelOnTheResultPageTests(TestCase):
             return None
         return re.findall(r"(<p[^>]*>)(.*?)</p>", part.group(1), re.S)
 
-    def assert_lines(self, submission, *expected):
-        lines = self.since_last_lines(submission)
-        self.assertEqual([words for _, words in lines], list(expected))
-        # The label is its own paragraph, first, plain words: no icon, nothing hidden from a
-        # screen reader, no level colour (acceptance 7, 9).
-        self.assertEqual(lines[0][0], '<p class="change-label">')
-        return lines
+    def assert_line(self, submission, expected, *gone):
+        """The one paragraph is the line for screen readers; the label and the changed level
+        (`gone`) are nowhere on the page."""
+        self.assertEqual(
+            self.since_last_lines(submission), [('<p class="visually-hidden">', expected)]
+        )
+        page = self.client.get(reverse("result", args=[submission.pk])).content.decode()
+        main = page[page.index("<main") : page.index("</main>")]
+        self.assertNotIn("change-label", main)
+        self.assertNotIn("分級從", main)
+        for words in gone:
+            self.assertNotIn(words, main)
 
-    def test_more_says_the_label_then_the_last_day_and_score(self):
+    def test_more_says_the_last_day_and_score_alone(self):
         # Acceptance 1 (and 3: 0 is 無／極輕微影響, 12 輕度到中度影響).
         self.hhie_s(0, (2026, 9, 1))
         latest = self.hhie_s(12, (2026, 9, 11))
-        self.assert_lines(
-            latest,
-            "比上次多 12 分",
-            "上次 2026/09/01 是 0 分",
-            "分級從「無／極輕微影響」變成「輕度到中度影響」",
-        )
+        self.assert_line(latest, "上次 2026/09/01 是 0 分", "比上次多 12 分")
 
     def test_fewer_and_the_same(self):
         # Acceptance 2.
         self.hhie_s(18, (2026, 3, 26))
         fewer = self.hhie_s(14, (2026, 9, 1))
-        self.assert_lines(fewer, "比上次少 4 分", "上次 2026/03/26 是 18 分")
+        self.assert_line(fewer, "上次 2026/03/26 是 18 分", "比上次少 4 分")
         same = self.hhie_s(14, (2026, 9, 11))
-        self.assert_lines(same, "跟上次一樣", "上次 2026/09/01 也是 14 分")
+        self.assert_line(same, "上次 2026/09/01 也是 14 分", "跟上次一樣")
 
-    def test_a_changed_level_stays_under_the_sentence(self):
-        # Acceptance 3: 10 is 輕度到中度影響, 6 is 無／極輕微影響.
+    def test_a_changed_level_is_not_written(self):
+        # Acceptance 3 until the owner's 2026-11-28 walkthrough: 10 is 輕度到中度影響, 6 is
+        # 無／極輕微影響, and the level's change is no longer said.
         self.hhie_s(10, (2026, 3, 26))
         latest = self.hhie_s(6, (2026, 11, 12))
-        self.assert_lines(
-            latest,
-            "比上次少 4 分",
-            "上次 2026/03/26 是 10 分",
-            "分級從「輕度到中度影響」變成「無／極輕微影響」",
-        )
+        self.assert_line(latest, "上次 2026/03/26 是 10 分", "比上次少 4 分")
 
-    def test_thi_has_the_label_too(self):
+    def test_thi_has_the_line_too(self):
         self.record("thi", [2] * 24 + [0], (2026, 8, 10), wearing_hearing_aid=False)
         latest = self.record("thi", [2] * 21 + [0] * 4, (2026, 11, 12), wearing_hearing_aid=False)
-        self.assert_lines(latest, "比上次少 6 分", "上次 2026/08/10 是 48 分")
+        self.assert_line(latest, "上次 2026/08/10 是 48 分", "比上次少 6 分")
 
     def test_nothing_to_compare_has_no_label_and_no_sentence(self):
         # Acceptance 4: the first record, one without a hearing aid status, one worn otherwise
@@ -285,10 +283,11 @@ class ChangeLabelOnTheResultPageTests(TestCase):
                 self.assertNotIn("change-label", page)
                 self.assertNotIn("比上次", page)
 
-    def test_the_label_has_no_arrow_and_no_verdict(self):
-        # Acceptance 7, ADR 0017: words only.
+    def test_the_line_has_no_arrow_and_no_verdict(self):
+        # Acceptance 7, ADR 0017: words only (the line, since the label went in the owner's
+        # 2026-11-28 walkthrough).
         self.hhie_s(0, (2026, 9, 1))
         latest = self.hhie_s(12, (2026, 9, 11))
-        label = self.since_last_lines(latest)[0][1]
+        line = self.since_last_lines(latest)[0][1]
         for sign in ("↑", "↓", "▲", "▼", "⬆", "⬇", "<svg", "進步", "退步", "變好", "變差"):
-            self.assertNotIn(sign, label)
+            self.assertNotIn(sign, line)

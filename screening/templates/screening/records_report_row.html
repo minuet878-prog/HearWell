@@ -1,5 +1,5 @@
-{# 我的紀錄's 看／印聽力報告 as a list row, while the page's one solid button is another (#465, #648). spaced: apart from what is above it, not in a run of rows. #}
-<a class="link-card action-card{% if spaced %} mt-4{% endif %}" href="{% url 'health_report' %}">
+{# 我的紀錄's 看／印聽力報告 as a list row, while the page's one solid button is another (#465, #648). #}
+<a class="link-card action-card" href="{% url 'health_report' %}">
     {% include "screening/action_icon.html" with icon="report" %}
     <span class="link-card-body">
         <span class="link-card-title">看／印聽力報告</span>

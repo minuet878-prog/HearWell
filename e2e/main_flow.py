@@ -14669,10 +14669,11 @@ class ResultPagesT461Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
         with self.saving_artifacts():
             banner = self.main().locator(".result-banner")
             expect(banner).to_contain_text("輕度到中度影響")
-            # #646: the label, then the sentence without the difference.
+            # #646's label went in the owner's 2026-11-28 walkthrough: the sentence alone.
             expect(banner.locator(".result-since-last p")).to_have_text(
-                ["比上次少 4 分", "上次 2026/03/26 是 18 分"]
+                ["上次 2026/03/26 是 18 分"]
             )
+            expect(banner.locator(".change-label")).to_have_count(0)
             # 48px for the number on screen (2.6667rem; #750: in the gauge, the read one
             # hidden), at least the body size for every other word.
             self.assertAlmostEqual(self.font_size(banner.locator(".gauge-score")), 48, delta=0.1)
@@ -14710,7 +14711,8 @@ class ResultPagesT461Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
 
     def test_the_score_block_is_centred(self):
         # The owner (2026-11-21, 黃色卡片用置中): the gauge in the middle, the score inside its
-        # bowl, the level under it, the tag against last time in the middle; the bars full width.
+        # bowl, the level under it; the bars full width. The tag against last time went in the
+        # owner's 2026-11-28 walkthrough.
         # At 200% text the bowl has no room: the score goes under the gauge, still centred.
         for code, earlier, now in (
             ("hhie-s", [4, 4, 4, 4, 2] + [0] * 5, [4, 4, 4, 2] + [0] * 6),
@@ -14733,9 +14735,9 @@ class ResultPagesT461Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
                     gauge = banner.locator(".gauge").bounding_box()
                     score = banner.locator(".gauge-score-line").bounding_box()
                     level = banner.locator(".result-level-short").bounding_box()
-                    tag = banner.locator(".change-label").bounding_box()
+                    expect(banner.locator(".change-label")).to_have_count(0)
                     bars = banner.locator(".result-bars").bounding_box()
-                    for box in (gauge, score, level, tag):
+                    for box in (gauge, score, level):
                         self.assertAlmostEqual(box["x"] + box["width"] / 2, middle, delta=1)
                     gauge_bottom = gauge["y"] + gauge["height"]
                     if double:
@@ -17645,8 +17647,9 @@ class FeedbackTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCa
 
 
 class ChangeLabelT646Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
-    """#646 (spec #644 H2, the #645 mockup's A): the label on top of 跟上次比 in the result box
-    and in 我的紀錄's 最近一次, neutral dark words on white, read out whole and never cut."""
+    """#646 (spec #644 H2, the #645 mockup's A): the label on top of 跟上次比 in 我的紀錄's
+    最近一次, neutral dark words on white, read out whole and never cut. The result box's went in
+    the owner's 2026-11-28 walkthrough, leaving its sentence."""
 
     fixtures = ("questions_fixture.json",)
     TAIPEI = ResultPagesT461Test.TAIPEI
@@ -17686,14 +17689,13 @@ class ChangeLabelT646Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
         self.assertGreaterEqual(self.lowest_contrast(self.HEADING, self.WHITE), 4.5)
         expect(label.locator("svg, img")).to_have_count(0)
 
-    def test_the_result_box_reads_the_label_then_the_sentence(self):
-        # Acceptance 1, 2, 7 and 9: a screen reader hears the whole label, then the sentence.
+    def test_the_result_box_reads_the_sentence_alone(self):
+        # Acceptance 1, 2 and 9: a screen reader hears the sentence; the label went in the
+        # owner's 2026-11-28 walkthrough.
         with self.saving_artifacts():
             self.open(f"/submission/{self.latest.pk}")
-            expect(self.label_box()).to_match_aria_snapshot(
-                "- paragraph: 比上次少 4 分\n- paragraph: 上次 2026/03/26 是 18 分"
-            )
-            self.assert_neutral(self.label_box().locator(".change-label"))
+            expect(self.label_box()).to_match_aria_snapshot("- paragraph: 上次 2026/03/26 是 18 分")
+            expect(self.label_box().locator(".change-label")).to_have_count(0)
 
     def test_the_latest_record_reads_the_label_then_the_last_time(self):
         # Acceptance 5, 7 and 9 on 我的紀錄.
@@ -17707,7 +17709,8 @@ class ChangeLabelT646Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             self.assert_neutral(self.main().locator("#since-last .change-label"))
 
     def test_fits_a_phone_at_double_text_size(self):
-        # Acceptance 10: no sideways scrolling, the label inside its box, nothing cut.
+        # Acceptance 10: no sideways scrolling, the label inside its box (我的紀錄's, the result
+        # box's gone since the owner's 2026-11-28 walkthrough), nothing cut.
         with self.saving_artifacts():
             for path in (f"/submission/{self.latest.pk}", self.RECORDS):
                 for width in (320, 390):
@@ -17718,6 +17721,9 @@ class ChangeLabelT646Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
                         self.assert_fits_a_phone_at_double_text_size(path, width)
                         self.assertEqual(self.page.evaluate(self.CUT_OFF), [], path)
                         label = self.label_box().locator(".change-label")
+                        if path != self.RECORDS:
+                            expect(label).to_have_count(0)
+                            continue
                         box = self.label_box().bounding_box()
                         tag = label.bounding_box()
                         self.assertLessEqual(tag["x"] + tag["width"], box["x"] + box["width"] + 0.5)

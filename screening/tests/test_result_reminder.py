@@ -19,7 +19,8 @@ from screening.tests.helpers import consented_user, submission_with_answers
 # 01:00 on 2026/11/17 in Taiwan, still the 16th in UTC.
 NOW = datetime(2026, 11, 16, 17, tzinfo=UTC)
 BLOCK = '<section class="result-reminder"'
-# The owner's words beside the switch, settled on 2026-11-17 (#658).
+# The owner's words beside the switch, settled on 2026-11-17 (#658); gone from the result page
+# in the owner's 2026-11-28 walkthrough, with the next day and the address it goes to.
 PURPOSE = (
     "打開後，上次做完滿半年的那天早上，我們會寄一封提醒信到您的 email。信裡不會寫分數或結果。"
     "您的 email 只用來寄這個提醒和重設密碼信，隨時可以關掉。"
@@ -60,12 +61,11 @@ class ResultReminderTests(TestCase):
                 # Under 建議您下一步 and the rows under it (#750, page grill P16).
                 self.assertLess(page.index("建議您下一步"), page.index(BLOCK))
                 self.assertLess(page.index('<div class="result-list">'), page.index(BLOCK))
+                # The title and the button alone since the owner's 2026-11-28 walkthrough.
                 text = test_layout._text(block)
-                self.assertIn("半年後再做一次", text)
-                self.assertIn("下次建議 2027/05/17。", text)
-                self.assertIn(PURPOSE, text)
-                self.assertIn("到期時寄 email 提醒我", text)
-                self.assertIn("會寄到 a@example.com", text)
+                self.assertEqual(text, "半年後再做一次 到期時寄 email 提醒我")
+                for gone in ("下次建議", "2027/05/17", PURPOSE, "會寄到", "a@example.com"):
+                    self.assertNotIn(gone, block)
                 self.assertIn(f'action="{reverse("retest_reminder")}"', block)
                 self.assertIn('name="enabled" value="1"', block)
                 self.assertIn(f'name="next" value="{url}"', block)

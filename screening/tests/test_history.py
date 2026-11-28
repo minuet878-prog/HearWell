@@ -351,13 +351,14 @@ class HistoryTabsTests(TestCase):
         self.assertNotIn("少了 16 分", main)
         self.assertNotContains(self.client.get("/report"), 'id="report-difference"')
 
-    def test_difference_folds_at_the_bottom_after_share(self):
-        # Ticket #161: at the bottom, after the health report; #465 (the #464 mockup 1A): a fold
-        # after the share row, its 「要給醫師或家人看？」 title gone.
+    def test_difference_folds_after_share_above_the_report_button(self):
+        # Ticket #161: near the bottom; #465 (the #464 mockup 1A): a fold after the share row,
+        # its 「要給醫師或家人看？」 title gone. Since the owner's 2026-11-28 walkthrough the
+        # report's solid button is under it, the last thing on the page.
         self._hhie_s(28, False, days_ago=2)
         self._hhie_s(12, True, days_ago=1)
         main = self._main_html(self.client.get(self.url))
-        self.assertLess(main.index("聽力報告"), main.index("配戴狀態比較"))
+        self.assertLess(main.index("配戴狀態比較"), main.index("看／印聽力報告</a>"))
         self.assertLess(main.index("傳給家人看"), main.index("配戴狀態比較"))
         # Acceptance 4: the entry reads 「比較戴與不戴助聽器」, inside the fold.
         self.assertIn(

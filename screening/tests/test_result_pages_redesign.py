@@ -106,20 +106,22 @@ class GradedResultPageTests(TestCase):
         colour, banner = BANNER.search(main).groups()
         self.assertEqual(colour, "mild_to_moderate")
         # Read as a screen reader reads it: without the gauge and what is drawn by it (#750).
+        # The owner's 2026-11-28 walkthrough took out the day with the hearing aid and 比上次少.
         self.assertEqual(
-            read(banner),
-            "2026/11/12・沒戴助聽器 總分 14 分（滿分 40） 輕度到中度影響 "
-            "比上次少 4 分 上次 2026/03/26 是 18 分",
+            read(banner), "總分 14 分（滿分 40） 輕度到中度影響 上次 2026/03/26 是 18 分"
         )
+        self.assertNotIn("比上次少 4 分", banner)
         for verdict in ("進步", "退步", "改善", "變好", "變差"):
             self.assertNotIn(verdict, main)
 
-    def test_reopened_graded_result_shows_date_and_wearing_while_just_saved_omits_it(self):
-        # C2: reopening a historical record shows YYYY/MM/DD・沒戴／有戴助聽器 at the top of the
-        # banner; right after submitting (just_saved) the banner stays clean.
+    def test_neither_a_reopened_nor_a_just_saved_result_shows_date_and_wearing(self):
+        # C2 showed YYYY/MM/DD・沒戴／有戴助聽器 at the top of a reopened record's banner; the
+        # owner's 2026-11-28 walkthrough took it out, so the banner stays clean every time.
         record = self.hhie_s([4, 4, 2, 2, 0, 0, 0, 0, 0, 0], (2026, 11, 12))
         reopened_banner = BANNER.search(self.main(record)).group(2)
-        self.assertIn('<p class="result-banner-meta">2026/11/12・沒戴助聽器</p>', reopened_banner)
+        self.assertNotIn("result-banner-meta", reopened_banner)
+        self.assertNotIn("2026/11/12", reopened_banner)
+        self.assertNotIn("助聽器", reopened_banner)
 
         from screening.views.common import JUST_SAVED
 
@@ -129,18 +131,21 @@ class GradedResultPageTests(TestCase):
         saved_banner = BANNER.search(self.main(record)).group(2)
         self.assertNotIn("result-banner-meta", saved_banner)
 
-        # Unrecorded wearing status shows only the date.
+        # Nor without a recorded wearing status.
         Submission.objects.filter(pk=record.pk).update(wearing_hearing_aid=None)
         unrecorded_banner = BANNER.search(self.main(record)).group(2)
-        self.assertIn('<p class="result-banner-meta">2026/11/12</p>', unrecorded_banner)
+        self.assertNotIn("result-banner-meta", unrecorded_banner)
+        self.assertNotIn("2026/11/12", unrecorded_banner)
 
-    def test_a_changed_level_is_written_in_the_block(self):
-        # Acceptance 24.
+    def test_a_changed_level_is_not_written_in_the_block(self):
+        # Acceptance 24 until the owner's 2026-11-28 walkthrough, which took the changed level
+        # and 比上次少 out: the block ends with the line against last time.
         self.hhie_s([4, 4, 2, 0, 0, 0, 0, 0, 0, 0], (2026, 3, 26))  # 10
         latest = self.hhie_s([4, 2, 0, 0, 0, 0, 0, 0, 0, 0], (2026, 11, 12))  # 6
         banner = read(BANNER.search(self.main(latest)).group(2))
-        change = "分級從「輕度到中度影響」變成「無／極輕微影響」"
-        self.assertTrue(banner.endswith(f"比上次少 4 分 上次 2026/03/26 是 10 分 {change}"), banner)
+        self.assertTrue(banner.endswith("無／極輕微影響 上次 2026/03/26 是 10 分"), banner)
+        self.assertNotIn("分級從", banner)
+        self.assertNotIn("比上次少", banner)
 
     def test_the_first_record_has_no_line_against_last_time(self):
         # Acceptance 25.
@@ -154,7 +159,9 @@ class GradedResultPageTests(TestCase):
         old = self.hhie_s([4, 4, 4, 4, 0, 0, 0, 0, 0, 0], (2026, 3, 26))  # 16
         self.hhie_s([4, 0, 0, 0, 0, 0, 0, 0, 0, 0], (2026, 11, 12))  # 4
         banner = read(BANNER.search(self.main(old)).group(2))
-        self.assertIn("比上次少 4 分 上次 2026/01/05 是 20 分", banner)
+        # Without 比上次少 since the owner's 2026-11-28 walkthrough.
+        self.assertIn("上次 2026/01/05 是 20 分", banner)
+        self.assertNotIn("比上次少", banner)
 
     def test_the_block_then_how_the_score_is_counted_then_the_suggestion_then_the_rows(self):
         # #750 (canvas ProResult), since 2026-11-21 (the owner) 這個分數怎麼算 open between the
