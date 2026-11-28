@@ -303,7 +303,8 @@ class SubscaleNoteTests(TestCase):
         self.assertContains(response, "總分")
         self.assertNotContains(response, self.NOTE)
 
-    def test_note_uses_readable_rem_size(self):
+    def test_note_is_the_body_size_in_the_muted_grey(self):
+        # The body size, no smaller class; muted since the owner's 2026-11-28 walkthrough.
         submission = self._make_submission(self.hhie_s)
         response = self.client.get(reverse("result", args=[submission.id]))
-        self.assertContains(response, f'<p class="text-black">{self.NOTE}</p>', html=True)
+        self.assertContains(response, f'<p class="text-(--color-muted)">{self.NOTE}</p>', html=True)

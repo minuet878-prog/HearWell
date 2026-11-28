@@ -185,6 +185,42 @@
     margin-bottom: 1rem;
   }
 
+  /* The owner's 2026-11-28 pick (the home colours mockup's B): the 照顧旅程 home on a warm pale
+     ground, its parts white cards on it, lifted a little, as sheets on a table. Only this page:
+     the guest and empty homes, and every other page, stay white. The muted grey on this ground is
+     still over 7:1. */
+  body:has(#journey-now) {
+    background-color: var(--color-home-ground);
+  }
+
+  body:has(#journey-now) :is(.bird-bubble, .journey-tile-info, .home-doors > li > .link-card.home-door, .journey) {
+    background-color: #fff;
+    box-shadow: var(--shadow-card);
+  }
+
+  body:has(#journey-now) .bird-bubble-tail {
+    fill: #fff;
+  }
+
+  body:has(#journey-now) #journey-now .hero-card {
+    box-shadow: 0 0.25rem 0.75rem rgba(31, 78, 140, 0.25);
+  }
+
+  body:has(#journey-now) .journey-tile[class*="result-banner-"] {
+    box-shadow: var(--shadow-card);
+  }
+
+  body:has(#journey-now) .home-door .link-card-title {
+    color: var(--color-primary);
+  }
+
+  /* The card reaches a little past the column on both sides, so its steps keep their width. */
+  body:has(#journey-now) .journey {
+    margin-inline: -0.5rem;
+    padding: 0.875rem 0.5rem 0.25rem;
+    border-radius: var(--radius-medium);
+  }
+
   .journey-head {
     margin-bottom: 1rem;
     display: flex;

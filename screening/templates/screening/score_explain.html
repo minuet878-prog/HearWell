@@ -22,7 +22,8 @@
         </ul>
     </details>
     {% endfor %}
-    <p class="text-black">情緒與社交分項僅供參考，目前沒有正式的解讀標準，請以總分分級為主。</p>
+    {# The owner's 2026-11-28 walkthrough: in the muted grey, as a side note under the parts. #}
+    <p class="text-(--color-muted)">情緒與社交分項僅供參考，目前沒有正式的解讀標準，請以總分分級為主。</p>
     {% endif %}
     {% if first_step %}
     <p class="score-explain-advice">{{ first_step.text }}</p>

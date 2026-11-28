@@ -179,6 +179,8 @@ class ScoreExplainTests(TestCase):
         positions = [read(section).find(piece) for piece in order]
         self.assertNotIn(-1, positions)
         self.assertEqual(positions, sorted(positions))
+        # The caveat in the muted grey since the owner's 2026-11-28 walkthrough.
+        self.assertIn('<p class="text-(--color-muted)">情緒與社交分項僅供參考', section)
 
     def test_the_higher_part_is_open_and_a_tie_opens_emotional(self):
         for scores, opened in (
