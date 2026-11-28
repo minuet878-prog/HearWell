@@ -46,6 +46,10 @@ def audiogram_list(request):
     for audiogram in audiograms:
         # From the points already loaded with the list: no query per card.
         audiogram.thumbnail = thumbnail(audiogram.points.all())
+    # The owner's 2026-11-27 walkthrough (note #044d2ecb): the newest one's speech banana, which
+    # needs air marks as on its page (#440).
+    newest = audiograms[0] if audiograms else None
+    has_air_marks = newest is not None and any(air_marks(newest.points.all(), ear) for ear in Ear)
     return render(
         request,
         "screening/audiogram_list.html",
@@ -53,6 +57,7 @@ def audiogram_list(request):
             "audiograms": audiograms,
             "recent": audiograms[:RECENT_SHOWN],
             "older": older_fold(audiograms, lambda a: a.tested_on, "張"),
+            "banana_audiogram": newest if has_air_marks else None,
         },
     )
 

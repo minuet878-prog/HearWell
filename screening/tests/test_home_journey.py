@@ -436,6 +436,8 @@ class JourneyHomeTests(HomeJourneyTestCase):
         edit = reverse("audiogram_edit", args=[audiogram.pk])
         self.assertIn(f'<a class="btn btn-hero btn-lg" href="{edit}">', card)
         self.assertEqual(self.entries(card), [])
+        # Not done, step 3 opens to what it is, without the speech banana.
+        self.assertNotIn("speech-banana", self.body(self.main(), 2))
 
     def test_step_3_done_opens_to_the_stamp_and_the_audiogram_s_result(self):
         # Spec #741 acceptance 6.
@@ -450,6 +452,19 @@ class JourneyHomeTests(HomeJourneyTestCase):
             "聽力圖結果 2026/06/02 右耳 輕度 平均 37.5 dB 左耳 中度 平均 55 dB 看聽力圖",
         )
         self.assertIn('<span class="level-badge level-badge-mild_to_moderate">輕度</span>', result)
+
+    def test_step_3_done_also_opens_the_newest_audiogram_s_speech_banana(self):
+        # The owner's 2026-11-27 walkthrough (note #044d2ecb): not only from an audiogram's page.
+        self.answer()
+        self.make(PTA_55, PTA_55, tested_on=date(2026, 3, 1))
+        newest = self.make((40, 40, 35, 35), PTA_55, tested_on=date(2026, 6, 2))
+        body = self.body(self.main(), 2)
+        banana = reverse("audiogram_speech_banana", args=[newest.pk])
+        self.assertEqual(body.count('class="entry-card"'), 1)
+        card = self.part(body, "entry-card")
+        self.assertIn(f'href="{banana}"', card)
+        self.assertEqual(self.text(card), "看語言香蕉區 看哪些說話聲可能不容易聽到")
+        self.assertLess(body.index('class="journey-audiogram"'), body.index(banana))
 
     def test_eligible_step_4_points_to_my_guide_and_opening_it_finishes_it(self):
         # Spec #741 acceptance 7, 8.
