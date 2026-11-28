@@ -5,7 +5,7 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 
 ---
 
-## 目前進度（2026-11-26）
+## 目前進度（2026-11-28）
 
 - 已完成：Phase 0–10、無障礙修正（#70–#74）、成人問卷第一批（#76–#84、#90）、設計系統更新第 1 階段（#108：共用
   token——Noto Sans TC 字體、`.link-card` 等共用 class 的圓角／陰影／間距微調；不換主色、不動版面）、第二批前置重構
@@ -132,7 +132,9 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   UI/UX Design Review 第三＋第四批（2026-11-24，小改動、不需交叉審查；[拷問決定](planning/redesign/ui-ux-batch3-4-grill-decisions.md)，驗證見 `docs/verification/ui-ux-batch3-4-flow-and-visual-polish.md`）：聽力圖第 1 步即時驗證來源與日期（加 `aria-invalid`）、回頭修改時提供「改好了，回確認存檔」捷徑、三種刪除點位途徑都由 `role="status"` 報讀「已清除 ○○」；分級結果頁回看歷史時在分數卡上方顯示 `YYYY/MM/DD・沒戴／有戴助聽器`；語言香蕉區「用清單選」點選後捲回圖表、選中耳別深藍底白字並報讀切耳狀態、圖說補紅／藍線說明；趨勢圖分數加白外描邊、開啟帶外圈的 `activeDot`、失敗訊息補 `role="status"`；健康報告與分享報告加「全部展開／全部收合」按鈕；意見回饋頁首屏精簡（移除來源句、匿名保存改單行淡字、緊急就醫移至送出下方）並補 `已輸入 N / 1,000 字` 即時字數；輪播卡片切卡報讀新標題、`questionnaire.html` 非首張卡補 `inert`；觸控 `:hover` 包入 `@media (hover: hover)`、`.btn:hover` 與 `:focus-visible` 拆開、`tab-bar.js` 加 14px 捲動門檻防抖動；帳號設定統一稱 `email`、模擬器句子補 `aria-live="polite"`、作答接續標題改 `<h2>`；全站分數／讀數／表格／字數補 `tabular-nums`、同心圓角精算與 `--radius-*` 收斂、標題補 `text-wrap: balance`、頁尾底部預留 `56px` 與手機連結間距 `0.5rem`、修正 `in-view.js`／`scroll-hint.js`／`switch-slide.js` 邊界。
   選配引導卡與補助引導試算（2026-11-25，母規格 #774，#775–#780，ADR 0083；[拷問決定](planning/hearing-aid-guide/guided-cards-grill-decisions.md)）：「助聽器選配與補助」主頁拿掉跟照顧旅程重複的選配路線，改成 5 張橫滑引導卡（看過、答過的蓋「已完成」）＋ 6 格章節磚，聽力圖改成小鳥下兩顆結論標籤、數值與公式收進摺疊列；新增公開的補助引導與試算 `/guide/subsidy`（一頁一題，依證明、辦到哪、等級、單雙耳、戶別算預估最高補助與唯一下一步，含 65 歲輕度進階型上限與低收入戶老人分支，不存答案）；章節頁尾原地修改、九號表頁尾接著問核定公文，原本只在路線上的提醒搬到各章頁尾；首頁第 5 步同一張卡接著問耳朵與等級；本人實作中點選的決定寫回 #774；依本人指示跳過交叉審查；PR #782，之後 PR #783 加上桌面拖曳與左右箭頭（驗證見 `docs/verification/guide-card-controls.md`）；驗證見 `docs/verification/issue-774.md`；**實機驗收與卡片、標籤、試算文案審定待本人確認**。
   關閉 Render 退路（2026-11-26，ADR 0084）：本人刪掉 Render 服務、Neon 專案並解除 Render 的 GitHub App；刪掉 `build.sh`，部署改由 `.github/workflows/deploy.yml` 在 `main` 的 CI 通過後執行 `scripts/deploy.sh`，部署順序測試改讀 `scripts/deploy.sh`；README、`AGENTS.md`、GLOSSARY、CI 註解與設定錯誤訊息拿掉 Render。
+  本人逐頁走查（2026-11-27～28，本人在預覽用 dev-prompt 點選標註，小改動、不需交叉審查）：四輪共刪改字約 90 筆。訪客動線、註冊、紀錄（PR #790）；問卷卡片只留圖標、標題、問卷名和按鈕，IOI-HA 常模依據只在說明摺疊裡（PR #791，ADR 0085）；SSQ12 滑桿加大（PR #792）；報告、比較、紀錄、了解頁刪字，HHIE-S 建議每級一句，首頁藍卡只留大標（PR #801）。PR #801 另外照本人看設計圖選的版面：已登入首頁放訪客首頁的兩塊入口，排在上次結果下面成四格；有照顧旅程的首頁改頂部淡藍光暈＋白卡片；結果頁有沒戴、有戴紀錄時，藍卡上方出現「戴上助聽器，差多少？」；SSQ12、SADL 結果加淡藍底橫尺；結果頁提醒的用途說明本人決定刪（ADR 0065 補記）。驗證見 `docs/verification/questionnaire-copy-walkthrough.md`、`docs/verification/walkthrough-round3-4.md`；**#801 結果頁比較方塊等頁面的實機驗收待本人確認**。
 - 進行中：
+  - 走查（2026-11-28）拆出、要先定規則或規格的三件：刪除一筆問卷紀錄（母規格 #794，ADR 0086，票 #795–#799，設計圖 #795 和隱私權說明 #796 可先做，實作等本人下指令）；聽力圖只有一耳做骨導時，另一耳也用它判斷類型（規則選項已整理，等本人挑選後寫規格；改判讀規則要 ADR 和交叉審查）；我的紀錄 SADL、SSQ12 分頁加「最近一次」（本人選設計圖 A，分支 `feat/records-latest-ungraded` 已做完、還沒推送，要先跟 main 合併，處理 `my_hearing.html` 的衝突）。
   - SADL 助聽器滿意度（母規格 #166，ADR 0011）：#167–#169 已合併（網頁表單作答、整體與四個子量表計分、
     子量表白話說明）；#170–#174（React 作答頁與送出 API、我的紀錄、聽力報告與分享報告、資料匯出、推薦精靈與
     老使用者首頁）也已合併（PR #178）。2026-10-22 本人決定直接上線：拿掉 `listed=False`，正式站目錄、推薦精靈
