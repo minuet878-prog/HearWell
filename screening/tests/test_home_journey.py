@@ -111,9 +111,8 @@ class HomeJourneyTestCase(TestCase):
         return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html)).strip()
 
     def tiles(self, main):
-        return main[
-            main.index('<div class="journey-tiles">') : main.index('<section class="journey"')
-        ]
+        # The two tiles alone: the home doors follow them since the owner's 2026-11-28 pick.
+        return main[main.index('<div class="journey-tiles">') : main.index('<ul class="home-doors')]
 
     def items(self, main):
         """Each step's (classes, its HTML) in order; a step's entry cards are a list of their

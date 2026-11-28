@@ -1,4 +1,4 @@
-{# Spec #741 (#752, the canvas's ProGuest): the home page's two doors, the family zone and the guide. Since the owner's 2026-11-27 walkthrough on the signed-in home pages too, under the empty preview or the 照顧旅程. `count`: a guest's, whose presses door-count.js counts (spec #655 P15); a signed-in press is not a 訪客 one. #}
+{# Spec #741 (#752, the canvas's ProGuest): the home page's two doors, the family zone and the guide. Since the owner's 2026-11-27 walkthrough on the signed-in home pages too: under the empty preview, or under 上次結果 and 下次篩檢 as one block of four (the 2026-11-28 mockup's C). `count`: a guest's, whose presses door-count.js counts (spec #655 P15); a signed-in press is not a 訪客 one. #}
 <ul class="home-doors list-unstyled m-0" role="list">
     <li><a class="link-card home-door" href="{% url 'family_guide' %}"{% if count %} data-door="door_family"{% endif %}>
         <span class="home-door-top">{% include "screening/action_icon.html" with icon="family" %}<span class="link-card-arrow" aria-hidden="true">›</span></span>

@@ -16,6 +16,18 @@
     margin: 1rem 0 1.75rem;
   }
 
+  /* The owner's 2026-11-28 pick (the home doors mockup's C): the two doors right under the two
+     tiles, the four one block of two rows, the 照顧旅程 after them. */
+  .journey-tiles:has(+ .home-doors) {
+    margin-bottom: 0.75rem;
+  }
+
+  .journey-tiles + .home-doors {
+    grid-template-columns: repeat(auto-fit, minmax(min(8.5rem, 100%), 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.75rem;
+  }
+
   /* 上次結果 is a link in its level's pale colour (L1, from .result-banner-*); grey is
      information, not a link (P3). */
   .journey-tile {

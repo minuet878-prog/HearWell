@@ -87,6 +87,8 @@
         {% endwith %}
     </div>
 </div>
+{# The owner's 2026-11-28 pick (the home doors mockup's C): the guest home's two doors right under 上次結果 and 下次篩檢, the four tiles one block, over the 照顧旅程. #}
+{% include "screening/home_doors.html" %}
 <section class="journey" aria-labelledby="journey-title">
     <div class="journey-head">
         <h2 id="journey-title" class="h4">照顧旅程</h2>
@@ -127,8 +129,6 @@
         {% endfor %}
     </ol>
 </section>
-{# The owner's 2026-11-27 walkthrough: the guest home's two doors, under the 照顧旅程. #}
-{% include "screening/home_doors.html" %}
 {# Spec #453 Q10: what 「您還可以」 offered, a row of text links. pwa-nav.js hides [data-hide-in-app] in the home-screen app; without JavaScript every link shows. #}
 <ul class="home-links" role="list">
     <li><a href="{% url 'health_report' %}">印聽力報告</a></li>

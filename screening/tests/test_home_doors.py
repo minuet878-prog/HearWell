@@ -127,7 +127,8 @@ class SignedOutHomeTests(TestCase):
 class SignedInHomeDoorsTests(TestCase):
     """Acceptance 14 and 15 (grill Q3): a signed-in user's home is as it was; since the owner's
     2026-11-27 walkthrough with the same two doors, not counted (a signed-in press is not a 訪客
-    one): under the empty preview, or under the 照顧旅程 and above its text links."""
+    one): under the empty preview, or, since the owner's 2026-11-28 pick (the mockup's C), right
+    under 上次結果 and 下次篩檢, over the 照顧旅程."""
 
     fixtures = ("questions_fixture.json",)  # HHIE-S
 
@@ -150,7 +151,7 @@ class SignedInHomeDoorsTests(TestCase):
         self.assertLess(main.index('<div class="empty-preview">'), main.index("home-doors"))
         self.assertLess(main.index("home-doors"), main.index('<ul class="home-links"'))
 
-    def test_signed_in_with_a_record_has_the_doors_under_the_care_journey(self):
+    def test_signed_in_with_a_record_has_the_doors_under_the_tiles_over_the_journey(self):
         user = consented_user(username="with_a_record")
         submission_with_answers(user, "hhie-s", [4] * 10)
         self.client.force_login(user)
@@ -161,5 +162,8 @@ class SignedInHomeDoorsTests(TestCase):
         self.assertNotIn(DOOR_SCRIPT, content)
         main = self.main(content)
         self.assertEqual(main.count('<ul class="home-doors'), 1)
-        self.assertLess(main.index('<ol class="journey-steps"'), main.index("home-doors"))
-        self.assertLess(main.index("home-doors"), main.index('<ul class="home-links"'))
+        # Straight after the two tiles' block, the 照顧旅程 after the doors.
+        tiles_end = main.index('<section class="journey"')
+        self.assertLess(main.index('<div class="journey-tiles">'), main.index("home-doors"))
+        self.assertRegex(main[:tiles_end], r"</div>\s*</div>\s*<ul class=\"home-doors[^\"]*\"")
+        self.assertLess(main.index("home-doors"), main.index('<ol class="journey-steps"'))
