@@ -18,8 +18,9 @@
   --color-severe-bg-deep: #f6c3b3;
   --color-surface: #f4f6f8;
   --color-brand-soft: #eef3fa;
-  /* The 照顧旅程 home's warm pale ground (the owner, 2026-11-28). */
-  --color-home-ground: #f7f3ec;
+  /* The 照顧旅程 home's off-white ground and the pale blue glow at its top (the owner, 2026-11-28). */
+  --color-home-ground: #f6f7f9;
+  --color-home-glow: #cfe3fb;
   --color-brand-soft-deep: #d6e2f2;
   --color-brand-selected: #e8eef7;
   --color-pull: #e7eef8;
