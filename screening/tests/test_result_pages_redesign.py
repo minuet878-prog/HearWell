@@ -275,7 +275,10 @@ class EveryResultPageTests(TestCase):
                 self.assertIn('<div class="result-summary">', main)
 
     def test_the_summary_of_a_page_that_is_not_graded(self):
-        # The pale grey block (no level colour, ADR 0007) and, under it, its one sentence.
+        # The pale block (no level colour, ADR 0007; pale blue since the owner's 2026-11-28 pick)
+        # and, under it, its one sentence. SSQ12-TW and SADL also draw their score on a bar
+        # (test_result_scale), for the eye only, after the summary's words; IOI-HA has no one
+        # score to draw.
         expected = {
             "ssq12-tw": ("整體平均 6.0 分（滿分 10）", "分數越高，代表您回報的聆聽能力越好。"),
             "sadl": (
@@ -287,8 +290,13 @@ class EveryResultPageTests(TestCase):
         for code, (summary, sentence) in expected.items():
             with self.subTest(code=code):
                 main = self._main(code)
-                block = re.search(r'<div class="result-summary">(.*?)</div>', main, re.S)
+                block = re.search(
+                    r'<div class="result-summary">(.*?)(?:<div class="result-scale"|</div>)',
+                    main,
+                    re.S,
+                )
                 self.assertEqual(text(block.group(1)), summary)
+                self.assertEqual('class="result-scale"' in main, code != "ioi-ha")
                 if sentence:
                     self.assertIn(f'<p class="result-one-line">{sentence}</p>', main)
 

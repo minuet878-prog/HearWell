@@ -1,0 +1,7 @@
+{# The owner's 2026-11-28 pick (the result page mockup's 4A): an ungraded result's score as a bar from the scale's lowest to its highest, in the pale blue block, for the eye only: the line above says the score and the full score. `scale` from the result's page_context; `low` and `high`: the ends' words. #}
+{% if scale %}
+<div class="result-scale" aria-hidden="true">
+    <span class="result-scale-bar"><span class="result-scale-fill" style="width: {{ scale.percent|floatformat:2 }}%"></span><span class="result-scale-dot" style="left: {{ scale.percent|floatformat:2 }}%"></span></span>
+    <span class="result-scale-ends"><span>{{ low }}</span><span>{{ high }}</span></span>
+</div>
+{% endif %}

@@ -6,6 +6,7 @@
 <div class="result-summary">
     {% if submission.result.average is not None %}
     <p class="result-score">整體平均 <span class="result-number">{{ submission.result.average }}</span> 分（滿分 10）</p>
+    {% include "screening/result_scale.html" with low="0 完全不行" high="10 輕鬆做到" %}
     {% else %}
     <p class="result-summary-lead">{{ submission.result.unavailable_reason }}</p>
     {% endif %}
