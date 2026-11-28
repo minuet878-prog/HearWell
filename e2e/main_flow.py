@@ -6212,19 +6212,23 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.assertEqual(self.style(found, "borderTopRightRadius"), radius)
                     self.assertEqual(self.style(found, "borderTopLeftRadius"), radius)
 
-    # Brand refresh: a white header; #748 (spec #741 P8): no wave, the avatar on the right; the
+    # Brand refresh: a white header, see-through over the page's glow since the owner's
+    # 2026-11-28 pick (ADR 0087); #748 (spec #741 P8): no wave, the avatar on the right; the
     # owner at #741's acceptance: no bird beside the name.
     def mask(self, locator, pseudo):
         return locator.evaluate(f"el => getComputedStyle(el, '{pseudo}').maskImage")
 
-    def test_header_is_white_with_the_logo_and_the_avatar(self):
+    # The glow's deepest blue (--color-home-glow), the darkest the header's words can sit on.
+    GLOW = "rgb(207, 227, 251)"
+
+    def test_header_is_see_through_with_the_logo_and_the_avatar(self):
         self.open()
         with self.saving_artifacts():
             for path in ("/", "/questionnaire_list"):
                 with self.subTest(path=path):
                     self.page.goto(f"{self.live_server_url}{path}")
                     header = self.page.locator(".site-header")
-                    self.assertEqual(self.style(header, "backgroundColor"), self.WHITE)
+                    self.assertEqual(self.style(header, "backgroundColor"), "rgba(0, 0, 0, 0)")
                     self.assertEqual(self.style(header, "backgroundImage"), "none")
                     brand = header.locator(".site-brand a")
                     self.assertEqual(self.style(brand, "color"), self.PRIMARY)
@@ -6235,9 +6239,14 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     expect(brand.locator(".site-logo")).to_have_count(0)
                     avatar = header.get_by_role("button", name="帳號選單：style_e2e")
                     expect(avatar).to_have_text("S")
-                    for text in (brand.locator(".site-wordmark-tint"), avatar):
-                        colour = self.style(text, "color")
-                        self.assertGreaterEqual(self.lowest_contrast(colour, self.WHITE), 4.5)
+                    # The wordmark is large bold text (3:1) over the glow; the avatar keeps its own
+                    # near-white circle.
+                    self.assertGreaterEqual(
+                        self.lowest_contrast(self.style(tint, "color"), self.GLOW), 3
+                    )
+                    self.assertGreaterEqual(
+                        self.lowest_contrast(self.style(avatar, "color"), self.WHITE), 4.5
+                    )
                     expect(header.locator(".site-wave")).to_have_count(0)
 
     # Brand refresh: the first-visit home's start button sends out one ring, inside ADR 0006's
@@ -8225,7 +8234,8 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     # #453 acceptance 32 (ADR 0043): on every page the page is white, with no beige box and no
     # bar down a block's side; the body text is 18px, every button at least 56px tall and every
     # card, text-link button and tab at least 44px. The 照顧旅程 home alone, since the owner's
-    # 2026-11-28 pick, is off-white with a pale blue glow at its top.
+    # 2026-11-28 pick, is off-white; every page has a pale blue glow at its top since their next
+    # pick that day (ADR 0087).
     HOME_GROUND = "rgb(246, 247, 249)"
 
     def test_pages_are_white_with_large_enough_text_buttons_and_targets(self):
@@ -8238,9 +8248,10 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     body = self.page.locator("body")
                     if name == "home, returning":
                         self.assertEqual(self.style(body, "backgroundColor"), self.HOME_GROUND)
-                        self.assertIn("radial-gradient", self.style(body, "backgroundImage"))
                     else:
                         self.assertEqual(self.style(body, "backgroundColor"), self.WHITE)
+                    glow = self.page.locator(".page-glow > div")
+                    self.assertIn("radial-gradient", self.style(glow, "backgroundImage"))
                     self.assertEqual(self.style(body, "fontSize"), "18px")
                     self.assertEqual(
                         self.page.evaluate(self.BEIGE_OR_SIDE_BARS, list(self.OLD_BEIGES)), []
@@ -8289,6 +8300,35 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.assertEqual(self.style(link, "color"), self.PRIMARY)
                     self.assertEqual(self.style(link, "textDecorationLine"), "underline")
                     self.assertGreaterEqual(link.bounding_box()["height"], 44)
+
+    # The owner's 2026-11-28 pick (G1, ADR 0087): the glow ends under the current tab, in the
+    # middle on a page with none.
+    def test_the_glow_sits_under_the_current_tab(self):
+        with self.saving_artifacts():
+            for path, under_tab in (("/questionnaire_list", True), ("/privacy", False)):
+                with self.subTest(path=path):
+                    self.visit(True, path)
+                    glow = self.page.locator(".page-glow > div")
+                    glow.evaluate("el => Promise.all(el.getAnimations().map((a) => a.finished))")
+                    box = glow.bounding_box()
+                    middle = box["x"] + box["width"] / 2
+                    if under_tab:
+                        tab = self.page.locator('.site-nav a[aria-current="page"]').bounding_box()
+                        self.assertAlmostEqual(middle, tab["x"] + tab["width"] / 2, delta=2)
+                    else:
+                        width = self.page.evaluate("document.documentElement.clientWidth")
+                        self.assertAlmostEqual(middle, width / 2, delta=2)
+
+    # The owner's 2026-11-28 pick (the home doors mockup's C): the two doors end the block of
+    # four, a gap before the 照顧旅程's white card, which lines up with the cards above it.
+    def test_journey_home_doors_stand_apart_from_the_journey_card(self):
+        with self.saving_artifacts():
+            self.visit(True, lambda test: test.returning_home())
+            doors = self.main().locator(".home-doors").bounding_box()
+            journey = self.main().locator(".journey").bounding_box()
+            self.assertGreaterEqual(journey["y"] - (doors["y"] + doors["height"]), 24)
+            self.assertAlmostEqual(journey["x"], doors["x"], delta=0.5)
+            self.assertAlmostEqual(journey["width"], doors["width"], delta=0.5)
 
     # #309: the advice is flat and the cards below are list rows. Since #750 (canvas ProResult)
     # the advice is in 這個分數怎麼算, since 2026-11-21 open and flat on the white page, and since

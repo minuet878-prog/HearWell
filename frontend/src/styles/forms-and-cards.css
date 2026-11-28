@@ -201,11 +201,13 @@
      card, side by side, each a single link in a pale blue block (as a single clickable thing sits
      in a colour block): the icon in a white circle and the arrow on top, the words under them. A
      mouse or a finger deepens the blue instead of turning it pale blue. Where two would be too
-     narrow (large text on a phone) they go one above the other. */
+     narrow (large text on a phone) they go one above the other. No margin here, not a utility's
+     m-0 on the list: a utility would win over the journey home's gap under the doors. */
   .home-doors {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
     gap: 0.6667rem;
+    margin: 0;
   }
 
   .home-doors > li > .link-card.home-door {

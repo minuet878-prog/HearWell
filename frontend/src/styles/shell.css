@@ -38,22 +38,56 @@
     border: 0.125rem solid currentColor;
   }
 
-  /* Header: white since the brand refresh, the same as the app's status bar (theme-color, #138).
-     #748 (ADR 0079): it stays at the top; scrolled past it (site-header.js marks data-scrolled),
-     its white goes and only the frosted ‹ and avatar float over the page, which shows between
-     them and stays clickable there. Without JavaScript nothing floats, so it scrolls away with
-     the page: kept, its white would take a third of a small phone at 200% text. */
+  /* Header: see-through since the owner's 2026-11-28 pick (ADR 0087), so the page's glow shows
+     behind it. #748 (ADR 0079): it stays at the top; scrolled past it (site-header.js marks
+     data-scrolled), only the frosted ‹ and avatar float over the page, which shows between them
+     and stays clickable there. Without JavaScript nothing floats, so it scrolls away with the
+     page. */
   .site-header {
-    background-color: #fff;
+    background-color: transparent;
     color: var(--color-primary);
     /* viewport-fit=cover (layout.html) lets the page run under the iPhone's status bar; the
-       header's white fills it and its contents start below. 0 everywhere else. */
+       header's contents start below it. 0 everywhere else. */
     padding-top: env(safe-area-inset-top);
   }
 
   .site-header[data-scrolled] {
-    background-color: transparent;
     pointer-events: none;
+  }
+
+  /* The owner's 2026-11-28 pick (G1, ADR 0087): a pale blue glow behind the top of every page,
+     fading out at its edges, under the current tab (page-glow.js puts it there), in the middle on
+     a page with none. Changing page it slides from where the page before left it; with reduced
+     motion it is just there. The muted grey is over 5:1 even at its deepest blue. */
+  .page-glow {
+    position: absolute;
+    inset: 0 0 auto;
+    z-index: -1;
+    height: 36rem;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .page-glow > div {
+    position: absolute;
+    top: -18rem;
+    left: var(--glow-x, 50%);
+    width: 120rem;
+    height: 60rem;
+    translate: -50% 0;
+    background-image: radial-gradient(closest-side, var(--color-home-glow) 0%, #e3eefc 38%, transparent 72%);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .page-glow > div {
+      transition: left 0.4s ease-out;
+    }
+  }
+
+  @media print {
+    .page-glow {
+      display: none;
+    }
   }
 
   /* A jump into the page stops below the header rather than under it: about its height (the
@@ -510,10 +544,6 @@
 
   /* The swap fades; with reduced motion it just changes. */
   @media (prefers-reduced-motion: no-preference) {
-    .site-header {
-      transition: background-color 0.25s;
-    }
-
     .site-brand {
       transition: opacity 0.2s, visibility 0.2s;
     }
@@ -711,11 +741,13 @@
     background-color: var(--color-primary-active);
   }
   @media (min-width: 48em) {
-    /* White like the header, a thin line under it; the padding keeps the current-page pill
-       inside the bar instead of filling it. */
+    /* N3 (the owner's 2026-11-28 pick, ADR 0087): a half see-through white, the glow faint
+       behind it, a thin line under it; the padding keeps the current-page pill inside the bar
+       instead of filling it. */
     .site-nav {
       padding-block: 0.375rem;
       border-bottom: 1px solid var(--color-line);
+      background-color: rgba(255, 255, 255, 0.55);
     }
 
     .site-nav ul {

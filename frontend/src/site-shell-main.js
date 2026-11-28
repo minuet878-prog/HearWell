@@ -4,6 +4,7 @@
 import { setUpBackToTop } from "./back-to-top.js";
 import { setUpPlayInView } from "./in-view.js";
 import { setUpJumpHighlight } from "./jump-highlight.js";
+import { setUpPageGlow } from "./page-glow.js";
 import { setUpPageLoading } from "./page-loading.js";
 import { setUpPwaNav } from "./pwa-nav.js";
 import { setUpScrollHint } from "./scroll-hint.js";
@@ -16,6 +17,7 @@ import { setUpTabBar } from "./tab-bar.js";
 const helpers = [
   setUpPlayInView,
   setUpPwaNav,
+  () => setUpPageGlow(window),
   () => setUpPageLoading(window),
   () => setUpSwitchSlide(window),
   setUpBackToTop,
